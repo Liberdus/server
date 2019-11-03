@@ -4,8 +4,8 @@
   "description": "Liberdus is a payment network that allows users to govern their own money system in a democratic fashion",
   "main": "index.js",
   "scripts": {
-    "pm2": "cross-env PM2_HOME='./.pm2' pm2",
-    "start": "node scripts/start.js && node index.js",
+    "pm2": "cross-env PM2_HOME='./.pm2' pm2 --node-args='--experimental-modules'",
+    "start": "node scripts/start.js && node -r esm index.js",
     "stop": "node scripts/stop.js",
     "clean": "node scripts/clean.js",
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -15,6 +15,9 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^0.19.0",
+    "dot-prop": "^5.1.1",
+    "esm": "^3.2.25",
+    "fast-stable-stringify": "^1.0.0",
     "shardus-crypto-utils": "git+https://gitlab.com/shardus/shardus-crypto-utils.git",
     "vorpal": "^1.12.0"
   },

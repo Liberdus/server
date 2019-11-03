@@ -1,112 +1,907 @@
 const fs = require('fs')
+// const { resolve } = require('path')
 const path = require('path')
 const shardus = require('shardus-global-server')
 const crypto = require('shardus-crypto-utils')
+const stringify = require('fast-stable-stringify')
+const { set } = require('dot-prop')
 crypto('64f152869ca2d473e4ba64ab53f49ccdb2edae22da192c126850970e788af347')
 
-let config = { server: { baseDir: './' } }
+/**
+ * @typedef {import('shardus-enterprise-server/src/shardus')} Shardus
+ * @typedef {import('shardus-enterprise-server/src/shardus').App} App
+ * @typedef {import('shardus-enterprise-server/src/shardus').IncomingTransaction} IncomingTransaction
+ * @typedef {import('shardus-enterprise-server/src/shardus').IncomingTransactionResult} IncomingTransactionResult
+ * @implements {App}
+ */
+
+let accounts = {}
+
+const ADMIN_ADDRESS = '1d488e0b637df2462b54af4b5ae1e0ebde02e0745d50941d47c8869a6abe2755'
+
+const ONE_SECOND = 1000
+const ONE_MINUTE = 60 * ONE_SECOND
+const ONE_HOUR = 60 * ONE_MINUTE
+const ONE_DAY = 24 * ONE_HOUR
+const ONE_WEEK = 7 * ONE_DAY
+const ONE_YEAR = 365 * ONE_DAY
+
+let NODE_REWARD_INTERVAL
+let NODE_REWARD_AMOUNT
+let NODE_PENALTY
+let TRANSACTION_FEE
+let STAKE_REQUIRED
+let MAINTENANCE_INTERVAL
+let MAINTENANCE_FEE
+let DEV_FUND_INTERVAL
+let DEV_FUND_AMOUNT
+let PROPOSAL_FEE
+let DEV_PROPOSAL_FEE
+
+let config = {}
+
 if (process.env.BASE_DIR) {
   if (fs.existsSync(path.join(process.env.BASE_DIR, 'config.json'))) {
-    config = JSON.parse(fs.readFileSync(path.join(process.env.BASE_DIR, 'config.json')))
+    config = JSON.parse(
+      fs.readFileSync(path.join(process.env.BASE_DIR, 'config.json'))
+    )
   }
   config.server.baseDir = process.env.BASE_DIR
 }
 
-const dapp = shardus(config)
-
-/**
- * interface account {
- *   id: string,        // 32 byte hex string
- *   hash: string,      // 32 byte hex string
- *   timestamp: number, // ms since epoch
- *   data: {
- *     balance: number
- *   }
- * }
- *
- * interface accounts {
- *   [id: string]: account
- * }
- */
-let accounts = {}
-function setAccountData (accountsToAdd = []) {
-  for (const account of accountsToAdd) {
-    accounts[account.id] = account
-  }
-}
-function createAccount (obj = {}) {
-  const account = Object.assign({
-    timestamp: Date.now(),
-    id: crypto.randomBytes(),
-    data: {
-      balance: 0
+set(config, 'server.p2p', {
+  cycleDuration: 15,
+  seedList: 'http://127.0.0.1:4000/api/seednodes',
+  maxNodesPerCycle: 10,
+  minNodes: 20,
+  maxNodes: 60,
+  maxNodesToRotate: 1,
+  maxPercentOfDelta: 40
+})
+set(config, 'server.loadDetection', {
+  queueLimit: 1000,
+  desiredTxTime: 5,
+  highThreshold: 0.8,
+  lowThreshold: 0.2
+})
+set(config, 'server.reporting', {
+  interval: 1
+})
+set(config, 'server.rateLimiting', {
+  limitRate: true,
+  loadLimit: 0.5
+})
+set(config, 'server.sharding', {
+  nodesPerConsensusGroup: 3
+})
+set(config, 'logs', {
+  dir: './logs',
+  files: { main: '', fatal: '', net: '' },
+  options: {
+    appenders: {
+      out: { type: 'file', maxLogSize: 10000000, backups: 10 },
+      app: {
+        type: 'file',
+        maxLogSize: 10000000,
+        backups: 10
+      },
+      errorFile: {
+        type: 'file',
+        maxLogSize: 10000000,
+        backups: 10
+      },
+      errors: {
+        type: 'logLevelFilter',
+        level: 'ERROR',
+        appender: 'errorFile'
+      },
+      main: {
+        type: 'file',
+        maxLogSize: 10000000,
+        backups: 10
+      },
+      fatal: {
+        type: 'file',
+        maxLogSize: 10000000,
+        backups: 10
+      },
+      net: {
+        type: 'file',
+        maxLogSize: 10000000,
+        backups: 10
+      },
+      playback: {
+        type: 'file',
+        maxLogSize: 10000000,
+        backups: 10
+      }
+    },
+    categories: {
+      default: { appenders: ['out'], level: 'fatal' },
+      app: { appenders: ['app', 'errors'], level: 'TRACE' },
+      main: { appenders: ['main', 'errors'], level: 'fatal' },
+      fatal: { appenders: ['fatal'], level: 'fatal' },
+      net: { appenders: ['net'], level: 'fatal' },
+      playback: { appenders: ['playback'], level: 'fatal' }
     }
-  }, obj)
-  account.hash = crypto.hashObj(account.data)
-  return account
-}
-
-dapp.registerExternalPost('inject', async (req, res) => {
-  console.log(req.body)
-  try {
-    const response = dapp.put(req.body)
-    res.json(response)
-  } catch (err) {
-    console.log('Failed to inject tx: ', err)
   }
 })
 
+const dapp = shardus(config)
+
+async function initParameters () {
+  const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+  console.log(account)
+  if (account) {
+    NODE_REWARD_INTERVAL = account.data.nodeRewardInterval
+    NODE_REWARD_AMOUNT = account.data.nodeRewardAmount
+    NODE_PENALTY = account.data.nodePenalty
+    TRANSACTION_FEE = account.data.transactionFee
+    STAKE_REQUIRED = account.data.stakeRequired
+    MAINTENANCE_INTERVAL = account.data.maintenanceInterval
+    MAINTENANCE_FEE = account.data.maintenanceFee
+    DEV_FUND_INTERVAL = account.data.devFundInterval
+    DEV_FUND_AMOUNT = account.data.devFundAmount
+    PROPOSAL_FEE = account.data.proposalFee
+    DEV_PROPOSAL_FEE = account.data.devProposalFee
+  } else {
+    NODE_REWARD_INTERVAL = ONE_MINUTE
+    NODE_REWARD_AMOUNT = 10
+    NODE_PENALTY = 100
+    TRANSACTION_FEE = 0.001
+    STAKE_REQUIRED = 500
+    MAINTENANCE_INTERVAL = ONE_MINUTE * 2
+    MAINTENANCE_FEE = 0.0001
+    DEV_FUND_INTERVAL = ONE_DAY
+    DEV_FUND_AMOUNT = 10000
+    PROPOSAL_FEE = 500
+    DEV_PROPOSAL_FEE = 200
+  }
+}
+
+function createAccount (obj = {}) {
+  const account = Object.assign(
+    {
+      timestamp: Date.now(),
+      id: crypto.randomBytes(),
+      data: {
+        balance: 0,
+        toll: 1,
+        chats: {},
+        friends: {},
+        transactions: []
+      }
+    },
+    obj
+  )
+  account.hash = crypto.hashObj(account)
+  return account
+}
+
+function createAlias (obj = {}) {
+  const alias = Object.assign(
+    {
+      timestamp: Date.now()
+    },
+    obj
+  )
+  alias.hash = crypto.hashObj(alias)
+  return alias
+}
+
+function createNetworkAccount (obj = {}) {
+  const account = Object.assign({
+    timestamp: Date.now(),
+    id: '0'.repeat(64),
+    nodeRewardInterval: ONE_MINUTE,
+    nodeRewardAmount: 10,
+    nodePenalty: 100,
+    transactionFee: 0.001,
+    stakeRequired: 500,
+    maintenanceInterval: ONE_MINUTE * 2,
+    maintenanceFee: 0.0001,
+    devFundInterval: ONE_DAY,
+    devFundAmount: 10000,
+    proposalFee: 500,
+    devProposalFee: 20,
+    issueCount: 0
+  }, obj)
+  account.hash = crypto.hashObj(account)
+  return account
+}
+
+function createIssue (obj = {}) {
+  const issue = Object.assign(
+    {
+      timestamp: Date.now(),
+      proposalCount: 0
+    },
+    obj
+  )
+  issue.hash = crypto.hashObj(issue)
+  return issue
+}
+
+function createProposal (obj = {}) {
+  const proposal = Object.assign(
+    {
+      timestamp: Date.now(),
+      power: 0
+    },
+    obj
+  )
+  proposal.hash = crypto.hashObj(proposal)
+  return proposal
+}
+
+dapp.registerExternalPost('inject', async (req, res) => {
+  const result = dapp.put(req.body)
+  res.json({ result })
+})
+
+dapp.registerExternalGet('issues', async (req, res) => {
+  const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+  const issueCount = account.data.issueCount
+  const issues = []
+  for (let i = 1; i <= issueCount; i++) {
+    let issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${i}`))
+    issues.push(issue.data)
+  }
+  res.json({ issues })
+})
+
+dapp.registerExternalGet('issues/latest', async (req, res) => {
+  const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+  const count = account.data.issueCount
+  const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${count}`))
+  res.json({ issue: issue.data })
+})
+
+dapp.registerExternalGet('issues/count', async (req, res) => {
+  const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+  const issueCount = account.data.issueCount
+  res.json({ issueCount })
+})
+
+dapp.registerExternalGet('proposals', async (req, res) => {
+  const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+  const issueCount = network.data.issueCount
+  const proposals = []
+  for (let i = 1; i <= issueCount; i++) {
+    let issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${i}`))
+    let proposalCount = issue.data.proposalCount
+    for (let j = 1; j <= proposalCount; j++) {
+      let proposal = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${i}-proposal-${j}`))
+      proposals.push(proposal.data)
+    }
+  }
+  res.json({ proposals })
+})
+
+dapp.registerExternalGet('proposals/count', async (req, res) => {
+  const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+  const issueCount = network.data.issueCount
+  const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${issueCount}`))
+  const proposalCount = issue.data.proposalCount
+  res.json({ proposalCount })
+})
+
+dapp.registerExternalGet('proposals/latest', async (req, res) => {
+  const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+  const issueCount = network.data.issueCount
+  const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${issueCount}`))
+  const proposalCount = issue.data.proposalCount
+  const proposals = []
+  for (let i = 1; i <= proposalCount; i++) {
+    let proposal = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${issueCount}-proposal-${i}`))
+    proposals.push(proposal.data)
+  }
+  res.json({ proposals })
+})
+
 dapp.registerExternalGet('account/:id', async (req, res) => {
+  console.log(dapp.getLatestCycles())
   const id = req.params['id']
-  const account = accounts[id] || null
-  res.json({ account })
+  const account = await dapp.getLocalOrRemoteAccount(id)
+  res.json({ account: account.data })
+})
+
+dapp.registerExternalGet('account/:id/handle', async (req, res) => {
+  const id = req.params['id']
+  const account = await dapp.getLocalOrRemoteAccount(id)
+  if (account) {
+    res.json({ handle: account.data.handle })
+  } else {
+    res.json({ error: 'No account with the given id' })
+  }
+})
+
+dapp.registerExternalGet('account/:id/balance', async (req, res) => {
+  const id = req.params['id']
+  const account = await dapp.getLocalOrRemoteAccount(id)
+  if (account) {
+    res.json({ balance: account.data.data.balance })
+  } else {
+    res.json({ error: 'No account with the given id' })
+  }
+})
+
+dapp.registerExternalGet('account/:id/toll', async (req, res) => {
+  const id = req.params['id']
+  const account = await dapp.getLocalOrRemoteAccount(id)
+  if (account) {
+    res.json({ toll: account.data.data.toll })
+  } else {
+    res.json({ error: 'No account with the given id' })
+  }
+})
+
+dapp.registerExternalGet('address/:name', async (req, res) => {
+  const name = req.params['name']
+  const account = await dapp.getLocalOrRemoteAccount(name)
+  const address = account && account.data.address
+  if (address) {
+    res.json({ address })
+  } else {
+    res.json({ error: 'No account exists for the given handle' })
+  }
+})
+
+dapp.registerExternalGet('account/:id/:friendId/toll', async (req, res) => {
+  const id = req.params['id']
+  const friendId = req.params['friendId']
+  if (!friendId) {
+    res.json({ error: 'No provided friendId' })
+  }
+  const account = await dapp.getLocalOrRemoteAccount(id)
+  if (account && account.data.data.friends[friendId]) {
+    res.json({ toll: 1 })
+  } else if (account) {
+    res.json({ toll: account.data.data.toll })
+  } else {
+    res.json({ error: 'No account found with the given id' })
+  }
+})
+
+dapp.registerExternalGet('account/:id/friends', async (req, res) => {
+  const id = req.params['id']
+  const account = await dapp.getLocalOrRemoteAccount(id)
+  if (account) {
+    res.json({ friends: account.data.data.friends })
+  } else {
+    res.json({ error: 'No account for given id' })
+  }
+})
+
+dapp.registerExternalGet('account/:id/transactions', async (req, res) => {
+  const id = req.params['id']
+  const account = await dapp.getLocalOrRemoteAccount(id)
+  if (account) {
+    res.json({ transactions: account.data.data.transactions })
+  } else {
+    res.json({ error: 'No account for given id' })
+  }
+})
+
+dapp.registerExternalGet('account/:id/recentMessages', async (req, res) => {
+  const id = req.params['id']
+  let messages = []
+  const account = await dapp.getLocalOrRemoteAccount(id)
+  if (account) {
+    Object.values(account.data.data.chats).forEach(chat => {
+      messages.push(...chat.messages)
+    })
+    res.json({ messages: messages })
+  } else {
+    res.json({ error: 'No account for given id' })
+  }
 })
 
 dapp.registerExternalGet('accounts', async (req, res) => {
   res.json({ accounts })
 })
 
-/**
- * interface tx {
- *   type: string
- *   from: string,
- *   to: string,
- *   amount: number,
- *   timestamp: number
- * }
- */
+dapp.registerExternalGet('messages/:accountId/:chatId', async (req, res) => {
+  const { accountId, chatId } = req.params
+  const account = await dapp.getLocalOrRemoteAccount(accountId)
+  if (!account) {
+    res.json({ error: "Account doesn't exist" })
+    res.end()
+    return
+  }
+  if (!account.data.data.chats[chatId]) {
+    res.json({ error: 'no chat history for this request' })
+    res.end()
+  } else {
+    let messages = [...account.data.data.chats[chatId].messages]
+    res.json({ messages })
+  }
+})
+
 dapp.setup({
-  validateTransaction (tx) {
+  validateTransaction (tx, wrappedStates) {
     const response = {
       result: 'fail',
       reason: 'Transaction is not valid.'
     }
 
-    // Validate tx here
-    if (tx.amount < 0) {
-      response.reason = '"amount" must be non-negative.'
-      return response
-    }
+    const from = wrappedStates[tx.from] && wrappedStates[tx.from].data
+    const to = wrappedStates[tx.to] && wrappedStates[tx.to].data
+
     switch (tx.type) {
-      case 'create':
+      case 'snapshot': {
+        if (tx.sign.owner !== ADMIN_ADDRESS) {
+          response.reason = 'not signed by ADMIN account'
+          return response
+        }
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
         response.result = 'pass'
         response.reason = 'This transaction is valid!'
         return response
-      case 'transfer':
-        const from = accounts[tx.from]
+      }
+      case 'register': {
+        const alias = wrappedStates[tx.alias] && wrappedStates[tx.alias].data
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (alias.inbox === tx.handle) {
+          response.reason = 'This handle is already taken'
+          return response
+        }
+        if (tx.handle && tx.handle.length >= 17) {
+          response.reason = 'Handle must be less than 17 characters'
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'create': {
+        if (to === undefined || to === null) {
+          response.reason = "target account doesn't exist"
+          return response
+        }
+        if (tx.amount < 1) {
+          response.reason = 'create amount needs to be positive'
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'transfer': {
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (from === undefined || from === null) {
+          response.reason = "from account doesn't exist"
+          return response
+        }
+        if (to === undefined || to === null) {
+          response.reason = "To account doesn't exist"
+          return response
+        }
+        if (from.data.balance < tx.amount + TRANSACTION_FEE) {
+          response.reason = "from account doesn't have sufficient balance to cover the transaction"
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'distribute': {
+        const recipients = tx.recipients.map(recipientId => wrappedStates[recipientId].data)
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (from === undefined || from === null) {
+          response.reason = "from account doesn't exist"
+          return response
+        }
+        recipients.forEach(recipient => {
+          if (!recipient) {
+            response.reason = 'no account for one of the recipients'
+            return response
+          }
+        })
+        if (from.data.balance < (recipients.length * tx.amount) + (recipients.length * TRANSACTION_FEE)) {
+          response.reason = "from account doesn't have sufficient balance to cover the transaction"
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'message': {
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
         if (typeof from === 'undefined' || from === null) {
           response.reason = '"from" account does not exist.'
           return response
         }
-        if (from.data.balance < tx.amount) {
-          response.reason = '"from" account does not have sufficient funds.'
+        if (typeof to === 'undefined' || to === null) {
+          response.reason = '"target" account does not exist.'
+          return response
+        }
+        if (tx.amount < 1) {
+          response.reason = 'Must send at least 1 token with the message transaction'
+          return response
+        }
+        if (to.data.friends[tx.from]) {
+          if (from.data.balance < 1) {
+            response.reason = 'from account does not have sufficient funds.'
+            return response
+          }
+        } else {
+          if (from.data.balance < tx.amount + TRANSACTION_FEE || from.data.balance < to.data.toll + TRANSACTION_FEE) {
+            response.reason = 'from account does not have sufficient funds.'
+            return response
+          }
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'toll': {
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (!from) {
+          response.reason = 'from account does not exist'
+          return response
+        }
+        if (from.data.balance < 1 + TRANSACTION_FEE) {
+          response.reason = 'from account does not have sufficient funds.'
+          return response
+        }
+        if (tx.amount < 1 + TRANSACTION_FEE) {
+          response.reason = 'Must burn 1 token in order to set a toll'
+          return response
+        }
+        if (typeof toll === 'undefined' || tx.toll === null) {
+          response.reason = 'Toll was not defined in the transaction'
+          return response
+        }
+        if (tx.toll < 1) {
+          response.reason = 'Toll must be greater than or equal to 1'
           return response
         }
         response.result = 'pass'
         response.reason = 'This transaction is valid!'
         return response
+      }
+      case 'friend': {
+        if (typeof from === 'undefined' || from === null) {
+          response.reason = 'from account does not exist'
+          return response
+        }
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (from.data.balance < tx.amount + TRANSACTION_FEE || tx.amount < 1 + TRANSACTION_FEE) {
+          response.reason = "Not enough tokens to cover transaction, or didn't send enough token with the transaction"
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'remove_friend': {
+        if (typeof from === 'undefined' || from === null) {
+          response.reason = 'from account does not exist'
+          return response
+        }
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'bond': {
+        if (typeof from === 'undefined' || from === null) {
+          response.reason = 'from account does not exist'
+          return response
+        }
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (tx.stake < STAKE_REQUIRED) {
+          response.reason = 'Stake requirement not met'
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'node_reward': {
+        let nodeInfo
+        try {
+          nodeInfo = dapp.getNode(tx.nodeId)
+        } catch (err) {
+          console.log(err)
+        }
+        if (!nodeInfo) {
+          response.reason = 'no nodeInfo'
+          return response
+        }
+        if (tx.timestamp - nodeInfo.activeTimestamp < NODE_REWARD_INTERVAL * 1000) {
+          response.reason = 'Too early for this node to get paid'
+          return response
+        }
+        if (!from) {
+          response.result = 'pass'
+          response.reason = 'This transaction in valid'
+          return response
+        }
+        if (from) {
+          if (!from.nodeRewardTime) {
+            response.result = 'pass'
+            response.reason = 'This transaction in valid'
+            return response
+          }
+          if (tx.timestamp - from.nodeRewardTime < NODE_REWARD_INTERVAL * 1000) {
+            response.reason = 'Too early for this node to get paid'
+            return response
+          }
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'snapshot_claim': {
+        if (from === undefined || from === null) {
+          response.reason = "from account doesn't exist"
+          return response
+        }
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (from.claimedSnapshot) {
+          response.reason = 'Already claimed tokens from the snapshot'
+          return response
+        }
+        if (!to) {
+          response.reason = 'Snapshot account does not exist yet, OR wrong snapshot address provided in the "to" field'
+          return response
+        }
+        if (!to.snapshot) {
+          response.reason = 'Snapshot hasnt been taken yet'
+          return response
+        }
+        if (!to.snapshot[tx.from]) {
+          response.reason = 'Your address did not hold any ULT on the Ethereum blockchain during the snapshot'
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'initial_parameters': {
+        if (tx.sign.owner !== ADMIN_ADDRESS) {
+          response.reason = 'not signed by ADMIN account'
+          return response
+        }
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (tx.to !== '0'.repeat(64)) {
+          response.reason = 'incorrect "to" address'
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'update_parameters': {
+        if (tx.sign.owner !== ADMIN_ADDRESS) {
+          response.reason = 'not signed by ADMIN account'
+          return response
+        }
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (tx.to !== '0'.repeat(64)) {
+          response.reason = 'incorrect "to" address'
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'maintenance': {
+        let nodeInfo
+        try {
+          nodeInfo = dapp.getNode(tx.nodeId)
+        } catch (err) {
+          console.log(err)
+        }
+        if (!nodeInfo) {
+          response.reason = 'no nodeInfo'
+          return response
+        }
+        const targets = tx.targets.map(targetId => wrappedStates[targetId].data)
+        for (const target of targets) {
+          if (target.lastMaintenance) {
+            if (tx.timestamp - target.lastMaintenance < MAINTENANCE_INTERVAL) {
+              response.reason = 'Too early for account maintenance'
+              return response
+            }
+          }
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'issue': {
+        let nodeInfo
+        try {
+          nodeInfo = dapp.getNode(tx.nodeId)
+        } catch (err) {
+          console.log(err)
+        }
+        if (!nodeInfo) {
+          response.reason = 'no nodeInfo'
+          return response
+        }
+        if (tx.to !== '0'.repeat(64)) {
+          response.reason = 'To account must be the network account'
+          return response
+        }
+        if (crypto.hash(`issue-${to.issueCount + 1}`) !== tx.issue) {
+          response.reason = 'Must give the next network issueCount hash'
+          return response
+        }
+        if (!to.lastIssue) {
+          response.result = 'pass'
+          response.reason = 'This transaction is valid!'
+          return response
+        } else {
+          if (tx.timestamp - to.lastIssue < ONE_MINUTE * 3) {
+            response.reason = 'Has not been long enough since the last issue was voted on'
+            return response
+          }
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'proposal': {
+        const issue = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
+
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (!issue) {
+          response.reason = "Issue doesn't exist"
+          return response
+        }
+        if (!issue.active) {
+          response.reason = 'This issue is no longer active'
+          return response
+        }
+        if (tx.proposal !== crypto.hash(`issue-${issue.number}-proposal-${issue.proposalCount + 1}`)) {
+          response.reason = 'Must give the next issue proposalCount hash'
+          return response
+        }
+        if (from.data.balance < PROPOSAL_FEE) {
+          response.reason = 'From account has insufficient balance to submit a proposal'
+          return response
+        }
+        if (tx.amount < PROPOSAL_FEE) {
+          response.reason = 'Insufficient amount sent in the transaction to submit a proposal'
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'vote': {
+        const issue = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
+        const proposal = wrappedStates[tx.proposal] && wrappedStates[tx.proposal].data
+
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (!issue) {
+          response.reason = "Issue doesn't exist"
+          return response
+        }
+        if (!issue.active) {
+          response.reason = 'This issue is no longer active'
+          return response
+        }
+        if (!proposal) {
+          response.reason = "Proposal doesn't exist"
+          return response
+        }
+        if (tx.amount <= 0) {
+          response.reason = 'Must send tokens to vote'
+          return response
+        }
+        if (from.data.balance < tx.amount) {
+          response.reason = 'From account has insufficient balance to cover the amount sent in the transaction'
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
       default:
-        response.reason = '"type" must be "create" or "transfer".'
+        response.reason = 'Unknown transaction type'
         return response
     }
   },
@@ -114,29 +909,39 @@ dapp.setup({
     // Validate tx fields here
     let result = 'pass'
     let reason = ''
-    const txnTimestamp = tx.timestamp
+    let txnTimestamp = tx.timestamp
 
     if (typeof tx.type !== 'string') {
       result = 'fail'
       reason = '"type" must be a string.'
       throw new Error(reason)
     }
-    if (typeof tx.from !== 'string') {
+    if (!tx.from || typeof tx.from !== 'string') {
       result = 'fail'
-      reason = '"from" must be a string.'
+      reason = '"srcAddress" must be a string.'
       throw new Error(reason)
     }
-    if (typeof tx.to !== 'string') {
-      result = 'fail'
-      reason = '"to" must be a string.'
-      throw new Error(reason)
+    switch (tx.type) {
+      case 'message': {
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"to" is not a string'
+          throw new Error(reason)
+        }
+        if (!tx.to) {
+          result = 'fail'
+          reason = '"to" does not exist'
+          throw new Error(reason)
+        }
+        break
+      }
     }
-    if (typeof tx.amount !== 'number') {
+    if (tx.amount && typeof tx.amount !== 'number') {
       result = 'fail'
       reason = '"amount" must be a number.'
       throw new Error(reason)
     }
-    if (typeof tx.timestamp !== 'number') {
+    if (typeof txnTimestamp !== 'number') {
       result = 'fail'
       reason = '"timestamp" must be a number.'
       throw new Error(reason)
@@ -149,51 +954,235 @@ dapp.setup({
     }
   },
   apply (tx, wrappedStates) {
+    let from = wrappedStates[tx.from] && wrappedStates[tx.from].data
+    let to = wrappedStates[tx.to] && wrappedStates[tx.to].data
+
     // Validate the tx
-    const { result, reason } = this.validateTransaction(tx)
+    const { result, reason } = this.validateTransaction(tx, wrappedStates)
     if (result !== 'pass') {
-      throw new Error(`invalid transaction, reason: ${reason}. tx: ${JSON.stringify(tx)}`)
+      throw new Error(
+        `invalid transaction, reason: ${reason}. tx: ${stringify(tx)}`
+      )
     }
+
     // Create an applyResponse which will be used to tell Shardus that the tx has been applied
     const txId = crypto.hashObj(tx) // compute from tx
-    const txTimestamp = tx.timestamp // get from tx
-    console.log('DBG', 'attempting to apply tx', txId, '...')
-    const applyResponse = dapp.createApplyResponse(txId, txTimestamp)
+    const applyResponse = dapp.createApplyResponse(txId, tx.timestamp)
 
     // Apply the tx
     switch (tx.type) {
+      case 'snapshot': {
+        to.snapshot = tx.snapshot
+        from.timestamp = tx.timestamp
+        to.timestamp = tx.timestamp
+        console.log('Applied snapshot tx', txId, to)
+        break
+      }
+      case 'register': {
+        let alias = wrappedStates[tx.alias] && wrappedStates[tx.alias].data
+        alias.inbox = tx.handle
+        from.handle = tx.handle
+        // from.data.transactions.push({ ...tx, txId })
+        from.timestamp = tx.timestamp
+        console.log('Applied register tx', txId, accounts[tx.from])
+        break
+      }
       case 'create': {
-        // Get the to account
-        const to = wrappedStates[tx.to].data
-        if (typeof to === 'undefined' || to === null) {
-          throw new Error(`account '${tx.to}' missing. tx: ${JSON.stringify(tx)}`)
-        }
-        // Increment the to accounts balance
         to.data.balance += tx.amount
-        // Update the to accounts timestamp
-        to.timestamp = txTimestamp
-        console.log('DBG', 'applied create tx', txId, accounts[tx.to])
+        to.timestamp = tx.timestamp
+        console.log('Applied create tx', txId, to)
         break
       }
       case 'transfer': {
-        // Get the from and to accounts
-        const from = wrappedStates[tx.from].data
-        if (typeof from === 'undefined' || from === null) {
-          throw new Error(`from account '${tx.to}' missing. tx: ${JSON.stringify(tx)}`)
-        }
-        const to = wrappedStates[tx.to].data
-        if (typeof to === 'undefined' || to === null) {
-          throw new Error(`to account '${tx.to}' missing. tx: ${JSON.stringify(tx)}`)
-        }
-        // Decrement the from accounts balance
-        from.data.balance -= tx.amount
-        // Increment the to accounts balance
+        from.data.balance -= (tx.amount + TRANSACTION_FEE)
         to.data.balance += tx.amount
-        // Update the from accounts timestamp
-        from.timestamp = txTimestamp
-        // Update the to accounts timestamp
-        to.timestamp = txTimestamp
-        console.log('DBG', 'applied transfer tx', txId, accounts[tx.from], accounts[tx.to])
+        // from.data.transactions.push({ ...tx, txId });
+        // to.data.transactions.push({ ...tx, txId });
+        from.timestamp = tx.timestamp
+        to.timestamp = tx.timestamp
+        console.log('Applied transfer tx', txId, from, to)
+        break
+      }
+      case 'distribute': {
+        const recipients = tx.recipients.map(recipientId => wrappedStates[recipientId].data)
+        recipients.forEach(recipient => {
+          from.data.balance -= (tx.amount + TRANSACTION_FEE)
+          recipient.data.balance += tx.amount
+        })
+        console.log('Applied distribute transaction', txId, recipients)
+        break
+      }
+      case 'message': {
+        from.data.balance -= (tx.amount + TRANSACTION_FEE)
+        to.data.balance += tx.amount
+
+        if (!from.data.chats[tx.to]) from.data.chats[tx.to] = { messages: [tx.message] }
+        else from.data.chats[tx.to].messages.push(tx.message)
+
+        if (!to.data.chats[tx.from]) to.data.chats[tx.from] = { messages: [tx.message] }
+        else to.data.chats[tx.from].messages.push(tx.message)
+
+        // from.data.transactions.push({ ...tx, txId })
+        // to.data.transactions.push({ ...tx, txId })
+
+        from.timestamp = tx.timestamp
+        to.timestamp = tx.timestamp
+
+        console.log('Applied message tx', txId, from, to)
+        break
+      }
+      case 'toll': {
+        from.data.balance -= (tx.amount + TRANSACTION_FEE)
+        from.data.toll = tx.toll
+        // from.data.transactions.push({ ...tx, txId })
+        from.timestamp = tx.timestamp
+        console.log('Applied toll tx', txId, from)
+        break
+      }
+      case 'friend': {
+        from.data.balance -= (tx.amount + TRANSACTION_FEE)
+        from.data.friends[tx.to] = tx.handle
+        // from.data.transactions.push({ ...tx, txId })
+        from.timestamp = tx.timestamp
+        console.log('Applied friend tx', txId, from)
+        break
+      }
+      case 'remove_friend': {
+        from.data.friends[tx.to] = null
+        from.timestamp = tx.timestamp
+        console.log('Applied remove_friend tx', txId, from)
+        break
+      }
+      case 'bond': {
+        from.data.stake = tx.stake
+        from.timestamp = tx.timestamp
+        console.log('Applied bond tx', txId, from)
+        break
+      }
+      case 'node_reward': {
+        to.data.balance += tx.amount
+        from.nodeRewardTime = tx.timestamp
+        // target.data.transactions.push({ ...tx, txId })
+        from.timestamp = tx.timestamp
+        to.timestamp = tx.timestamp
+        console.log('Applied node_reward tx', txId, from, to)
+        break
+      }
+      case 'snapshot_claim': {
+        from.data.balance += to.snapshot[tx.from]
+        to.snapshot[tx.from] = 0
+        // target.data.transactions.push({ ...tx, txId });
+        from.claimedSnapshot = true
+        from.timestamp = tx.timestamp
+        to.timestamp = tx.timestamp
+        console.log('Applied snapshot_claim tx', txId, from, to)
+        break
+      }
+      case 'initial_parameters': {
+        NODE_REWARD_INTERVAL = to.nodeRewardInterval
+        NODE_REWARD_AMOUNT = to.nodeRewardAmount
+        NODE_PENALTY = to.nodePenalty
+        TRANSACTION_FEE = to.transactionFee
+        STAKE_REQUIRED = to.stakeRequired
+        MAINTENANCE_INTERVAL = to.maintenanceInterval
+        MAINTENANCE_FEE = to.maintenanceFee
+        DEV_FUND_INTERVAL = to.devFundInterval
+        DEV_FUND_AMOUNT = to.devFundAmount
+        PROPOSAL_FEE = to.proposalFee
+        DEV_PROPOSAL_FEE = to.devProposalFee
+
+        from.timestamp = tx.timestamp
+        to.timestamp = tx.timestamp
+        console.log('Applied initial_parameters tx', txId, from, to)
+        break
+      }
+      case 'update_parameters': {
+        to.nodeRewardInterval = tx.nodeRewardInterval
+        to.nodeRewardAmount = tx.nodeRewardAmount
+        to.nodePenalty = tx.nodePenalty
+        to.transactionFee = tx.transactionFee
+        to.stakeRequired = tx.stakeRequired
+        to.maintenanceInterval = tx.maintenanceInterval
+        to.maintenanceFee = tx.maintenanceFee
+        to.devFundInterval = tx.devFundInterval
+        to.devFundAmount = tx.devFundAmount
+        to.proposalFee = tx.proposalFee
+        to.expenditureFee = tx.expenditureFee
+
+        NODE_REWARD_INTERVAL = to.nodeRewardInterval
+        NODE_REWARD_AMOUNT = to.nodeRewardAmount
+        NODE_PENALTY = to.nodePenalty
+        TRANSACTION_FEE = to.transactionFee
+        STAKE_REQUIRED = to.stakeRequired
+        MAINTENANCE_INTERVAL = to.maintenanceInterval
+        MAINTENANCE_FEE = to.maintenanceFee
+        DEV_FUND_INTERVAL = to.devFundInterval
+        DEV_FUND_AMOUNT = to.devFundAmount
+        PROPOSAL_FEE = to.proposalFee
+        DEV_PROPOSAL_FEE = to.devProposalFee
+
+        from.timestamp = tx.timestamp
+        to.timestamp = tx.timestamp
+        console.log('Applied update_parameters tx', txId, from, to)
+        break
+      }
+      case 'maintenance': {
+        const targets = tx.targets.map(targetId => wrappedStates[targetId].data)
+        from.data.balance -= from.data.balance * MAINTENANCE_FEE
+        from.timestamp = tx.timestamp
+        from.lastMaintenance = tx.timestamp
+
+        for (const target of targets) {
+          target.data.balance -= target.data.balance * MAINTENANCE_FEE
+          target.timestamp = tx.timestamp
+          target.lastMaintenance = tx.timestamp
+        }
+        console.log('Applied maintenance transaction', txId, from, targets)
+        break
+      }
+      case 'issue': {
+        const issue = wrappedStates[tx.issue].data
+        issue.number = to.issueCount + 1
+        issue.active = true
+        to.issueCount++
+        to.lastIssue = tx.timestamp
+        issue.timestamp = tx.timestamp
+        to.timestamp = tx.timestamp
+        from.timestamp = tx.timestamp
+        console.log('Applied issue tx', from, to, issue)
+        break
+      }
+      case 'proposal': {
+        const proposal = wrappedStates[tx.proposal].data
+        const issue = wrappedStates[tx.issue].data
+        proposal.nodeRewardInterval = tx.parameters.nodeRewardInterval
+        proposal.nodeRewardAmount = tx.parameters.nodeRewardAmount
+        proposal.nodePenalty = tx.parameters.nodePenalty
+        proposal.transactionFee = tx.parameters.transactionFee
+        proposal.stakeRequired = tx.parameters.stakeRequired
+        proposal.maintenanceInterval = tx.parameters.maintenanceInterval
+        proposal.maintenanceFee = tx.parameters.maintenanceFee
+        proposal.devFundInterval = tx.parameters.devFundInterval
+        proposal.devFundAmount = tx.parameters.devFundAmount
+        proposal.proposalFee = tx.parameters.proposalFee
+        proposal.devProposalFee = tx.parameters.devProposalFee
+        proposal.number = issue.proposalCount + 1
+        proposal.totalVotes = 0
+        issue.proposalCount++
+        from.timestamp = tx.timestamp
+        issue.timestamp = tx.timestamp
+        proposal.timestamp = tx.timestamp
+        console.log('Applied proposal tx', txId, from, issue, proposal)
+        break
+      }
+      case 'vote': {
+        const proposal = wrappedStates[tx.proposal].data
+        from.data.balance -= tx.amount
+        proposal.power += tx.amount
+        proposal.totalVotes++
+        from.timestamp = tx.timestamp
+        proposal.timestamp = tx.timestamp
+        console.log('Applied vote tx', txId, from, proposal)
         break
       }
     }
@@ -207,15 +1196,80 @@ dapp.setup({
       timestamp: tx.timestamp
     }
     switch (tx.type) {
+      case 'snapshot':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.to]
+        break
+      case 'register':
+        result.targetKeys = [tx.from, tx.alias]
+        break
       case 'create':
         result.targetKeys = [tx.to]
         break
       case 'transfer':
+        result.sourceKeys = [tx.from]
         result.targetKeys = [tx.to]
+        break
+      case 'distribute':
+        result.targetKeys = tx.recipients
         result.sourceKeys = [tx.from]
         break
+      case 'message':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.to]
+        break
+      case 'toll':
+        result.sourceKeys = [tx.from]
+        break
+      case 'friend':
+        result.sourceKeys = [tx.from]
+        break
+      case 'remove_friend':
+        result.sourceKeys = [tx.from]
+        break
+      case 'node_reward':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.to]
+        break
+      case 'bond':
+        result.sourceKeys = [tx.from]
+        break
+      case 'claim_reward':
+        result.sourceKeys = [tx.from]
+        break
+      case 'snapshot_claim':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.to]
+        break
+      case 'initial_parameters':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.to]
+        break
+      case 'update_parameters':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.to]
+        break
+      case 'maintenance':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = tx.targets
+        break
+      case 'issue':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.to, tx.issue]
+        break
+      case 'proposal':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.issue, tx.proposal]
+        break
+      case 'vote':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.issue, tx.proposal]
+        break
     }
-    result.allKeys = result.allKeys.concat(result.sourceKeys, result.targetKeys)
+    result.allKeys = result.allKeys.concat(
+      result.sourceKeys,
+      result.targetKeys
+    )
     return result
   },
   getStateId (accountAddress, mustExist = true) {
@@ -230,35 +1284,89 @@ dapp.setup({
     accounts = {}
   },
   setAccountData (accountRecords) {
-    let accountsToAdd = []
-    let failedHashes = []
-    for (let { accountId, stateId, data: recordData } of accountRecords) {
-      let hash = crypto.hashObj(recordData)
-      if (stateId === hash) {
-        if (recordData.data) recordData.data = JSON.parse(recordData.data)
-        accountsToAdd.push(recordData)
-        console.log('setAccountData: ' + hash + ' txs: ' + recordData.txs)
-      } else {
-        console.log('setAccountData hash test failed: setAccountData for ' + accountId)
-        console.log('setAccountData hash test failed: details: ' + JSON.stringify({ accountId, hash, stateId, recordData }))
-        failedHashes.push(accountId)
-      }
+    console.log('setAccountData: ', accountRecords)
+    for (let account of accountRecords) {
+      // possibly need to clone this so others lose their ref
+      accounts[account.id] = account
     }
-    console.log('setAccountData: ' + accountsToAdd.length)
-    setAccountData(accountsToAdd)
-    return failedHashes
   },
   getRelevantData (accountId, tx) {
     let account = accounts[accountId]
     let accountCreated = false
     // Create the account if it doesn't exist
     if (typeof account === 'undefined' || account === null) {
-      account = createAccount({ id: accountId, timestamp: 0 })
+      if (tx.type === 'proposal') {
+        if (accountId === tx.proposal) {
+          account = createProposal({
+            id: accountId,
+            timestamp: 0
+          })
+          accounts[accountId] = account
+          accountCreated = true
+        }
+      }
+      if (tx.type === 'issue') {
+        if (accountId === tx.issue) {
+          account = createIssue({
+            id: accountId,
+            timestamp: 0
+          })
+          accounts[accountId] = account
+          accountCreated = true
+        }
+      }
+      if (tx.type === 'register') {
+        if (accountId === tx.alias) {
+          account = createAlias({
+            id: accountId,
+            address: tx.srcAcc,
+            timestamp: 0
+          })
+          accounts[accountId] = account
+          accountCreated = true
+        } else {
+          account = createAccount({
+            id: accountId,
+            timestamp: 0
+          })
+          accounts[accountId] = account
+          accountCreated = true
+        }
+      }
+      if (tx.type === 'initial_parameters') {
+        if (accountId === '0'.repeat(64)) {
+          account = createNetworkAccount({
+            id: accountId,
+            timestamp: 0
+          })
+          accounts[accountId] = account
+          accountCreated = true
+        } else {
+          account = createAccount({
+            id: accountId,
+            timestamp: 0
+          })
+          accounts[accountId] = account
+          accountCreated = true
+        }
+      }
+    }
+    if (typeof account === 'undefined' || account === null) {
+      account = createAccount({
+        id: accountId,
+        timestamp: 0
+      })
       accounts[accountId] = account
       accountCreated = true
     }
     // Wrap it for Shardus
-    const wrapped = dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
+    const wrapped = dapp.createWrappedResponse(
+      accountId,
+      accountCreated,
+      account.hash,
+      account.timestamp,
+      account
+    )
     return wrapped
   },
   updateAccountFull (wrappedData, localCache, applyResponse) {
@@ -267,12 +1375,23 @@ dapp.setup({
     const updatedAccount = wrappedData.data
     // Update hash
     const hashBefore = updatedAccount.hash
-    const hashAfter = crypto.hashObj(updatedAccount.data)
+    updatedAccount.hash = ''
+    const hashAfter = crypto.hashObj(updatedAccount)
     updatedAccount.hash = hashAfter
     // Save updatedAccount to db / persistent storage
     accounts[accountId] = updatedAccount
     // Add data to our required response object
-    dapp.applyResponseAddState(applyResponse, updatedAccount, updatedAccount, accountId, applyResponse.txId, applyResponse.txTimestamp, hashBefore, hashAfter, accountCreated)
+    dapp.applyResponseAddState(
+      applyResponse,
+      updatedAccount,
+      updatedAccount,
+      accountId,
+      applyResponse.txId,
+      applyResponse.txTimestamp,
+      hashBefore,
+      hashAfter,
+      accountCreated
+    )
   },
   updateAccountPartial (wrappedData, localCache, applyResponse) {
     this.updateAccountFull(wrappedData, localCache, applyResponse)
@@ -290,15 +1409,176 @@ dapp.setup({
       const timestamp = account.timestamp
       if (timestamp < tsStart || timestamp > tsEnd) continue
       // Add to results
-      const wrapped = { accountId: account.id, stateId: account.hash, data: account, timestamp: account.timestamp }
+      const wrapped = {
+        accountId: account.id,
+        stateId: account.hash,
+        data: account,
+        timestamp: account.timestamp
+      }
       results.push(wrapped)
       // Return results early if maxRecords reached
-      if (results.length >= maxRecords) return results
+      if (results.length >= maxRecords) {
+        results.sort((a, b) => a.timestamp - b.timestamp)
+        return results
+      }
     }
+    results.sort((a, b) => a.timestamp - b.timestamp)
     return results
+  },
+  getAccountData (accountStart, accountEnd, maxRecords) {
+    const results = []
+    const start = parseInt(accountStart, 16)
+    const end = parseInt(accountEnd, 16)
+    // Loop all accounts
+    for (const account of Object.values(accounts)) {
+      // Skip if not in account id range
+      const id = parseInt(account.id, 16)
+      if (id < start || id > end) continue
+
+      // Add to results
+      const wrapped = {
+        accountId: account.id,
+        stateId: account.hash,
+        data: account,
+        timestamp: account.timestamp
+      }
+      results.push(wrapped)
+      // Return results early if maxRecords reached
+      if (results.length >= maxRecords) {
+        results.sort((a, b) => a.timestamp - b.timestamp)
+        return results
+      }
+    }
+    results.sort((a, b) => a.timestamp - b.timestamp)
+    return results
+  },
+  getAccountDataByList (addressList) {
+    const results = []
+    for (const address of addressList) {
+      const account = accounts[address]
+      if (account) {
+        const wrapped = {
+          accountId: account.id,
+          stateId: account.hash,
+          data: account,
+          timestamp: account.timestamp
+        }
+        results.push(wrapped)
+      }
+    }
+    results.sort((a, b) => a.accountId < b.accountId)
+    return results
+  },
+  calculateAccountHash (account) {
+    account.hash = ''
+    account.hash = crypto.hashObj(account)
+    return account.hash
+  },
+  resetAccountData (accountBackupCopies) {
+    for (let recordData of accountBackupCopies) {
+      console.log('recordData: ', recordData)
+      accounts[recordData.id] = recordData
+    }
+  },
+  deleteAccountData (addressList) {
+    for (const address of addressList) {
+      delete accounts[address]
+    }
+  },
+  getAccountDebugValue (wrappedAccount) {
+    return `${stringify(wrappedAccount)}`
+  },
+  close () {
+    console.log('Shutting down server...')
   }
 })
 
 dapp.registerExceptionHandler()
 
-dapp.start()
+async function _sleep (ms = 0) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function selfReward () {
+  const nodeId = dapp.getNodeId()
+  const { address } = dapp.getNode(nodeId)
+  const tgtAcc = /* payAcc || */ address
+  const tx = {
+    type: 'node_reward',
+    timestamp: Date.now(),
+    nodeId: nodeId,
+    from: address,
+    to: tgtAcc,
+    amount: NODE_REWARD_AMOUNT
+  }
+  dapp.put(tx)
+}
+
+function maintenance () {
+  const nodeId = dapp.getNodeId()
+  const { address } = dapp.getNode(nodeId)
+  let targets = Object.keys(accounts).filter(target => target !== address)
+  const tx = {
+    type: 'maintenance',
+    nodeId: nodeId,
+    from: address,
+    targets: targets,
+    timestamp: Date.now()
+  }
+  dapp.put(tx)
+}
+
+async function generateIssue () {
+  const nodeId = dapp.getNodeId()
+  const { address } = dapp.getNode(nodeId)
+  const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+  const count = account.data.issueCount
+  const tx = {
+    type: 'issue',
+    nodeId,
+    from: address,
+    to: '0'.repeat(64),
+    issue: crypto.hash(`issue-${count + 1}`),
+    timestamp: Date.now()
+  }
+  dapp.put(tx)
+}
+
+(async () => {
+  const CYCLE_INTERVAL = ONE_SECOND * 15
+  await dapp.start()
+  await _sleep(CYCLE_INTERVAL + ONE_SECOND)
+  await initParameters()
+
+  let expectedRewardInterval = Date.now() + NODE_REWARD_INTERVAL
+  let expectedMaintenanceInterval = Date.now() + MAINTENANCE_INTERVAL
+  let expectedCycleInterval = Date.now() + CYCLE_INTERVAL
+
+  setTimeout(nodeReward, NODE_REWARD_INTERVAL)
+  setTimeout(accountMaintenance, MAINTENANCE_INTERVAL)
+  setTimeout(checkCycle, CYCLE_INTERVAL)
+
+  function nodeReward () {
+    let dt = Date.now() - expectedRewardInterval // the drift (positive for overshooting)
+    selfReward()
+    expectedRewardInterval += NODE_REWARD_INTERVAL
+    setTimeout(nodeReward, Math.max(0, NODE_REWARD_INTERVAL - dt)) // take into account drift
+  }
+
+  function accountMaintenance () {
+    let dt = Date.now() - expectedMaintenanceInterval
+    maintenance()
+    expectedMaintenanceInterval += MAINTENANCE_INTERVAL
+    setTimeout(accountMaintenance, Math.max(0, MAINTENANCE_INTERVAL - dt)) // take into account drift
+  }
+
+  async function checkCycle () {
+    let dt = Date.now() - expectedCycleInterval
+    let cycleData = dapp.getLatestCycles()[0]
+    if (cycleData.counter % 10 === 0) {
+      await generateIssue()
+    }
+    expectedCycleInterval += CYCLE_INTERVAL
+    setTimeout(checkCycle, Math.max(0, CYCLE_INTERVAL - dt))
+  }
+})()
