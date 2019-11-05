@@ -10,6 +10,13 @@ crypto('64f152869ca2d473e4ba64ab53f49ccdb2edae22da192c126850970e788af347')
 
 let HOST = 'localhost'
 
+const ONE_SECOND = 1000
+const ONE_MINUTE = 60 * ONE_SECOND
+const ONE_HOUR = 60 * ONE_MINUTE
+const ONE_DAY = 24 * ONE_HOUR
+const ONE_WEEK = 7 * ONE_DAY
+const ONE_YEAR = 365 * ONE_DAY
+
 const walletFile = resolve('./wallet.json')
 let walletEntries = {}
 
@@ -428,13 +435,13 @@ vorpal.command('submit proposal <from> <reward> <interval> <amount>', 'submits a
     const issue = await getIssueCount()
     const proposal = await getProposalCount()
     const parameters = {
-      nodeRewardInterval: args.interval,
+      nodeRewardInterval: args.interval * ONE_SECOND,
       nodeRewardAmount: args.reward,
       nodePenalty: 1000,
       transactionFee: 1,
       stakeRequired: 10000,
-      maintenanceInterval: 60,
-      maintenanceFee: 5,
+      maintenanceInterval: ONE_MINUTE,
+      maintenanceFee: 0.0001,
       devFundInterval: 300,
       devFundAmount: 10000,
       proposalFee: 500,

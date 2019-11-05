@@ -1,5 +1,4 @@
 const fs = require('fs')
-// const { resolve } = require('path')
 const path = require('path')
 const shardus = require('shardus-global-server')
 const crypto = require('shardus-crypto-utils')
@@ -119,7 +118,7 @@ set(config, 'logs', {
     categories: {
       default: { appenders: ['out'], level: 'fatal' },
       app: { appenders: ['app', 'errors'], level: 'TRACE' },
-      main: { appenders: ['main', 'errors'], level: 'fatal' },
+      // main: { appenders: ['main', 'errors'], level: 'fatal' },
       fatal: { appenders: ['fatal'], level: 'fatal' },
       net: { appenders: ['net'], level: 'fatal' },
       playback: { appenders: ['playback'], level: 'fatal' }
@@ -129,9 +128,15 @@ set(config, 'logs', {
 
 const dapp = shardus(config)
 
+// init parameters kyle
+// submit snapshot kyle
+// snapshot claim kyle
+// submit proposal kyle 10000 1000 1000
+// vote proposal kyle 3 100
+// vote proposal kyle 2 70
+
 async function initParameters () {
   const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
-  console.log(account)
   if (account) {
     NODE_REWARD_INTERVAL = account.data.nodeRewardInterval
     NODE_REWARD_AMOUNT = account.data.nodeRewardAmount
@@ -282,6 +287,9 @@ dapp.registerExternalGet('proposals/count', async (req, res) => {
   const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
   const issueCount = network.data.issueCount
   const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${issueCount}`))
+  if (!issue) {
+    res.json({ error: 'No issues have been created yet' })
+  }
   const proposalCount = issue.data.proposalCount
   res.json({ proposalCount })
 })
@@ -300,7 +308,6 @@ dapp.registerExternalGet('proposals/latest', async (req, res) => {
 })
 
 dapp.registerExternalGet('account/:id', async (req, res) => {
-  console.log(dapp.getLatestCycles())
   const id = req.params['id']
   const account = await dapp.getLocalOrRemoteAccount(id)
   res.json({ account: account.data })
@@ -673,7 +680,7 @@ dapp.setup({
           response.reason = 'no nodeInfo'
           return response
         }
-        if (tx.timestamp - nodeInfo.activeTimestamp < NODE_REWARD_INTERVAL * 1000) {
+        if (tx.timestamp - nodeInfo.activeTimestamp < NODE_REWARD_INTERVAL) {
           response.reason = 'Too early for this node to get paid'
           return response
         }
@@ -688,7 +695,7 @@ dapp.setup({
             response.reason = 'This transaction in valid'
             return response
           }
-          if (tx.timestamp - from.nodeRewardTime < NODE_REWARD_INTERVAL * 1000) {
+          if (tx.timestamp - from.nodeRewardTime < NODE_REWARD_INTERVAL) {
             response.reason = 'Too early for this node to get paid'
             return response
           }
@@ -815,12 +822,16 @@ dapp.setup({
           response.reason = 'Must give the next network issueCount hash'
           return response
         }
+        if (crypto.hash(`issue-${to.issueCount + 1}-proposal-1`) !== tx.proposal) {
+          response.reason = 'Must include the default proposal for the current network parameters'
+          return response
+        }
         if (!to.lastIssue) {
           response.result = 'pass'
           response.reason = 'This transaction is valid!'
           return response
         } else {
-          if (tx.timestamp - to.lastIssue < ONE_MINUTE * 3) {
+          if (tx.timestamp - to.lastIssue < ONE_MINUTE * 4) {
             response.reason = 'Has not been long enough since the last issue was voted on'
             return response
           }
@@ -894,6 +905,74 @@ dapp.setup({
         }
         if (from.data.balance < tx.amount) {
           response.reason = 'From account has insufficient balance to cover the amount sent in the transaction'
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'tally': {
+        const issue = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
+        const proposals = tx.proposals.map(id => wrappedStates[id].data)
+
+        let nodeInfo
+        try {
+          nodeInfo = dapp.getNode(tx.nodeId)
+        } catch (err) {
+          console.log(err)
+        }
+        if (!nodeInfo) {
+          response.reason = 'no nodeInfo'
+          return response
+        }
+        if (tx.to !== '0'.repeat(64)) {
+          response.reason = 'To account must be the network account'
+          return response
+        }
+        if (!issue) {
+          response.reason = "Issue doesn't exist"
+          return response
+        }
+        if (!issue.active) {
+          response.reason = 'This issue is no longer active'
+          return response
+        }
+        if (proposals.length !== issue.proposalCount) {
+          response.reason = 'The number of proposals sent in with the transaction dont match the issues proposalCount'
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'apply_parameters': {
+        const issue = wrappedStates[tx.issue].data
+        const proposal = wrappedStates[tx.proposal].data
+
+        let nodeInfo
+        try {
+          nodeInfo = dapp.getNode(tx.nodeId)
+        } catch (err) {
+          console.log(err)
+        }
+        if (!nodeInfo) {
+          response.reason = 'no nodeInfo'
+          return response
+        }
+        if (tx.to !== '0'.repeat(64)) {
+          response.reason = 'To account must be the network account'
+          return response
+        }
+        if (!issue) {
+          response.reason = "Issue doesn't exist"
+          return response
+        }
+        if (!issue.active) {
+          response.reason = 'This issue is no longer active'
+          return response
+        }
+        if (issue.winner.id !== proposal.id) {
+          response.reason = 'This proposal was not the winner for this issue'
           return response
         }
         response.result = 'pass'
@@ -1060,7 +1139,7 @@ dapp.setup({
         break
       }
       case 'node_reward': {
-        to.data.balance += tx.amount
+        to.data.balance += NODE_REWARD_AMOUNT
         from.nodeRewardTime = tx.timestamp
         // target.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
@@ -1128,25 +1207,48 @@ dapp.setup({
       }
       case 'maintenance': {
         const targets = tx.targets.map(targetId => wrappedStates[targetId].data)
-        from.data.balance -= from.data.balance * MAINTENANCE_FEE
-        from.timestamp = tx.timestamp
-        from.lastMaintenance = tx.timestamp
+        if (from.data.balance > 0) {
+          from.data.balance -= (from.data.balance * MAINTENANCE_FEE)
+          from.lastMaintenance = tx.timestamp
+          from.timestamp = tx.timestamp
+        }
 
         for (const target of targets) {
-          target.data.balance -= target.data.balance * MAINTENANCE_FEE
-          target.timestamp = tx.timestamp
-          target.lastMaintenance = tx.timestamp
+          if (target.data && target.data.balance > 0) {
+            target.data.balance -= target.data.balance * MAINTENANCE_FEE
+            target.lastMaintenance = tx.timestamp
+            target.timestamp = tx.timestamp
+          }
         }
         console.log('Applied maintenance transaction', txId, from, targets)
         break
       }
       case 'issue': {
         const issue = wrappedStates[tx.issue].data
+        const proposal = wrappedStates[tx.proposal].data
+
+        proposal.nodeRewardInterval = to.nodeRewardInterval
+        proposal.nodeRewardAmount = to.nodeRewardAmount
+        proposal.nodePenalty = to.nodePenalty
+        proposal.transactionFee = to.transactionFee
+        proposal.stakeRequired = to.stakeRequired
+        proposal.maintenanceInterval = to.maintenanceInterval
+        proposal.maintenanceFee = to.maintenanceFee
+        proposal.devFundInterval = to.devFundInterval
+        proposal.devFundAmount = to.devFundAmount
+        proposal.proposalFee = to.proposalFee
+        proposal.devProposalFee = to.devProposalFee
+        proposal.power = 0
+        proposal.totalVotes = 0
+        proposal.number = 1
+
         issue.number = to.issueCount + 1
+        issue.proposalCount++
         issue.active = true
         to.issueCount++
         to.lastIssue = tx.timestamp
         issue.timestamp = tx.timestamp
+        proposal.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
         from.timestamp = tx.timestamp
         console.log('Applied issue tx', from, to, issue)
@@ -1183,6 +1285,78 @@ dapp.setup({
         from.timestamp = tx.timestamp
         proposal.timestamp = tx.timestamp
         console.log('Applied vote tx', txId, from, proposal)
+        break
+      }
+      case 'tally': {
+        const issue = wrappedStates[tx.issue].data
+        const margin = (100 / (2 * (issue.proposalCount + 1))) / 100
+        let defaultProposal = wrappedStates[crypto.hash(`issue-${issue.number}-proposal-1`)].data
+        let sortedProposals = tx.proposals.map(id => wrappedStates[id].data).sort((a, b) => a.power < b.power)
+
+        console.log('MARGIN', margin)
+        console.log('DEFAULT', defaultProposal)
+        console.log('SORTED', sortedProposals)
+
+        let winner
+
+        if (sortedProposals.length >= 2) {
+          const firstPlace = sortedProposals[0]
+          const secondPlace = sortedProposals[1]
+          const marginToWin = secondPlace.power + (margin * secondPlace.power)
+          console.log('FIRST_PLACE', firstPlace)
+          console.log('SECOND_PLACE', secondPlace)
+          console.log('MARGIN_TO_WIN', marginToWin)
+          if (firstPlace.power > marginToWin) {
+            winner = firstPlace
+          } else {
+            winner = defaultProposal
+          }
+        } else {
+          winner = defaultProposal
+        }
+
+        console.log('WINNER', winner)
+
+        issue.winner = winner
+        to.timestamp = tx.timestamp
+        issue.timestamp = tx.timestamp
+        winner.timestamp = tx.timestamp
+        console.log('Applied tally tx', txId, issue, winner, to)
+        break
+      }
+      case 'apply_parameters': {
+        const issue = wrappedStates[tx.issue].data
+        const winner = wrappedStates[tx.proposal].data
+
+        to.nodeRewardInterval = winner.nodeRewardInterval
+        to.nodeRewardAmount = winner.nodeRewardAmount
+        to.nodePenalty = winner.nodePenalty
+        to.transactionFee = winner.transactionFee
+        to.stakeRequired = winner.stakeRequired
+        to.maintenanceInterval = winner.maintenanceInterval
+        to.maintenanceFee = winner.maintenanceFee
+        to.devFundInterval = winner.devFundInterval
+        to.devFundAmount = winner.devFundAmount
+        to.proposalFee = winner.proposalFee
+        to.devProposalFee = winner.devProposalFee
+
+        NODE_REWARD_INTERVAL = winner.nodeRewardInterval
+        NODE_REWARD_AMOUNT = winner.nodeRewardAmount
+        NODE_PENALTY = winner.nodePenalty
+        TRANSACTION_FEE = winner.transactionFee
+        STAKE_REQUIRED = winner.stakeRequired
+        MAINTENANCE_INTERVAL = winner.maintenanceInterval
+        MAINTENANCE_FEE = winner.maintenanceFee
+        DEV_FUND_INTERVAL = winner.devFundInterval
+        DEV_FUND_AMOUNT = winner.devFundAmount
+        PROPOSAL_FEE = winner.proposalFee
+        DEV_PROPOSAL_FEE = winner.devProposalFee
+
+        issue.active = false
+        to.timestamp = tx.timestamp
+        issue.timestamp = tx.timestamp
+        winner.timestamp = tx.timestamp
+        console.log('Applied apply_parameters tx', txId, issue, winner, to)
         break
       }
     }
@@ -1255,7 +1429,7 @@ dapp.setup({
         break
       case 'issue':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.to, tx.issue]
+        result.targetKeys = [tx.to, tx.issue, tx.proposal]
         break
       case 'proposal':
         result.sourceKeys = [tx.from]
@@ -1264,6 +1438,14 @@ dapp.setup({
       case 'vote':
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.issue, tx.proposal]
+        break
+      case 'tally':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [...tx.proposals, tx.issue, tx.to]
+        break
+      case 'apply_parameters':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.to, tx.issue, tx.proposal]
         break
     }
     result.allKeys = result.allKeys.concat(
@@ -1308,6 +1490,14 @@ dapp.setup({
       if (tx.type === 'issue') {
         if (accountId === tx.issue) {
           account = createIssue({
+            id: accountId,
+            timestamp: 0
+          })
+          accounts[accountId] = account
+          accountCreated = true
+        }
+        if (accountId === tx.proposal) {
+          account = createProposal({
             id: accountId,
             timestamp: 0
           })
@@ -1539,6 +1729,49 @@ async function generateIssue () {
     from: address,
     to: '0'.repeat(64),
     issue: crypto.hash(`issue-${count + 1}`),
+    proposal: crypto.hash(`issue-${count + 1}-proposal-1`),
+    timestamp: Date.now()
+  }
+  dapp.put(tx)
+}
+
+async function tallyVotes () {
+  const nodeId = dapp.getNodeId()
+  const { address } = dapp.getNode(nodeId)
+  const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+  const count = network.data.issueCount
+  const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${count}`))
+  const proposals = []
+  for (let i = 1; i <= issue.data.proposalCount; i++) {
+    let proposal = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${count}-proposal-${i}`))
+    proposals.push(proposal.data.id)
+  }
+  const tx = {
+    type: 'tally',
+    nodeId,
+    from: address,
+    to: '0'.repeat(64),
+    issue: issue.data.id,
+    proposals: proposals,
+    timestamp: Date.now()
+  }
+  dapp.put(tx)
+}
+
+async function applyParameters () {
+  const nodeId = dapp.getNodeId()
+  const { address } = dapp.getNode(nodeId)
+  const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+  const count = network.data.issueCount
+  const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${count}`))
+  const proposal = issue.data.winner.id
+  const tx = {
+    type: 'apply_parameters',
+    nodeId,
+    from: address,
+    to: network.id,
+    issue: issue.id,
+    proposal,
     timestamp: Date.now()
   }
   dapp.put(tx)
@@ -1575,9 +1808,28 @@ async function generateIssue () {
   async function checkCycle () {
     let dt = Date.now() - expectedCycleInterval
     let cycleData = dapp.getLatestCycles()[0]
-    if (cycleData.counter % 10 === 0) {
+    if (cycleData.counter % 15 === 0) {
       await generateIssue()
+      setTimeout(async () => {
+        await tallyVotes()
+        setTimeout(async () => {
+          await applyParameters()
+        }, ONE_MINUTE)
+      }, ONE_MINUTE * 2)
     }
+    console.log({
+      NODE_REWARD_INTERVAL,
+      NODE_REWARD_AMOUNT,
+      NODE_PENALTY,
+      TRANSACTION_FEE,
+      STAKE_REQUIRED,
+      MAINTENANCE_INTERVAL,
+      MAINTENANCE_FEE,
+      DEV_FUND_INTERVAL,
+      DEV_FUND_AMOUNT,
+      PROPOSAL_FEE,
+      DEV_PROPOSAL_FEE
+    })
     expectedCycleInterval += CYCLE_INTERVAL
     setTimeout(checkCycle, Math.max(0, CYCLE_INTERVAL - dt))
   }
