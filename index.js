@@ -1769,8 +1769,8 @@ async function applyParameters () {
     type: 'apply_parameters',
     nodeId,
     from: address,
-    to: network.id,
-    issue: issue.id,
+    to: network.data.id,
+    issue: issue.data.id,
     proposal,
     timestamp: Date.now()
   }
