@@ -8,6 +8,14 @@ const stringify = require('fast-stable-stringify')
 const axios = require('axios')
 crypto('64f152869ca2d473e4ba64ab53f49ccdb2edae22da192c126850970e788af347')
 
+// USEFUL TESTING COMMANDS
+// init parameters kyle
+// submit snapshot kyle
+// snapshot claim kyle
+// submit proposal kyle 10000 1000 1000
+// vote proposal kyle 3 100
+// vote proposal kyle 2 70
+
 let HOST = 'localhost'
 
 const ONE_SECOND = 1000
@@ -410,6 +418,22 @@ async function getProposalCount () {
   return res.data.proposalCount
 }
 
+async function queryDevProposals () {
+  const res = await axios.get(`http://${host}/proposals/dev`)
+  console.log(res.data.devProposals)
+}
+
+async function queryLatestDevProposal () {
+  const res = await axios.get(`http://${host}/proposals/dev/latest`)
+  console.log(res.data.devProposal)
+}
+
+async function getDevProposalCount () {
+  const res = await axios.get(`http://${host}/proposals/dev/count`)
+  console.log(res.data)
+  return res.data.devProposalCount
+}
+
 vorpal.command('vote proposal <from> <num> <amount>', 'vote for proposal <num> on the latest issue with <amount> coins')
   .action(async (args, callback) => {
     const from = walletEntries[args.from]
@@ -420,6 +444,29 @@ vorpal.command('vote proposal <from> <num> <amount>', 'vote for proposal <num> o
       issue: crypto.hash(`issue-${latest}`),
       proposal: crypto.hash(`issue-${latest}-proposal-${args.num}`),
       amount: args.amount,
+      timestamp: Date.now()
+    }
+    crypto.signObj(tx, from.keys.secretKey, from.keys.publicKey)
+    injectTx(tx).then(res => {
+      console.log(res)
+      callback()
+    })
+  })
+
+vorpal.command('vote dev proposal <from> <num> <type> <amount>', 'vote <type>(yes | no) for dev proposal <num> with <amount> coins')
+  .action(async (args, callback) => {
+    const from = walletEntries[args.from]
+    let approve
+
+    if (args.type === 'yes') approve = true
+    else approve = false
+
+    const tx = {
+      type: 'dev_vote',
+      from: from.address,
+      devProposal: crypto.hash(`dev-proposal-${args.num}`),
+      amount: args.amount,
+      approve,
       timestamp: Date.now()
     }
     crypto.signObj(tx, from.keys.secretKey, from.keys.publicKey)
@@ -450,10 +497,33 @@ vorpal.command('submit proposal <from> <reward> <interval> <amount>', 'submits a
     const tx = {
       type: 'proposal',
       from: from.address,
+      to: '0'.repeat(64),
       proposal: crypto.hash(`issue-${issue}-proposal-${proposal + 1}`),
       issue: crypto.hash(`issue-${issue}`),
       parameters: parameters,
       amount: args.amount,
+      timestamp: Date.now()
+    }
+    crypto.signObj(tx, from.keys.secretKey, from.keys.publicKey)
+    injectTx(tx).then(res => {
+      console.log(res)
+      callback()
+    })
+  })
+
+vorpal.command('submit dev proposal <from> <funds> <interval> <amount>', 'submits a development proposal to the network')
+  .action(async (args, callback) => {
+    const from = walletEntries[args.from]
+    const count = await getDevProposalCount()
+    const tx = {
+      type: 'dev_proposal',
+      from: from.address,
+      to: '0'.repeat(64),
+      devProposal: crypto.hash(`dev-proposal-${count}`),
+      funds: args.funds,
+      interval: args.interval,
+      amount: args.amount,
+      payAddress: from.address,
       timestamp: Date.now()
     }
     crypto.signObj(tx, from.keys.secretKey, from.keys.publicKey)
@@ -872,6 +942,14 @@ vorpal
       }
       case 'proposals' : {
         queryProposals()
+        break
+      }
+      case 'latestDevProposal' : {
+        queryLatestDevProposal()
+        break
+      }
+      case 'devProposals': {
+        queryDevProposals()
         break
       }
       default : {
