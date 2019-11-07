@@ -14,6 +14,7 @@ crypto('64f152869ca2d473e4ba64ab53f49ccdb2edae22da192c126850970e788af347')
  * @implements {App}
  */
 
+// THE ENTIRE APP STATE IN THE NODE'S SHARD
 let accounts = {}
 
 // CHANGE THIS TO YOUR WALLET ACCOUNT FOR TESTING LOCALLY
@@ -48,8 +49,8 @@ let DEV_FUND_AMOUNT
 let PROPOSAL_FEE
 let DEV_PROPOSAL_FEE
 
-// DYNAMIC VARIABLES TO HELP THE NODES DETERMINE
-// WHEN TO SUBMIT ISSUES, OR TALLY VOTES, OR APPLY PARAMETERS
+// DYNAMIC VARIABLES TO HELP NODES DETERMINE
+// WHEN TO SUBMIT ISSUES, TALLY VOTES, OR APPLY PARAMETERS
 let LAST_ISSUE_TIME
 let PROPOSAL_WINDOW
 let VOTING_WINDOW
@@ -136,7 +137,7 @@ set(config, 'logs', {
         maxLogSize: 10000000,
         backups: 10
       }
-    },
+    }
     // categories: {
     //   default: { appenders: ['out'], level: 'fatal' },
     //   app: { appenders: ['app', 'errors'], level: 'TRACE' },
@@ -153,6 +154,7 @@ const dapp = shardus(config)
 // INITIAL PARAMETERS THE NODES SET WHEN THEY BECOME ACTIVE
 async function initParameters () {
   const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+  // IF THE NETWORK ACCOUNT HAS BEEN INITIALIZED
   if (account) {
     NODE_REWARD_INTERVAL = account.data.nodeRewardInterval
     NODE_REWARD_AMOUNT = account.data.nodeRewardAmount
@@ -173,6 +175,7 @@ async function initParameters () {
     WINNER_FOUND = account.data.winnerFound
     PARAMS_APPLIED = account.data.paramsApplied
   } else {
+    // APPLY DEFAULT STARTING PARAMETERS
     NODE_REWARD_INTERVAL = ONE_MINUTE
     NODE_REWARD_AMOUNT = 10
     NODE_PENALTY = 100
@@ -194,6 +197,7 @@ async function initParameters () {
   }
 }
 
+// CREATE A USER ACCOUNT
 function createAccount (obj = {}) {
   const account = Object.assign(
     {
@@ -213,6 +217,7 @@ function createAccount (obj = {}) {
   return account
 }
 
+// CREATE AN ALIAS ACCOUNT
 function createAlias (obj = {}) {
   const alias = Object.assign(
     {
@@ -224,6 +229,7 @@ function createAlias (obj = {}) {
   return alias
 }
 
+// CREATE THE INITIAL NETWORK ACCOUNT
 function createNetworkAccount (obj = {}) {
   const account = Object.assign({
     timestamp: Date.now(),
@@ -246,6 +252,7 @@ function createNetworkAccount (obj = {}) {
   return account
 }
 
+// CREATE AN ISSUE ACCOUNT
 function createIssue (obj = {}) {
   const issue = Object.assign(
     {
@@ -258,6 +265,7 @@ function createIssue (obj = {}) {
   return issue
 }
 
+// CREATE A PROPOSAL ACCOUNT
 function createProposal (obj = {}) {
   const proposal = Object.assign(
     {
@@ -270,6 +278,7 @@ function createProposal (obj = {}) {
   return proposal
 }
 
+// CREATE A DEV_PROPOSAL ACCOUNT
 function createDevProposal (obj = {}) {
   const devProposal = Object.assign(
     {
@@ -520,6 +529,7 @@ dapp.registerExternalGet('messages/:accountId/:chatId', async (req, res) => {
   }
 })
 
+// SDK SETUP FUNCTIONS
 dapp.setup({
   validateTransaction (tx, wrappedStates) {
     const response = {
@@ -2005,10 +2015,12 @@ dapp.setup({
 
 dapp.registerExceptionHandler()
 
+// HELPER METHOD TO WAIT
 async function _sleep (ms = 0) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+// NODE_REWARD TRANSACTION FUNCTION
 function selfReward () {
   const nodeId = dapp.getNodeId()
   const { address } = dapp.getNode(nodeId)
@@ -2024,6 +2036,7 @@ function selfReward () {
   dapp.put(tx)
 }
 
+// MAINTENANCE TRANSACTION FUNCTION
 function maintenance () {
   const nodeId = dapp.getNodeId()
   const { address } = dapp.getNode(nodeId)
@@ -2038,6 +2051,7 @@ function maintenance () {
   dapp.put(tx)
 }
 
+// ISSUE TRANSACTION FUNCTION
 async function generateIssue () {
   const nodeId = dapp.getNodeId()
   const { address } = dapp.getNode(nodeId)
@@ -2055,6 +2069,7 @@ async function generateIssue () {
   dapp.put(tx)
 }
 
+// TALLY TRANSACTION FUNCTION
 async function tallyVotes () {
   const nodeId = dapp.getNodeId()
   const { address } = dapp.getNode(nodeId)
@@ -2078,6 +2093,7 @@ async function tallyVotes () {
   dapp.put(tx)
 }
 
+// APPLY_PARAMETERS TRANSACTION FUNCTION
 async function applyParameters () {
   const nodeId = dapp.getNodeId()
   const { address } = dapp.getNode(nodeId)
@@ -2097,16 +2113,18 @@ async function applyParameters () {
   dapp.put(tx)
 }
 
+// CODE THAT GETS EXECUTED WHEN NODES START
 (async () => {
   const CYCLE_INTERVAL = CYCLE_DURATION * ONE_SECOND
   await dapp.start()
+  // WAIT AT LEAST ONE CYCLE BEFORE ATTEMPTING TO QUERY THE NETWORK FOR THE PARAMETERS
   await _sleep(CYCLE_INTERVAL + ONE_SECOND)
+  // SYNC THE NODES IN-MEMORY VARIABLES WITH THE NETWORK PARAMETERS
   await initParameters()
 
+  // THIS IS FOR CALCULATING THE INTERVAL DRIFT
   let expectedInterval = Date.now() + CYCLE_INTERVAL
-
-  setTimeout(networkMaintenance, CYCLE_INTERVAL)
-
+  // GET THE INITIAL CYCLE DATA FROM SHARDUS
   let cycleData = dapp.getLatestCycles()[0]
 
   let INITIAL_CYCLE = cycleData.counter
@@ -2117,11 +2135,14 @@ async function applyParameters () {
   let LAST_REWARD = 0
   let LAST_MAINTENANCE = 0
 
+  setTimeout(networkMaintenance, CYCLE_INTERVAL)
+
   // THIS CODE IS CALLED ON EVERY NODE ON EVERY CYCLE
   async function networkMaintenance () {
     let drift = Date.now() - expectedInterval
     cycleData = dapp.getLatestCycles()[0]
     CURRENT_CYCLE = cycleData.counter
+    // CONVERTS FROM SECONDS TO MILLISECONDS FOR COMPARISON WITH TIMESTAMPS
     CYCLE_START_TIME = cycleData.start * 1000
     CYCLES_ACTIVE = CURRENT_CYCLE - INITIAL_CYCLE
     TIME_ACTIVE = CYCLES_ACTIVE * CYCLE_INTERVAL
@@ -2140,13 +2161,6 @@ async function applyParameters () {
 
     // TODO: COULD STILL BE IMPROVED BUT WHATEVER
     if (LAST_ISSUE_TIME) {
-      console.log({
-        LAST_ISSUE_TIME,
-        PROPOSAL_WINDOW,
-        VOTING_WINDOW,
-        GRACE_WINDOW,
-        APPLY_WINDOW
-      })
       // IS THE NETWORK READY TO GENERATE A NEW ISSUE?
       if (CYCLE_START_TIME > LAST_ISSUE_TIME + (ONE_MINUTE * 4)) {
         await generateIssue()
@@ -2154,7 +2168,7 @@ async function applyParameters () {
 
       if (GRACE_WINDOW && APPLY_WINDOW) {
         if (!WINNER_FOUND) {
-          // IF THE VOTES FOR THE PROPOSAL HAVENT BEEN COUNTED YET AND ITS PAST THE VOTING_WINDOW
+          // IF THE WINNER FOR THE PROPOSAL HASN'T BEEN DETERMINED YET AND ITS PAST THE VOTING_WINDOW
           if (CYCLE_START_TIME > GRACE_WINDOW[0] && CYCLE_START_TIME < GRACE_WINDOW[1]) {
             await tallyVotes()
           }
@@ -2169,7 +2183,7 @@ async function applyParameters () {
     }
 
     expectedInterval += CYCLE_INTERVAL
-    // RESET THE INTERVAL
+    // RESET THE INTERVAL / ADJUST FOR ANY DELAY
     setTimeout(networkMaintenance, CYCLE_INTERVAL - drift)
   }
 })()
