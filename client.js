@@ -8,16 +8,21 @@ const stringify = require('fast-stable-stringify')
 const axios = require('axios')
 crypto('64f152869ca2d473e4ba64ab53f49ccdb2edae22da192c126850970e788af347')
 
-// USEFUL TESTING COMMANDS
+// BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
+
+// USEFUL COMMANDS FOR TESTING THE PROPOSAL SYSTEM
+// -----------------------------------------------
 // init parameters kyle
 // submit snapshot kyle
 // snapshot claim kyle
-// submit proposal kyle 10000 1000 1000
+// submit proposal kyle 1000 100 1000
+// submit proposal kyle 100 10 1000
 // vote proposal kyle 3 100
 // vote proposal kyle 2 70
 
 let HOST = 'localhost'
 
+// USEFUL CONSTANTS FOR TIME IN MILLISECONDS
 const ONE_SECOND = 1000
 const ONE_MINUTE = 60 * ONE_SECOND
 const ONE_HOUR = 60 * ONE_MINUTE
@@ -266,7 +271,7 @@ function buildTx ({ type, from = {}, to, handle, id, amount, message, toll }) {
   return actualTx
 }
 
-let loggedError = false
+let logError = false
 
 async function sendTx (tx, port = null, verbose = true) {
   if (!tx.sign) {
@@ -281,7 +286,7 @@ async function sendTx (tx, port = null, verbose = true) {
     if (verbose) console.log('Got response:', data)
     return data
   } catch (err) {
-    if (!loggedError) console.log('Stopped spamming due to error')
+    if (logError) console.log('Stopped spamming due to error')
   }
 }
 
@@ -386,54 +391,64 @@ async function pollMessages (to, from, timestamp) {
   }
 }
 
+// QUERY'S ALL NETWORK ISSUES
 async function queryIssues () {
   const res = await axios.get(`http://${host}/issues`)
   console.log(res.data.issues)
 }
 
+// QUERY'S THE MOST RECENT NETWORK ISSUE
 async function queryLatestIssue () {
   const res = await axios.get(`http://${host}/issues/latest`)
   console.log(res.data.issue)
 }
 
+// QUERY'S THE CURRENT NETWORK ISSUE COUNT
 async function getIssueCount () {
   const res = await axios.get(`http://${host}/issues/count`)
   console.log(res.data)
   return res.data.issueCount
 }
 
+// QUERY'S ALL NETWORK PROPOSALS
 async function queryProposals () {
   const res = await axios.get(`http://${host}/proposals`)
   console.log(res.data.proposals)
 }
 
+// QUERY'S ALL PROPOSALS ON THE LATEST ISSUE
 async function queryLatestProposals () {
   const res = await axios.get(`http://${host}/proposals/latest`)
   console.log(res.data.proposals)
 }
 
+// QUERY'S THE CURRENT ISSUE'S PROPOSAL COUNT
 async function getProposalCount () {
   const res = await axios.get(`http://${host}/proposals/count`)
   console.log(res.data)
   return res.data.proposalCount
 }
 
+// QUERY'S ALL THE DEV_PROPOSALS ON THE NETWORK
 async function queryDevProposals () {
   const res = await axios.get(`http://${host}/proposals/dev`)
   console.log(res.data.devProposals)
 }
 
+// QUERY'S THE MOST RECENT DEV_PROPOSAL ON THE NETWORK
 async function queryLatestDevProposal () {
   const res = await axios.get(`http://${host}/proposals/dev/latest`)
   console.log(res.data.devProposal)
 }
 
+// QUERY'S THE CURRENT DEV_PROPOSAL COUNT ON THE NETWORK
 async function getDevProposalCount () {
   const res = await axios.get(`http://${host}/proposals/dev/count`)
   console.log(res.data)
   return res.data.devProposalCount
 }
 
+// COMMAND TO VOTE FOR A PROPOSAL
 vorpal.command('vote proposal <from> <num> <amount>', 'vote for proposal <num> on the latest issue with <amount> coins')
   .action(async (args, callback) => {
     const from = walletEntries[args.from]
@@ -453,6 +468,8 @@ vorpal.command('vote proposal <from> <num> <amount>', 'vote for proposal <num> o
     })
   })
 
+// COMMAND TO VOTE FOR A DEV_PROPOSAL
+// TODO
 vorpal.command('vote dev proposal <from> <num> <type> <amount>', 'vote <type>(yes | no) for dev proposal <num> with <amount> coins')
   .action(async (args, callback) => {
     const from = walletEntries[args.from]
@@ -476,6 +493,7 @@ vorpal.command('vote dev proposal <from> <num> <type> <amount>', 'vote <type>(ye
     })
   })
 
+// COMMAND TO SUBMIT A PROPOSAL
 vorpal.command('submit proposal <from> <reward> <interval> <amount>', 'submits a proposal to change network parameters')
   .action(async (args, callback) => {
     const from = walletEntries[args.from]
@@ -511,6 +529,8 @@ vorpal.command('submit proposal <from> <reward> <interval> <amount>', 'submits a
     })
   })
 
+// COMMAND TO SUBMIT A DEV_PROPOSAL
+// TODO
 vorpal.command('submit dev proposal <from> <funds> <interval> <amount>', 'submits a development proposal to the network')
   .action(async (args, callback) => {
     const from = walletEntries[args.from]
@@ -533,13 +553,15 @@ vorpal.command('submit dev proposal <from> <funds> <interval> <amount>', 'submit
     })
   })
 
-vorpal.command('bond create <from> <stake>', 'submits a transaction to stake coins in a bond account in order to operate a node')
+// COMMAND TO STAKE TOKENS IN ORDER TO RUN A NODE
+// TODO
+vorpal.command('stake tokens <amount> <from>', 'submits a transaction to stake coins in a bond account in order to operate a node')
   .action((args, callback) => {
     const from = walletEntries[args.from]
     const tx = {
-      type: 'bond',
+      type: 'stake',
       from: from.address,
-      stake: args.stake,
+      stake: args.amount,
       timestamp: Date.now()
     }
     crypto.signObj(tx, from.keys.secretKey, from.keys.publicKey)
@@ -549,6 +571,8 @@ vorpal.command('bond create <from> <stake>', 'submits a transaction to stake coi
     })
   })
 
+// COMMAND TO SPAM THE NETWORK WITH A SPECIFIC TRANSACTION TYPE
+// TODO ADD LIBERDUS SPECIFIC TRANSACTIONS TO THIS
 vorpal
   .command(
     'spam transactions <type> <accounts> <count> <tps> <ports>',
@@ -565,6 +589,7 @@ vorpal
     callback()
   })
 
+// COMMAND TO SUBMIT A SNAPSHOT OF THE ULT CONTRACT (ADMIN ONLY)
 vorpal.command('submit snapshot <from>', 'Submits the snapshot data of the ULT contract to the liberdus network')
   .action((args, callback) => {
     const from = walletEntries[args.from]
@@ -584,6 +609,7 @@ vorpal.command('submit snapshot <from>', 'Submits the snapshot data of the ULT c
     })
   })
 
+// COMMAND TO INITIALIZE STARTING NETWORK PARAMETERS (ADMIN ONLY)
 vorpal.command('init parameters <from>', 'Submits the signed transaction from the ADMIN account to initialize the network parameters')
   .action((args, callback) => {
     const from = walletEntries[args.from]
@@ -600,6 +626,7 @@ vorpal.command('init parameters <from>', 'Submits the signed transaction from th
     })
   })
 
+// COMMAND TO MANUALLY UPDATE THE NETWORK PARAMETERS (TESTING ONLY)
 vorpal.command('update parameters <from>', 'updates the list of network parameters for testing purposes')
   .action((args, callback) => {
     const from = walletEntries[args.from]
@@ -625,6 +652,8 @@ vorpal.command('update parameters <from>', 'updates the list of network paramete
     })
   })
 
+// COMMAND TO CLAIM THE TOKENS FROM THE ULT SNAPSHOT
+// TODO VALIDATE ETHEREUM ADDRESS SOMEHOW
 vorpal.command('snapshot claim <from>', 'Submits the claim for the snapshot belonging to <from>')
   .action((args, callback) => {
     const from = walletEntries[args.from]
@@ -641,6 +670,7 @@ vorpal.command('snapshot claim <from>', 'Submits the claim for the snapshot belo
     })
   })
 
+// COMMAND TO SET THE HOST IP:PORT
 vorpal.command('use <host>', 'Uses the given <host> as the coin-app node for queries and transactions.')
   .action(function (args, callback) {
     host = args.host
@@ -648,11 +678,8 @@ vorpal.command('use <host>', 'Uses the given <host> as the coin-app node for que
     callback()
   })
 
-vorpal
-  .command(
-    'wallet create <name> [id]',
-    'Creates a wallet with the given <name> and [id]. Makes [id] = hash(<name>) if [id] is not given.'
-  )
+// COMMAND TO CREATE A LOCAL WALLET KEYPAIR
+vorpal.command('wallet create <name> [id]', 'Creates a wallet with the given <name> and [id]. Makes [id] = hash(<name>) if [id] is not given.')
   .action(function (args, callback) {
     if (typeof walletEntries[args.name] !== 'undefined' && walletEntries[args.name] !== null) {
       this.log(`Wallet named '${args.name}' already exists.`)
@@ -664,11 +691,8 @@ vorpal
     }
   })
 
-vorpal
-  .command(
-    'wallet list [name]',
-    'Lists wallet for the given [name]. Otherwise, lists all wallets.'
-  )
+// COMMAND TO LIST ALL THE WALLET ENTRIES YOU HAVE LOCALLY
+vorpal.command('wallet list [name]', 'Lists wallet for the given [name]. Otherwise, lists all wallets.')
   .action(function (args, callback) {
     let wallet = walletEntries[args.name]
     if (typeof wallet !== 'undefined' && wallet !== null) {
@@ -679,6 +703,7 @@ vorpal
     callback()
   })
 
+// COMMAND TO CREATE TOKENS FOR A USER ACCOUNT ON THE NETWORK (TEST ONLY)
 vorpal.command('tokens create <amount> <target>', 'creates <amount> tokens for the <target> account')
   .action(function (args, callback) {
     const target = walletEntries[args.target]
@@ -695,21 +720,7 @@ vorpal.command('tokens create <amount> <target>', 'creates <amount> tokens for t
     })
   })
 
-vorpal.command('tokens claim <from>', 'claims the daily alloted tokens for your account')
-  .action(async function (args, callback) {
-    const from = walletEntries[args.from]
-    const tx = {
-      type: 'claim_reward',
-      from: from.address,
-      timestamp: Date.now()
-    }
-    crypto.signObj(tx, from.keys.secretKey, from.keys.publicKey)
-    injectTx(tx).then(res => {
-      console.log(res)
-      callback()
-    })
-  })
-
+// COMMAND TO TRANSFER TOKENS FROM ONE ACCOUNT TO ANOTHER
 vorpal.command('tokens transfer <amount> <from> <to>', 'transfers <amount> tokens from <from> account to <to> account')
   .action(async function (args, callback) {
     const from = walletEntries[args.from]
@@ -728,11 +739,8 @@ vorpal.command('tokens transfer <amount> <from> <to>', 'transfers <amount> token
     })
   })
 
-vorpal
-  .command(
-    'tokens distribute <amount> <from> [recipients...]',
-    'Transfers <amount> tokens from the <source> wallet to each of the [recipients] wallets.'
-  )
+// COMMAND TO SEND SOME AMOUNT OF TOKENS TO MULTIPLE ACCOUNTS
+vorpal.command('tokens distribute <amount> <from> [recipients...]', 'Transfers <amount> tokens from the <source> wallet to each of the [recipients] wallets.')
   .action((args, callback) => {
     const from = walletEntries[args.from]
     const recipients = args.recipients.map(name => walletEntries[name].address)
@@ -750,14 +758,15 @@ vorpal
     })
   })
 
-vorpal.command('handle create <handle> <from>', 'Creates a unique handle for the <from> account on the server')
+// COMMAND TO REGISTER AN ALIAS FOR A USER ACCOUNT
+vorpal.command('register alias <alias> <from>', 'Registers a unique <alias> for the <from> account on the server')
   .action((args, callback) => {
-    const from = walletEntries[args.source]
+    const from = walletEntries[args.from]
     const tx = {
       type: 'register',
-      id: crypto.hash(args.handle),
-      handle: args.handle,
+      id: crypto.hash(args.alias),
       from: from.address,
+      alias: args.alias,
       timestamp: Date.now()
     }
     crypto.signObj(tx, from.keys.secretKey, from.keys.publicKey)
@@ -767,7 +776,8 @@ vorpal.command('handle create <handle> <from>', 'Creates a unique handle for the
     })
   })
 
-vorpal.command('friend add <to> <from>', 'adds a friend <to> to account <from>')
+// COMMAND TO ADD A FRIEND TO YOUR USER ACCOUNT'S FRIEND LIST
+vorpal.command('add friend <to> <from>', 'adds a friend <to> to account <from>')
   .action(async function (args, callback) {
     const from = walletEntries[args.from]
     const to = await getAddress(args.to)
@@ -790,7 +800,8 @@ vorpal.command('friend add <to> <from>', 'adds a friend <to> to account <from>')
     })
   })
 
-vorpal.command('friend remove <to> <from>', 'removes a friend <to> from account <from>')
+// COMMAND TO REMOVE A FRIEND FROM YOUR USER ACCOUNT'S FRIEND LIST
+vorpal.command('remove friend <to> <from>', 'removes a friend <to> from account <from>')
   .action(async function (args, callback) {
     const from = walletEntries[args.from]
     const to = await getAddress(args.target)
@@ -811,11 +822,8 @@ vorpal.command('friend remove <to> <from>', 'removes a friend <to> from account 
     })
   })
 
-vorpal
-  .command(
-    'toll set <from> <toll>',
-    'sets the <toll> people must pay in tokens to send messages to the <from> account'
-  )
+// COMMAND TO SET A TOLL FOR PEOPLE NOT ON YOUR FRIENDS LIST THAT SEND YOU MESSAGES
+vorpal.command('toll set <toll> <from>', 'sets the <toll> people must pay in tokens to send messages to the <from> account')
   .action(function (args, callback) {
     const from = walletEntries[args.from]
     const tx = {
@@ -832,11 +840,8 @@ vorpal
     })
   })
 
-vorpal
-  .command(
-    'message send <message> <from> <to>',
-    'sends a private message from <from> to <to> that only <to> can decrypt'
-  )
+// COMMAND TO SEND A MESSAGE TO ANOTHER USER ON THE NETWORK
+vorpal.command('message send <message> <from> <to>', 'sends a private message from <from> to <to> that only <to> can decrypt')
   .action(async function (args, callback) {
     const from = walletEntries[args.from]
     const to = await getAddress(args.to)
@@ -871,11 +876,8 @@ vorpal
     })
   })
 
-vorpal
-  .command(
-    'message poll <from> <to> <timestamp>',
-    'polls data for messages between <from> and <to> after specified timestamp'
-  )
+// COMMAND TO POLL FOR MESSAGES BETWEEN 2 USERS AFTER A SPECIFIED TIMESTAMP
+vorpal.command('message poll <from> <to> <timestamp>', 'polls data for messages between <from> and <to> after specified timestamp')
   .action(async function (args, callback) {
     const from = walletEntries[args.from]
     const to = await getAddress(args.to)
@@ -895,11 +897,8 @@ vorpal
     callback()
   })
 
-vorpal
-  .command(
-    'query [account]',
-    'Queries network data for the account associated with the given [wallet]. Otherwise, gets all network data.'
-  )
+// QUERY'S A LOCAL WALLET ACCOUNT OR ALL ACCOUNTS ON THE HOST IF LEFT BLANK
+vorpal.command('query [account]', 'Queries network data for the account associated with the given [wallet]. Otherwise, gets all network data.')
   .action(async (args, callback) => {
     let address
     if (args.account !== undefined) address = walletEntries[args.account].address
@@ -921,11 +920,9 @@ vorpal
     })
   })
 
-vorpal
-  .command(
-    'get <type> [amount]',
-    'query the network for <type> account with [amount] results, leaving out the amount will return all results'
-  )
+// COMMAND TO LOG OUT QUERYS FOR NETWORK DATA (ISSUES - PROPOSALS - DEV_PROPOSALS)
+// TODO ADD MORE QUERYS HERE
+vorpal.command('get <type> [amount]', 'query the network for <type> account with [amount] results, leaving out the amount will return all results')
   .action(async (args, callback) => {
     switch (args.type) {
       case 'latestIssue' : {

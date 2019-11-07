@@ -16,8 +16,10 @@ crypto('64f152869ca2d473e4ba64ab53f49ccdb2edae22da192c126850970e788af347')
 
 let accounts = {}
 
+// CHANGE THIS TO YOUR WALLET ACCOUNT FOR TESTING LOCALLY
 const ADMIN_ADDRESS = '1d488e0b637df2462b54af4b5ae1e0ebde02e0745d50941d47c8869a6abe2755'
 
+// HELPFUL TIME CONSTANTS IN MILLISECONDS
 const ONE_SECOND = 1000
 const ONE_MINUTE = 60 * ONE_SECOND
 const ONE_HOUR = 60 * ONE_MINUTE
@@ -25,6 +27,7 @@ const ONE_DAY = 24 * ONE_HOUR
 const ONE_WEEK = 7 * ONE_DAY
 const ONE_YEAR = 365 * ONE_DAY
 
+// MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
 const CYCLE_DURATION = 15
 const CYCLES_PER_MINUTE = (ONE_MINUTE / 1000) / CYCLE_DURATION
 const CYCLES_PER_HOUR = 60 * CYCLES_PER_MINUTE
@@ -32,6 +35,7 @@ const CYCLES_PER_DAY = 24 * CYCLES_PER_HOUR
 const CYCLES_PER_WEEK = 7 * CYCLES_PER_DAY
 const CYCLES_PER_YEAR = 365 * CYCLES_PER_DAY
 
+// DYNAMIC NETWORK PARAMETERS THAT ARE SUBJECT TO CHANGE AS PROPOSALS GET PASSED
 let NODE_REWARD_INTERVAL
 let NODE_REWARD_AMOUNT
 let NODE_PENALTY
@@ -44,6 +48,8 @@ let DEV_FUND_AMOUNT
 let PROPOSAL_FEE
 let DEV_PROPOSAL_FEE
 
+// DYNAMIC VARIABLES TO HELP THE NODES DETERMINE
+// WHEN TO SUBMIT ISSUES, OR TALLY VOTES, OR APPLY PARAMETERS
 let LAST_ISSUE_TIME
 let PROPOSAL_WINDOW
 let VOTING_WINDOW
@@ -63,6 +69,7 @@ if (process.env.BASE_DIR) {
   config.server.baseDir = process.env.BASE_DIR
 }
 
+// CONFIGURATION PARAMETERS PASSED INTO SHARDUS
 set(config, 'server.p2p', {
   cycleDuration: 15,
   seedList: 'http://127.0.0.1:4000/api/seednodes',
@@ -143,6 +150,7 @@ set(config, 'logs', {
 
 const dapp = shardus(config)
 
+// INITIAL PARAMETERS THE NODES SET WHEN THEY BECOME ACTIVE
 async function initParameters () {
   const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
   if (account) {
@@ -162,8 +170,8 @@ async function initParameters () {
     VOTING_WINDOW = account.data.votingWindow
     GRACE_WINDOW = account.data.graceWindow
     APPLY_WINDOW = account.data.applyWindow
-    WINNER_FOUND = accounts.data.winnerFound
-    PARAMS_APPLIED = accounts.data.paramsApplied
+    WINNER_FOUND = account.data.winnerFound
+    PARAMS_APPLIED = account.data.paramsApplied
   } else {
     NODE_REWARD_INTERVAL = ONE_MINUTE
     NODE_REWARD_AMOUNT = 10
@@ -275,6 +283,7 @@ function createDevProposal (obj = {}) {
   return devProposal
 }
 
+// API
 dapp.registerExternalPost('inject', async (req, res) => {
   const result = dapp.put(req.body)
   res.json({ result })
@@ -1005,7 +1014,7 @@ dapp.setup({
           return response
         }
         if (tx.timestamp < VOTING_WINDOW[0] || tx.timestamp > VOTING_WINDOW[1]) {
-          response.reason = 'Network is not accepting proposals at this time'
+          response.reason = 'Network is not accepting votes at this time'
           return response
         }
         if (!issue) {
@@ -2108,6 +2117,7 @@ async function applyParameters () {
   let LAST_REWARD = 0
   let LAST_MAINTENANCE = 0
 
+  // THIS CODE IS CALLED ON EVERY NODE ON EVERY CYCLE
   async function networkMaintenance () {
     let drift = Date.now() - expectedInterval
     cycleData = dapp.getLatestCycles()[0]
@@ -2116,17 +2126,19 @@ async function applyParameters () {
     CYCLES_ACTIVE = CURRENT_CYCLE - INITIAL_CYCLE
     TIME_ACTIVE = CYCLES_ACTIVE * CYCLE_INTERVAL
 
+    // THIS IS FOR NODE_REWARD
     if (TIME_ACTIVE - LAST_REWARD > NODE_REWARD_INTERVAL) {
       selfReward()
       LAST_REWARD = TIME_ACTIVE
     }
 
+    // THIS IS FOR ACCOUNT_MAINTENANCE
     if (TIME_ACTIVE - LAST_MAINTENANCE > MAINTENANCE_INTERVAL) {
       maintenance()
       LAST_MAINTENANCE = TIME_ACTIVE
     }
 
-    // COULD STILL BE IMPROVED BUT WHATEVER
+    // TODO: COULD STILL BE IMPROVED BUT WHATEVER
     if (LAST_ISSUE_TIME) {
       console.log({
         LAST_ISSUE_TIME,
@@ -2135,16 +2147,20 @@ async function applyParameters () {
         GRACE_WINDOW,
         APPLY_WINDOW
       })
+      // IS THE NETWORK READY TO GENERATE A NEW ISSUE?
       if (CYCLE_START_TIME > LAST_ISSUE_TIME + (ONE_MINUTE * 4)) {
         await generateIssue()
       }
+
       if (GRACE_WINDOW && APPLY_WINDOW) {
         if (!WINNER_FOUND) {
+          // IF THE VOTES FOR THE PROPOSAL HAVENT BEEN COUNTED YET AND ITS PAST THE VOTING_WINDOW
           if (CYCLE_START_TIME > GRACE_WINDOW[0] && CYCLE_START_TIME < GRACE_WINDOW[1]) {
             await tallyVotes()
           }
         }
         if (!PARAMS_APPLIED) {
+          // IF THE WINNING PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE GRACE_WINDOW
           if (CYCLE_START_TIME > APPLY_WINDOW[0] && CYCLE_START_TIME < APPLY_WINDOW[1]) {
             await applyParameters()
           }
@@ -2153,6 +2169,7 @@ async function applyParameters () {
     }
 
     expectedInterval += CYCLE_INTERVAL
+    // RESET THE INTERVAL
     setTimeout(networkMaintenance, CYCLE_INTERVAL - drift)
   }
 })()
