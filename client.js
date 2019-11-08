@@ -19,6 +19,8 @@ crypto('64f152869ca2d473e4ba64ab53f49ccdb2edae22da192c126850970e788af347')
 // submit proposal kyle 100 10 1000
 // vote proposal kyle 3 100
 // vote proposal kyle 2 70
+// submit dev proposal kyle 50000 testing... 500
+// vote dev proposal kyle 1 yes 500
 
 let HOST = 'localhost'
 
@@ -397,10 +399,22 @@ async function queryIssues () {
   console.log(res.data.issues)
 }
 
+// QUERY'S ALL NETWORK DEV_ISSUES
+async function queryDevIssues () {
+  const res = await axios.get(`http://${host}/issues/dev`)
+  console.log(res.data.devIssues)
+}
+
 // QUERY'S THE MOST RECENT NETWORK ISSUE
 async function queryLatestIssue () {
   const res = await axios.get(`http://${host}/issues/latest`)
   console.log(res.data.issue)
+}
+
+// QUERY'S THE MOST RECENT NETWORK DEV_ISSUE
+async function queryLatestDevIssue () {
+  const res = await axios.get(`http://${host}/issues/dev/latest`)
+  console.log(res.data.devIssue)
 }
 
 // QUERY'S THE CURRENT NETWORK ISSUE COUNT
@@ -410,16 +424,35 @@ async function getIssueCount () {
   return res.data.issueCount
 }
 
+// QUERY'S THE CURRENT NETWORK DEV_ISSUE COUNT
+async function getDevIssueCount () {
+  const res = await axios.get(`http://${host}/issues/dev/count`)
+  console.log(res.data)
+  return res.data.devIssueCount
+}
+
 // QUERY'S ALL NETWORK PROPOSALS
 async function queryProposals () {
   const res = await axios.get(`http://${host}/proposals`)
   console.log(res.data.proposals)
 }
 
+// QUERY'S ALL NETWORK DEV_PROPOSALS
+async function queryDevProposals () {
+  const res = await axios.get(`http://${host}/proposals/dev`)
+  console.log(res.data.devProposals)
+}
+
 // QUERY'S ALL PROPOSALS ON THE LATEST ISSUE
 async function queryLatestProposals () {
   const res = await axios.get(`http://${host}/proposals/latest`)
   console.log(res.data.proposals)
+}
+
+// QUERY'S ALL PROPOSALS ON THE LATEST ISSUE
+async function queryLatestDevProposals () {
+  const res = await axios.get(`http://${host}/proposals/dev/latest`)
+  console.log(res.data.devProposals)
 }
 
 // QUERY'S THE CURRENT ISSUE'S PROPOSAL COUNT
@@ -429,19 +462,7 @@ async function getProposalCount () {
   return res.data.proposalCount
 }
 
-// QUERY'S ALL THE DEV_PROPOSALS ON THE NETWORK
-async function queryDevProposals () {
-  const res = await axios.get(`http://${host}/proposals/dev`)
-  console.log(res.data.devProposals)
-}
-
-// QUERY'S THE MOST RECENT DEV_PROPOSAL ON THE NETWORK
-async function queryLatestDevProposal () {
-  const res = await axios.get(`http://${host}/proposals/dev/latest`)
-  console.log(res.data.devProposal)
-}
-
-// QUERY'S THE CURRENT DEV_PROPOSAL COUNT ON THE NETWORK
+// QUERY'S THE CURRENT ISSUE'S PROPOSAL COUNT
 async function getDevProposalCount () {
   const res = await axios.get(`http://${host}/proposals/dev/count`)
   console.log(res.data)
@@ -469,10 +490,10 @@ vorpal.command('vote proposal <from> <num> <amount>', 'vote for proposal <num> o
   })
 
 // COMMAND TO VOTE FOR A DEV_PROPOSAL
-// TODO
 vorpal.command('vote dev proposal <from> <num> <type> <amount>', 'vote <type>(yes | no) for dev proposal <num> with <amount> coins')
   .action(async (args, callback) => {
     const from = walletEntries[args.from]
+    const latest = await getDevIssueCount()
     let approve
 
     if (args.type === 'yes') approve = true
@@ -481,9 +502,10 @@ vorpal.command('vote dev proposal <from> <num> <type> <amount>', 'vote <type>(ye
     const tx = {
       type: 'dev_vote',
       from: from.address,
-      devProposal: crypto.hash(`dev-proposal-${args.num}`),
+      devIssue: crypto.hash(`dev-issue-${latest}`),
+      devProposal: crypto.hash(`dev-issue-${latest}-dev-proposal-${args.num}`),
       amount: args.amount,
-      approve,
+      approve: approve,
       timestamp: Date.now()
     }
     crypto.signObj(tx, from.keys.secretKey, from.keys.publicKey)
@@ -530,18 +552,18 @@ vorpal.command('submit proposal <from> <reward> <interval> <amount>', 'submits a
   })
 
 // COMMAND TO SUBMIT A DEV_PROPOSAL
-// TODO
-vorpal.command('submit dev proposal <from> <funds> <interval> <amount>', 'submits a development proposal to the network')
+vorpal.command('submit dev proposal <from> <funds> <description> <amount>', 'submits a development proposal to the network')
   .action(async (args, callback) => {
     const from = walletEntries[args.from]
+    const latestIssue = await getDevIssueCount()
     const count = await getDevProposalCount()
     const tx = {
       type: 'dev_proposal',
       from: from.address,
-      to: '0'.repeat(64),
-      devProposal: crypto.hash(`dev-proposal-${count}`),
+      devIssue: crypto.hash(`dev-issue-${latestIssue}`),
+      devProposal: crypto.hash(`dev-issue-${latestIssue}-dev-proposal-${count + 1}`),
       funds: args.funds,
-      interval: args.interval,
+      description: args.description,
       amount: args.amount,
       payAddress: from.address,
       timestamp: Date.now()
@@ -929,23 +951,31 @@ vorpal.command('get <type> [amount]', 'query the network for <type> account with
         queryLatestIssue()
         break
       }
+      case 'latestDevIssue' : {
+        queryLatestDevIssue()
+        break
+      }
       case 'issues' : {
         queryIssues()
         break
       }
-      case 'latestProposal' : {
+      case 'devIssues' : {
+        queryDevIssues()
+        break
+      }
+      case 'latestProposals' : {
         queryLatestProposals()
+        break
+      }
+      case 'latestDevProposals' : {
+        queryLatestDevProposals()
         break
       }
       case 'proposals' : {
         queryProposals()
         break
       }
-      case 'latestDevProposal' : {
-        queryLatestDevProposal()
-        break
-      }
-      case 'devProposals': {
+      case 'devProposals' : {
         queryDevProposals()
         break
       }
