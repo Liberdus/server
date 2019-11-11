@@ -14,7 +14,7 @@ crypto('64f152869ca2d473e4ba64ab53f49ccdb2edae22da192c126850970e788af347')
  * @implements {App}
  */
 
-// THE ENTIRE APP STATE IN THE NODE'S SHARD
+// THE ENTIRE APP STATE FOR THIS NODE
 let accounts = {}
 
 // CHANGE THIS TO YOUR WALLET ACCOUNT FOR TESTING LOCALLY
@@ -65,6 +65,9 @@ let WINNER_FOUND
 let DEV_WINNERS_FOUND
 let PARAMS_APPLIED
 let DEV_PARAMS_APPLIED
+
+// VARIABLE FOR HELPING NODES DETERMINE WHEN TO RELEASE DEVELOPER FUNDS
+let DEVELOPER_FUND
 
 let config = {}
 
@@ -188,6 +191,7 @@ async function initParameters () {
     DEV_WINNERS_FOUND = account.data.devWinnersFound
     PARAMS_APPLIED = account.data.paramsApplied
     DEV_PARAMS_APPLIED = account.data.devParamsApplied
+    DEVELOPER_FUND = account.data.developerFund
   } else {
     // APPLY DEFAULT STARTING PARAMETERS
     NODE_REWARD_INTERVAL = ONE_MINUTE
@@ -215,6 +219,7 @@ async function initParameters () {
     DEV_WINNERS_FOUND = null
     PARAMS_APPLIED = null
     DEV_PARAMS_APPLIED = null
+    DEVELOPER_FUND = []
   }
 }
 
@@ -272,7 +277,8 @@ function createNetworkAccount (obj = {}) {
     proposalFee: 500,
     devProposalFee: 20,
     issueCount: 0,
-    devIssueCount: 0
+    devIssueCount: 0,
+    developerFund: []
   }, obj)
   account.hash = crypto.hashObj(account)
   return account
@@ -295,7 +301,6 @@ function createDevIssue (obj = {}) {
     timestamp: Date.now(),
     devProposals: [],
     winners: [],
-    payAccounts: [],
     devProposalCount: 0
   }, obj)
   devIssue.hash = crypto.hashObj(devIssue)
@@ -1110,6 +1115,10 @@ dapp.setup({
           response.reason = 'Insufficient amount sent in the transaction to submit a devProposal'
           return response
         }
+        if (tx.payments.reduce((acc, payment) => acc + payment.amount) > 1) {
+          response.reason = 'tx payment amounts added up to more than 100%'
+          return response
+        }
         response.result = 'pass'
         response.reason = 'This transaction is valid!'
         return response
@@ -1274,10 +1283,6 @@ dapp.setup({
           response.reason = 'The winners for this devIssue has already been determined'
           return response
         }
-        if (devIssue.payAccounts.length > 0) {
-          response.reason = 'The payAccounts for this devIssue have already been set'
-          return response
-        }
         if (tx.to !== '0'.repeat(64)) {
           response.reason = 'To account must be the network account'
           return response
@@ -1362,10 +1367,6 @@ dapp.setup({
           response.reason = 'Network is not ready to apply winning devProposals'
           return response
         }
-        if (tx.devProposals.length !== tx.payAccounts.length) {
-          response.reason = 'Number of payAccounts does not match the number of devProposals'
-          return response
-        }
         for (const devProposal of devProposals) {
           if (!devProposal.approved) {
             response.reason = 'One of the devProposals was not approved'
@@ -1375,10 +1376,43 @@ dapp.setup({
             response.reason = 'One of the devProposals sent with this transaction was not approved'
             return response
           }
-          if (!devIssue.payAccounts.includes(devProposal.payAddress)) {
-            response.reason = 'One of the payAccounts did not match one of the proposals payAddress'
-            return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'developer_payment': {
+        let nodeInfo
+        try {
+          nodeInfo = dapp.getNode(tx.nodeId)
+        } catch (err) {
+          console.log(err)
+        }
+        if (!nodeInfo) {
+          response.reason = 'no nodeInfo'
+          return response
+        }
+        if (tx.to !== '0'.repeat(64)) {
+          response.reason = 'To account must be the network account'
+          return response
+        }
+        if (tx.developer !== tx.payment.address) {
+          response.reason = 'tx developer does not match address in payment'
+          return response
+        }
+        if (tx.timestamp < tx.payment.timestamp) {
+          response.reason = 'This payment is not ready to be released'
+          return response
+        }
+        let found = false
+        for (const payment of to.developerFund) {
+          if (payment.id === tx.payment.id) {
+            found = true
           }
+        }
+        if (!found) {
+          response.reason = 'This payment was already recieved by the developer'
+          return response
         }
         response.result = 'pass'
         response.reason = 'This transaction is valid!'
@@ -1441,9 +1475,7 @@ dapp.setup({
     // Validate the tx
     const { result, reason } = this.validateTransaction(tx, wrappedStates)
     if (result !== 'pass') {
-      throw new Error(
-        `invalid transaction, reason: ${reason}. tx: ${stringify(tx)}`
-      )
+      throw new Error(`invalid transaction, reason: ${reason}. tx: ${stringify(tx)}`)
     }
 
     // Create an applyResponse which will be used to tell Shardus that the tx has been applied
@@ -1640,6 +1672,7 @@ dapp.setup({
             target.timestamp = tx.timestamp
           }
         }
+
         console.log('Applied maintenance transaction', txId, from, targets)
         break
       }
@@ -1747,11 +1780,12 @@ dapp.setup({
       case 'dev_proposal': {
         const devIssue = wrappedStates[tx.devIssue].data
         const devProposal = wrappedStates[tx.devProposal].data
-        from.data.balance -= DEV_PROPOSAL_FEE
+        from.data.balance -= tx.amount
 
-        devProposal.funds = tx.funds
+        devProposal.totalAmount = tx.totalAmount
         devProposal.payAddress = tx.payAddress
         devProposal.description = tx.description
+        devProposal.payments = tx.payments
 
         devProposal.number = devIssue.devProposalCount + 1
         devProposal.totalVotes = 0
@@ -1792,24 +1826,16 @@ dapp.setup({
         const margin = (100 / (2 * (issue.proposalCount + 1))) / 100
         let defaultProposal = wrappedStates[crypto.hash(`issue-${issue.number}-proposal-1`)].data
         let sortedProposals = tx.proposals.map(id => wrappedStates[id].data).sort((a, b) => a.power < b.power)
+        let winner
 
         for (const proposal of sortedProposals) {
           proposal.winner = false
         }
 
-        console.log('MARGIN', margin)
-        console.log('DEFAULT', defaultProposal)
-        console.log('SORTED', sortedProposals)
-
-        let winner
-
         if (sortedProposals.length >= 2) {
           const firstPlace = sortedProposals[0]
           const secondPlace = sortedProposals[1]
           const marginToWin = secondPlace.power + (margin * secondPlace.power)
-          console.log('FIRST_PLACE', firstPlace)
-          console.log('SECOND_PLACE', secondPlace)
-          console.log('MARGIN_TO_WIN', marginToWin)
           if (firstPlace.power > marginToWin) {
             winner = firstPlace
           } else {
@@ -1819,14 +1845,10 @@ dapp.setup({
           winner = defaultProposal
         }
 
-        winner.winner = true
-
-        console.log('WINNER', winner)
-
+        winner.winner = true // CHICKEN DINNER
         issue.winner = winner.id
         to.winnerFound = true
         WINNER_FOUND = true
-
         to.timestamp = tx.timestamp
         issue.timestamp = tx.timestamp
         winner.timestamp = tx.timestamp
@@ -1841,23 +1863,17 @@ dapp.setup({
           if (devProposal.approve > (devProposal.reject + (devProposal.reject * 0.15))) {
             devProposal.approved = true
             devIssue.winners.push(devProposal.id)
-            devIssue.payAccounts.push(devProposal.payAddress)
             devProposal.timestamp = tx.timestamp
-            console.log('DEV_WINNER', devProposal)
           } else {
             devProposal.approved = false
             devProposal.timestamp = tx.timestamp
-            console.log('DEV_LOSER', devProposal)
           }
         }
 
-        console.log('DEV_ISSUE', devIssue)
         to.devWinnersFound = true
         DEV_WINNERS_FOUND = true
-
         to.timestamp = tx.timestamp
         devIssue.timestamp = tx.timestamp
-
         console.log('Applied dev_tally tx', txId, from, to, devIssue, devProposals)
         break
       }
@@ -1901,22 +1917,40 @@ dapp.setup({
       case 'apply_dev_parameters': {
         const devIssue = wrappedStates[tx.devIssue].data
         const devProposals = tx.devProposals.map(id => wrappedStates[id].data)
-        const payAccounts = tx.payAccounts.map(id => wrappedStates[id].data)
 
-        for (let i = 0; i < devProposals.length; i++) {
-          payAccounts[i].data.balance += devProposals[i].funds
-          devProposals[i].funds = 0
-          payAccounts[i].timestamp = tx.timestamp
-          devProposals[i].timestamp = tx.timestamp
+        for (const devProposal of devProposals) {
+          let payments = []
+          for (const payment of devProposal.payments) {
+            payments.push({
+              timestamp: tx.timestamp + payment.delay,
+              amount: payment.amount * devProposal.totalAmount,
+              address: devProposal.payAddress,
+              id: crypto.randomBytes()
+            })
+          }
+          to.developerFund = [...to.developerFund, ...payments]
+          devProposal.timestamp = tx.timestamp
         }
 
+        to.developerFund.sort((a, b) => a.timestamp - b.timestamp)
         to.devParamsApplied = true
         DEV_PARAMS_APPLIED = true
-
+        DEVELOPER_FUND = to.developerFund
         devIssue.active = false
         to.timestamp = tx.timestamp
         devIssue.timestamp = tx.timestamp
-        console.log('Applied apply_dev_parameters tx', txId, devIssue, devProposals, payAccounts, to)
+        console.log('Applied apply_dev_parameters tx', txId, devIssue, devProposals, to)
+        break
+      }
+      case 'developer_payment': {
+        const developer = wrappedStates[tx.developer].data
+
+        developer.data.balance += tx.payment.amount
+        to.developerFund = to.developerFund.filter(payment => payment.id !== tx.payment.id)
+        DEVELOPER_FUND = to.developerFund
+        developer.timestamp = tx.timestamp
+        to.timestamp = tx.timestamp
+        console.log('Applied developer_payment tx', txId, developer, to)
         break
       }
     }
@@ -2027,7 +2061,12 @@ dapp.setup({
       }
       case 'apply_dev_parameters': {
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.to, tx.devIssue, ...tx.devProposals, ...tx.payAccounts]
+        result.targetKeys = [tx.to, tx.devIssue, ...tx.devProposals]
+        break
+      }
+      case 'developer_payment': {
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.to, tx.developer]
         break
       }
     }
@@ -2444,7 +2483,22 @@ async function applyDevParameters () {
     to: network.data.id,
     devIssue: devIssue.data.id,
     devProposals: devIssue.data.winners,
-    payAccounts: devIssue.data.payAccounts,
+    timestamp: Date.now()
+  }
+  dapp.put(tx)
+}
+
+// RELEASE DEVELOPER FUNDS FOR A PAYMENT
+function releaseDeveloperFunds (payment) {
+  const nodeId = dapp.getNodeId()
+  const { address } = dapp.getNode(nodeId)
+  const tx = {
+    type: 'developer_payment',
+    nodeId: nodeId,
+    from: address,
+    to: '0'.repeat(64),
+    developer: payment.address,
+    payment: payment,
     timestamp: Date.now()
   }
   dapp.put(tx)
@@ -2485,13 +2539,13 @@ async function applyDevParameters () {
     TIME_ACTIVE = CYCLES_ACTIVE * CYCLE_INTERVAL
 
     // THIS IS FOR NODE_REWARD
-    if (TIME_ACTIVE - LAST_REWARD > NODE_REWARD_INTERVAL) {
+    if (TIME_ACTIVE - LAST_REWARD >= NODE_REWARD_INTERVAL) {
       nodeReward()
       LAST_REWARD = TIME_ACTIVE
     }
 
     // THIS IS FOR ACCOUNT_MAINTENANCE
-    if (TIME_ACTIVE - LAST_MAINTENANCE > MAINTENANCE_INTERVAL) {
+    if (TIME_ACTIVE - LAST_MAINTENANCE >= MAINTENANCE_INTERVAL) {
       maintenance()
       LAST_MAINTENANCE = TIME_ACTIVE
     }
@@ -2500,47 +2554,54 @@ async function applyDevParameters () {
     // AUTOMATIC (ISSUE | TALLY | APPLY_PARAMETERS) TRANSACTION GENERATION
     if (LAST_ISSUE_TIME) {
       // IS THE NETWORK READY TO GENERATE A NEW ISSUE?
-      if (CYCLE_START_TIME > LAST_ISSUE_TIME + (ONE_MINUTE * 4)) {
+      if (CYCLE_START_TIME >= LAST_ISSUE_TIME + (ONE_MINUTE * 4)) {
         await generateIssue()
       }
 
       if (GRACE_WINDOW && APPLY_WINDOW) {
         if (!WINNER_FOUND) {
           // IF THE WINNER FOR THE PROPOSAL HASN'T BEEN DETERMINED YET AND ITS PAST THE VOTING_WINDOW
-          if (CYCLE_START_TIME > GRACE_WINDOW[0] && CYCLE_START_TIME < GRACE_WINDOW[1]) {
+          if (CYCLE_START_TIME >= GRACE_WINDOW[0] && CYCLE_START_TIME <= GRACE_WINDOW[1]) {
             await tallyVotes()
           }
         }
         if (!PARAMS_APPLIED) {
           // IF THE WINNING PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE GRACE_WINDOW
-          if (CYCLE_START_TIME > APPLY_WINDOW[0] && CYCLE_START_TIME < APPLY_WINDOW[1]) {
+          if (CYCLE_START_TIME >= APPLY_WINDOW[0] && CYCLE_START_TIME <= APPLY_WINDOW[1]) {
             await applyParameters()
           }
         }
       }
     }
 
-    // TODO: Improve this so that funds can be paid out across time rather than one lump sum
     // AUTOMATIC (DEV_ISSUE | DEV_TALLY | APPLY_DEV_PARAMETERS) TRANSACTION GENERATION
     if (LAST_DEV_ISSUE_TIME) {
       // IS THE NETWORK READY TO GENERATE A NEW DEV_ISSUE?
-      if (CYCLE_START_TIME > LAST_DEV_ISSUE_TIME + (ONE_MINUTE * 4)) {
+      if (CYCLE_START_TIME >= LAST_DEV_ISSUE_TIME + (ONE_MINUTE * 4)) {
         await generateDevIssue()
       }
 
       if (DEV_GRACE_WINDOW && DEV_APPLY_WINDOW) {
         if (!DEV_WINNERS_FOUND) {
           // IF THE WINNERS FOR THE DEV PROPOSALS HAVEN'T BEEN DETERMINED YET AND ITS PAST THE DEV_VOTING_WINDOW
-          if (CYCLE_START_TIME > DEV_GRACE_WINDOW[0] && CYCLE_START_TIME < DEV_GRACE_WINDOW[1]) {
+          if (CYCLE_START_TIME >= DEV_GRACE_WINDOW[0] && CYCLE_START_TIME <= DEV_GRACE_WINDOW[1]) {
             await tallyDevVotes()
           }
         }
         if (!DEV_PARAMS_APPLIED) {
           // IF THE WINNING DEV PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE DEV_GRACE_WINDOW
-          if (CYCLE_START_TIME > DEV_APPLY_WINDOW[0] && CYCLE_START_TIME < DEV_APPLY_WINDOW[1]) {
+          if (CYCLE_START_TIME >= DEV_APPLY_WINDOW[0] && CYCLE_START_TIME <= DEV_APPLY_WINDOW[1]) {
             await applyDevParameters()
           }
         }
+      }
+    }
+
+    // LOOP THROUGH IN-MEMORY DEVELOPER_FUND
+    for (const payment of DEVELOPER_FUND) {
+      // PAY DEVELOPER IF THE CURRENT TIME IS GREATER THAN THE PAYMENT TIME
+      if (CYCLE_START_TIME >= payment.timestamp) {
+        releaseDeveloperFunds(payment)
       }
     }
 

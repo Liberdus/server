@@ -552,7 +552,7 @@ vorpal.command('submit proposal <from> <reward> <interval> <amount>', 'submits a
   })
 
 // COMMAND TO SUBMIT A DEV_PROPOSAL
-vorpal.command('submit dev proposal <from> <funds> <description> <amount>', 'submits a development proposal to the network')
+vorpal.command('submit dev proposal <from> <total> <description> <amount>', 'submits a development proposal to the network')
   .action(async (args, callback) => {
     const from = walletEntries[args.from]
     const latestIssue = await getDevIssueCount()
@@ -562,7 +562,8 @@ vorpal.command('submit dev proposal <from> <funds> <description> <amount>', 'sub
       from: from.address,
       devIssue: crypto.hash(`dev-issue-${latestIssue}`),
       devProposal: crypto.hash(`dev-issue-${latestIssue}-dev-proposal-${count + 1}`),
-      funds: args.funds,
+      totalAmount: args.total,
+      payments: [{ amount: 0.5, delay: ONE_MINUTE }, { amount: 0.5, delay: ONE_MINUTE * 2 }],
       description: args.description,
       amount: args.amount,
       payAddress: from.address,

@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "pm2": "cross-env PM2_HOME='./.pm2' pm2 --node-args='--experimental-modules'",
-    "start": "node scripts/start.js && node -r esm index.js",
+    "start": "node scripts/start.js && node index.js",
     "stop": "node scripts/stop.js",
     "clean": "node scripts/clean.js",
     "test": "echo \"Error: no test specified\" && exit 1",
