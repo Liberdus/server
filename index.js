@@ -44,8 +44,6 @@ let TRANSACTION_FEE
 let STAKE_REQUIRED
 let MAINTENANCE_INTERVAL
 let MAINTENANCE_FEE
-let DEV_FUND_INTERVAL
-let DEV_FUND_AMOUNT
 let PROPOSAL_FEE
 let DEV_PROPOSAL_FEE
 
@@ -173,8 +171,6 @@ async function initParameters () {
     STAKE_REQUIRED = account.data.stakeRequired
     MAINTENANCE_INTERVAL = account.data.maintenanceInterval
     MAINTENANCE_FEE = account.data.maintenanceFee
-    DEV_FUND_INTERVAL = account.data.devFundInterval
-    DEV_FUND_AMOUNT = account.data.devFundAmount
     PROPOSAL_FEE = account.data.proposalFee
     DEV_PROPOSAL_FEE = account.data.devProposalFee
     LAST_ISSUE_TIME = account.data.lastIssueTime
@@ -201,8 +197,6 @@ async function initParameters () {
     STAKE_REQUIRED = 500
     MAINTENANCE_INTERVAL = ONE_MINUTE * 2
     MAINTENANCE_FEE = 0.0001
-    DEV_FUND_INTERVAL = ONE_DAY
-    DEV_FUND_AMOUNT = 10000
     PROPOSAL_FEE = 500
     DEV_PROPOSAL_FEE = 200
     LAST_ISSUE_TIME = null
@@ -335,25 +329,27 @@ dapp.registerExternalPost('inject', async (req, res) => {
 })
 
 dapp.registerExternalGet('network/parameters/node', async (req, res) => {
-  const parameters = {
-    NODE_REWARD_INTERVAL,
-    NODE_REWARD_AMOUNT,
-    NODE_PENALTY,
-    TRANSACTION_FEE,
-    STAKE_REQUIRED,
-    MAINTENANCE_INTERVAL,
-    MAINTENANCE_FEE,
-    DEV_FUND_INTERVAL,
-    DEV_FUND_AMOUNT,
-    PROPOSAL_FEE,
-    DEV_PROPOSAL_FEE
+  try {
+    const parameters = {
+      NODE_REWARD_INTERVAL,
+      NODE_REWARD_AMOUNT,
+      NODE_PENALTY,
+      TRANSACTION_FEE,
+      STAKE_REQUIRED,
+      MAINTENANCE_INTERVAL,
+      MAINTENANCE_FEE,
+      PROPOSAL_FEE,
+      DEV_PROPOSAL_FEE
+    }
+    res.json({ parameters })
+  } catch (error) {
+    res.json({ error })
   }
-  res.json({ parameters })
 })
 
 dapp.registerExternalGet('network/parameters', async (req, res) => {
-  const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
   try {
+    const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
     res.json({ parameters: network.data })
   } catch (err) {
     res.json({ error: err })
@@ -361,144 +357,196 @@ dapp.registerExternalGet('network/parameters', async (req, res) => {
 })
 
 dapp.registerExternalGet('issues', async (req, res) => {
-  const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
-  const issueCount = account.data.issueCount
-  const issues = []
-  for (let i = 1; i <= issueCount; i++) {
-    let issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${i}`))
-    issues.push(issue.data)
+  try {
+    const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+    const issueCount = account.data.issueCount
+    const issues = []
+    for (let i = 1; i <= issueCount; i++) {
+      let issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${i}`))
+      issues.push(issue.data)
+    }
+    res.json({ issues })
+  } catch (error) {
+    res.json({ error })
   }
-  res.json({ issues })
 })
 
 dapp.registerExternalGet('issues/latest', async (req, res) => {
-  const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
-  const count = account.data.issueCount
-  const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${count}`))
-  res.json({ issue: issue.data })
+  try {
+    const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+    const count = account.data.issueCount
+    const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${count}`))
+    res.json({ issue: issue.data })
+  } catch (error) {
+    res.json({ error })
+  }
 })
 
 dapp.registerExternalGet('issues/count', async (req, res) => {
-  const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
-  const issueCount = account.data.issueCount
-  res.json({ issueCount })
+  try {
+    const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+    const issueCount = account.data.issueCount
+    res.json({ issueCount })
+  } catch (error) {
+    res.json({ error })
+  }
 })
 
 dapp.registerExternalGet('issues/dev', async (req, res) => {
-  const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
-  const devIssueCount = account.data.devIssueCount
-  const devIssues = []
-  for (let i = 1; i <= devIssueCount; i++) {
-    let devIssue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${i}`))
-    devIssues.push(devIssue.data)
+  try {
+    const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+    const devIssueCount = account.data.devIssueCount
+    const devIssues = []
+    for (let i = 1; i <= devIssueCount; i++) {
+      let devIssue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${i}`))
+      devIssues.push(devIssue.data)
+    }
+    res.json({ devIssues })
+  } catch (error) {
+    res.json({ error })
   }
-  res.json({ devIssues })
 })
 
 dapp.registerExternalGet('issues/dev/latest', async (req, res) => {
-  const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
-  const count = account.data.devIssueCount
-  const devIssue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${count}`))
-  res.json({ devIssue: devIssue.data })
+  try {
+    const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+    const count = account.data.devIssueCount
+    const devIssue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${count}`))
+    res.json({ devIssue: devIssue.data })
+  } catch (error) {
+    res.json({ error })
+  }
 })
 
 dapp.registerExternalGet('issues/dev/count', async (req, res) => {
-  const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
-  const devIssueCount = account.data.devIssueCount
-  res.json({ devIssueCount })
+  try {
+    const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+    const devIssueCount = account.data.devIssueCount
+    res.json({ devIssueCount })
+  } catch (error) {
+    res.json({ error })
+  }
 })
 
 dapp.registerExternalGet('proposals', async (req, res) => {
-  const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
-  const issueCount = network.data.issueCount
-  const proposals = []
-  for (let i = 1; i <= issueCount; i++) {
-    let issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${i}`))
-    let proposalCount = issue.data.proposalCount
-    for (let j = 1; j <= proposalCount; j++) {
-      let proposal = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${i}-proposal-${j}`))
-      proposals.push(proposal.data)
+  try {
+    const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+    const issueCount = network.data.issueCount
+    const proposals = []
+    for (let i = 1; i <= issueCount; i++) {
+      let issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${i}`))
+      let proposalCount = issue.data.proposalCount
+      for (let j = 1; j <= proposalCount; j++) {
+        let proposal = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${i}-proposal-${j}`))
+        proposals.push(proposal.data)
+      }
     }
+    res.json({ proposals })
+  } catch (error) {
+    res.json({ error })
   }
-  res.json({ proposals })
 })
 
 dapp.registerExternalGet('proposals/latest', async (req, res) => {
-  const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
-  const issueCount = network.data.issueCount
-  const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${issueCount}`))
-  const proposalCount = issue.data.proposalCount
-  const proposals = []
-  for (let i = 1; i <= proposalCount; i++) {
-    let proposal = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${issueCount}-proposal-${i}`))
-    proposals.push(proposal.data)
+  try {
+    const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+    const issueCount = network.data.issueCount
+    const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${issueCount}`))
+    const proposalCount = issue.data.proposalCount
+    const proposals = []
+    for (let i = 1; i <= proposalCount; i++) {
+      let proposal = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${issueCount}-proposal-${i}`))
+      proposals.push(proposal.data)
+    }
+    res.json({ proposals })
+  } catch (error) {
+    res.json({ error })
   }
-  res.json({ proposals })
 })
 
 dapp.registerExternalGet('proposals/count', async (req, res) => {
-  const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
-  const issueCount = network.data.issueCount
-  const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${issueCount}`))
-  if (!issue) {
-    res.json({ error: 'No issues have been created yet' })
+  try {
+    const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+    const issueCount = network.data.issueCount
+    const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${issueCount}`))
+    if (!issue) {
+      res.json({ error: 'No issues have been created yet' })
+    }
+    const proposalCount = issue.data.proposalCount
+    res.json({ proposalCount })
+  } catch (error) {
+    res.json({ error })
   }
-  const proposalCount = issue.data.proposalCount
-  res.json({ proposalCount })
 })
 
 dapp.registerExternalGet('proposals/dev', async (req, res) => {
-  const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
-  const devIssueCount = network.data.devIssueCount
-  const devProposals = []
-  for (let i = 1; i <= devIssueCount; i++) {
-    let devIssue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${i}`))
-    let devProposalCount = devIssue.data.devProposalCount
-    for (let j = 1; j <= devProposalCount; j++) {
-      let devProposal = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${i}-dev-proposal-${j}`))
-      devProposals.push(devProposal.data)
+  try {
+    const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+    const devIssueCount = network.data.devIssueCount
+    const devProposals = []
+    for (let i = 1; i <= devIssueCount; i++) {
+      let devIssue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${i}`))
+      let devProposalCount = devIssue.data.devProposalCount
+      for (let j = 1; j <= devProposalCount; j++) {
+        let devProposal = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${i}-dev-proposal-${j}`))
+        devProposals.push(devProposal.data)
+      }
     }
+    res.json({ devProposals })
+  } catch (error) {
+    res.json({ error })
   }
-  res.json({ devProposals })
 })
 
 dapp.registerExternalGet('proposals/dev/latest', async (req, res) => {
-  const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
-  const devIssueCount = network.data.devIssueCount
-  const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${devIssueCount}`))
-  const devProposalCount = issue.data.devProposalCount
-  const devProposals = []
-  for (let i = 1; i <= devProposalCount; i++) {
-    let devProposal = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${devIssueCount}-dev-proposal-${i}`))
-    devProposals.push(devProposal.data)
+  try {
+    const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+    const devIssueCount = network.data.devIssueCount
+    const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${devIssueCount}`))
+    const devProposalCount = issue.data.devProposalCount
+    const devProposals = []
+    for (let i = 1; i <= devProposalCount; i++) {
+      let devProposal = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${devIssueCount}-dev-proposal-${i}`))
+      devProposals.push(devProposal.data)
+    }
+    res.json({ devProposals })
+  } catch (error) {
+    res.json({ error })
   }
-  res.json({ devProposals })
 })
 
 dapp.registerExternalGet('proposals/dev/count', async (req, res) => {
-  const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
-  const devIssueCount = network.data.devIssueCount
-  const devIssue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${devIssueCount}`))
-  if (!devIssue) {
-    res.json({ error: 'No devIssues have been created yet' })
+  try {
+    const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+    const devIssueCount = network.data.devIssueCount
+    const devIssue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${devIssueCount}`))
+    if (!devIssue) {
+      res.json({ error: 'No devIssues have been created yet' })
+    }
+    const devProposalCount = devIssue.data.devProposalCount
+    res.json({ devProposalCount })
+  } catch (error) {
+    res.json(error)
   }
-  const devProposalCount = devIssue.data.devProposalCount
-  res.json({ devProposalCount })
 })
 
 dapp.registerExternalGet('account/:id', async (req, res) => {
-  const id = req.params['id']
-  const account = await dapp.getLocalOrRemoteAccount(id)
-  res.json({ account: account.data })
+  try {
+    const id = req.params['id']
+    const account = await dapp.getLocalOrRemoteAccount(id)
+    res.json({ account: account.data })
+  } catch (error) {
+    res.json({ error })
+  }
 })
 
-dapp.registerExternalGet('account/:id/handle', async (req, res) => {
-  const id = req.params['id']
-  const account = await dapp.getLocalOrRemoteAccount(id)
-  if (account) {
-    res.json({ handle: account.data.handle })
-  } else {
-    res.json({ error: 'No account with the given id' })
+dapp.registerExternalGet('account/:id/alias', async (req, res) => {
+  try {
+    const id = req.params['id']
+    const account = await dapp.getLocalOrRemoteAccount(id)
+    res.json({ handle: account.data.alias })
+  } catch (error) {
+    res.json({ error })
   }
 })
 
@@ -523,13 +571,17 @@ dapp.registerExternalGet('account/:id/toll', async (req, res) => {
 })
 
 dapp.registerExternalGet('address/:name', async (req, res) => {
-  const name = req.params['name']
-  const account = await dapp.getLocalOrRemoteAccount(name)
-  const address = account && account.data.address
-  if (address) {
-    res.json({ address })
-  } else {
-    res.json({ error: 'No account exists for the given handle' })
+  try {
+    const name = req.params['name']
+    const account = await dapp.getLocalOrRemoteAccount(name)
+    const address = account && account.data.address
+    if (address) {
+      res.json({ address })
+    } else {
+      res.json({ error: 'No account exists for the given handle' })
+    }
+  } catch (error) {
+    res.json({ error })
   }
 })
 
@@ -554,16 +606,6 @@ dapp.registerExternalGet('account/:id/friends', async (req, res) => {
   const account = await dapp.getLocalOrRemoteAccount(id)
   if (account) {
     res.json({ friends: account.data.data.friends })
-  } else {
-    res.json({ error: 'No account for given id' })
-  }
-})
-
-dapp.registerExternalGet('account/:id/transactions', async (req, res) => {
-  const id = req.params['id']
-  const account = await dapp.getLocalOrRemoteAccount(id)
-  if (account) {
-    res.json({ transactions: account.data.data.transactions })
   } else {
     res.json({ error: 'No account for given id' })
   }
@@ -634,7 +676,7 @@ dapp.setup({
         return response
       }
       case 'register': {
-        const alias = wrappedStates[tx.alias] && wrappedStates[tx.alias].data
+        const alias = wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
           return response
@@ -643,12 +685,12 @@ dapp.setup({
           response.reason = 'incorrect signing'
           return response
         }
-        if (alias.inbox === tx.handle) {
-          response.reason = 'This handle is already taken'
+        if (alias.inbox === tx.alias) {
+          response.reason = 'This alias is already taken'
           return response
         }
-        if (tx.handle && tx.handle.length >= 17) {
-          response.reason = 'Handle must be less than 17 characters'
+        if (tx.alias && tx.alias.length >= 17) {
+          response.reason = 'Alias must be less than 17 characters'
           return response
         }
         response.result = 'pass'
@@ -1474,6 +1516,7 @@ dapp.setup({
 
     // Validate the tx
     const { result, reason } = this.validateTransaction(tx, wrappedStates)
+
     if (result !== 'pass') {
       throw new Error(`invalid transaction, reason: ${reason}. tx: ${stringify(tx)}`)
     }
@@ -1492,12 +1535,14 @@ dapp.setup({
         break
       }
       case 'register': {
-        let alias = wrappedStates[tx.alias] && wrappedStates[tx.alias].data
-        alias.inbox = tx.handle
-        from.handle = tx.handle
+        let alias = wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
+        alias.inbox = tx.alias
+        from.alias = tx.alias
+        alias.address = tx.from
         // from.data.transactions.push({ ...tx, txId })
+        alias.timestamp = tx.timestamp
         from.timestamp = tx.timestamp
-        console.log('Applied register tx', txId, accounts[tx.from])
+        console.log('Applied register tx', txId, from)
         break
       }
       case 'create': {
@@ -1600,8 +1645,6 @@ dapp.setup({
         STAKE_REQUIRED = to.stakeRequired
         MAINTENANCE_INTERVAL = to.maintenanceInterval
         MAINTENANCE_FEE = to.maintenanceFee
-        DEV_FUND_INTERVAL = to.devFundInterval
-        DEV_FUND_AMOUNT = to.devFundAmount
         PROPOSAL_FEE = to.proposalFee
         DEV_PROPOSAL_FEE = to.devProposalFee
 
@@ -1652,8 +1695,6 @@ dapp.setup({
         STAKE_REQUIRED = to.stakeRequired
         MAINTENANCE_INTERVAL = to.maintenanceInterval
         MAINTENANCE_FEE = to.maintenanceFee
-        DEV_FUND_INTERVAL = to.devFundInterval
-        DEV_FUND_AMOUNT = to.devFundAmount
         PROPOSAL_FEE = to.proposalFee
         DEV_PROPOSAL_FEE = to.devProposalFee
 
@@ -1762,8 +1803,6 @@ dapp.setup({
         proposal.stakeRequired = tx.parameters.stakeRequired
         proposal.maintenanceInterval = tx.parameters.maintenanceInterval
         proposal.maintenanceFee = tx.parameters.maintenanceFee
-        proposal.devFundInterval = tx.parameters.devFundInterval
-        proposal.devFundAmount = tx.parameters.devFundAmount
         proposal.proposalFee = tx.parameters.proposalFee
         proposal.devProposalFee = tx.parameters.devProposalFee
         proposal.number = issue.proposalCount + 1
@@ -1780,7 +1819,7 @@ dapp.setup({
       case 'dev_proposal': {
         const devIssue = wrappedStates[tx.devIssue].data
         const devProposal = wrappedStates[tx.devProposal].data
-        from.data.balance -= tx.amount
+        from.data.balance -= DEV_PROPOSAL_FEE
 
         devProposal.totalAmount = tx.totalAmount
         devProposal.payAddress = tx.payAddress
@@ -1888,8 +1927,6 @@ dapp.setup({
         to.stakeRequired = winner.stakeRequired
         to.maintenanceInterval = winner.maintenanceInterval
         to.maintenanceFee = winner.maintenanceFee
-        to.devFundInterval = winner.devFundInterval
-        to.devFundAmount = winner.devFundAmount
         to.proposalFee = winner.proposalFee
         to.devProposalFee = winner.devProposalFee
         to.paramsApplied = true
@@ -1901,8 +1938,6 @@ dapp.setup({
         STAKE_REQUIRED = winner.stakeRequired
         MAINTENANCE_INTERVAL = winner.maintenanceInterval
         MAINTENANCE_FEE = winner.maintenanceFee
-        DEV_FUND_INTERVAL = winner.devFundInterval
-        DEV_FUND_AMOUNT = winner.devFundAmount
         PROPOSAL_FEE = winner.proposalFee
         DEV_PROPOSAL_FEE = winner.devProposalFee
         PARAMS_APPLIED = true
@@ -1969,7 +2004,8 @@ dapp.setup({
         result.targetKeys = [tx.to]
         break
       case 'register':
-        result.targetKeys = [tx.from, tx.alias]
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.aliasHash]
         break
       case 'create':
         result.targetKeys = [tx.to]
@@ -2154,16 +2190,8 @@ dapp.setup({
         }
       }
       if (tx.type === 'register') {
-        if (accountId === tx.alias) {
+        if (accountId === tx.aliasHash) {
           account = createAlias({
-            id: accountId,
-            address: tx.srcAcc,
-            timestamp: 0
-          })
-          accounts[accountId] = account
-          accountCreated = true
-        } else {
-          account = createAccount({
             id: accountId,
             timestamp: 0
           })
