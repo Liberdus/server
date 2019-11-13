@@ -266,8 +266,6 @@ function createNetworkAccount (obj = {}) {
     stakeRequired: 500,
     maintenanceInterval: ONE_MINUTE * 2,
     maintenanceFee: 0.0001,
-    devFundInterval: ONE_DAY,
-    devFundAmount: 10000,
     proposalFee: 500,
     devProposalFee: 20,
     issueCount: 0,
@@ -324,8 +322,13 @@ function createDevProposal (obj = {}) {
 
 // API
 dapp.registerExternalPost('inject', async (req, res) => {
-  const result = dapp.put(req.body)
-  res.json({ result })
+  try {
+    const result = dapp.put(req.body)
+    res.json({ result })
+  } catch (error) {
+    console.log(error)
+    res.json({ error })
+  }
 })
 
 dapp.registerExternalGet('network/parameters/node', async (req, res) => {
@@ -343,6 +346,7 @@ dapp.registerExternalGet('network/parameters/node', async (req, res) => {
     }
     res.json({ parameters })
   } catch (error) {
+    console.log(error)
     res.json({ error })
   }
 })
@@ -351,8 +355,9 @@ dapp.registerExternalGet('network/parameters', async (req, res) => {
   try {
     const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
     res.json({ parameters: network.data })
-  } catch (err) {
-    res.json({ error: err })
+  } catch (error) {
+    console.log(error)
+    res.json({ error })
   }
 })
 
@@ -367,6 +372,7 @@ dapp.registerExternalGet('issues', async (req, res) => {
     }
     res.json({ issues })
   } catch (error) {
+    console.log(error)
     res.json({ error })
   }
 })
@@ -378,6 +384,7 @@ dapp.registerExternalGet('issues/latest', async (req, res) => {
     const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${count}`))
     res.json({ issue: issue.data })
   } catch (error) {
+    console.log(error)
     res.json({ error })
   }
 })
@@ -388,6 +395,7 @@ dapp.registerExternalGet('issues/count', async (req, res) => {
     const issueCount = account.data.issueCount
     res.json({ issueCount })
   } catch (error) {
+    console.log(error)
     res.json({ error })
   }
 })
@@ -403,6 +411,7 @@ dapp.registerExternalGet('issues/dev', async (req, res) => {
     }
     res.json({ devIssues })
   } catch (error) {
+    console.log(error)
     res.json({ error })
   }
 })
@@ -414,6 +423,7 @@ dapp.registerExternalGet('issues/dev/latest', async (req, res) => {
     const devIssue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${count}`))
     res.json({ devIssue: devIssue.data })
   } catch (error) {
+    console.log(error)
     res.json({ error })
   }
 })
@@ -424,6 +434,7 @@ dapp.registerExternalGet('issues/dev/count', async (req, res) => {
     const devIssueCount = account.data.devIssueCount
     res.json({ devIssueCount })
   } catch (error) {
+    console.log(error)
     res.json({ error })
   }
 })
@@ -443,6 +454,7 @@ dapp.registerExternalGet('proposals', async (req, res) => {
     }
     res.json({ proposals })
   } catch (error) {
+    console.log(error)
     res.json({ error })
   }
 })
@@ -460,6 +472,7 @@ dapp.registerExternalGet('proposals/latest', async (req, res) => {
     }
     res.json({ proposals })
   } catch (error) {
+    console.log(error)
     res.json({ error })
   }
 })
@@ -475,6 +488,7 @@ dapp.registerExternalGet('proposals/count', async (req, res) => {
     const proposalCount = issue.data.proposalCount
     res.json({ proposalCount })
   } catch (error) {
+    console.log(error)
     res.json({ error })
   }
 })
@@ -494,6 +508,7 @@ dapp.registerExternalGet('proposals/dev', async (req, res) => {
     }
     res.json({ devProposals })
   } catch (error) {
+    console.log(error)
     res.json({ error })
   }
 })
@@ -511,6 +526,7 @@ dapp.registerExternalGet('proposals/dev/latest', async (req, res) => {
     }
     res.json({ devProposals })
   } catch (error) {
+    console.log(error)
     res.json({ error })
   }
 })
@@ -526,7 +542,8 @@ dapp.registerExternalGet('proposals/dev/count', async (req, res) => {
     const devProposalCount = devIssue.data.devProposalCount
     res.json({ devProposalCount })
   } catch (error) {
-    res.json(error)
+    console.log(error)
+    res.json({ error })
   }
 })
 
@@ -551,22 +568,31 @@ dapp.registerExternalGet('account/:id/alias', async (req, res) => {
 })
 
 dapp.registerExternalGet('account/:id/balance', async (req, res) => {
-  const id = req.params['id']
-  const account = await dapp.getLocalOrRemoteAccount(id)
-  if (account) {
-    res.json({ balance: account.data.data.balance })
-  } else {
-    res.json({ error: 'No account with the given id' })
+  try {
+    const id = req.params['id']
+    const account = await dapp.getLocalOrRemoteAccount(id)
+    if (account) {
+      res.json({ balance: account.data.data.balance })
+    } else {
+      res.json({ error: 'No account with the given id' })
+    }
+  } catch (error) {
+    res.json({ error })
   }
 })
 
 dapp.registerExternalGet('account/:id/toll', async (req, res) => {
-  const id = req.params['id']
-  const account = await dapp.getLocalOrRemoteAccount(id)
-  if (account) {
-    res.json({ toll: account.data.data.toll })
-  } else {
-    res.json({ error: 'No account with the given id' })
+  try {
+    const id = req.params['id']
+    const account = await dapp.getLocalOrRemoteAccount(id)
+    if (account) {
+      res.json({ toll: account.data.data.toll })
+    } else {
+      res.json({ error: 'No account with the given id' })
+    }
+  } catch (error) {
+    console.log(error)
+    res.json({ error })
   }
 })
 
@@ -574,9 +600,8 @@ dapp.registerExternalGet('address/:name', async (req, res) => {
   try {
     const name = req.params['name']
     const account = await dapp.getLocalOrRemoteAccount(name)
-    const address = account && account.data.address
-    if (address) {
-      res.json({ address })
+    if (account && account.data) {
+      res.json({ address: account.data.address })
     } else {
       res.json({ error: 'No account exists for the given handle' })
     }
@@ -588,40 +613,57 @@ dapp.registerExternalGet('address/:name', async (req, res) => {
 dapp.registerExternalGet('account/:id/:friendId/toll', async (req, res) => {
   const id = req.params['id']
   const friendId = req.params['friendId']
-  if (!friendId) {
-    res.json({ error: 'No provided friendId' })
+  if (!id) {
+    res.json({ error: 'No provided id in the route: account/:id/:friendId/toll' })
   }
-  const account = await dapp.getLocalOrRemoteAccount(id)
-  if (account && account.data.data.friends[friendId]) {
-    res.json({ toll: 1 })
-  } else if (account) {
-    res.json({ toll: account.data.data.toll })
-  } else {
-    res.json({ error: 'No account found with the given id' })
+  if (!friendId) {
+    res.json({ error: 'No provided friendId in the route: account/:id/:friendId/toll' })
+  }
+  try {
+    const account = await dapp.getLocalOrRemoteAccount(id)
+    if (account && account.data.data.friends[friendId]) {
+      res.json({ toll: 1 })
+    } else if (account) {
+      res.json({ toll: account.data.data.toll })
+    } else {
+      res.json({ error: 'No account found with the given id' })
+    }
+  } catch (error) {
+    console.log(error)
+    res.json({ error })
   }
 })
 
 dapp.registerExternalGet('account/:id/friends', async (req, res) => {
-  const id = req.params['id']
-  const account = await dapp.getLocalOrRemoteAccount(id)
-  if (account) {
-    res.json({ friends: account.data.data.friends })
-  } else {
-    res.json({ error: 'No account for given id' })
+  try {
+    const id = req.params['id']
+    const account = await dapp.getLocalOrRemoteAccount(id)
+    if (account) {
+      res.json({ friends: account.data.data.friends })
+    } else {
+      res.json({ error: 'No account for given id' })
+    }
+  } catch (error) {
+    console.log(error)
+    res.json({ error })
   }
 })
 
 dapp.registerExternalGet('account/:id/recentMessages', async (req, res) => {
-  const id = req.params['id']
-  let messages = []
-  const account = await dapp.getLocalOrRemoteAccount(id)
-  if (account) {
-    Object.values(account.data.data.chats).forEach(chat => {
-      messages.push(...chat.messages)
-    })
-    res.json({ messages: messages })
-  } else {
-    res.json({ error: 'No account for given id' })
+  try {
+    const id = req.params['id']
+    let messages = []
+    const account = await dapp.getLocalOrRemoteAccount(id)
+    if (account) {
+      Object.values(account.data.data.chats).forEach(chat => {
+        messages.push(...chat.messages)
+      })
+      res.json({ messages: messages })
+    } else {
+      res.json({ error: 'No account for given id' })
+    }
+  } catch (error) {
+    res.json({ error })
   }
 })
 
@@ -630,19 +672,22 @@ dapp.registerExternalGet('accounts', async (req, res) => {
 })
 
 dapp.registerExternalGet('messages/:accountId/:chatId', async (req, res) => {
-  const { accountId, chatId } = req.params
-  const account = await dapp.getLocalOrRemoteAccount(accountId)
-  if (!account) {
-    res.json({ error: "Account doesn't exist" })
-    res.end()
-    return
-  }
-  if (!account.data.data.chats[chatId]) {
-    res.json({ error: 'no chat history for this request' })
-    res.end()
-  } else {
-    let messages = [...account.data.data.chats[chatId].messages]
-    res.json({ messages })
+  try {
+    const { accountId, chatId } = req.params
+    const account = await dapp.getLocalOrRemoteAccount(accountId)
+    if (!account) {
+      res.json({ error: "Account doesn't exist" })
+      return
+    }
+    if (!account.data.data.chats[chatId]) {
+      res.json({ error: 'no chat history for this request' })
+    } else {
+      let messages = [...account.data.data.chats[chatId].messages]
+      res.json({ messages })
+    }
+  } catch (error) {
+    console.log(error)
+    res.json({ error })
   }
 })
 
@@ -691,6 +736,10 @@ dapp.setup({
         }
         if (tx.alias && tx.alias.length >= 17) {
           response.reason = 'Alias must be less than 17 characters'
+          return response
+        }
+        if (from.data.balance < TRANSACTION_FEE) {
+          response.reason = "From account doesn't have enough tokens to cover the transaction fee"
           return response
         }
         response.result = 'pass'
@@ -755,7 +804,7 @@ dapp.setup({
             return response
           }
         })
-        if (from.data.balance < (recipients.length * tx.amount) + (recipients.length * TRANSACTION_FEE)) {
+        if (from.data.balance < (recipients.length * tx.amount) + TRANSACTION_FEE) {
           response.reason = "from account doesn't have sufficient balance to cover the transaction"
           return response
         }
@@ -780,17 +829,13 @@ dapp.setup({
           response.reason = '"target" account does not exist.'
           return response
         }
-        if (tx.amount < 1) {
-          response.reason = 'Must send at least 1 token with the message transaction'
-          return response
-        }
         if (to.data.friends[tx.from]) {
           if (from.data.balance < 1) {
             response.reason = 'from account does not have sufficient funds.'
             return response
           }
         } else {
-          if (from.data.balance < tx.amount + TRANSACTION_FEE || from.data.balance < to.data.toll + TRANSACTION_FEE) {
+          if (from.data.balance < to.data.toll + TRANSACTION_FEE) {
             response.reason = 'from account does not have sufficient funds.'
             return response
           }
@@ -812,15 +857,11 @@ dapp.setup({
           response.reason = 'from account does not exist'
           return response
         }
-        if (from.data.balance < 1 + TRANSACTION_FEE) {
-          response.reason = 'from account does not have sufficient funds.'
+        if (from.data.balance < TRANSACTION_FEE) {
+          response.reason = 'from account does not have sufficient funds to complete toll transaction'
           return response
         }
-        if (tx.amount < 1 + TRANSACTION_FEE) {
-          response.reason = 'Must burn 1 token in order to set a toll'
-          return response
-        }
-        if (typeof toll === 'undefined' || tx.toll === null) {
+        if (!tx.toll) {
           response.reason = 'Toll was not defined in the transaction'
           return response
         }
@@ -845,8 +886,8 @@ dapp.setup({
           response.reason = 'incorrect signing'
           return response
         }
-        if (from.data.balance < tx.amount + TRANSACTION_FEE || tx.amount < 1 + TRANSACTION_FEE) {
-          response.reason = "Not enough tokens to cover transaction, or didn't send enough token with the transaction"
+        if (from.data.balance < TRANSACTION_FEE) {
+          response.reason = "From account doesn't have enough tokens to cover the transaction fee"
           return response
         }
         response.result = 'pass'
@@ -864,6 +905,10 @@ dapp.setup({
         }
         if (crypto.verifyObj(tx) === false) {
           response.reason = 'incorrect signing'
+          return response
+        }
+        if (from.data.balance < TRANSACTION_FEE) {
+          response.reason = "From account doesn't have enough tokens to cover the transaction fee"
           return response
         }
         response.result = 'pass'
@@ -1536,10 +1581,11 @@ dapp.setup({
       }
       case 'register': {
         let alias = wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
+        from.data.balance -= TRANSACTION_FEE
         alias.inbox = tx.alias
         from.alias = tx.alias
         alias.address = tx.from
-        // from.data.transactions.push({ ...tx, txId })
+        from.data.transactions.push({ ...tx, txId })
         alias.timestamp = tx.timestamp
         from.timestamp = tx.timestamp
         console.log('Applied register tx', txId, from)
@@ -1548,14 +1594,16 @@ dapp.setup({
       case 'create': {
         to.data.balance += tx.amount
         to.timestamp = tx.timestamp
+
+        to.data.transactions.push({ ...tx, txId })
         console.log('Applied create tx', txId, to)
         break
       }
       case 'transfer': {
         from.data.balance -= (tx.amount + TRANSACTION_FEE)
         to.data.balance += tx.amount
-        // from.data.transactions.push({ ...tx, txId });
-        // to.data.transactions.push({ ...tx, txId });
+        from.data.transactions.push({ ...tx, txId })
+        to.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
         console.log('Applied transfer tx', txId, from, to)
@@ -1563,16 +1611,24 @@ dapp.setup({
       }
       case 'distribute': {
         const recipients = tx.recipients.map(recipientId => wrappedStates[recipientId].data)
+        from.data.balance -= TRANSACTION_FEE
+        from.data.transactions.push({ ...tx, txId })
         recipients.forEach(recipient => {
-          from.data.balance -= (tx.amount + TRANSACTION_FEE)
+          from.data.balance -= tx.amount
           recipient.data.balance += tx.amount
+          recipient.data.transactions.push({ ...tx, txId })
         })
-        console.log('Applied distribute transaction', txId, recipients)
+        console.log('Applied distribute transaction', txId, from, recipients)
         break
       }
       case 'message': {
-        from.data.balance -= (tx.amount + TRANSACTION_FEE)
-        to.data.balance += tx.amount
+        if (to.data.friends[from.id]) {
+          from.data.balance -= (1 + TRANSACTION_FEE)
+          to.data.balance += 1
+        } else {
+          from.data.balance -= (to.data.toll + TRANSACTION_FEE)
+          to.data.balance += to.data.toll
+        }
 
         if (!from.data.chats[tx.to]) from.data.chats[tx.to] = { messages: [tx.message] }
         else from.data.chats[tx.to].messages.push(tx.message)
@@ -1580,8 +1636,8 @@ dapp.setup({
         if (!to.data.chats[tx.from]) to.data.chats[tx.from] = { messages: [tx.message] }
         else to.data.chats[tx.from].messages.push(tx.message)
 
-        // from.data.transactions.push({ ...tx, txId })
-        // to.data.transactions.push({ ...tx, txId })
+        from.data.transactions.push({ ...tx, txId })
+        to.data.transactions.push({ ...tx, txId })
 
         from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
@@ -1590,17 +1646,17 @@ dapp.setup({
         break
       }
       case 'toll': {
-        from.data.balance -= (tx.amount + TRANSACTION_FEE)
+        from.data.balance -= TRANSACTION_FEE
         from.data.toll = tx.toll
-        // from.data.transactions.push({ ...tx, txId })
+        from.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         console.log('Applied toll tx', txId, from)
         break
       }
       case 'friend': {
-        from.data.balance -= (tx.amount + TRANSACTION_FEE)
-        from.data.friends[tx.to] = tx.handle
-        // from.data.transactions.push({ ...tx, txId })
+        from.data.balance -= TRANSACTION_FEE
+        from.data.friends[tx.to] = tx.alias
+        from.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         console.log('Applied friend tx', txId, from)
         break
@@ -1608,6 +1664,7 @@ dapp.setup({
       case 'remove_friend': {
         from.data.friends[tx.to] = null
         from.timestamp = tx.timestamp
+        from.data.transactions.push({ ...tx, txId })
         console.log('Applied remove_friend tx', txId, from)
         break
       }
@@ -1615,13 +1672,14 @@ dapp.setup({
         from.data.balance -= tx.stake
         from.data.stake = tx.stake
         from.timestamp = tx.timestamp
+        from.data.transactions.push({ ...tx, txId })
         console.log('Applied bond tx', txId, from)
         break
       }
       case 'node_reward': {
         to.balance += NODE_REWARD_AMOUNT
         from.nodeRewardTime = tx.timestamp
-        // target.data.transactions.push({ ...tx, txId })
+        to.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
         console.log('Applied node_reward tx', txId, from, to)
@@ -1630,7 +1688,7 @@ dapp.setup({
       case 'snapshot_claim': {
         from.data.balance += to.snapshot[tx.from]
         to.snapshot[tx.from] = 0
-        // target.data.transactions.push({ ...tx, txId });
+        from.data.transactions.push({ ...tx, txId });
         from.claimedSnapshot = true
         from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
@@ -1810,6 +1868,7 @@ dapp.setup({
         issue.proposals.push(proposal.id)
         issue.proposalCount++
 
+        from.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         issue.timestamp = tx.timestamp
         proposal.timestamp = tx.timestamp
@@ -1831,6 +1890,7 @@ dapp.setup({
         devIssue.devProposals.push(devProposal.id)
         devIssue.devProposalCount++
 
+        from.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         devIssue.timestamp = tx.timestamp
         devProposal.timestamp = tx.timestamp
@@ -1842,6 +1902,8 @@ dapp.setup({
         from.data.balance -= tx.amount
         proposal.power += tx.amount
         proposal.totalVotes++
+
+        from.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         proposal.timestamp = tx.timestamp
         console.log('Applied vote tx', txId, from, proposal)
@@ -1855,6 +1917,8 @@ dapp.setup({
         } else {
           devProposal.reject += tx.amount
         }
+
+        from.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         devProposal.timestamp = tx.timestamp
         console.log('Applied dev_vote tx', txId, from, devProposal)
@@ -1983,6 +2047,8 @@ dapp.setup({
         developer.data.balance += tx.payment.amount
         to.developerFund = to.developerFund.filter(payment => payment.id !== tx.payment.id)
         DEVELOPER_FUND = to.developerFund
+
+        developer.data.transactions.push({ ...tx, txId })
         developer.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
         console.log('Applied developer_payment tx', txId, developer, to)
@@ -2545,6 +2611,7 @@ function releaseDeveloperFunds (payment) {
   let expectedInterval = Date.now() + CYCLE_INTERVAL
   // GET THE INITIAL CYCLE DATA FROM SHARDUS
   let cycleData = dapp.getLatestCycles()[0]
+  console.log(cycleData)
 
   let INITIAL_CYCLE = cycleData.counter
   let CURRENT_CYCLE = cycleData.counter
@@ -2560,6 +2627,7 @@ function releaseDeveloperFunds (payment) {
   async function networkMaintenance () {
     let drift = Date.now() - expectedInterval
     cycleData = dapp.getLatestCycles()[0]
+    console.log(cycleData)
     CURRENT_CYCLE = cycleData.counter
     // CONVERTS FROM SECONDS TO MILLISECONDS FOR COMPARISON WITH TIMESTAMPS
     CYCLE_START_TIME = cycleData.start * 1000
