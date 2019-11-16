@@ -5,10 +5,10 @@ const vorpal = require('vorpal')()
 const crypto = require('shardus-crypto-utils')
 const stringify = require('fast-stable-stringify')
 const axios = require('axios')
+const moment = require('moment')
 crypto('64f152869ca2d473e4ba64ab53f49ccdb2edae22da192c126850970e788af347')
 
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
-
 let USER
 let HOST = process.argv[2] || 'localhost:9001'
 console.log(`Using ${HOST} as node for queries and transactions.`)
@@ -354,6 +354,16 @@ async function queryMessages (to, from) {
   }
 }
 
+async function queryTransactions () {
+  try {
+    const res = await axios.get(`http://${HOST}/account/${USER.address}/transactions`)
+    const { transactions } = res.data
+    return transactions
+  } catch (error) {
+    return error
+  }
+}
+
 // QUERY'S THE CURRENT NETWORK PARAMETERS
 async function queryParameters () {
   const res = await axios.get(`http://${HOST}/network/parameters`)
@@ -361,6 +371,15 @@ async function queryParameters () {
     return res.data.error
   } else {
     return res.data.parameters
+  }
+}
+
+async function queryPhases () {
+  const res = await axios.get(`http://${HOST}/network/phases`)
+  if (res.data.error) {
+    return res.data.error
+  } else {
+    return res.data.phases
   }
 }
 
@@ -454,6 +473,87 @@ vorpal.command('use host <host>', 'uses <host> as the node for queries and trans
     callback()
   })
 
+// COMMAND TO SUBMIT A SNAPSHOT OF THE ULT CONTRACT (ADMIN ONLY)
+vorpal.command('snapshot', 'submits the snapshot the ULT contract')
+  .action(function (_, callback) {
+    const snapshot = require(resolve('snapshot.json'))
+    this.log(snapshot)
+    const tx = {
+      type: 'snapshot',
+      from: USER.address,
+      to: '0'.repeat(64),
+      snapshot,
+      timestamp: Date.now()
+    }
+    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+    injectTx(tx).then(res => {
+      this.log(res)
+      callback()
+    })
+  })
+
+vorpal.command('email', 'registers your email address to the network')
+  .action(async function (_, callback) {
+    const answer = await this.prompt({
+      type: 'input',
+      name: 'email',
+      message: 'Enter your email address: ',
+      validate: result => {
+        const regex = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/
+        if (!regex.test(result)) {
+          return 'You need to provide a valid email address'
+        } else {
+          return true
+        }
+      }
+    })
+    const signedTx = {
+      emailHash: crypto.hash(answer.email),
+      from: USER.address
+    }
+    crypto.signObj(signedTx, USER.keys.secretKey, USER.keys.publicKey)
+    const tx = {
+      type: 'email',
+      signedTx,
+      host: HOST,
+      email: answer.email,
+      timestamp: Date.now()
+    }
+    injectTx(tx).then(res => {
+      this.log(res)
+      callback()
+    })
+  })
+
+vorpal.command('verify', 'verifies your email address')
+  .action(async function (_, callback) {
+    const answer = await this.prompt({
+      type: 'input',
+      name: 'code',
+      message: 'Enter the verification code sent to your email address: ',
+      validate: result => {
+        result = result.split` `.join``
+        if (typeof result === 'string' && result.length === 6) {
+          return true
+        } else {
+          return 'You need to provide the 6 digit code'
+        }
+      }
+    })
+    const tx = {
+      type: 'verify',
+      from: USER.address,
+      host: HOST,
+      code: answer.code,
+      timestamp: Date.now()
+    }
+    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+    injectTx(tx).then(res => {
+      this.log(res)
+      callback()
+    })
+  })
+
 // COMMAND TO REGISTER AN ALIAS FOR A USER ACCOUNT
 vorpal.command('register', 'registers a unique alias for your account')
   .action(async function (args, callback) {
@@ -474,6 +574,259 @@ vorpal.command('register', 'registers a unique alias for your account')
       this.log(res)
       callback()
     })
+  })
+
+// COMMAND TO CREATE TOKENS FOR A USER ACCOUNT ON THE NETWORK (TEST ONLY)
+vorpal.command('create', 'creates tokens for an account')
+  .action(async function (args, callback) {
+    const answers = await this.prompt([{
+      type: 'input',
+      name: 'target',
+      message: 'Enter the target account: '
+    },
+    {
+      type: 'number',
+      name: 'amount',
+      message: 'Enter number of tokens to create: ',
+      default: 500,
+      filter: value => parseInt(value)
+    }])
+    const tx = {
+      type: 'create',
+      from: '0'.repeat(64),
+      to: answers.target,
+      amount: answers.amount,
+      timestamp: Date.now()
+    }
+    injectTx(tx).then(res => {
+      this.log(res)
+      callback()
+    })
+  })
+
+// COMMAND TO TRANSFER TOKENS FROM ONE ACCOUNT TO ANOTHER
+vorpal.command('transfer', 'transfers tokens to another account')
+  .action(async function (_, callback) {
+    const answers = await this.prompt([{
+      type: 'input',
+      name: 'target',
+      message: 'Enter the target account: '
+    },
+    {
+      type: 'number',
+      name: 'amount',
+      message: 'How many tokens do you want to send: ',
+      default: 50,
+      filter: value => parseInt(value)
+    }])
+    const to = await getAddress(answers.target)
+    const tx = {
+      type: 'transfer',
+      from: USER.address,
+      to: to,
+      amount: answers.amount,
+      timestamp: Date.now()
+    }
+    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+    injectTx(tx).then(res => {
+      this.log(res)
+      callback()
+    })
+  })
+
+// COMMAND TO SEND SOME AMOUNT OF TOKENS TO MULTIPLE ACCOUNTS
+vorpal.command('distribute', 'distributes tokens to multiple accounts')
+  .action(async function (_, callback) {
+    const answers = await this.prompt([{
+      type: 'input',
+      name: 'targets',
+      message: 'Enter the target accounts separated by spaces: ',
+      filter: values => values.split` `.map(target => walletEntries[target].address)
+    },
+    {
+      type: 'number',
+      name: 'amount',
+      message: 'How many tokens do you want to send each target: ',
+      filter: value => parseInt(value)
+    }])
+    const tx = {
+      type: 'distribute',
+      from: USER.address,
+      recipients: answers.targets,
+      amount: answers.amount,
+      timestamp: Date.now()
+    }
+    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+    injectTx(tx).then(res => {
+      this.log(res)
+      callback()
+    })
+  })
+
+// COMMAND TO SEND A MESSAGE TO ANOTHER USER ON THE NETWORK
+vorpal.command('message', 'sends a message to another user')
+  .action(async function (_, callback) {
+    const answers = await this.prompt([{
+      type: 'input',
+      name: 'to',
+      message: 'Enter the alias or publicKey of the target: '
+    },
+    {
+      type: 'input',
+      name: 'message',
+      message: 'Enter the message: '
+    }])
+    const to = await getAddress(answers.to)
+    if (to === undefined || to === null) {
+      this.log("Account doesn't exist for: ", answers.to)
+      callback()
+    }
+    const result = await getToll(to, USER.address)
+    if (result.error) {
+      this.log(`There was an error retrieving the toll for ${answers.to}`)
+      this.log(result.error)
+      callback()
+    } else {
+      const answer = await this.prompt({
+        type: 'list',
+        name: 'confirm',
+        message: `The toll for sending this user a message is ${result.toll}, continue? `,
+        choices: [{ name: 'yes', value: true, short: true }, { name: 'no', value: false, short: false }],
+        default: 'yes'
+      })
+      if (answer.confirm) {
+        const message = stringify({
+          body: answers.message,
+          timestamp: Date.now(),
+          // TODO: CHANGE TO ACTUAL HANDLE
+          handle: USER.address
+        })
+        // TODO: USE ENCRYPTION?
+        // const encryptedMsg = crypto.encrypt(
+        //   message,
+        //   crypto.convertSkToCurve(USER.keys.secretKey),
+        //   crypto.convertPkToCurve(to)
+        // );
+        const tx = {
+          type: 'message',
+          from: USER.address,
+          to: to,
+          message: message,
+          timestamp: Date.now()
+        }
+        crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+        injectTx(tx).then(res => {
+          this.log(res)
+          callback()
+        })
+      } else {
+        callback()
+      }
+    }
+  })
+
+// COMMAND TO SET A TOLL FOR PEOPLE NOT ON YOUR FRIENDS LIST THAT SEND YOU MESSAGES
+vorpal.command('toll', 'sets a toll people must you in order to send you messages')
+  .action(async function (_, callback) {
+    const answer = await this.prompt({
+      type: 'number',
+      name: 'toll',
+      message: 'Enter the toll: ',
+      filter: value => parseInt(value)
+    })
+    const tx = {
+      type: 'toll',
+      from: USER.address,
+      toll: answer.toll,
+      timestamp: Date.now()
+    }
+    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+    injectTx(tx).then(res => {
+      this.log(res)
+      callback()
+    })
+  })
+
+// COMMAND TO ADD A FRIEND TO YOUR USER ACCOUNT'S FRIEND LIST
+vorpal.command('add friend', 'adds a friend to your account')
+  .action(async function (args, callback) {
+    const answer = await this.prompt({
+      type: 'input',
+      name: 'friend',
+      message: 'Enter the alias or publicKey of the friend: '
+    })
+    const to = await getAddress(answer.friend)
+    if (to === undefined || to === null) {
+      this.log("Target account doesn't exist for: ", answer.friend)
+      callback()
+    }
+    const tx = {
+      type: 'friend',
+      alias: answer.friend,
+      from: USER.address,
+      to: to,
+      timestamp: Date.now()
+    }
+    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+    injectTx(tx).then(res => {
+      this.log(res)
+      callback()
+    })
+  })
+
+// COMMAND TO REMOVE A FRIEND FROM YOUR USER ACCOUNT'S FRIEND LIST
+vorpal.command('remove friend', 'removes a friend from your account')
+  .action(async function (_, callback) {
+    const answer = await this.prompt({
+      type: 'input',
+      name: 'friend',
+      message: 'Enter the alias or publicKey of the friend to remove: '
+    })
+    const to = await getAddress(answer.friend)
+    if (to === undefined || to === null) {
+      this.log("Target account doesn't exist for: ", answer.friend)
+      callback()
+    }
+    const tx = {
+      type: 'remove_friend',
+      from: USER.address,
+      to: to,
+      timestamp: Date.now()
+    }
+    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+    injectTx(tx).then(res => {
+      this.log(res)
+      callback()
+    })
+  })
+
+// COMMAND TO STAKE TOKENS IN ORDER TO RUN A NODE
+// TODO
+vorpal.command('stake', 'stakes tokens in order to operate a node')
+  .action(async function (args, callback) {
+    const parameters = await queryParameters()
+    const answer = await this.prompt({
+      type: 'list',
+      name: 'confirm',
+      message: `The required staking amount is ${parameters.stakeRequired}, continue? `,
+      choices: [{ name: 'yes', value: true, short: true }, { name: 'no', value: false, short: false }]
+    })
+    if (answer.confirm) {
+      const tx = {
+        type: 'stake',
+        from: USER.address,
+        stake: parameters.stakeRequired,
+        timestamp: Date.now()
+      }
+      crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+      injectTx(tx).then(res => {
+        this.log(res)
+        callback()
+      })
+    } else {
+      this.log('cancelled')
+      callback()
+    }
   })
 
 // COMMAND TO INITIALIZE STARTING NETWORK PARAMETERS (ADMIN ONLY)
@@ -519,67 +872,69 @@ vorpal.command('update parameters', 'updates the network parameters (TESTING)')
 // COMMAND TO SUBMIT A PROPOSAL
 vorpal.command('proposal', 'submits a proposal to change network parameters')
   .action(async function (args, callback) {
+    const defaults = await queryParameters()
+    this.log('Choose the network parameters (Using default value keeps the current parameter value)')
     const answers = await this.prompt([{
       type: 'number',
       name: 'nodeRewardInterval',
       message: 'Specify node reward interval (in minutes)',
-      default: 1,
+      default: defaults.nodeRewardInterval,
       filter: value => parseInt(value)
     },
     {
       type: 'number',
       name: 'nodeRewardAmount',
       message: 'Specify node reward amount',
-      default: 10,
+      default: defaults.nodeRewardAmount,
       filter: value => parseInt(value)
     },
     {
       type: 'number',
       name: 'nodePenalty',
       message: 'Specify node penalty amount',
-      default: 100,
+      default: defaults.nodePenalty,
       filter: value => parseInt(value)
     },
     {
       type: 'number',
       name: 'transactionFee',
       message: 'Specify transaction fee',
-      default: 0,
+      default: defaults.transactionFee,
       filter: value => parseInt(value)
     },
     {
       type: 'number',
       name: 'stakeRequired',
       message: 'Specify stake requirement',
-      default: 100,
+      default: defaults.stakeRequired,
       filter: value => parseInt(value)
     },
     {
       type: 'number',
       name: 'maintenanceInterval',
       message: 'Specify maintenance interval (in minutes)',
-      default: 2,
+      default: defaults.maintenanceInterval,
       filter: value => parseInt(value)
     },
     {
       type: 'number',
       name: 'maintenanceFee',
       message: 'Specify maintenance fee',
-      default: 0.0001,
+      default: defaults.maintenanceFee,
       filter: value => parseFloat(value)
     },
     {
       type: 'number',
       name: 'proposalFee',
       message: 'Specify proposal fee',
-      default: 300,
+      default: defaults.proposalFee,
       filter: value => parseInt(value)
     },
     {
       type: 'number',
       name: 'devProposalFee',
       message: 'Specify dev proposal fee',
-      default: 100,
+      default: defaults.devProposalFee,
       filter: value => parseInt(value)
     }])
     const issue = await getIssueCount()
@@ -785,42 +1140,6 @@ vorpal.command('vote dev', 'vote for a development proposal')
     })
   })
 
-// COMMAND TO STAKE TOKENS IN ORDER TO RUN A NODE
-// TODO
-vorpal.command('stake <amount>', 'stakes <amount> tokens in order to operate a node')
-  .action(function (args, callback) {
-    const tx = {
-      type: 'stake',
-      from: USER.address,
-      stake: args.amount,
-      timestamp: Date.now()
-    }
-    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
-    injectTx(tx).then(res => {
-      this.log(res)
-      callback()
-    })
-  })
-
-// COMMAND TO SUBMIT A SNAPSHOT OF THE ULT CONTRACT (ADMIN ONLY)
-vorpal.command('snapshot', 'submits the snapshot the ULT contract')
-  .action(function (_, callback) {
-    const snapshot = require(resolve('snapshot.json'))
-    this.log(snapshot)
-    const tx = {
-      type: 'snapshot',
-      from: USER.address,
-      to: '0'.repeat(64),
-      snapshot,
-      timestamp: Date.now()
-    }
-    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
-    injectTx(tx).then(res => {
-      this.log(res)
-      callback()
-    })
-  })
-
 // COMMAND TO CLAIM THE TOKENS FROM THE ULT SNAPSHOT
 // TODO VALIDATE ETHEREUM ADDRESS SOMEHOW
 vorpal.command('claim', 'submits a claim transaction for the snapshot')
@@ -836,230 +1155,6 @@ vorpal.command('claim', 'submits a claim transaction for the snapshot')
       this.log(res)
       callback()
     })
-  })
-
-// COMMAND TO CREATE TOKENS FOR A USER ACCOUNT ON THE NETWORK (TEST ONLY)
-vorpal.command('create', 'creates tokens for an account')
-  .action(async function (args, callback) {
-    const answers = await this.prompt([{
-      type: 'input',
-      name: 'target',
-      message: 'Enter the target account: '
-    },
-    {
-      type: 'number',
-      name: 'amount',
-      message: 'Enter number of tokens to create: ',
-      default: 500,
-      filter: value => parseInt(value)
-    }])
-    const tx = {
-      type: 'create',
-      from: '0'.repeat(64),
-      to: answers.target,
-      timestamp: Date.now(),
-      amount: answers.amount
-    }
-    injectTx(tx).then(res => {
-      this.log(res)
-      callback()
-    })
-  })
-
-// COMMAND TO TRANSFER TOKENS FROM ONE ACCOUNT TO ANOTHER
-vorpal.command('transfer', 'transfers tokens to another account')
-  .action(async function (_, callback) {
-    const answers = await this.prompt([{
-      type: 'input',
-      name: 'target',
-      message: 'Enter the target account: '
-    },
-    {
-      type: 'number',
-      name: 'amount',
-      message: 'How many tokens do you want to send: ',
-      default: 50,
-      filter: value => parseInt(value)
-    }])
-    const to = await getAddress(answers.target)
-    const tx = {
-      type: 'transfer',
-      from: USER.address,
-      to: to,
-      amount: answers.amount,
-      timestamp: Date.now()
-    }
-    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
-    injectTx(tx).then(res => {
-      this.log(res)
-      callback()
-    })
-  })
-
-// COMMAND TO SEND SOME AMOUNT OF TOKENS TO MULTIPLE ACCOUNTS
-vorpal.command('distribute', 'distributes tokens to multiple accounts')
-  .action(async function (_, callback) {
-    const answers = await this.prompt([{
-      type: 'input',
-      name: 'targets',
-      message: 'Enter the target accounts separated by spaces: ',
-      filter: values => values.split` `.map(target => walletEntries[target].address)
-    },
-    {
-      type: 'number',
-      name: 'amount',
-      message: 'How many tokens do you want to send each target: ',
-      filter: value => parseInt(value)
-    }])
-    const tx = {
-      type: 'distribute',
-      from: USER.address,
-      recipients: answers.targets,
-      amount: answers.amount,
-      timestamp: Date.now()
-    }
-    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
-    injectTx(tx).then(res => {
-      this.log(res)
-      callback()
-    })
-  })
-
-// COMMAND TO ADD A FRIEND TO YOUR USER ACCOUNT'S FRIEND LIST
-vorpal.command('add friend', 'adds a friend to your account')
-  .action(async function (args, callback) {
-    const answer = await this.prompt({
-      type: 'input',
-      name: 'friend',
-      message: 'Enter the alias or publicKey of the friend: '
-    })
-    const to = await getAddress(answer.friend)
-    if (to === undefined || to === null) {
-      this.log("Target account doesn't exist for: ", answer.friend)
-      callback()
-    }
-    const tx = {
-      type: 'friend',
-      alias: answer.friend,
-      from: USER.address,
-      to: to,
-      timestamp: Date.now()
-    }
-    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
-    injectTx(tx).then(res => {
-      this.log(res)
-      callback()
-    })
-  })
-
-// COMMAND TO REMOVE A FRIEND FROM YOUR USER ACCOUNT'S FRIEND LIST
-vorpal.command('remove friend', 'removes a friend from your account')
-  .action(async function (_, callback) {
-    const answer = await this.prompt({
-      type: 'input',
-      name: 'friend',
-      message: 'Enter the alias or publicKey of the friend to remove: '
-    })
-    const to = await getAddress(answer.friend)
-    if (to === undefined || to === null) {
-      this.log("Target account doesn't exist for: ", answer.friend)
-      callback()
-    }
-    const tx = {
-      type: 'remove_friend',
-      from: USER.address,
-      to: to,
-      timestamp: Date.now()
-    }
-    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
-    injectTx(tx).then(res => {
-      this.log(res)
-      callback()
-    })
-  })
-
-// COMMAND TO SET A TOLL FOR PEOPLE NOT ON YOUR FRIENDS LIST THAT SEND YOU MESSAGES
-vorpal.command('toll', 'sets a toll people must you in order to send you messages')
-  .action(async function (_, callback) {
-    const answer = await this.prompt({
-      type: 'number',
-      name: 'toll',
-      message: 'Enter the toll: ',
-      filter: value => parseInt(value)
-    })
-    const tx = {
-      type: 'toll',
-      from: USER.address,
-      toll: answer.toll,
-      timestamp: Date.now()
-    }
-    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
-    injectTx(tx).then(res => {
-      this.log(res)
-      callback()
-    })
-  })
-
-// COMMAND TO SEND A MESSAGE TO ANOTHER USER ON THE NETWORK
-vorpal.command('message', 'sends a message to another user')
-  .action(async function (_, callback) {
-    const answers = await this.prompt([{
-      type: 'input',
-      name: 'to',
-      message: 'Enter the alias or publicKey of the target: '
-    },
-    {
-      type: 'input',
-      name: 'message',
-      message: 'Enter the message: '
-    }])
-    const to = await getAddress(answers.to)
-    if (to === undefined || to === null) {
-      this.log("Account doesn't exist for: ", answers.to)
-      callback()
-    }
-    const result = await getToll(to, USER.address)
-    if (result.error) {
-      this.log(`There was an error retrieving the toll for ${answers.to}`)
-      this.log(result.error)
-      callback()
-    } else {
-      const answer = await this.prompt({
-        type: 'list',
-        name: 'confirm',
-        message: `The toll for sending this user a message is ${result.toll}, continue? `,
-        choices: [{ name: 'yes', value: true, short: true }, { name: 'no', value: false, short: false }],
-        default: 'yes'
-      })
-      if (answer.confirm) {
-        const message = stringify({
-          body: answers.message,
-          timestamp: Date.now(),
-          // TODO: CHANGE TO ACTUAL HANDLE
-          handle: USER.address
-        })
-        // TODO: USE ENCRYPTION?
-        // const encryptedMsg = crypto.encrypt(
-        //   message,
-        //   crypto.convertSkToCurve(USER.keys.secretKey),
-        //   crypto.convertPkToCurve(to)
-        // );
-        const tx = {
-          type: 'message',
-          from: USER.address,
-          to: to,
-          message: message,
-          timestamp: Date.now()
-        }
-        crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
-        injectTx(tx).then(res => {
-          this.log(res)
-          callback()
-        })
-      } else {
-        callback()
-      }
-    }
   })
 
 // COMMAND TO POLL FOR MESSAGES BETWEEN 2 USERS AFTER A SPECIFIED TIMESTAMP
@@ -1122,6 +1217,12 @@ vorpal.command('get <type>', 'query the network for <type> account')
     switch (args.type) {
       case 'params': {
         this.log(await queryParameters())
+        break
+      }
+      case 'phases': {
+        const phases = await queryPhases()
+        this.log('Parameter phase: ' + phases.parameter.phase, '--- Ending in: ' + moment().to(new Date(phases.parameter.timeframe[1]), true))
+        this.log('Dev phase: ' + phases.dev.phase, '--- Ending in: ' + moment().to(new Date(phases.dev.timeframe[1]), true))
         break
       }
       case 'nodeParams': {
@@ -1217,6 +1318,12 @@ vorpal.command('use <name>', 'uses <name> wallet for transactions')
   .action(function (args, callback) {
     USER = vorpal.execSync('wallet create ' + args.name)
     this.log('Now using wallet: ' + args.name)
+    callback()
+  })
+
+vorpal.command('transactions', 'gets all the transactions for your account')
+  .action(async function (_, callback) {
+    this.log(await queryTransactions())
     callback()
   })
 

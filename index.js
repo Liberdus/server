@@ -3,8 +3,20 @@ const path = require('path')
 const shardus = require('shardus-global-server')
 const crypto = require('shardus-crypto-utils')
 const stringify = require('fast-stable-stringify')
+const nodemailer = require('nodemailer')
+const smtpTransport = require('nodemailer-smtp-transport')
 const { set } = require('dot-prop')
 crypto('64f152869ca2d473e4ba64ab53f49ccdb2edae22da192c126850970e788af347')
+
+// FOR SENDING VERIFICATION EMAILS
+const transporter = nodemailer.createTransport(smtpTransport({
+  service: 'gmail',
+  host: 'smtp.gmail.com',
+  auth: {
+    user: 'liberdus.verify@gmail.com',
+    pass: 'CTss94574!'
+  }
+}))
 
 /**
  * @typedef {import('shardus-enterprise-server/src/shardus')} Shardus
@@ -361,6 +373,46 @@ dapp.registerExternalGet('network/parameters', async (req, res) => {
   }
 })
 
+dapp.registerExternalGet('network/phases', async (req, res) => {
+  try {
+    const network = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
+    const proposalWindow = network.data.proposalWindow
+    const votingWindow = network.data.votingWindow
+    const graceWindow = network.data.graceWindow
+    const applyWindow = network.data.applyWindow
+    const devProposalWindow = network.data.devProposalWindow
+    const devVotingWindow = network.data.devVotingWindow
+    const devGraceWindow = network.data.devGraceWindow
+    const devApplyWindow = network.data.devApplyWindow
+    const timestamp = Date.now()
+    let phases = { parameter: null, dev: null }
+
+    if (timestamp >= proposalWindow[0] && timestamp < proposalWindow[1]) {
+      phases.parameter = { phase: 'proposals', timeframe: proposalWindow }
+    } else if (timestamp >= votingWindow[0] && timestamp < votingWindow[1]) {
+      phases.parameter = { phase: 'voting', timeframe: votingWindow }
+    } else if (timestamp >= graceWindow[0] && timestamp < graceWindow[1]) {
+      phases.parameter = { phase: 'grace', timeframe: graceWindow }
+    } else if (timestamp >= applyWindow[0] && timestamp < applyWindow[1]) {
+      phases.parameter = { phase: 'apply', timeframe: applyWindow }
+    }
+
+    if (timestamp >= devProposalWindow[0] && timestamp < devProposalWindow[1]) {
+      phases.dev = { phase: 'proposals', timeframe: devProposalWindow }
+    } else if (timestamp >= devVotingWindow[0] && timestamp < devVotingWindow[1]) {
+      phases.dev = { phase: 'voting', timeframe: devVotingWindow }
+    } else if (timestamp >= devGraceWindow[0] && timestamp < devGraceWindow[1]) {
+      phases.dev = { phase: 'grace', timeframe: devGraceWindow }
+    } else if (timestamp >= devApplyWindow[0] && timestamp < devApplyWindow[1]) {
+      phases.dev = { phase: 'apply', timeframe: devApplyWindow }
+    }
+
+    res.json({ phases })
+  } catch (error) {
+    res.json({ error })
+  }
+})
+
 dapp.registerExternalGet('issues', async (req, res) => {
   try {
     const account = await dapp.getLocalOrRemoteAccount('0'.repeat(64))
@@ -567,6 +619,16 @@ dapp.registerExternalGet('account/:id/alias', async (req, res) => {
   }
 })
 
+dapp.registerExternalGet('account/:id/transactions', async (req, res) => {
+  try {
+    const id = req.params['id']
+    const account = await dapp.getLocalOrRemoteAccount(id)
+    res.json({ transactions: account.data.data.transactions })
+  } catch (error) {
+    res.json({ error })
+  }
+})
+
 dapp.registerExternalGet('account/:id/balance', async (req, res) => {
   try {
     const id = req.params['id']
@@ -714,6 +776,57 @@ dapp.setup({
         }
         if (crypto.verifyObj(tx) === false) {
           response.reason = 'incorrect signing'
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'email': {
+        if (`localhost:${config.server.ip.externalPort}` !== tx.host) {
+          response.reason = "This is not the node you're looking for"
+          return response
+        }
+        const source = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data
+        if (!source) {
+          response.reason = 'no account associated with address in signed tx'
+          return response
+        }
+        if (tx.signedTx.sign.owner !== tx.signedTx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx.signedTx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (tx.signedTx.emailHash !== crypto.hash(tx.email)) {
+          response.reason = 'Hash of the email does not match the signed email hash'
+          return response
+        }
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'verify': {
+        if (`localhost:${config.server.ip.externalPort}` !== tx.host) {
+          response.reason = "This is not the node you're looking for"
+          return response
+        }
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (!from || !from.verified) {
+          response.reason = 'From account has not been sent an verification email yet'
+          return response
+        }
+        if (crypto.hash(tx.code) !== from.verified) {
+          response.reason = 'Hash of code in tx does not match the hash of the verification code sent'
           return response
         }
         response.result = 'pass'
@@ -928,8 +1041,8 @@ dapp.setup({
           response.reason = 'incorrect signing'
           return response
         }
-        if (tx.stake < STAKE_REQUIRED) {
-          response.reason = 'Stake requirement not met'
+        if (from.data.balance < STAKE_REQUIRED) {
+          response.reason = `From account has insufficient balance, the cost required to operate a node is ${STAKE_REQUIRED}`
           return response
         }
         response.result = 'pass'
@@ -1518,35 +1631,304 @@ dapp.setup({
       reason = '"type" must be a string.'
       throw new Error(reason)
     }
-    if (!tx.from || typeof tx.from !== 'string') {
-      result = 'fail'
-      reason = '"srcAddress" must be a string.'
-      throw new Error(reason)
-    }
-    switch (tx.type) {
-      case 'message': {
-        if (typeof tx.to !== 'string') {
-          result = 'fail'
-          reason = '"to" is not a string'
-          throw new Error(reason)
-        }
-        if (!tx.to) {
-          result = 'fail'
-          reason = '"to" does not exist'
-          throw new Error(reason)
-        }
-        break
-      }
-    }
-    if (tx.amount && typeof tx.amount !== 'number') {
-      result = 'fail'
-      reason = '"amount" must be a number.'
-      throw new Error(reason)
-    }
+
     if (typeof txnTimestamp !== 'number') {
       result = 'fail'
       reason = '"timestamp" must be a number.'
       throw new Error(reason)
+    }
+
+    switch (tx.type) {
+      case 'snapshot': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (tx.to !== '0'.repeat(64)) {
+          result = 'fail'
+          reason = '"To" must be ' + '0'.repeat(64)
+          throw new Error(reason)
+        }
+        if (typeof tx.snapshot !== 'object') {
+          result = 'fail'
+          reason = '"Snapshot" must be an object.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'email': {
+        if (typeof tx.signedTx !== 'object') {
+          result = 'fail'
+          reason = '"signedTx" must be an object.'
+          throw new Error(reason)
+        }
+        const signedTx = tx.signedTx
+        if (signedTx) {
+          if (typeof signedTx !== 'object') {
+            result = 'fail'
+            reason = '"signedTx" must be a object.'
+            throw new Error(reason)
+          }
+          if (typeof signedTx.sign !== 'object') {
+            result = 'fail'
+            reason = '"sign" property on signedTx must be an object.'
+            throw new Error(reason)
+          }
+          if (typeof signedTx.from !== 'string') {
+            result = 'fail'
+            reason = '"From" must be a string.'
+            throw new Error(reason)
+          }
+          if (typeof signedTx.emailHash !== 'string') {
+            result = 'fail'
+            reason = '"emailHash" must be a string.'
+            throw new Error(reason)
+          }
+        }
+
+        // WILL CHANGE THIS ONCE NODES CAN DETERMINISTICALLY PICK THEMSELVES
+        if (typeof tx.host !== 'string') {
+          result = 'fail'
+          reason = '"host" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.email !== 'string') {
+          result = 'fail'
+          reason = '"email" must be a string.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'verify': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.host !== 'string') {
+          result = 'fail'
+          reason = '"Host" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.code !== 'string') {
+          result = 'fail'
+          reason = '"Code" must be a string.'
+          throw new Error(reason)
+        }
+        if (tx.code.length !== 6) {
+          result = 'fail'
+          reason = '"Code" length must be 6 digits.'
+          throw new Error(reason)
+        }
+        if (typeof parseInt(tx.code) !== 'number') {
+          result = 'fail'
+          reason = '"Code" must be parseable to an integer.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'register': {
+        if (typeof tx.aliasHash !== 'string') {
+          result = 'fail'
+          reason = '"aliasHash" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.alias !== 'string') {
+          result = 'fail'
+          reason = '"alias" must be a string.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'create': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.amount !== 'number') {
+          result = 'fail'
+          reason = '"Amount" must be a number.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'transfer': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.amount !== 'number') {
+          result = 'fail'
+          reason = '"Amount" must be a number.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'distribute': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (Array.isArray(tx.recipients) !== true) {
+          result = 'fail'
+          reason = '"Recipients" must be an array.'
+          throw new Error(reason)
+        }
+        if (typeof tx.amount !== 'number') {
+          result = 'fail'
+          reason = '"Amount" must be a number.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'message': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.message !== 'string') {
+          result = 'fail'
+          reason = '"Message" must be a string.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'toll': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.toll !== 'number') {
+          result = 'fail'
+          reason = '"Toll" must be a number.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'friend': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.alias !== 'string') {
+          result = 'fail'
+          reason = '"Message" must be a string.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'remove_friend': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'stake': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.stake !== 'number') {
+          result = 'fail'
+          reason = '"Stake" must be a number.'
+          throw new Error(reason)
+        }
+        break
+      }
+      //TODO: MORE TODO HERE
+      case 'node_reward': {
+        break
+      }
+      case 'snapshot_claim': {
+        break
+      }
+      case 'initial_parameters': {
+        break
+      }
+      case 'update_parameters': {
+        break
+      }
+      case 'maintenance': {
+        break
+      }
+      case 'issue': {
+        break
+      }
+      case 'dev_issue': {
+        break
+      }
+      case 'proposal': {
+        break
+      }
+      case 'dev_proposal': {
+        break
+      }
+      case 'vote': {
+        break
+      }
+      case 'dev_vote': {
+        break
+      }
+      case 'tally': {
+        break
+      }
+      case 'dev_tally': {
+        break
+      }
+      case 'apply_parameters': {
+        break
+      }
+      case 'apply_dev_parameters': {
+        break
+      }
+      case 'developer_payment': {
+        break
+      }
     }
 
     return {
@@ -1577,6 +1959,39 @@ dapp.setup({
         from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
         console.log('Applied snapshot tx', txId, to)
+        break
+      }
+      case 'email': {
+        const source = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data
+        source.emailHash = tx.signedTx.emailHash
+        const baseNumber = 99999
+        const randomNumber = Math.floor((Math.random() * 899999)) + 1
+        const verificationNumber = baseNumber + randomNumber
+        source.verified = crypto.hash(`${verificationNumber}`)
+
+        const mailOptions = {
+          from: 'liberdus.verify@gmail.com',
+          to: `${tx.email}`,
+          subject: 'Verify your email for liberdus',
+          text: `Please verify your email address by sending a "verify" transaction with the number: ${verificationNumber}`
+        }
+
+        transporter.sendMail(mailOptions, function (error, info) {
+          if (error) {
+            console.log(error)
+          } else {
+            console.log('Email sent: ' + info.response)
+          }
+        })
+
+        source.timestamp = tx.timestamp
+        console.log('Applied email tx', txId, source)
+        break
+      }
+      case 'verify': {
+        from.verified = true
+        from.timestamp = tx.timestamp
+        console.log('Applied verify tx', txId, from)
         break
       }
       case 'register': {
@@ -1679,7 +2094,6 @@ dapp.setup({
       case 'node_reward': {
         to.balance += NODE_REWARD_AMOUNT
         from.nodeRewardTime = tx.timestamp
-        to.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
         console.log('Applied node_reward tx', txId, from, to)
@@ -1688,7 +2102,7 @@ dapp.setup({
       case 'snapshot_claim': {
         from.data.balance += to.snapshot[tx.from]
         to.snapshot[tx.from] = 0
-        from.data.transactions.push({ ...tx, txId });
+        from.data.transactions.push({ ...tx, txId })
         from.claimedSnapshot = true
         from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
@@ -2068,6 +2482,12 @@ dapp.setup({
       case 'snapshot':
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.to]
+        break
+      case 'email':
+        result.sourceKeys = [tx.signedTx.from]
+        break
+      case 'verify':
+        result.sourceKeys = [tx.from]
         break
       case 'register':
         result.sourceKeys = [tx.from]
@@ -2611,7 +3031,7 @@ function releaseDeveloperFunds (payment) {
   let expectedInterval = Date.now() + CYCLE_INTERVAL
   // GET THE INITIAL CYCLE DATA FROM SHARDUS
   let cycleData = dapp.getLatestCycles()[0]
-  console.log(cycleData)
+  console.log('CYCLE_DATA', cycleData)
 
   let INITIAL_CYCLE = cycleData.counter
   let CURRENT_CYCLE = cycleData.counter
@@ -2627,7 +3047,7 @@ function releaseDeveloperFunds (payment) {
   async function networkMaintenance () {
     let drift = Date.now() - expectedInterval
     cycleData = dapp.getLatestCycles()[0]
-    console.log(cycleData)
+    console.log('CYCLE_DATA', cycleData)
     CURRENT_CYCLE = cycleData.counter
     // CONVERTS FROM SECONDS TO MILLISECONDS FOR COMPARISON WITH TIMESTAMPS
     CYCLE_START_TIME = cycleData.start * 1000
