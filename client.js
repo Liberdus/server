@@ -591,17 +591,23 @@ vorpal.command('create', 'creates tokens for an account')
       default: 500,
       filter: value => parseInt(value)
     }])
-    const tx = {
-      type: 'create',
-      from: '0'.repeat(64),
-      to: answers.target,
-      amount: answers.amount,
-      timestamp: Date.now()
-    }
-    injectTx(tx).then(res => {
-      this.log(res)
+    const to = await getAddress(answers.target)
+    if (!to) {
+      this.log('Target account address does not exist')
       callback()
-    })
+    } else {
+      const tx = {
+        type: 'create',
+        from: '0'.repeat(64),
+        to: to,
+        amount: answers.amount,
+        timestamp: Date.now()
+      }
+      injectTx(tx).then(res => {
+        this.log(res)
+        callback()
+      })
+    }
   })
 
 // COMMAND TO TRANSFER TOKENS FROM ONE ACCOUNT TO ANOTHER
@@ -829,6 +835,23 @@ vorpal.command('stake', 'stakes tokens in order to operate a node')
     }
   })
 
+// COMMAND TO CLAIM THE TOKENS FROM THE ULT SNAPSHOT
+// TODO VALIDATE ETHEREUM ADDRESS SOMEHOW
+vorpal.command('claim', 'submits a claim transaction for the snapshot')
+  .action(function (_, callback) {
+    const tx = {
+      type: 'snapshot_claim',
+      from: USER.address,
+      to: '0'.repeat(64),
+      timestamp: Date.now()
+    }
+    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+    injectTx(tx).then(res => {
+      this.log(res)
+      callback()
+    })
+  })
+
 // COMMAND TO INITIALIZE STARTING NETWORK PARAMETERS (ADMIN ONLY)
 vorpal.command('parameters', 'submits transaction to initialize the network parameters (ADMIN)')
   .action(function (_, callback) {
@@ -847,24 +870,25 @@ vorpal.command('parameters', 'submits transaction to initialize the network para
 
 // COMMAND TO MANUALLY UPDATE THE NETWORK PARAMETERS (TESTING ONLY)
 vorpal.command('update parameters', 'updates the network parameters (TESTING)')
-  .action((_, callback) => {
+  .action(function (_, callback) {
     const tx = {
       type: 'update_parameters',
       from: USER.address,
       to: '0'.repeat(64),
-      nodeRewardInterval: 10,
+      nodeRewardInterval: 10000,
       nodeRewardAmount: 500,
       nodePenalty: 70000,
       transactionFee: 50,
       stakeRequired: 420,
       maintenanceFee: 10,
+      maintenanceInterval: 60000,
       proposalFee: 1000,
       devProposalFee: 500,
       timestamp: Date.now()
     }
     crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
     injectTx(tx).then(res => {
-      console.log(res)
+      this.log(res)
       callback()
     })
   })
@@ -1131,23 +1155,6 @@ vorpal.command('vote dev', 'vote for a development proposal')
       devProposal: crypto.hash(`dev-issue-${latest}-dev-proposal-${answers.proposal}`),
       amount: answers.amount,
       approve: answers.approve,
-      timestamp: Date.now()
-    }
-    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
-    injectTx(tx).then(res => {
-      this.log(res)
-      callback()
-    })
-  })
-
-// COMMAND TO CLAIM THE TOKENS FROM THE ULT SNAPSHOT
-// TODO VALIDATE ETHEREUM ADDRESS SOMEHOW
-vorpal.command('claim', 'submits a claim transaction for the snapshot')
-  .action(function (_, callback) {
-    const tx = {
-      type: 'snapshot_claim',
-      from: USER.address,
-      to: '0'.repeat(64),
       timestamp: Date.now()
     }
     crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)

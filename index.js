@@ -395,6 +395,8 @@ dapp.registerExternalGet('network/phases', async (req, res) => {
       phases.parameter = { phase: 'grace', timeframe: graceWindow }
     } else if (timestamp >= applyWindow[0] && timestamp < applyWindow[1]) {
       phases.parameter = { phase: 'apply', timeframe: applyWindow }
+    } else {
+      phases.parameter = { phase: 'waiting', timeframe: '' }
     }
 
     if (timestamp >= devProposalWindow[0] && timestamp < devProposalWindow[1]) {
@@ -766,10 +768,10 @@ dapp.setup({
 
     switch (tx.type) {
       case 'snapshot': {
-        if (tx.sign.owner !== ADMIN_ADDRESS) {
-          response.reason = 'not signed by ADMIN account'
-          return response
-        }
+        // if (tx.sign.owner !== ADMIN_ADDRESS) {
+        //   response.reason = 'not signed by ADMIN account'
+        //   return response
+        // }
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
           return response
@@ -843,12 +845,12 @@ dapp.setup({
           response.reason = 'incorrect signing'
           return response
         }
-        if (alias.inbox === tx.alias) {
-          response.reason = 'This alias is already taken'
+        if (!alias) {
+          response.reason = 'Alias account was not found for some reason'
           return response
         }
-        if (tx.alias && tx.alias.length >= 17) {
-          response.reason = 'Alias must be less than 17 characters'
+        if (alias.inbox === tx.alias) {
+          response.reason = 'This alias is already taken'
           return response
         }
         if (from.data.balance < TRANSACTION_FEE) {
@@ -1043,6 +1045,10 @@ dapp.setup({
         }
         if (from.data.balance < STAKE_REQUIRED) {
           response.reason = `From account has insufficient balance, the cost required to operate a node is ${STAKE_REQUIRED}`
+          return response
+        }
+        if (tx.stake < STAKE_REQUIRED) {
+          response.reason = `Stake amount sent: ${tx.stake} is less than the cost required to operate a node: ${STAKE_REQUIRED}`
           return response
         }
         response.result = 'pass'
@@ -1749,6 +1755,11 @@ dapp.setup({
           reason = '"alias" must be a string.'
           throw new Error(reason)
         }
+        if (tx.alias && tx.alias.length >= 17) {
+          result = 'fail'
+          reason = '"alias" must be less than 17 characters'
+          throw new Error(reason)
+        }
         break
       }
       case 'create': {
@@ -1783,6 +1794,11 @@ dapp.setup({
         if (typeof tx.amount !== 'number') {
           result = 'fail'
           reason = '"Amount" must be a number.'
+          throw new Error(reason)
+        }
+        if (tx.amount <= 0) {
+          result = 'fail'
+          reason = '"Amount" must be a positive number.'
           throw new Error(reason)
         }
         break
@@ -1880,53 +1896,382 @@ dapp.setup({
         }
         break
       }
-      //TODO: MORE TODO HERE
       case 'node_reward': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.nodeId !== 'string') {
+          result = 'fail'
+          reason = '"NodeId" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
         break
       }
       case 'snapshot_claim': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
         break
       }
       case 'initial_parameters': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
         break
       }
       case 'update_parameters': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
         break
       }
       case 'maintenance': {
+        if (typeof tx.nodeId !== 'string') {
+          result = 'fail'
+          reason = '"NodeId" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (Array.isArray(tx.targets) !== true) {
+          result = 'fail'
+          reason = '"Targets" must be an Array.'
+          throw new Error(reason)
+        }
         break
       }
       case 'issue': {
+        if (typeof tx.nodeId !== 'string') {
+          result = 'fail'
+          reason = '"NodeId" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.issue !== 'string') {
+          result = 'fail'
+          reason = '"Issue" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.proposal !== 'string') {
+          result = 'fail'
+          reason = '"Proposal" must be a string.'
+          throw new Error(reason)
+        }
         break
       }
       case 'dev_issue': {
+        if (typeof tx.nodeId !== 'string') {
+          result = 'fail'
+          reason = '"NodeId" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.devIssue !== 'string') {
+          result = 'fail'
+          reason = '"DevIssue" must be a string.'
+          throw new Error(reason)
+        }
         break
       }
       case 'proposal': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a number.'
+          throw new Error(reason)
+        }
+        if (typeof tx.proposal !== 'string') {
+          result = 'fail'
+          reason = '"Proposal" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.issue !== 'string') {
+          result = 'fail'
+          reason = '"Issue" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.parameters !== 'object') {
+          result = 'fail'
+          reason = '"Parameters" must be an object.'
+          throw new Error(reason)
+        }
         break
       }
       case 'dev_proposal': {
+        if (typeof tx.devIssue !== 'string') {
+          result = 'fail'
+          reason = '"devIssue" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.devProposal !== 'string') {
+          result = 'fail'
+          reason = '"devProposal" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.totalAmount !== 'number') {
+          result = 'fail'
+          reason = '"totalAmount" must be a number.'
+          throw new Error(reason)
+        }
+        if (Array.isArray(tx.payments) !== true) {
+          result = 'fail'
+          reason = '"payments" must be an array.'
+          throw new Error(reason)
+        }
+        if (typeof tx.description !== 'string') {
+          result = 'fail'
+          reason = '"description" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.payAddress !== 'string') {
+          result = 'fail'
+          reason = '"payAddress" must be a string.'
+          throw new Error(reason)
+        }
         break
       }
       case 'vote': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.amount !== 'number') {
+          result = 'fail'
+          reason = '"amount" must be a number.'
+          throw new Error(reason)
+        }
+        if (typeof tx.proposal !== 'string') {
+          result = 'fail'
+          reason = '"Proposal" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.issue !== 'string') {
+          result = 'fail'
+          reason = '"Issue" must be a string.'
+          throw new Error(reason)
+        }
         break
       }
       case 'dev_vote': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.amount !== 'number') {
+          result = 'fail'
+          reason = '"amount" must be a number.'
+          throw new Error(reason)
+        }
+        if (typeof tx.approve !== 'boolean') {
+          result = 'fail'
+          reason = '"approve" must be a boolean.'
+          throw new Error(reason)
+        }
+        if (typeof tx.devProposal !== 'string') {
+          result = 'fail'
+          reason = '"devProposal" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.devIssue !== 'string') {
+          result = 'fail'
+          reason = '"devIssue" must be a string.'
+          throw new Error(reason)
+        }
         break
       }
       case 'tally': {
+        if (typeof tx.nodeId !== 'string') {
+          result = 'fail'
+          reason = '"NodeId" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.issue !== 'string') {
+          result = 'fail'
+          reason = '"Issue" must be a string.'
+          throw new Error(reason)
+        }
+        if (Array.isArray(tx.proposals) !== true) {
+          result = 'fail'
+          reason = '"proposals" must be an array.'
+          throw new Error(reason)
+        }
         break
       }
       case 'dev_tally': {
+        if (typeof tx.nodeId !== 'string') {
+          result = 'fail'
+          reason = '"NodeId" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.devIssue !== 'string') {
+          result = 'fail'
+          reason = '"devIssue" must be a string.'
+          throw new Error(reason)
+        }
+        if (Array.isArray(tx.devProposals) !== true) {
+          result = 'fail'
+          reason = '"devProposals" must be an array.'
+          throw new Error(reason)
+        }
         break
       }
       case 'apply_parameters': {
+        if (typeof tx.nodeId !== 'string') {
+          result = 'fail'
+          reason = '"NodeId" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.issue !== 'string') {
+          result = 'fail'
+          reason = '"Issue" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.proposal !== 'string') {
+          result = 'fail'
+          reason = '"Proposal" must be a string.'
+          throw new Error(reason)
+        }
         break
       }
       case 'apply_dev_parameters': {
+        if (typeof tx.nodeId !== 'string') {
+          result = 'fail'
+          reason = '"NodeId" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.devIssue !== 'string') {
+          result = 'fail'
+          reason = '"devIssue" must be a string.'
+          throw new Error(reason)
+        }
+        if (Array.isArray(tx.devProposals) !== true) {
+          result = 'fail'
+          reason = '"devProposals" must be an array.'
+          throw new Error(reason)
+        }
         break
       }
       case 'developer_payment': {
+        if (typeof tx.nodeId !== 'string') {
+          result = 'fail'
+          reason = '"NodeId" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.developer !== 'string') {
+          result = 'fail'
+          reason = '"developer" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.payment !== 'object') {
+          result = 'fail'
+          reason = '"payment" must be an object.'
+          throw new Error(reason)
+        }
         break
       }
     }
@@ -1963,19 +2308,17 @@ dapp.setup({
       }
       case 'email': {
         const source = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data
-        source.emailHash = tx.signedTx.emailHash
         const baseNumber = 99999
         const randomNumber = Math.floor((Math.random() * 899999)) + 1
         const verificationNumber = baseNumber + randomNumber
-        source.verified = crypto.hash(`${verificationNumber}`)
-
+        
         const mailOptions = {
           from: 'liberdus.verify@gmail.com',
           to: `${tx.email}`,
           subject: 'Verify your email for liberdus',
           text: `Please verify your email address by sending a "verify" transaction with the number: ${verificationNumber}`
         }
-
+        
         transporter.sendMail(mailOptions, function (error, info) {
           if (error) {
             console.log(error)
@@ -1983,7 +2326,9 @@ dapp.setup({
             console.log('Email sent: ' + info.response)
           }
         })
-
+        
+        source.emailHash = tx.signedTx.emailHash
+        source.verified = crypto.hash(`${verificationNumber}`)
         source.timestamp = tx.timestamp
         console.log('Applied email tx', txId, source)
         break
@@ -2088,7 +2433,7 @@ dapp.setup({
         from.data.stake = tx.stake
         from.timestamp = tx.timestamp
         from.data.transactions.push({ ...tx, txId })
-        console.log('Applied bond tx', txId, from)
+        console.log('Applied stake tx', txId, from)
         break
       }
       case 'node_reward': {
@@ -2155,10 +2500,8 @@ dapp.setup({
         to.stakeRequired = tx.stakeRequired
         to.maintenanceInterval = tx.maintenanceInterval
         to.maintenanceFee = tx.maintenanceFee
-        to.devFundInterval = tx.devFundInterval
-        to.devFundAmount = tx.devFundAmount
         to.proposalFee = tx.proposalFee
-        to.expenditureFee = tx.expenditureFee
+        to.devProposalFee = tx.devProposalFee
 
         NODE_REWARD_INTERVAL = to.nodeRewardInterval
         NODE_REWARD_AMOUNT = to.nodeRewardAmount
@@ -2331,7 +2674,7 @@ dapp.setup({
         } else {
           devProposal.reject += tx.amount
         }
-
+        devProposal.totalVotes++
         from.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         devProposal.timestamp = tx.timestamp
@@ -2494,6 +2837,7 @@ dapp.setup({
         result.targetKeys = [tx.aliasHash]
         break
       case 'create':
+        result.sourceKeys = [tx.from]
         result.targetKeys = [tx.to]
         break
       case 'transfer':
@@ -2870,8 +3214,7 @@ function nodeReward () {
     timestamp: Date.now(),
     nodeId: nodeId,
     from: address,
-    to: payAddress,
-    amount: NODE_REWARD_AMOUNT
+    to: payAddress
   }
   dapp.put(tx)
 }
