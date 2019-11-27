@@ -1,0 +1,109 @@
+Optimization mind-map
+
+The main challenge in building Liberdus is maintaining it's dynamic nature in a trusted, decentralized way.
+
+There shouldn't be any ADMIN only functionality besides the initial snapshot of the ULT contract
+  - (maybe even that could be generated automatically by the nodes? probably not.)
+
+The network should be hardwired to initiate phases of the parameter proposal system (proposals, voting, grace period, update)
+  - It would be amazing if the time between those phases could be voted on as well by the users.
+  - The only transactions that a user should be involved in regarding the dynamic network system are submitting proposals and voting on proposals
+  - It would be really awful design if users had to submit transactions in order to do things like applies or calculate winners
+  - This means that nodes in the network need to inject the transactions necessary at the time necessary for this to work cleanly
+  - The challenge with this is that as the network scales, there would be hundreds or thousands of nodes all attempting to do these tasks...
+  - These updates need to be applied by every node, but only one transaction should ideally be generated
+
+The current way of doing node-induced transactions involves using some kind of interval cycle, checking to see if the conditions unique to each 
+node handled transaction are met on each iteration. When the conditions are met, generate the transaction. The transactions that are handled by
+nodes include (node_reward, maintenance, issue, devIssue, tally, dev_tally, apply_parameters, apply_dev_parameters, developer_payment)
+The first thing that gets run on the node startup is the initParameters function. This function will query the network account and copy a set of
+in memory variables to the result of the query. This is so the nodes don't have to query for the network parameters on every cycle, and can 
+optimally submit transactions only when they should. The current way to check readiness for all transactions are as follows:
+
+node_reward :
+  if (TIME_ACTIVE - LAST_REWARD >= NODE_REWARD_INTERVAL) {
+    nodeReward()
+    LAST_REWARD = TIME_ACTIVE
+  }
+
+maintenance : 
+  if (TIME_ACTIVE - LAST_MAINTENANCE >= MAINTENANCE_INTERVAL) {
+    maintenance()
+    LAST_MAINTENANCE = TIME_ACTIVE
+  }
+
+issue :
+  // NETWORK_INTERVAL is the length of time between each parameter change opportunity
+  // PARAMS_APPLIED is true if the parameters from the last approved proposal have been applied
+  if ((CYCLE_START_TIME >= LAST_ISSUE_TIME + (NETWORK_INTERVAL)) && PARAMS_APPLIED) {
+    generateIssue()
+  }
+
+tally :
+  if (!WINNER_FOUND && CYCLE_START_TIME >= GRACE_WINDOW[0] && CYCLE_START_TIME <= GRACE_WINDOW[1]) {
+    tallyVotes()
+  }
+
+apply_params :
+  // IF THE WINNING PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE GRACE_WINDOW
+  if (CYCLE_START_TIME >= APPLY_WINDOW[0] && CYCLE_START_TIME <= APPLY_WINDOW[1] && !PARAMS_APPLIED) {
+    applyParameters()
+  }
+
+The developer proposal cycle follows the same structure as above using different variable names
+The developer payment transaction works by looping the nodes in memory DEVELOPER_FUND array and submitting a transaction for any payment
+thats timestamp is past the current cycle time
+
+developer_payment :
+  for (const payment of DEVELOPER_FUND) {
+    if (CYCLE_START_TIME >= payment.timestamp) {
+      releaseDeveloperFunds(payment)
+    }
+  }
+
+The problem with this approach is that these variables are local, and even if they get changed in the apply function, not all the nodes will
+have the new updates. So some nodes will think that it's perfectly fine to keep generating issues, or one of the other transactions.
+This is really insecure with regards to the dev payments as well, since most of the nodes won't update the DEVELOPER_FUND when a payment gets
+made, they would double spend.
+
+The account that stores all of the network parameters, known as "The network account", has an unknown private-key. ex.(public-key: 0000x0000)
+The only transactions allowed to modify this account are (issue, dev_issue, apply_parameters, apply_dev_parameters, developer_payment)
+This allows the network parameters to be modified only under a specific set of circumstances.
+The network parameters can only be modified after a "proposal" account wins by a specified margin against all other proposals that were submitted.
+To keep track of the proposals for this cycle of network updates, we can attach them to an "issue" account, which corresponds to the nth cycle
+of network changes ex.(issue-5 would be the 5th cycle of proposals submitted to modify network behavior).
+This allows for easily tracking the proposals associated with the most recent network cycle. This also allows us to query any past network issue
+by simply saying "get account HASH(issue-1)" which will get the first issue. Then we can get the proposals associated with that issue by saying
+"get account HASH(issue-1-proposal-1)" which gets the first proposal submitted to the first issue. By keeping counters everytime an issue is created
+on the "network account" we can determine how many issues exist, and therefore grab all the issues. We can apply the same logic to
+the "issue account" and determine how to get any and all "proposal accounts". The reason this is necessary is because account data is stored and accessed
+by its public-key which isn't very descriptive of the data associated with it, but we can create and access accounts by using a
+hash of something that is descriptive. The underlying shardus software works by storing that account in the shard covering the address
+range that the account falls into
+ex.(Shard 1 covers 0000x0000-2222x2222, so all accounts 0000x0000 through 2222x2222 can onlly be accessed by querying Shard 1).
+
+The _PROBLEM_ with this approach is that the shard that handles the network account could see a drastically higher load than the others, especially
+since this account is going to be queried every time a user wants to get the latest issue or proposal, or if someone wants to see the current
+parameters. Additionally, it would need to be accessed everytime you need to validate things like enough tokens to cover CURRENT transaction fee
+(which, for a payment network, is almost every transaction)
+
+
+
+OPTIMIZED SOLUTION 1:
+
+Keep two local datastructures:
+  - One for the current network parameters
+  - One for the future (winning) network parameters
+  
+When a proposal passes, initiate another data structure with the values of the winning proposal on each of the nodes in the network.
+Since the nodes know roughly when the winner will be determined, they can requery the network parameters during that time So that they
+know what to overwrite their in memory variables with at the beginning of the next APPLY_WINDOW. This allows all the active nodes to stay
+in sync, and reduces the number of queries made to the network account. On startup, a node still needs to query the network account,
+and the network account would need to hold a temporary copy of the future parameters as well, so that new nodes spinning up can get the
+updates if they happen to join during that time.
+
+Problems: Doesn't solve the insecure DEVELOPER_FUND, that could possibly get updates often. ex.(Deleting payments that have already been sent)
+  - An easy fix would be to have the developer send a transaction to the devIssue, request for his payment?
+    - But it's nice if the network can handle this
+  - OR maybe when we apply the developer funds, the nodes in the shard that handle the developer account will be the only ones updating
+    those funds, so different shards actually end up balancing the load?

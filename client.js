@@ -374,12 +374,12 @@ async function queryParameters () {
   }
 }
 
-async function queryPhases () {
-  const res = await axios.get(`http://${HOST}/network/phases`)
+async function queryWindows () {
+  const res = await axios.get(`http://${HOST}/network/windows/all`)
   if (res.data.error) {
     return res.data.error
   } else {
-    return res.data.phases
+    return res.data
   }
 }
 
@@ -420,13 +420,13 @@ async function queryLatestDevIssue () {
 // QUERY'S THE CURRENT NETWORK ISSUE COUNT
 async function getIssueCount () {
   const res = await axios.get(`http://${HOST}/issues/count`)
-  return res.data.issueCount
+  return res.data.count
 }
 
 // QUERY'S THE CURRENT NETWORK DEV_ISSUE COUNT
 async function getDevIssueCount () {
   const res = await axios.get(`http://${HOST}/issues/dev/count`)
-  return res.data.devIssueCount
+  return res.data.count
 }
 
 // QUERY'S ALL NETWORK PROPOSALS
@@ -456,13 +456,13 @@ async function queryLatestDevProposals () {
 // QUERY'S THE CURRENT ISSUE'S PROPOSAL COUNT
 async function getProposalCount () {
   const res = await axios.get(`http://${HOST}/proposals/count`)
-  return res.data.proposalCount
+  return res.data.count
 }
 
 // QUERY'S THE CURRENT ISSUE'S PROPOSAL COUNT
 async function getDevProposalCount () {
   const res = await axios.get(`http://${HOST}/proposals/dev/count`)
-  return res.data.devProposalCount
+  return res.data.count
 }
 
 // COMMAND TO SET THE HOST IP:PORT
@@ -962,12 +962,11 @@ vorpal.command('proposal', 'submits a proposal to change network parameters')
       filter: value => parseInt(value)
     }])
     const issue = await getIssueCount()
-    const proposalCount = await getProposalCount()
+    const proposal = await getProposalCount()
     const tx = {
       type: 'proposal',
       from: USER.address,
-      to: '0'.repeat(64),
-      proposal: crypto.hash(`issue-${issue}-proposal-${proposalCount + 1}`),
+      proposal: crypto.hash(`issue-${issue}-proposal-${proposal + 1}`),
       issue: crypto.hash(`issue-${issue}`),
       parameters: answers,
       timestamp: Date.now()
@@ -1096,7 +1095,6 @@ vorpal.command('vote', 'vote for a proposal')
     const tx = {
       type: 'vote',
       from: USER.address,
-      issue: crypto.hash(`issue-${latest}`),
       proposal: crypto.hash(`issue-${latest}-proposal-${answers.proposal}`),
       amount: answers.amount,
       timestamp: Date.now()
@@ -1188,6 +1186,7 @@ vorpal.command('query [account]', 'gets data for the account associated with the
     let address
     if (args.account !== undefined) address = walletEntries[args.account].address
     this.log(`Querying network for ${address ? args.account : 'all data'} `)
+    this.log(address)
     getAccountData(address).then(res => {
       try {
         this.log(res)
@@ -1226,10 +1225,8 @@ vorpal.command('get <type>', 'query the network for <type> account')
         this.log(await queryParameters())
         break
       }
-      case 'phases': {
-        const phases = await queryPhases()
-        this.log('Parameter phase: ' + phases.parameter.phase, '--- Ending in: ' + moment().to(new Date(phases.parameter.timeframe[1]), true))
-        this.log('Dev phase: ' + phases.dev.phase, '--- Ending in: ' + moment().to(new Date(phases.dev.timeframe[1]), true))
+      case 'windows': {
+        this.log(await queryWindows())
         break
       }
       case 'nodeParams': {
