@@ -5,7 +5,6 @@ const vorpal = require('vorpal')()
 const crypto = require('shardus-crypto-utils')
 const stringify = require('fast-stable-stringify')
 const axios = require('axios')
-const moment = require('moment')
 crypto('64f152869ca2d473e4ba64ab53f49ccdb2edae22da192c126850970e788af347')
 
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
@@ -354,6 +353,7 @@ async function queryMessages (to, from) {
   }
 }
 
+// QUERY'S THE TRANSACTIONS OF THE CURRENT WALLET
 async function queryTransactions () {
   try {
     const res = await axios.get(`http://${HOST}/account/${USER.address}/transactions`)
@@ -374,12 +374,28 @@ async function queryParameters () {
   }
 }
 
-async function queryWindows () {
+// QUERY'S THE CURRENT PHASE OF THE DYNAMIC PARAMETER SYSTEM
+async function queryWindow () {
   const res = await axios.get(`http://${HOST}/network/windows/all`)
   if (res.data.error) {
     return res.data.error
   } else {
-    return res.data
+    let { windows, devWindows } = res.data
+    let timestamp = Date.now()
+    let windowTime, devWindowTime
+    if (inRange(timestamp, windows.proposalWindow)) windowTime = { proposals: Math.round((windows.proposalWindow[1] - timestamp) / 1000) }
+    if (inRange(timestamp, windows.votingWindow)) windowTime = { voting: Math.round((windows.votingWindow[1] - timestamp) / 1000) }
+    if (inRange(timestamp, windows.graceWindow)) windowTime = { grace: Math.round((windows.graceWindow[1] - timestamp) / 1000) }
+    if (inRange(timestamp, windows.applyWindow)) windowTime = { apply: Math.round((windows.applyWindow[1] - timestamp) / 1000) }
+
+    if (inRange(timestamp, devWindows.devProposalWindow)) devWindowTime = { devProposals: Math.round((devWindows.devProposalWindow[1] - timestamp) / 1000) }
+    if (inRange(timestamp, devWindows.devVotingWindow)) devWindowTime = { devVoting: Math.round((devWindows.devVotingWindow[1] - timestamp) / 1000) }
+    if (inRange(timestamp, devWindows.devGraceWindow)) devWindowTime = { devGrace: Math.round((devWindows.devGraceWindow[1] - timestamp) / 1000) }
+    if (inRange(timestamp, devWindows.devApplyWindow)) devWindowTime = { devApply: Math.round((devWindows.devApplyWindow[1] - timestamp) / 1000) }
+    return { window: windowTime, devWindow: devWindowTime }
+  }
+  function inRange (now, times) {
+    return now > times[0] && now < times[1]
   }
 }
 
@@ -852,112 +868,72 @@ vorpal.command('claim', 'submits a claim transaction for the snapshot')
     })
   })
 
-// COMMAND TO INITIALIZE STARTING NETWORK PARAMETERS (ADMIN ONLY)
-vorpal.command('parameters', 'submits transaction to initialize the network parameters (ADMIN)')
-  .action(function (_, callback) {
-    const tx = {
-      type: 'initial_parameters',
-      from: USER.address,
-      to: '0'.repeat(64),
-      timestamp: Date.now()
-    }
-    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
-    injectTx(tx).then(res => {
-      this.log(res)
-      callback()
-    })
-  })
-
-// COMMAND TO MANUALLY UPDATE THE NETWORK PARAMETERS (TESTING ONLY)
-vorpal.command('update parameters', 'updates the network parameters (TESTING)')
-  .action(function (_, callback) {
-    const tx = {
-      type: 'update_parameters',
-      from: USER.address,
-      to: '0'.repeat(64),
-      nodeRewardInterval: 10000,
-      nodeRewardAmount: 500,
-      nodePenalty: 70000,
-      transactionFee: 50,
-      stakeRequired: 420,
-      maintenanceFee: 10,
-      maintenanceInterval: 60000,
-      proposalFee: 1000,
-      devProposalFee: 500,
-      timestamp: Date.now()
-    }
-    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
-    injectTx(tx).then(res => {
-      this.log(res)
-      callback()
-    })
-  })
-
 // COMMAND TO SUBMIT A PROPOSAL
 vorpal.command('proposal', 'submits a proposal to change network parameters')
   .action(async function (args, callback) {
-    const defaults = await queryParameters()
+    const network = await queryParameters()
+    const defaults = network.CURRENT
     this.log('Choose the network parameters (Using default value keeps the current parameter value)')
     const answers = await this.prompt([{
       type: 'number',
       name: 'nodeRewardInterval',
-      message: 'Specify node reward interval (in minutes)',
+      message: 'Specify node reward interval (in minutes): ',
       default: defaults.nodeRewardInterval,
       filter: value => parseInt(value)
     },
     {
       type: 'number',
       name: 'nodeRewardAmount',
-      message: 'Specify node reward amount',
+      message: 'Specify node reward amount: ',
       default: defaults.nodeRewardAmount,
       filter: value => parseInt(value)
     },
     {
       type: 'number',
       name: 'nodePenalty',
-      message: 'Specify node penalty amount',
+      message: 'Specify node penalty amount: ',
       default: defaults.nodePenalty,
       filter: value => parseInt(value)
     },
     {
       type: 'number',
       name: 'transactionFee',
-      message: 'Specify transaction fee',
+      message: 'Specify transaction fee: ',
       default: defaults.transactionFee,
       filter: value => parseInt(value)
     },
     {
       type: 'number',
       name: 'stakeRequired',
-      message: 'Specify stake requirement',
+      message: 'Specify stake requirement: ',
       default: defaults.stakeRequired,
       filter: value => parseInt(value)
     },
     {
       type: 'number',
       name: 'maintenanceInterval',
-      message: 'Specify maintenance interval (in minutes)',
+      message: 'Specify maintenance interval (in minutes): ',
       default: defaults.maintenanceInterval,
       filter: value => parseInt(value)
     },
     {
       type: 'number',
       name: 'maintenanceFee',
-      message: 'Specify maintenance fee',
+      message: 'Specify maintenance fee: ',
       default: defaults.maintenanceFee,
       filter: value => parseFloat(value)
     },
     {
       type: 'number',
       name: 'proposalFee',
-      message: 'Specify proposal fee',
+      message: 'Specify proposal fee: ',
       default: defaults.proposalFee,
       filter: value => parseInt(value)
     },
     {
       type: 'number',
       name: 'devProposalFee',
-      message: 'Specify dev proposal fee',
+      message: 'Specify dev proposal fee: ',
       default: defaults.devProposalFee,
       filter: value => parseInt(value)
     }])
@@ -984,20 +960,20 @@ vorpal.command('dev proposal', 'submits a development proposal')
     const answers = await this.prompt([{
       type: 'number',
       name: 'totalAmount',
-      message: 'Enter the requested funds',
+      message: 'Enter the requested funds: ',
       default: 10000,
       filter: value => parseInt(value)
     },
     {
       type: 'input',
       name: 'description',
-      message: 'Enter a description for your developer proposal',
+      message: 'Enter a description for the proposal: ',
       default: `${USER.address.slice(0, 5)}... proposal`
     },
     {
       type: 'input',
       name: 'payAddress',
-      message: 'Enter the address for payment if the proposal is approved',
+      message: 'Enter the address for payment: ',
       default: USER.address
     },
     {
@@ -1013,14 +989,14 @@ vorpal.command('dev proposal', 'submits a development proposal')
       await this.prompt([{
         type: 'number',
         name: 'count',
-        message: 'Enter the number of payments',
+        message: 'Enter the number of payments: ',
         default: 5,
         filter: value => parseInt(value)
       },
       {
         type: 'number',
         name: 'delay',
-        message: 'Enter the delay between payments (in minutes)',
+        message: 'Enter the delay between payments (in minutes): ',
         default: 1,
         filter: value => parseInt(value)
       }], result => {
@@ -1087,7 +1063,7 @@ vorpal.command('vote', 'vote for a proposal')
     {
       type: 'number',
       name: 'amount',
-      message: 'How many tokens will you vote with?',
+      message: 'How many tokens will you vote with? ',
       default: 50,
       filter: value => parseInt(value)
     }])
@@ -1095,6 +1071,7 @@ vorpal.command('vote', 'vote for a proposal')
     const tx = {
       type: 'vote',
       from: USER.address,
+      issue: crypto.hash(`issue-${latest}`),
       proposal: crypto.hash(`issue-${latest}-proposal-${answers.proposal}`),
       amount: answers.amount,
       timestamp: Date.now()
@@ -1141,7 +1118,7 @@ vorpal.command('vote dev', 'vote for a development proposal')
     {
       type: 'number',
       name: 'amount',
-      message: 'How many tokens will you vote with?',
+      message: 'How many tokens will you vote with? ',
       default: 50,
       filter: value => parseInt(value)
     }])
@@ -1226,7 +1203,7 @@ vorpal.command('get <type>', 'query the network for <type> account')
         break
       }
       case 'windows': {
-        this.log(await queryWindows())
+        this.log(await queryWindow())
         break
       }
       case 'nodeParams': {

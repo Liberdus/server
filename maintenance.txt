@@ -1,0 +1,41 @@
+Account maintenance (Via validation mid transaction)
+
+The benfit to this method is that it will be a lot easier to process maintenence on accounts on an "as needed" basis, 
+rather than trying to have the nodes generate crazy distribute transactions possibly ttouching hundreds or thousands of accounts
+all at once. 
+
+On user generated transactions like "message" or "transfer", somewhere within the validation stage, needs to be some kind
+of check to ensure the account maintenance has been processed in the last *account maintenance interval* 
+ELSE process the account maintenance, and add a last maintenance flag. 
+
+The problem with this approach is that now we need to add checks for this on every transaction type. It's not really much
+of a performance issue as much, but it is a bit annoying. Maybe just the transactions that effect a user's balance 
+should be checked (and processed if need be).
+
+This creates the (hassle / design desision) of informing the user that additional funds are needed to perform this 
+transaction because of the required account maintenance. Also, if the user hasn't made any transactions recenty, 
+(say within a week or two) then they would need a deduction of about 7-14x of what the account maintenance fee would entail
+(given that the maintenance interval was daily). 
+Implementation writeup:
+
+1. User accounts need a field for "lastMaintenance"
+2. transactions involved in deducting a user's balance require a helper function to check whether maintenance is required
+  - register
+  - transfer
+  - distribute
+  - message
+  - toll
+  - friend
+  - stake
+  - proposal
+  - dev_proposal
+  - vote
+  - dev_vote
+3. this helper method will trigger in the validation of these transactions, and determine the 
+   amount needed for deducting based on when the last maintenance was performed.
+4. This amount will be passed through to the apply, so that all nodes know about the additional 
+   amount needed to deduct. 
+5. Decide on one of the following design choices: 
+  - Warn the user about the maintenance deduction (if it's about to occur)
+  - Only warn the user if the amount being deducted plus the amount sent with the tx will overdraw account balance
+  - Deduct maintenence fee without warning, and only notify user that the transaction failed due to insufficient funds (*)

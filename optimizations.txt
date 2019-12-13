@@ -107,3 +107,13 @@ Problems: Doesn't solve the insecure DEVELOPER_FUND, that could possibly get upd
     - But it's nice if the network can handle this
   - OR maybe when we apply the developer funds, the nodes in the shard that handle the developer account will be the only ones updating
     those funds, so different shards actually end up balancing the load?
+
+TODO LIST: 
+  1. Fix any bugs in the automated proposal / voting / dev fund / network parameter system
+  *2. Change the way maintenance works, so that accounts performing a transaction get deducted the maintenace fee if it's been
+     long enough since the last one (according to the maintenace interval)
+  3. Modify the email transaction to have all node's store the random number by having the randomly determined seed node submit
+     another transaction with the verification number hash.
+  4. Work with thant on how we plan on doing Ethereum snapshot validation, and message signatures
+  5. Improve API, getting rid of redundant routes, adding useful ones
+  6. Improve testing workflow, maybe creating unit tests that get triggered after a certain number of active nodes join the network.
