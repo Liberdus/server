@@ -1490,411 +1490,411 @@ dapp.setup({
     let reason = 'This transaction is valid!'
     let txnTimestamp = tx.timestamp
 
-    // if (typeof tx.type !== 'string') {
-    //   result = 'fail'
-    //   reason = '"type" must be a string.'
-    //   throw new Error(reason)
-    // }
+    if (typeof tx.type !== 'string') {
+      result = 'fail'
+      reason = '"type" must be a string.'
+      throw new Error(reason)
+    }
 
-    // if (typeof txnTimestamp !== 'number') {
-    //   result = 'fail'
-    //   reason = '"timestamp" must be a number.'
-    //   throw new Error(reason)
-    // }
+    if (typeof txnTimestamp !== 'number') {
+      result = 'fail'
+      reason = '"timestamp" must be a number.'
+      throw new Error(reason)
+    }
 
-    // switch (tx.type) {
-    //   case 'snapshot': {
-    //     if (typeof tx.from !== 'string') {
-    //       result = 'fail'
-    //       reason = '"From" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.to !== 'string') {
-    //       result = 'fail'
-    //       reason = '"To" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (tx.to !== networkAccount) {
-    //       result = 'fail'
-    //       reason = '"To" must be ' + networkAccount
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.snapshot !== 'object') {
-    //       result = 'fail'
-    //       reason = '"Snapshot" must be an object.'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'email': {
-    //     if (typeof tx.signedTx !== 'object') {
-    //       result = 'fail'
-    //       reason = '"signedTx" must be an object.'
-    //       throw new Error(reason)
-    //     }
-    //     const signedTx = tx.signedTx
-    //     if (signedTx) {
-    //       if (typeof signedTx !== 'object') {
-    //         result = 'fail'
-    //         reason = '"signedTx" must be a object.'
-    //         throw new Error(reason)
-    //       }
-    //       if (typeof signedTx.sign !== 'object') {
-    //         result = 'fail'
-    //         reason = '"sign" property on signedTx must be an object.'
-    //         throw new Error(reason)
-    //       }
-    //       if (typeof signedTx.from !== 'string') {
-    //         result = 'fail'
-    //         reason = '"From" must be a string.'
-    //         throw new Error(reason)
-    //       }
-    //       if (typeof signedTx.emailHash !== 'string') {
-    //         result = 'fail'
-    //         reason = '"emailHash" must be a string.'
-    //         throw new Error(reason)
-    //       }
-    //     }
+    switch (tx.type) {
+      case 'snapshot': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (tx.to !== networkAccount) {
+          result = 'fail'
+          reason = '"To" must be ' + networkAccount
+          throw new Error(reason)
+        }
+        if (typeof tx.snapshot !== 'object') {
+          result = 'fail'
+          reason = '"Snapshot" must be an object.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'email': {
+        if (typeof tx.signedTx !== 'object') {
+          result = 'fail'
+          reason = '"signedTx" must be an object.'
+          throw new Error(reason)
+        }
+        const signedTx = tx.signedTx
+        if (signedTx) {
+          if (typeof signedTx !== 'object') {
+            result = 'fail'
+            reason = '"signedTx" must be a object.'
+            throw new Error(reason)
+          }
+          if (typeof signedTx.sign !== 'object') {
+            result = 'fail'
+            reason = '"sign" property on signedTx must be an object.'
+            throw new Error(reason)
+          }
+          if (typeof signedTx.from !== 'string') {
+            result = 'fail'
+            reason = '"From" must be a string.'
+            throw new Error(reason)
+          }
+          if (typeof signedTx.emailHash !== 'string') {
+            result = 'fail'
+            reason = '"emailHash" must be a string.'
+            throw new Error(reason)
+          }
+        }
 
-    //     // WILL CHANGE THIS ONCE NODES CAN DETERMINISTICALLY PICK THEMSELVES
-    //     if (typeof tx.host !== 'string') {
-    //       result = 'fail'
-    //       reason = '"host" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.email !== 'string') {
-    //       result = 'fail'
-    //       reason = '"email" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'verify': {
-    //     if (typeof tx.from !== 'string') {
-    //       result = 'fail'
-    //       reason = '"From" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.host !== 'string') {
-    //       result = 'fail'
-    //       reason = '"Host" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.code !== 'string') {
-    //       result = 'fail'
-    //       reason = '"Code" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (tx.code.length !== 6) {
-    //       result = 'fail'
-    //       reason = '"Code" length must be 6 digits.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof parseInt(tx.code) !== 'number') {
-    //       result = 'fail'
-    //       reason = '"Code" must be parseable to an integer.'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'register': {
-    //     if (typeof tx.aliasHash !== 'string') {
-    //       result = 'fail'
-    //       reason = '"aliasHash" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.from !== 'string') {
-    //       result = 'fail'
-    //       reason = '"From" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.alias !== 'string') {
-    //       result = 'fail'
-    //       reason = '"alias" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (tx.alias && tx.alias.length >= 17) {
-    //       result = 'fail'
-    //       reason = '"alias" must be less than 17 characters'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'create': {
-    //     if (typeof tx.from !== 'string') {
-    //       result = 'fail'
-    //       reason = '"From" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.to !== 'string') {
-    //       result = 'fail'
-    //       reason = '"To" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.amount !== 'number') {
-    //       result = 'fail'
-    //       reason = '"Amount" must be a number.'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'transfer': {
-    //     if (typeof tx.from !== 'string') {
-    //       result = 'fail'
-    //       reason = '"From" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.to !== 'string') {
-    //       result = 'fail'
-    //       reason = '"To" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.amount !== 'number') {
-    //       result = 'fail'
-    //       reason = '"Amount" must be a number.'
-    //       throw new Error(reason)
-    //     }
-    //     if (tx.amount <= 0) {
-    //       result = 'fail'
-    //       reason = '"Amount" must be a positive number.'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'distribute': {
-    //     if (typeof tx.from !== 'string') {
-    //       result = 'fail'
-    //       reason = '"From" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (Array.isArray(tx.recipients) !== true) {
-    //       result = 'fail'
-    //       reason = '"Recipients" must be an array.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.amount !== 'number') {
-    //       result = 'fail'
-    //       reason = '"Amount" must be a number.'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'message': {
-    //     if (typeof tx.from !== 'string') {
-    //       result = 'fail'
-    //       reason = '"From" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.to !== 'string') {
-    //       result = 'fail'
-    //       reason = '"To" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.message !== 'string') {
-    //       result = 'fail'
-    //       reason = '"Message" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'toll': {
-    //     if (typeof tx.from !== 'string') {
-    //       result = 'fail'
-    //       reason = '"From" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.toll !== 'number') {
-    //       result = 'fail'
-    //       reason = '"Toll" must be a number.'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'friend': {
-    //     if (typeof tx.from !== 'string') {
-    //       result = 'fail'
-    //       reason = '"From" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.to !== 'string') {
-    //       result = 'fail'
-    //       reason = '"To" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.alias !== 'string') {
-    //       result = 'fail'
-    //       reason = '"Message" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'remove_friend': {
-    //     if (typeof tx.from !== 'string') {
-    //       result = 'fail'
-    //       reason = '"From" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.to !== 'string') {
-    //       result = 'fail'
-    //       reason = '"To" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'stake': {
-    //     if (typeof tx.from !== 'string') {
-    //       result = 'fail'
-    //       reason = '"From" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.stake !== 'number') {
-    //       result = 'fail'
-    //       reason = '"Stake" must be a number.'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'snapshot_claim': {
-    //     if (typeof tx.from !== 'string') {
-    //       result = 'fail'
-    //       reason = '"From" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.to !== 'string') {
-    //       result = 'fail'
-    //       reason = '"To" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'proposal': {
-    //     if (typeof tx.from !== 'string') {
-    //       result = 'fail'
-    //       reason = '"From" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.proposal !== 'string') {
-    //       result = 'fail'
-    //       reason = '"Proposal" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.issue !== 'string') {
-    //       result = 'fail'
-    //       reason = '"Issue" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.parameters !== 'object') {
-    //       result = 'fail'
-    //       reason = '"Parameters" must be an object.'
-    //       throw new Error(reason)
-    //     }
-    //     if (tx.timestamp < WINDOWS.proposalWindow[0] || tx.timestamp > WINDOWS.proposalWindow[1]) {
-    //       result = 'fail'
-    //       reason = '"Network is not currently accepting issues or proposals"'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'dev_proposal': {
-    //     if (typeof tx.devIssue !== 'string') {
-    //       result = 'fail'
-    //       reason = '"devIssue" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.devProposal !== 'string') {
-    //       result = 'fail'
-    //       reason = '"devProposal" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.totalAmount !== 'number') {
-    //       result = 'fail'
-    //       reason = '"totalAmount" must be a number.'
-    //       throw new Error(reason)
-    //     }
-    //     if (Array.isArray(tx.payments) !== true) {
-    //       result = 'fail'
-    //       reason = '"payments" must be an array.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.description !== 'string') {
-    //       result = 'fail'
-    //       reason = '"description" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.payAddress !== 'string') {
-    //       result = 'fail'
-    //       reason = '"payAddress" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (tx.timestamp < DEV_WINDOWS.devProposalWindow[0] || tx.timestamp > DEV_WINDOWS.devProposalWindow[1]) {
-    //       result = 'fail'
-    //       reason = 'Network is not Ready to generate dev proposals'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'vote': {
-    //     if (typeof tx.from !== 'string') {
-    //       result = 'fail'
-    //       reason = '"From" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.amount !== 'number') {
-    //       result = 'fail'
-    //       reason = '"amount" must be a number.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.issue !== 'string') {
-    //       result = 'fail'
-    //       reason = '"issue" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.proposal !== 'string') {
-    //       result = 'fail'
-    //       reason = '"Proposal" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (tx.timestamp < WINDOWS.votingWindow[0] || tx.timestamp > WINDOWS.votingWindow[1]) {
-    //       result = 'fail'
-    //       reason = 'Network is not currently accepting votes'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    //   case 'dev_vote': {
-    //     if (typeof tx.from !== 'string') {
-    //       result = 'fail'
-    //       reason = '"From" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.amount !== 'number') {
-    //       result = 'fail'
-    //       reason = '"amount" must be a number.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.approve !== 'boolean') {
-    //       result = 'fail'
-    //       reason = '"approve" must be a boolean.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.devProposal !== 'string') {
-    //       result = 'fail'
-    //       reason = '"devProposal" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (typeof tx.devIssue !== 'string') {
-    //       result = 'fail'
-    //       reason = '"devIssue" must be a string.'
-    //       throw new Error(reason)
-    //     }
-    //     if (tx.timestamp < DEV_WINDOWS.devVotingWindow[0] || tx.timestamp > DEV_WINDOWS.devVotingWindow[1]) {
-    //       result = 'fail'
-    //       reason = 'Network is not currently accepting dev votes'
-    //       throw new Error(reason)
-    //     }
-    //     break
-    //   }
-    // }
+        // WILL CHANGE THIS ONCE NODES CAN DETERMINISTICALLY PICK THEMSELVES
+        if (typeof tx.host !== 'string') {
+          result = 'fail'
+          reason = '"host" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.email !== 'string') {
+          result = 'fail'
+          reason = '"email" must be a string.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'verify': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.host !== 'string') {
+          result = 'fail'
+          reason = '"Host" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.code !== 'string') {
+          result = 'fail'
+          reason = '"Code" must be a string.'
+          throw new Error(reason)
+        }
+        if (tx.code.length !== 6) {
+          result = 'fail'
+          reason = '"Code" length must be 6 digits.'
+          throw new Error(reason)
+        }
+        if (typeof parseInt(tx.code) !== 'number') {
+          result = 'fail'
+          reason = '"Code" must be parseable to an integer.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'register': {
+        if (typeof tx.aliasHash !== 'string') {
+          result = 'fail'
+          reason = '"aliasHash" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.alias !== 'string') {
+          result = 'fail'
+          reason = '"alias" must be a string.'
+          throw new Error(reason)
+        }
+        if (tx.alias && tx.alias.length >= 17) {
+          result = 'fail'
+          reason = '"alias" must be less than 17 characters'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'create': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.amount !== 'number') {
+          result = 'fail'
+          reason = '"Amount" must be a number.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'transfer': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.amount !== 'number') {
+          result = 'fail'
+          reason = '"Amount" must be a number.'
+          throw new Error(reason)
+        }
+        if (tx.amount <= 0) {
+          result = 'fail'
+          reason = '"Amount" must be a positive number.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'distribute': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (Array.isArray(tx.recipients) !== true) {
+          result = 'fail'
+          reason = '"Recipients" must be an array.'
+          throw new Error(reason)
+        }
+        if (typeof tx.amount !== 'number') {
+          result = 'fail'
+          reason = '"Amount" must be a number.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'message': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.message !== 'string') {
+          result = 'fail'
+          reason = '"Message" must be a string.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'toll': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.toll !== 'number') {
+          result = 'fail'
+          reason = '"Toll" must be a number.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'friend': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.alias !== 'string') {
+          result = 'fail'
+          reason = '"Message" must be a string.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'remove_friend': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'stake': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.stake !== 'number') {
+          result = 'fail'
+          reason = '"Stake" must be a number.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'snapshot_claim': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          result = 'fail'
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'proposal': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.proposal !== 'string') {
+          result = 'fail'
+          reason = '"Proposal" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.issue !== 'string') {
+          result = 'fail'
+          reason = '"Issue" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.parameters !== 'object') {
+          result = 'fail'
+          reason = '"Parameters" must be an object.'
+          throw new Error(reason)
+        }
+        if (tx.timestamp < WINDOWS.proposalWindow[0] || tx.timestamp > WINDOWS.proposalWindow[1]) {
+          result = 'fail'
+          reason = '"Network is not currently accepting issues or proposals"'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'dev_proposal': {
+        if (typeof tx.devIssue !== 'string') {
+          result = 'fail'
+          reason = '"devIssue" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.devProposal !== 'string') {
+          result = 'fail'
+          reason = '"devProposal" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.totalAmount !== 'number') {
+          result = 'fail'
+          reason = '"totalAmount" must be a number.'
+          throw new Error(reason)
+        }
+        if (Array.isArray(tx.payments) !== true) {
+          result = 'fail'
+          reason = '"payments" must be an array.'
+          throw new Error(reason)
+        }
+        if (typeof tx.description !== 'string') {
+          result = 'fail'
+          reason = '"description" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.payAddress !== 'string') {
+          result = 'fail'
+          reason = '"payAddress" must be a string.'
+          throw new Error(reason)
+        }
+        if (tx.timestamp < DEV_WINDOWS.devProposalWindow[0] || tx.timestamp > DEV_WINDOWS.devProposalWindow[1]) {
+          result = 'fail'
+          reason = 'Network is not Ready to generate dev proposals'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'vote': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.amount !== 'number') {
+          result = 'fail'
+          reason = '"amount" must be a number.'
+          throw new Error(reason)
+        }
+        if (typeof tx.issue !== 'string') {
+          result = 'fail'
+          reason = '"issue" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.proposal !== 'string') {
+          result = 'fail'
+          reason = '"Proposal" must be a string.'
+          throw new Error(reason)
+        }
+        if (tx.timestamp < WINDOWS.votingWindow[0] || tx.timestamp > WINDOWS.votingWindow[1]) {
+          result = 'fail'
+          reason = 'Network is not currently accepting votes'
+          throw new Error(reason)
+        }
+        break
+      }
+      case 'dev_vote': {
+        if (typeof tx.from !== 'string') {
+          result = 'fail'
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.amount !== 'number') {
+          result = 'fail'
+          reason = '"amount" must be a number.'
+          throw new Error(reason)
+        }
+        if (typeof tx.approve !== 'boolean') {
+          result = 'fail'
+          reason = '"approve" must be a boolean.'
+          throw new Error(reason)
+        }
+        if (typeof tx.devProposal !== 'string') {
+          result = 'fail'
+          reason = '"devProposal" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.devIssue !== 'string') {
+          result = 'fail'
+          reason = '"devIssue" must be a string.'
+          throw new Error(reason)
+        }
+        if (tx.timestamp < DEV_WINDOWS.devVotingWindow[0] || tx.timestamp > DEV_WINDOWS.devVotingWindow[1]) {
+          result = 'fail'
+          reason = 'Network is not currently accepting dev votes'
+          throw new Error(reason)
+        }
+        break
+      }
+    }
 
     return {
       result,
@@ -2566,11 +2566,11 @@ dapp.setup({
       results.push(wrapped)
       // Return results early if maxRecords reached
       if (results.length >= maxRecords) {
-        // results.sort((a, b) => a.timestamp - b.timestamp)
+        results.sort((a, b) => a.timestamp - b.timestamp)
         return results
       }
     }
-    // results.sort((a, b) => a.timestamp - b.timestamp)
+    results.sort((a, b) => a.timestamp - b.timestamp)
     return results
   },
   getAccountData (accountStart, accountEnd, maxRecords) {
@@ -2593,11 +2593,11 @@ dapp.setup({
       results.push(wrapped)
       // Return results early if maxRecords reached
       if (results.length >= maxRecords) {
-        // results.sort((a, b) => a.timestamp - b.timestamp)
+        results.sort((a, b) => a.timestamp - b.timestamp)
         return results
       }
     }
-    // results.sort((a, b) => a.timestamp - b.timestamp)
+    results.sort((a, b) => a.timestamp - b.timestamp)
     return results
   },
   getAccountDataByList (addressList) {
@@ -2614,7 +2614,7 @@ dapp.setup({
         results.push(wrapped)
       }
     }
-    // results.sort((a, b) => a.accountId < b.accountId)
+    results.sort((a, b) => a.accountId < b.accountId)
     return results
   },
   calculateAccountHash (account) {
@@ -2853,6 +2853,8 @@ function releaseDeveloperFunds (payment, address, nodeId) {
           IN_SYNC = true
         }
       }
+
+      // return setTimeout(networkMaintenance, expectedInterval - cycleStartTimestamp) NO GOOD
       return setTimeout(networkMaintenance, expectedInterval - Date.now())
     }
 
@@ -2984,6 +2986,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       }
     }
 
+    // return setTimeout(networkMaintenance, expectedInterval - cycleStartTimestamp) NO GOOD
     return setTimeout(networkMaintenance, expectedInterval - Date.now())
   }
 })()
