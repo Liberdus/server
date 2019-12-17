@@ -1,0 +1,63 @@
+
+-      // console.log(issue)
+-      issue && issues.push(issue.data)
++      if (issue && issue.data) {
++        issues.push(issue.data)
++      }
+
+-      devIssue && devIssues.push(devIssue.data)
++      if (devIssue && devIssue.data) {
++        devIssues.push(devIssue.data)
++      }
+
+-        proposal && proposals.push(proposal.data)
++        if (proposal && proposal.data) {
++          proposals.push(proposal.data)
++        }
+
+-      proposals.push(proposal.data)
++      if (proposal && proposal.data) {
++        proposals.push(proposal.data)
++      }
+
+-        devProposal && devProposals.push(devProposal.data)
++        if (devProposal && devProposal.data) {
++          devProposals.push(devProposal.data)
++        }
+
+-      devProposal && devProposals.push(devProposal.data)
++      if (devProposal && devProposal.data) {
++        devProposals.push(devProposal.data)
++      }
+
+*** COMMENTED OUT ALL OF VALIDATE_TXN_FIELDS ***
+
+-        if (crypto.hash(`issue-${to.issue}`) !== tx.issue) {
+-          response.reason = 'Must give the next network issueCount hash'
++        let issueHash = crypto.hash(`issue-${to.issue}`)
++        if (issueHash !== tx.issue) {
++          response.reason = `issue id (${issueHash}) does not match current network issue (${tx.issue})`
+           return response
+         }
+
+-        if (crypto.hash(`issue-${to.issue}-proposal-1`) !== tx.proposal) {
+-          response.reason = 'Must include the default proposal for the current network parameters'
++        let proposalHash = crypto.hash(`issue-${to.issue}-proposal-1`)
++        if (proposalHash !== tx.proposal) {
++          response.reason = `The current default proposalHash (${proposalHash}) does not match the one in this issue tx (${tx.proposal})`
+           return response
+         }
+
+-        if (crypto.hash(`dev-issue-${to.devIssue}`) !== tx.devIssue) {
+-          response.reason = 'Must give the current devIssue hash'
++        let devIssueHash = crypto.hash(`dev-issue-${to.devIssue}`)
++        if (devIssueHash !== tx.devIssue) {
++          response.reason = `devIssue id (${devIssueHash}) does not match current network devIssue (${tx.devIssue})`
+           return response
+         }
+
+-    results.sort((a, b) => a.accountId < b.accountId)
++    // results.sort((a, b) => a.accountId < b.accountId)
+
+-    return setTimeout(networkMaintenance, expectedInterval - cycleStartTimestamp)
++    return setTimeout(networkMaintenance, expectedInterval - Date.now())

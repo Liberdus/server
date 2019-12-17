@@ -1,7 +1,7 @@
 Account maintenance (Via validation mid transaction)
 
 The benfit to this method is that it will be a lot easier to process maintenence on accounts on an "as needed" basis, 
-rather than trying to have the nodes generate crazy distribute transactions possibly ttouching hundreds or thousands of accounts
+rather than trying to have the nodes generate crazy distribute transactions possibly touching hundreds or thousands of accounts
 all at once. 
 
 On user generated transactions like "message" or "transfer", somewhere within the validation stage, needs to be some kind
