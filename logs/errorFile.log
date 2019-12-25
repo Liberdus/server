@@ -1,0 +1,605 @@
+[2019-12-18T07:33:36.772] [FATAL] main - ===== Server config: =====
+[2019-12-18T07:33:36.772] [FATAL] main - {
+  "heartbeatInterval": 5,
+  "baseDir": ".",
+  "transactionExpireTime": 5,
+  "crypto": {
+    "hashKey": "69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc"
+  },
+  "p2p": {
+    "ipServer": "api.ipify.org/?format=json",
+    "timeServers": [
+      "0.pool.ntp.org",
+      "1.pool.ntp.org",
+      "2.pool.ntp.org",
+      "3.pool.ntp.org"
+    ],
+    "existingArchivers": [
+      {
+        "ip": "127.0.0.1",
+        "port": 4000,
+        "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3"
+      }
+    ],
+    "syncLimit": 180,
+    "cycleDuration": 15,
+    "maxRejoinTime": 20,
+    "difficulty": 2,
+    "queryDelay": 1,
+    "gossipRecipients": 4,
+    "gossipTimeout": 180,
+    "maxSeedNodes": 10,
+    "minNodesToAllowTxs": 1,
+    "minNodes": 20,
+    "maxNodes": 60,
+    "seedNodeOffset": 4,
+    "nodeExpiryAge": 180,
+    "maxNodesToRotate": 1,
+    "maxNodesPerCycle": 10,
+    "maxPercentOfDelta": 40,
+    "scaleReqsNeeded": 5,
+    "maxScaleReqs": 10,
+    "amountToScale": 1,
+    "seedList": "http://127.0.0.1:4000/api/seednodes"
+  },
+  "ip": {
+    "externalIp": "127.0.0.1",
+    "externalPort": 9001,
+    "internalIp": "127.0.0.1",
+    "internalPort": 9005
+  },
+  "network": {
+    "timeout": 10
+  },
+  "reporting": {
+    "report": true,
+    "recipient": "http://127.0.0.1:3000/api",
+    "interval": 1,
+    "console": false
+  },
+  "debug": {
+    "loseReceiptChance": 0,
+    "loseTxChance": 0
+  },
+  "statistics": {
+    "save": true,
+    "interval": 1
+  },
+  "loadDetection": {
+    "queueLimit": 1000,
+    "desiredTxTime": 5,
+    "highThreshold": 0.8,
+    "lowThreshold": 0.2
+  },
+  "rateLimiting": {
+    "limitRate": true,
+    "loadLimit": 0.5
+  },
+  "stateManager": {
+    "stateTableBucketSize": 200,
+    "accountBucketSize": 50
+  },
+  "sharding": {
+    "nodesPerConsensusGroup": 3
+  }
+}
+[2019-12-18T07:33:44.021] [ERROR] main - reportJoining: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:33:53.222] [ERROR] main - reportJoined: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:01.197] [ERROR] main - reportActive: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:02.224] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:03.258] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:04.229] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:05.179] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:06.200] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:07.293] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:08.290] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:09.310] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:10.156] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:11.184] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:12.261] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:13.227] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:14.276] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:15.301] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:16.215] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:17.324] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T07:34:18.246] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T21:00:54.533] [FATAL] main - ===== Server config: =====
+[2019-12-18T21:00:54.534] [FATAL] main - {
+  "heartbeatInterval": 5,
+  "baseDir": ".",
+  "transactionExpireTime": 5,
+  "crypto": {
+    "hashKey": "69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc"
+  },
+  "p2p": {
+    "ipServer": "api.ipify.org/?format=json",
+    "timeServers": [
+      "0.pool.ntp.org",
+      "1.pool.ntp.org",
+      "2.pool.ntp.org",
+      "3.pool.ntp.org"
+    ],
+    "existingArchivers": [
+      {
+        "ip": "127.0.0.1",
+        "port": 4000,
+        "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3"
+      }
+    ],
+    "syncLimit": 180,
+    "cycleDuration": 15,
+    "maxRejoinTime": 20,
+    "difficulty": 2,
+    "queryDelay": 1,
+    "gossipRecipients": 4,
+    "gossipTimeout": 180,
+    "maxSeedNodes": 10,
+    "minNodesToAllowTxs": 1,
+    "minNodes": 5,
+    "maxNodes": 60,
+    "seedNodeOffset": 4,
+    "nodeExpiryAge": 180,
+    "maxNodesToRotate": 1,
+    "maxNodesPerCycle": 10,
+    "maxPercentOfDelta": 40,
+    "scaleReqsNeeded": 5,
+    "maxScaleReqs": 10,
+    "amountToScale": 1,
+    "seedList": "http://127.0.0.1:4000/api/seednodes"
+  },
+  "ip": {
+    "externalIp": "127.0.0.1",
+    "externalPort": 9001,
+    "internalIp": "127.0.0.1",
+    "internalPort": 9005
+  },
+  "network": {
+    "timeout": 10
+  },
+  "reporting": {
+    "report": true,
+    "recipient": "http://127.0.0.1:3000/api",
+    "interval": 1,
+    "console": false
+  },
+  "debug": {
+    "loseReceiptChance": 0,
+    "loseTxChance": 0
+  },
+  "statistics": {
+    "save": true,
+    "interval": 1
+  },
+  "loadDetection": {
+    "queueLimit": 1000,
+    "desiredTxTime": 5,
+    "highThreshold": 0.8,
+    "lowThreshold": 0.2
+  },
+  "rateLimiting": {
+    "limitRate": true,
+    "loadLimit": 0.5
+  },
+  "stateManager": {
+    "stateTableBucketSize": 200,
+    "accountBucketSize": 50
+  },
+  "sharding": {
+    "nodesPerConsensusGroup": 3
+  }
+}
+[2019-12-18T21:01:02.149] [ERROR] main - reportJoining: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T21:01:11.568] [ERROR] main - reportJoined: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T21:01:19.556] [ERROR] main - reportActive: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T21:01:20.495] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T21:01:21.563] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T21:01:22.577] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T21:01:23.560] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T21:01:24.520] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T21:01:25.444] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T21:01:26.569] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T21:01:27.563] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T21:01:28.624] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T21:01:29.559] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T21:01:30.553] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-18T21:01:31.626] [ERROR] main - _sendReport: RequestError: connect ECONNREFUSED 127.0.0.1:3000 at RequestError: connect ECONNREFUSED 127.0.0.1:3000
+    at ClientRequest.request.once.error (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/got/source/request-as-event-emitter.js:178:14)
+    at Object.onceWrapper (events.js:277:13)
+    at ClientRequest.emit (events.js:194:15)
+    at ClientRequest.origin.emit.args (/Users/thantsintoe/ULC_PROJECT/Website/shardus-global-server/node_modules/@szmarczak/http-timer/source/index.js:37:11)
+    at Socket.socketErrorListener (_http_client.js:392:9)
+    at Socket.emit (events.js:189:13)
+    at emitErrorNT (internal/streams/destroy.js:82:8)
+    at emitErrorAndCloseNT (internal/streams/destroy.js:50:3)
+    at process._tickCallback (internal/process/next_tick.js:63:19)
+[2019-12-24T13:00:31.529] [FATAL] main - ===== Server config: =====
+[2019-12-24T13:00:31.529] [FATAL] main - {
+  "heartbeatInterval": 5,
+  "baseDir": ".",
+  "transactionExpireTime": 5,
+  "crypto": {
+    "hashKey": "69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc"
+  },
+  "p2p": {
+    "ipServer": "api.ipify.org/?format=json",
+    "timeServers": [
+      "0.pool.ntp.org",
+      "1.pool.ntp.org",
+      "2.pool.ntp.org",
+      "3.pool.ntp.org"
+    ],
+    "existingArchivers": [
+      {
+        "ip": "127.0.0.1",
+        "port": 4000,
+        "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3"
+      }
+    ],
+    "syncLimit": 180,
+    "cycleDuration": 15,
+    "maxRejoinTime": 20,
+    "difficulty": 2,
+    "queryDelay": 1,
+    "gossipRecipients": 4,
+    "gossipTimeout": 180,
+    "maxSeedNodes": 10,
+    "minNodesToAllowTxs": 1,
+    "minNodes": 5,
+    "maxNodes": 60,
+    "seedNodeOffset": 4,
+    "nodeExpiryAge": 180,
+    "maxNodesToRotate": 1,
+    "maxNodesPerCycle": 10,
+    "maxPercentOfDelta": 40,
+    "scaleReqsNeeded": 5,
+    "maxScaleReqs": 10,
+    "amountToScale": 1,
+    "seedList": "http://127.0.0.1:4000/api/seednodes"
+  },
+  "ip": {
+    "externalIp": "127.0.0.1",
+    "externalPort": 9001,
+    "internalIp": "127.0.0.1",
+    "internalPort": 9005
+  },
+  "network": {
+    "timeout": 10
+  },
+  "reporting": {
+    "report": true,
+    "recipient": "http://127.0.0.1:3000/api",
+    "interval": 1,
+    "console": false
+  },
+  "debug": {
+    "loseReceiptChance": 0,
+    "loseTxChance": 0
+  },
+  "statistics": {
+    "save": true,
+    "interval": 1
+  },
+  "loadDetection": {
+    "queueLimit": 1000,
+    "desiredTxTime": 5,
+    "highThreshold": 0.8,
+    "lowThreshold": 0.2
+  },
+  "rateLimiting": {
+    "limitRate": true,
+    "loadLimit": 0.5
+  },
+  "stateManager": {
+    "stateTableBucketSize": 200,
+    "accountBucketSize": 50
+  },
+  "sharding": {
+    "nodesPerConsensusGroup": 3
+  }
+}

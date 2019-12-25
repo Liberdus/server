@@ -27,15 +27,22 @@
     "nodemailer-smtp-transport": "^2.7.4",
     "shardus-crypto-utils": "git+https://gitlab.com/shardus/shardus-crypto-utils.git",
     "streamroller": "^2.2.3",
+    "shardus-global-server": "git+ssh://git@gitlab.com:shardus/global/shardus-global-server.git#datarepair2",
     "vorpal": "^1.12.0"
   },
   "devDependencies": {
+    "archive-server": "git+https://gitlab.com/shardus/archive/archive-server.git",
     "cross-env": "^5.2.0",
+    "eslint": "^6.8.0",
+    "eslint-config-standard": "^14.1.0",
+    "eslint-plugin-import": "^2.19.1",
+    "eslint-plugin-node": "^10.0.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
     "execa": "^1.0.0",
     "hygen-create": "^0.2.1",
     "monitor-server": "git+https://gitlab.com/shardus/monitor-server.git",
     "pm2": "^4.1.2",
-    "archive-server": "git+https://gitlab.com/shardus/archive/archive-server.git",
     "shelljs": "^0.8.3",
     "standard": "^12.0.1",
     "yarpm": "^0.2.1"

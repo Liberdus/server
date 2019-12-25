@@ -1,2 +1,2 @@
-node_modules
-tester.js
+.eslintrc.js
+.pm2/

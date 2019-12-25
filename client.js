@@ -34,31 +34,31 @@ try {
 
 console.log(`Loaded wallet entries from '${walletFile}'.`)
 
-async function getSeedNodes () {
+async function getSeedNodes() {
   const res = await axios.get(`http://${HOST}:4000/api/seednodes`)
   const { seedNodes } = res.data
   return seedNodes
 }
 
-function saveEntries (entries, file) {
+function saveEntries(entries, file) {
   const stringifiedEntries = JSON.stringify(entries, null, 2)
   fs.writeFileSync(file, stringifiedEntries)
 }
 
-function createAccount (keys = crypto.generateKeypair()) {
+function createAccount(keys = crypto.generateKeypair()) {
   return {
     address: keys.publicKey,
     keys
   }
 }
 
-function createAccounts (num) {
+function createAccounts(num) {
   const accounts = new Array(num).fill().map(account => createAccount())
   return accounts
 }
 
 // Creates an account with a keypair and adds it to the clients walletFile
-function createEntry (name, id) {
+function createEntry(name, id) {
   const account = createAccount()
   if (typeof id === 'undefined' || id === null) {
     id = crypto.hash(name)
@@ -69,8 +69,8 @@ function createEntry (name, id) {
   return account
 }
 
-function makeTxGenerator (accounts, total = 0, type) {
-  function * buildGenerator (txBuilder, accounts, total, type) {
+function makeTxGenerator(accounts, total = 0, type) {
+  function* buildGenerator(txBuilder, accounts, total, type) {
     let account1, offset, account2
     // let username
     // let users = {}
@@ -159,7 +159,7 @@ function makeTxGenerator (accounts, total = 0, type) {
   return generator
 }
 
-function buildTx ({ type, from = {}, to, handle, id, amount, message, toll }) {
+function buildTx({ type, from = {}, to, handle, id, amount, message, toll }) {
   let actualTx
   switch (type) {
     case 'register': {
@@ -238,7 +238,7 @@ function buildTx ({ type, from = {}, to, handle, id, amount, message, toll }) {
 
 let logError = false
 
-async function sendTx (tx, port = null, verbose = true) {
+async function sendTx(tx, port = null, verbose = true) {
   if (!tx.sign) {
     tx = buildTx(tx)
   }
@@ -255,7 +255,7 @@ async function sendTx (tx, port = null, verbose = true) {
   }
 }
 
-async function spamTxs ({
+async function spamTxs({
   txs,
   rate,
   ports = [],
@@ -266,7 +266,7 @@ async function spamTxs ({
 
   console.log(
     `Spamming ${ports.length > 1 ? 'ports' : 'port'} ${ports.join()} with ${
-      txs.length ? txs.length + ' ' : ''
+    txs.length ? txs.length + ' ' : ''
     }txs at ${rate} TPS...`
   )
 
@@ -295,11 +295,11 @@ async function spamTxs ({
   }
 }
 
-async function _sleep (ms = 0) {
+async function _sleep(ms = 0) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function injectTx (tx) {
+async function injectTx(tx) {
   try {
     const res = await axios.post(`http://${HOST}/inject`, tx)
     return res.data
@@ -308,7 +308,7 @@ async function injectTx (tx) {
   }
 }
 
-async function getAccountData (id) {
+async function getAccountData(id) {
   try {
     const res = await axios.get(`http://${HOST}/${id ? 'account/' + id : 'accounts'}`)
     return res.data
@@ -317,7 +317,7 @@ async function getAccountData (id) {
   }
 }
 
-async function getToll (friendId, yourId) {
+async function getToll(friendId, yourId) {
   try {
     let res = await axios.get(`http://${HOST}/account/${friendId}/${yourId}/toll`)
     if (res.data.toll) {
@@ -328,7 +328,7 @@ async function getToll (friendId, yourId) {
   }
 }
 
-async function getAddress (handle) {
+async function getAddress(handle) {
   if (handle.length === 64) return handle
   try {
     let res = await axios.get(`http://${HOST}/address/${crypto.hash(handle)}`)
@@ -343,7 +343,7 @@ async function getAddress (handle) {
   }
 }
 
-async function queryMessages (to, from) {
+async function queryMessages(to, from) {
   try {
     const res = await axios.get(`http://${HOST}/messages/${to}/${from}`)
     const { messages } = res.data
@@ -354,7 +354,7 @@ async function queryMessages (to, from) {
 }
 
 // QUERY'S THE TRANSACTIONS OF THE CURRENT WALLET
-async function queryTransactions () {
+async function queryTransactions() {
   try {
     const res = await axios.get(`http://${HOST}/account/${USER.address}/transactions`)
     const { transactions } = res.data
@@ -365,7 +365,7 @@ async function queryTransactions () {
 }
 
 // QUERY'S THE CURRENT NETWORK PARAMETERS
-async function queryParameters () {
+async function queryParameters() {
   const res = await axios.get(`http://${HOST}/network/parameters`)
   if (res.data.error) {
     return res.data.error
@@ -375,7 +375,7 @@ async function queryParameters () {
 }
 
 // QUERY'S THE CURRENT PHASE OF THE DYNAMIC PARAMETER SYSTEM
-async function queryWindow () {
+async function queryWindow() {
   const res = await axios.get(`http://${HOST}/network/windows/all`)
   if (res.data.error) {
     return res.data.error
@@ -396,13 +396,13 @@ async function queryWindow () {
     else devWindowTime = { devApply: Math.round((devWindows.devProposalWindow[0] - timestamp) / 1000) }
     return { window: windowTime, devWindow: devWindowTime }
   }
-  function inRange (now, times) {
+  function inRange(now, times) {
     return now > times[0] && now < times[1]
   }
 }
 
 // QUERY'S THE CURRENT NETWORK PARAMETERS ON HOST NODE (TESTING)
-async function queryNodeParameters () {
+async function queryNodeParameters() {
   const res = await axios.get(`http://${HOST}/network/parameters/node`)
   if (res.data.error) {
     return res.data.error
@@ -412,73 +412,73 @@ async function queryNodeParameters () {
 }
 
 // QUERY'S ALL NETWORK ISSUES
-async function queryIssues () {
+async function queryIssues() {
   const res = await axios.get(`http://${HOST}/issues`)
   return res.data.issues
 }
 
 // QUERY'S ALL NETWORK DEV_ISSUES
-async function queryDevIssues () {
+async function queryDevIssues() {
   const res = await axios.get(`http://${HOST}/issues/dev`)
   return res.data.devIssues
 }
 
 // QUERY'S THE MOST RECENT NETWORK ISSUE
-async function queryLatestIssue () {
+async function queryLatestIssue() {
   const res = await axios.get(`http://${HOST}/issues/latest`)
   return res.data.issue
 }
 
 // QUERY'S THE MOST RECENT NETWORK DEV_ISSUE
-async function queryLatestDevIssue () {
+async function queryLatestDevIssue() {
   const res = await axios.get(`http://${HOST}/issues/dev/latest`)
   return res.data.devIssue
 }
 
 // QUERY'S THE CURRENT NETWORK ISSUE COUNT
-async function getIssueCount () {
+async function getIssueCount() {
   const res = await axios.get(`http://${HOST}/issues/count`)
   return res.data.count
 }
 
 // QUERY'S THE CURRENT NETWORK DEV_ISSUE COUNT
-async function getDevIssueCount () {
+async function getDevIssueCount() {
   const res = await axios.get(`http://${HOST}/issues/dev/count`)
   return res.data.count
 }
 
 // QUERY'S ALL NETWORK PROPOSALS
-async function queryProposals () {
+async function queryProposals() {
   const res = await axios.get(`http://${HOST}/proposals`)
   return res.data.proposals
 }
 
 // QUERY'S ALL NETWORK DEV_PROPOSALS
-async function queryDevProposals () {
+async function queryDevProposals() {
   const res = await axios.get(`http://${HOST}/proposals/dev`)
   return res.data.devProposals
 }
 
 // QUERY'S ALL PROPOSALS ON THE LATEST ISSUE
-async function queryLatestProposals () {
+async function queryLatestProposals() {
   const res = await axios.get(`http://${HOST}/proposals/latest`)
   return res.data.proposals
 }
 
 // QUERY'S ALL PROPOSALS ON THE LATEST ISSUE
-async function queryLatestDevProposals () {
+async function queryLatestDevProposals() {
   const res = await axios.get(`http://${HOST}/proposals/dev/latest`)
   return res.data.devProposals
 }
 
 // QUERY'S THE CURRENT ISSUE'S PROPOSAL COUNT
-async function getProposalCount () {
+async function getProposalCount() {
   const res = await axios.get(`http://${HOST}/proposals/count`)
   return res.data.count
 }
 
 // QUERY'S THE CURRENT ISSUE'S PROPOSAL COUNT
-async function getDevProposalCount () {
+async function getDevProposalCount() {
   const res = await axios.get(`http://${HOST}/proposals/dev/count`)
   return res.data.count
 }
@@ -950,6 +950,7 @@ vorpal.command('proposal', 'submits a proposal to change network parameters')
       timestamp: Date.now()
     }
     crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+    console.log(tx)
     injectTx(tx).then(res => {
       this.log(res)
       callback()
@@ -1029,6 +1030,7 @@ vorpal.command('dev proposal', 'submits a development proposal')
       timestamp: Date.now()
     }
     crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+    console.log(tx)
     injectTx(tx).then(res => {
       this.log(res)
       callback()
@@ -1224,39 +1226,39 @@ vorpal.command('get <type>', 'query the network for <type> account')
         }
         break
       }
-      case 'latestIssue' : {
+      case 'latestIssue': {
         this.log(await queryLatestIssue())
         break
       }
-      case 'latestDevIssue' : {
+      case 'latestDevIssue': {
         this.log(await queryLatestDevIssue())
         break
       }
-      case 'issues' : {
+      case 'issues': {
         this.log(await queryIssues())
         break
       }
-      case 'devIssues' : {
+      case 'devIssues': {
         this.log(await queryDevIssues())
         break
       }
-      case 'latestProposals' : {
+      case 'latestProposals': {
         this.log(await queryLatestProposals())
         break
       }
-      case 'latestDevProposals' : {
+      case 'latestDevProposals': {
         this.log(await queryLatestDevProposals())
         break
       }
-      case 'proposals' : {
+      case 'proposals': {
         this.log(await queryProposals())
         break
       }
-      case 'devProposals' : {
+      case 'devProposals': {
         this.log(await queryDevProposals())
         break
       }
-      default : {
+      default: {
         this.log('Query type unknown')
       }
     }

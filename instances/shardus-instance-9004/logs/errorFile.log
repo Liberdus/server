@@ -1,0 +1,104 @@
+[2019-12-25T07:10:24.537] [FATAL] main - ===== Server config: =====
+[2019-12-25T07:10:24.538] [FATAL] main - {
+  "heartbeatInterval": 5,
+  "baseDir": "/Users/thantsintoe/ULC_PROJECT/Website/liberdus-backend/server/instances/shardus-instance-9004",
+  "transactionExpireTime": 5,
+  "crypto": {
+    "hashKey": "69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc"
+  },
+  "p2p": {
+    "ipServer": "api.ipify.org/?format=json",
+    "timeServers": [
+      "0.pool.ntp.org",
+      "1.pool.ntp.org",
+      "2.pool.ntp.org",
+      "3.pool.ntp.org"
+    ],
+    "existingArchivers": [
+      {
+        "ip": "127.0.0.1",
+        "port": 4000,
+        "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3"
+      }
+    ],
+    "syncLimit": 180,
+    "cycleDuration": 15,
+    "maxRejoinTime": 20,
+    "difficulty": 2,
+    "queryDelay": 1,
+    "gossipRecipients": 4,
+    "gossipTimeout": 180,
+    "maxSeedNodes": 10,
+    "minNodesToAllowTxs": 1,
+    "minNodes": 5,
+    "maxNodes": 60,
+    "seedNodeOffset": 4,
+    "nodeExpiryAge": 180,
+    "maxNodesToRotate": 1,
+    "maxNodesPerCycle": 10,
+    "maxPercentOfDelta": 40,
+    "scaleReqsNeeded": 5,
+    "maxScaleReqs": 10,
+    "amountToScale": 1,
+    "seedList": "http://127.0.0.1:4000/api/seednodes"
+  },
+  "ip": {
+    "externalIp": "127.0.0.1",
+    "externalPort": 9004,
+    "internalIp": "127.0.0.1",
+    "internalPort": 10004
+  },
+  "network": {
+    "timeout": 10
+  },
+  "reporting": {
+    "report": true,
+    "recipient": "http://127.0.0.1:3000/api",
+    "interval": 1,
+    "console": false
+  },
+  "debug": {
+    "loseReceiptChance": 0,
+    "loseTxChance": 0
+  },
+  "statistics": {
+    "save": true,
+    "interval": 1
+  },
+  "loadDetection": {
+    "queueLimit": 1000,
+    "desiredTxTime": 5,
+    "highThreshold": 0.8,
+    "lowThreshold": 0.2
+  },
+  "rateLimiting": {
+    "limitRate": true,
+    "loadLimit": 0.5
+  },
+  "stateManager": {
+    "stateTableBucketSize": 200,
+    "accountBucketSize": 50
+  },
+  "sharding": {
+    "nodesPerConsensusGroup": 3
+  }
+}
+[2019-12-25T07:15:10.773] [ERROR] main - No active data repair going on
+[2019-12-25T07:22:43.035] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235157004 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:22:43.040] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235157005 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:22:58.057] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235172003 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:23:28.071] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235202014 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:24:58.079] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235292006 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:25:13.081] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235307006 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:25:43.065] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235337004 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:27:13.069] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235427001 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:27:43.060] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235457002 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:27:58.070] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235472007 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:29:28.082] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235562002 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:29:58.063] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235592002 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:30:13.059] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235607004 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:31:43.066] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235697002 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:32:13.086] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235727003 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:32:28.074] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235742004 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:33:58.070] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235832010 cs:1577235112000 ce:1577235127000 
+[2019-12-25T07:34:28.082] [ERROR] main - STATESYNC: updateAccountsCopyTable time error>= ts:1577235862009 cs:1577235112000 ce:1577235127000 
