@@ -2091,7 +2091,7 @@ dapp.setup({
         alias.inbox = tx.alias
         from.alias = tx.alias
         alias.address = tx.from
-        // from.data.transactions.push({ ...tx, txId })
+        from.data.transactions.push({ ...tx, txId })
         alias.timestamp = tx.timestamp
         from.timestamp = tx.timestamp
         console.log('Applied register tx', txId, from)
@@ -2151,8 +2151,13 @@ dapp.setup({
           to.data.chats[tx.from] = { messages: [tx.message] }
         else to.data.chats[tx.from].messages.push(tx.message)
 
-        // from.data.transactions.push({ ...tx, txId })
-        // to.data.transactions.push({ ...tx, txId })
+        if (to.data.friends[from.id]) {
+          from.data.transactions.push({ ...tx, amount: 1, txId })
+          to.data.transactions.push({ ...tx, amount: 1, txId })
+        } else {
+          from.data.transactions.push({ ...tx, txId })
+          to.data.transactions.push({ ...tx, txId })
+        }
 
         from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp

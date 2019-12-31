@@ -1,2 +1,4 @@
 .eslintrc.js
 .pm2/
+instances
+logs
