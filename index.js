@@ -2969,6 +2969,11 @@ function releaseDeveloperFunds (payment, address, nodeId) {
   await _sleep(cycleInterval + ONE_SECOND * 8)
   // GET THE INITIAL CYCLE DATA FROM SHARDUS
   let [cycleData] = dapp.getLatestCycles()
+  while (!cycleData || !cycleData.start) {
+    console.log('Failed to get cycleData.start, will try again in 1 cycleInterval...')
+    await _sleep(cycleInterval)
+    ;([cycleData] = dapp.getLatestCycles())
+  }
 
   const nodeId = dapp.getNodeId()
   const { address } = dapp.getNode(nodeId)
@@ -2996,11 +3001,25 @@ function releaseDeveloperFunds (payment, address, nodeId) {
   async function networkMaintenance () {
     expectedInterval += cycleInterval
     let [cycleData] = dapp.getLatestCycles()
+    while (!cycleData || !cycleData.start) {
+      console.log('Failed to get cycleData.start, will try again in 1 cycleInterval...')
+      await _sleep(cycleInterval)
+      ;([cycleData] = dapp.getLatestCycles())
+    }
 
     // CONVERTS FROM SECONDS TO MILLISECONDS FOR COMPARISON WITH TIMESTAMPS
     cycleStartTimestamp = cycleData.start * 1000
 
-    let [closest] = dapp.getClosestNodes(cycleData.marker, 0)
+    let closest
+    while (!closest) {
+      try {
+        ;([closest] = dapp.getClosestNodes(cycleData.marker, 0))
+      } catch (err) {
+        console.log('Failed to getClosestNodes, will try again in 1 cycleInterval...', err)
+        await _sleep(cycleInterval)
+        ;([closest] = dapp.getClosestNodes(cycleData.marker, 0))
+      }
+    }
     // if (!closest) return setTimeout(networkMaintenance, expectedInterval - cycleStartTimestamp)
 
     console.log(
