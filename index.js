@@ -273,6 +273,16 @@ function createNode (accountId) {
   return account
 }
 
+function createChat (accountId) {
+  const chat = {
+    id: accountId,
+    messages: [],
+    timestamp: 0
+  }
+  chat.hash = crypto.hashObj(chat)
+  return chat
+}
+
 // CREATE AN ALIAS ACCOUNT
 function createAlias (accountId) {
   const alias = {
@@ -794,19 +804,19 @@ dapp.registerExternalGet('accounts', async (req, res) => {
   res.json({ accounts })
 })
 
-dapp.registerExternalGet('messages/:accountId/:chatId', async (req, res) => {
+dapp.registerExternalGet('messages/:chatId', async (req, res) => {
   try {
-    const { accountId, chatId } = req.params
-    const account = await dapp.getLocalOrRemoteAccount(accountId)
-    if (!account) {
-      res.json({ error: "Account doesn't exist" })
+    const { chatId } = req.params
+    const chat = await dapp.getLocalOrRemoteAccount(chatId)
+    console.log(chatId)
+    if (!chat) {
+      res.json({ error: "Chat doesn't exist" })
       return
     }
-    if (!account.data.data.chats[chatId]) {
+    if (!chat.data.messages) {
       res.json({ error: 'no chat history for this request' })
     } else {
-      let messages = [...account.data.data.chats[chatId].messages]
-      res.json({ messages })
+      res.json({ messages: chat.data.messages })
     }
   } catch (error) {
     console.log(error)
@@ -816,7 +826,6 @@ dapp.registerExternalGet('messages/:accountId/:chatId', async (req, res) => {
 
 // SDK SETUP FUNCTIONS
 dapp.setup({
-  // TODO: Move anything that can be checked without wrappedStates into validateTxnFields
   validateTransaction (tx, wrappedStates) {
     const response = {
       result: 'fail',
@@ -845,13 +854,7 @@ dapp.setup({
         return response
       }
       case 'email': {
-        if (`localhost:${config.server.ip.externalPort}` !== tx.host) {
-          response.reason = "This is not the node you're looking for"
-          return response
-        }
-        const source =
-          wrappedStates[tx.signedTx.from] &&
-          wrappedStates[tx.signedTx.from].data
+        const source = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data
         if (!source) {
           response.reason = 'no account associated with address in signed tx'
           return response
@@ -865,19 +868,19 @@ dapp.setup({
           return response
         }
         if (tx.signedTx.emailHash !== crypto.hash(tx.email)) {
-          response.reason =
-            'Hash of the email does not match the signed email hash'
+          response.reason = 'Hash of the email does not match the signed email hash'
           return response
         }
         response.result = 'pass'
         response.reason = 'This transaction is valid!'
         return response
       }
+      case 'gossip_email_hash': {
+        response.result = 'pass'
+        response.reason = 'This transaction is valid!'
+        return response
+      }
       case 'verify': {
-        if (`localhost:${config.server.ip.externalPort}` !== tx.host) {
-          response.reason = "This is not the node you're looking for"
-          return response
-        }
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
           return response
@@ -886,14 +889,16 @@ dapp.setup({
           response.reason = 'incorrect signing'
           return response
         }
-        if (!from || !from.verified) {
-          response.reason =
-            'From account has not been sent an verification email yet'
+        if (typeof from.verified !== 'string') {
+          response.reason = 'From account has not been sent a verification email'
+          return response
+        }
+        if (from.verified === true) {
+          response.reason = 'From account has already been verified'
           return response
         }
         if (crypto.hash(tx.code) !== from.verified) {
-          response.reason =
-            'Hash of code in tx does not match the hash of the verification code sent'
+          response.reason = 'Hash of code in tx does not match the hash of the verification code sent'
           return response
         }
         response.result = 'pass'
@@ -901,8 +906,7 @@ dapp.setup({
         return response
       }
       case 'register': {
-        const alias =
-          wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
+        const alias = wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
           return response
@@ -920,8 +924,7 @@ dapp.setup({
           return response
         }
         if (from.data.balance < CURRENT.transactionFee) {
-          response.reason =
-            "From account doesn't have enough tokens to cover the transaction fee"
+          response.reason = "From account doesn't have enough tokens to cover the transaction fee"
           return response
         }
         response.result = 'pass'
@@ -1661,13 +1664,6 @@ dapp.setup({
             throw new Error(reason)
           }
         }
-
-        // WILL CHANGE THIS ONCE NODES CAN DETERMINISTICALLY PICK THEMSELVES
-        if (typeof tx.host !== 'string') {
-          result = 'fail'
-          reason = '"host" must be a string.'
-          throw new Error(reason)
-        }
         if (typeof tx.email !== 'string') {
           result = 'fail'
           reason = '"email" must be a string.'
@@ -1679,11 +1675,6 @@ dapp.setup({
         if (typeof tx.from !== 'string') {
           result = 'fail'
           reason = '"From" must be a string.'
-          throw new Error(reason)
-        }
-        if (typeof tx.host !== 'string') {
-          result = 'fail'
-          reason = '"Host" must be a string.'
           throw new Error(reason)
         }
         if (typeof tx.code !== 'string') {
@@ -2048,32 +2039,54 @@ dapp.setup({
       }
       // TODO: Have nodes determine who actually sends the email
       case 'email': {
-        const source =
-          wrappedStates[tx.signedTx.from] &&
-          wrappedStates[tx.signedTx.from].data
-        const baseNumber = 99999
-        const randomNumber = Math.floor(Math.random() * 899999) + 1
-        const verificationNumber = baseNumber + randomNumber
+        const source = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data
+        const nodeId = dapp.getNodeId()
+        const { address } = dapp.getNode(nodeId)
+        // let [cycleData] = dapp.getLatestCycles()
+        let [closest] = dapp.getClosestNodes(tx.signedTx.from, 3)
+        // let targets = closest.map(nodeId => dapp.getNode(nodeId))
+        console.log('NODEID === CLOSEST', nodeId === closest, nodeId, closest)
+        if (nodeId === closest) {
+          const baseNumber = 99999
+          const randomNumber = Math.floor((Math.random() * 899999)) + 1
+          const verificationNumber = baseNumber + randomNumber
 
-        const mailOptions = {
-          from: 'liberdus.verify@gmail.com',
-          to: `${tx.email}`,
-          subject: 'Verify your email for liberdus',
-          text: `Please verify your email address by sending a "verify" transaction with the number: ${verificationNumber}`
-        }
-
-        transporter.sendMail(mailOptions, function (error, info) {
-          if (error) {
-            console.log(error)
-          } else {
-            console.log('Email sent: ' + info.response)
+          const mailOptions = {
+            from: 'liberdus.verify@gmail.com',
+            to: `${tx.email}`,
+            subject: 'Verify your email for liberdus',
+            text: `Please verify your email address by sending a "verify" transaction with the number: ${verificationNumber}`
           }
-        })
 
-        source.emailHash = tx.signedTx.emailHash
-        source.verified = crypto.hash(`${verificationNumber}`)
-        source.timestamp = tx.timestamp
+          transporter.sendMail(mailOptions, function (error, info) {
+            if (error) {
+              console.log(error)
+            } else {
+              console.log('Email sent: ' + info.response)
+            }
+          })
+
+          dapp.put({
+            type: 'gossip_email_hash',
+            nodeId,
+            account: source.id,
+            from: address,
+            // targets,
+            emailHash: tx.signedTx.emailHash,
+            verified: crypto.hash(`${verificationNumber}`),
+            timestamp: Date.now()
+          })
+        }
         console.log('Applied email tx', txId, source)
+        break
+      }
+      case 'gossip_email_hash': {
+        // const targets = tx.targets.map(target => wrappedStates[target].data)
+        const account = wrappedStates[tx.account].data
+        account.emailHash = tx.emailHash
+        account.verified = tx.verified
+        account.timestamp = tx.timestamp
+        console.log('Applied gossip_email_hash tx', txId, from, account)
         break
       }
       case 'verify': {
@@ -2083,14 +2096,13 @@ dapp.setup({
         break
       }
       case 'register': {
-        let alias =
-          wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
+        let alias = wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
         from.data.balance -= CURRENT.transactionFee
         from.data.balance -= maintenanceAmount(tx.timestamp, from)
         alias.inbox = tx.alias
         from.alias = tx.alias
         alias.address = tx.from
-        from.data.transactions.push({ ...tx, txId })
+        // from.data.transactions.push({ ...tx, txId })
         alias.timestamp = tx.timestamp
         from.timestamp = tx.timestamp
         console.log('Applied register tx', txId, from)
@@ -2131,6 +2143,7 @@ dapp.setup({
         break
       }
       case 'message': {
+        const chat = wrappedStates[tx.chatId].data
         from.data.balance -= CURRENT.transactionFee
         if (to.data.friends[from.id]) {
           from.data.balance -= 1
@@ -2142,26 +2155,18 @@ dapp.setup({
         from.data.balance -= maintenanceAmount(tx.timestamp, from)
 
         // TODO: Chat data between two accounts should be stored in one place
-        if (!from.data.chats[tx.to])
-          from.data.chats[tx.to] = { messages: [tx.message] }
-        else from.data.chats[tx.to].messages.push(tx.message)
+        if (!from.data.chats[tx.to]) from.data.chats[tx.to] = tx.chatId
+        if (!to.data.chats[tx.from]) to.data.chats[tx.from] = tx.chatId
 
-        if (!to.data.chats[tx.from])
-          to.data.chats[tx.from] = { messages: [tx.message] }
-        else to.data.chats[tx.from].messages.push(tx.message)
+        chat.messages.push(tx.message)
+        // from.data.transactions.push({ ...tx, txId })
+        // to.data.transactions.push({ ...tx, txId })
 
-        if (to.data.friends[from.id]) {
-          from.data.transactions.push({ ...tx, amount: 1, txId })
-          to.data.transactions.push({ ...tx, amount: 1, txId })
-        } else {
-          from.data.transactions.push({ ...tx, txId })
-          to.data.transactions.push({ ...tx, txId })
-        }
-
+        chat.timestamp = tx.timestamp
         from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
 
-        console.log('Applied message tx', txId, from, to)
+        console.log('Applied message tx', txId, chat, from, to)
         break
       }
       case 'toll': {
@@ -2502,6 +2507,10 @@ dapp.setup({
       case 'email':
         result.sourceKeys = [tx.signedTx.from]
         break
+      case 'gossip_email_hash':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.account]
+        break
       case 'verify':
         result.sourceKeys = [tx.from]
         break
@@ -2523,7 +2532,7 @@ dapp.setup({
         break
       case 'message':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.to]
+        result.targetKeys = [tx.to, tx.chatId]
         break
       case 'toll':
         result.sourceKeys = [tx.from]
@@ -2616,7 +2625,6 @@ dapp.setup({
       accounts[account.id] = account
     }
   },
-  // TODO: This could be cleaned up...
   getRelevantData (accountId, tx) {
     let account = accounts[accountId]
     let accountCreated = false
@@ -2626,6 +2634,13 @@ dapp.setup({
         account = createNetworkAccount(accountId)
         accounts[accountId] = account
         accountCreated = true
+      }
+      if (tx.type === 'message') {
+        if (accountId === tx.chatId) {
+          account = createChat(accountId)
+          accounts[accountId] = account
+          accountCreated = true
+        }
       }
       if (tx.type === 'dev_proposal') {
         if (accountId === tx.devProposal) {
@@ -3125,7 +3140,6 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       lastReward = cycleStartTimestamp
     }
 
-    // TODO: COULD PROBABLY STILL BE IMPROVED
     // AUTOMATIC (ISSUE | TALLY | APPLY_PARAMETERS) TRANSACTION GENERATION
     // IS THE NETWORK READY TO GENERATE A NEW ISSUE?
     console.log(
