@@ -84,7 +84,7 @@ set(config, 'server.p2p', {
   cycleDuration: cycleDuration,
   seedList: 'http://127.0.0.1:4000/api/seednodes',
   maxNodesPerCycle: 10,
-  minNodes: 5,
+  minNodes: 60,
   maxNodes: 60,
   minNodesToAllowTxs: 1,
   maxNodesToRotate: 1,
