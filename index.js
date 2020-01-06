@@ -323,7 +323,6 @@ function createDevIssue (accountId) {
   const devIssue = {
     id: accountId,
     devProposals: [],
-    winners: [],
     devProposalCount: 0,
     hash: '',
     timestamp: 0
@@ -1208,16 +1207,16 @@ dapp.setup({
       }
       case 'issue': {
         const issue = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
-        let nodeInfo
-        try {
-          nodeInfo = dapp.getNode(tx.nodeId)
-        } catch (err) {
-          console.log(err)
-        }
-        if (!nodeInfo) {
-          response.reason = 'no nodeInfo'
-          return response
-        }
+        // let nodeInfo
+        // try {
+        //   nodeInfo = dapp.getNode(tx.nodeId)
+        // } catch (err) {
+        //   console.log(err)
+        // }
+        // if (!nodeInfo) {
+        //   response.reason = 'no nodeInfo'
+        //   return response
+        // }
         if (issue.active) {
           response.reason = 'Issue is already active'
           return response
@@ -1239,16 +1238,16 @@ dapp.setup({
       case 'dev_issue': {
         const devIssue =
           wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
-        let nodeInfo
-        try {
-          nodeInfo = dapp.getNode(tx.nodeId)
-        } catch (err) {
-          console.log(err)
-        }
-        if (!nodeInfo) {
-          response.reason = 'no nodeInfo'
-          return response
-        }
+        // let nodeInfo
+        // try {
+        //   nodeInfo = dapp.getNode(tx.nodeId)
+        // } catch (err) {
+        //   console.log(err)
+        // }
+        // if (!nodeInfo) {
+        //   response.reason = 'no nodeInfo'
+        //   return response
+        // }
         if (devIssue.active) {
           response.reason = 'devIssue is already active'
           return response
@@ -1421,16 +1420,16 @@ dapp.setup({
         const issue = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
         const proposals = tx.proposals.map(id => wrappedStates[id].data)
 
-        let nodeInfo
-        try {
-          nodeInfo = dapp.getNode(tx.nodeId)
-        } catch (err) {
-          console.log(err)
-        }
-        if (!nodeInfo) {
-          response.reason = 'no nodeInfo'
-          return response
-        }
+        // let nodeInfo
+        // try {
+        //   nodeInfo = dapp.getNode(tx.nodeId)
+        // } catch (err) {
+        //   console.log(err)
+        // }
+        // if (!nodeInfo) {
+        //   response.reason = 'no nodeInfo'
+        //   return response
+        // }
         if (!issue) {
           response.reason = "Issue doesn't exist"
           return response
@@ -1462,16 +1461,16 @@ dapp.setup({
           wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
         const devProposals = tx.devProposals.map(id => wrappedStates[id].data)
 
-        let nodeInfo
-        try {
-          nodeInfo = dapp.getNode(tx.nodeId)
-        } catch (err) {
-          console.log(err)
-        }
-        if (!nodeInfo) {
-          response.reason = 'no nodeInfo'
-          return response
-        }
+        // let nodeInfo
+        // try {
+        //   nodeInfo = dapp.getNode(tx.nodeId)
+        // } catch (err) {
+        //   console.log(err)
+        // }
+        // if (!nodeInfo) {
+        //   response.reason = 'no nodeInfo'
+        //   return response
+        // }
         if (!devIssue) {
           response.reason = "devIssue doesn't exist"
           return response
@@ -1480,7 +1479,7 @@ dapp.setup({
           response.reason = 'This devIssue is no longer active'
           return response
         }
-        if (devIssue.winners.length > 0) {
+        if (devIssue.winners !== undefined) {
           response.reason =
             'The winners for this devIssue has already been determined'
           return response
@@ -1501,16 +1500,16 @@ dapp.setup({
       case 'apply_parameters': {
         const issue = wrappedStates[tx.issue].data
 
-        let nodeInfo
-        try {
-          nodeInfo = dapp.getNode(tx.nodeId)
-        } catch (err) {
-          console.log(err)
-        }
-        if (!nodeInfo) {
-          response.reason = 'no nodeInfo'
-          return response
-        }
+        // let nodeInfo
+        // try {
+        //   nodeInfo = dapp.getNode(tx.nodeId)
+        // } catch (err) {
+        //   console.log(err)
+        // }
+        // if (!nodeInfo) {
+        //   response.reason = 'no nodeInfo'
+        //   return response
+        // }
         if (!issue) {
           response.reason = "Issue doesn't exist"
           return response
@@ -1530,16 +1529,16 @@ dapp.setup({
       case 'apply_dev_parameters': {
         const devIssue = wrappedStates[tx.devIssue].data
 
-        let nodeInfo
-        try {
-          nodeInfo = dapp.getNode(tx.nodeId)
-        } catch (err) {
-          console.log(err)
-        }
-        if (!nodeInfo) {
-          response.reason = 'no nodeInfo'
-          return response
-        }
+        // let nodeInfo
+        // try {
+        //   nodeInfo = dapp.getNode(tx.nodeId)
+        // } catch (err) {
+        //   console.log(err)
+        // }
+        // if (!nodeInfo) {
+        //   response.reason = 'no nodeInfo'
+        //   return response
+        // }
         if (!devIssue) {
           response.reason = "devIssue doesn't exist"
           return response
@@ -1557,16 +1556,16 @@ dapp.setup({
         return response
       }
       case 'developer_payment': {
-        let nodeInfo
-        try {
-          nodeInfo = dapp.getNode(tx.nodeId)
-        } catch (err) {
-          console.log(err)
-        }
-        if (!nodeInfo) {
-          response.reason = 'no nodeInfo'
-          return response
-        }
+        // let nodeInfo
+        // try {
+        //   nodeInfo = dapp.getNode(tx.nodeId)
+        // } catch (err) {
+        //   console.log(err)
+        // }
+        // if (!nodeInfo) {
+        //   response.reason = 'no nodeInfo'
+        //   return response
+        // }
         if (to.id !== networkAccount) {
           response.reason = 'To account must be the network account'
           return response
@@ -2379,7 +2378,7 @@ dapp.setup({
       case 'dev_tally': {
         const devIssue = wrappedStates[tx.devIssue].data
         const devProposals = tx.devProposals.map(id => wrappedStates[id].data)
-
+        devIssue.winners = []
         for (const devProposal of devProposals) {
           if (
             devProposal.approve >
@@ -3106,7 +3105,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
         await syncDevParameters(cycleStartTimestamp + cycleInterval)
         if (
           !IN_SYNC &&
-          closest.includes(nodeId) &&
+          closest === nodeId &&
           ISSUE === 1 &&
           DEV_ISSUE === 1
         ) {
@@ -3146,7 +3145,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       cycleStartTimestamp <= WINDOWS.proposalWindow[1]
     ) {
       if (!issueGenerated) {
-        if (closest === nodeId) {
+        if (true) {
           await generateIssue(nodeAddress, nodeId)
         }
         issueGenerated = true
@@ -3164,7 +3163,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
         syncedNextParams = true
       }
       if (!tallyGenerated) {
-        if (closest === nodeId) {
+        if (true) {
           await tallyVotes(nodeAddress, nodeId)
         }
         tallyGenerated = true
@@ -3178,7 +3177,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       cycleStartTimestamp <= WINDOWS.applyWindow[1]
     ) {
       if (!applyGenerated) {
-        if (closest === nodeId) {
+        if (true) {
           await applyParameters(nodeAddress, nodeId)
         }
         WINDOWS = NEXT_WINDOWS
@@ -3211,7 +3210,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       cycleStartTimestamp <= DEV_WINDOWS.devProposalWindow[1]
     ) {
       if (!devIssueGenerated) {
-        if (closest === nodeId) {
+        if (true) {
           await generateDevIssue(nodeAddress, nodeId)
         }
         devIssueGenerated = true
@@ -3229,7 +3228,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
         syncedNextDevParams = true
       }
       if (!devTallyGenerated) {
-        if (closest === nodeId) {
+        if (true) {
           await tallyDevVotes(nodeAddress, nodeId)
         }
         devTallyGenerated = true
@@ -3243,7 +3242,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       cycleStartTimestamp <= DEV_WINDOWS.devApplyWindow[1]
     ) {
       if (!devApplyGenerated) {
-        if (closest === nodeId) {
+        if (true) {
           await applyDevParameters(nodeAddress, nodeId)
         }
         DEV_WINDOWS = NEXT_DEV_WINDOWS
@@ -3261,7 +3260,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
     for (const payment of DEVELOPER_FUND) {
       // PAY DEVELOPER IF THE CURRENT TIME IS GREATER THAN THE PAYMENT TIME
       if (cycleStartTimestamp >= payment.timestamp) {
-        if (closest === nodeId) {
+        if (true) {
           releaseDeveloperFunds(payment, nodeAddress, nodeId)
         }
         DEVELOPER_FUND = DEVELOPER_FUND.filter(p => p.id !== payment.id)
