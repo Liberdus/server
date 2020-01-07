@@ -82,7 +82,7 @@ if (process.env.BASE_DIR) {
 // CONFIGURATION PARAMETERS PASSED INTO SHARDUS
 set(config, 'server.p2p', {
   cycleDuration: cycleDuration,
-  seedList: 'http://127.0.0.1:4000/api/seednodes',
+  existingArchivers: JSON.parse(process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]'),
   maxNodesPerCycle: 10,
   minNodes: 60,
   maxNodes: 60,
@@ -90,6 +90,13 @@ set(config, 'server.p2p', {
   maxNodesToRotate: 1,
   maxPercentOfDelta: 40
 })
+
+if (process.env.APP_IP) {
+  set(config, 'server.ip', {
+    externalIp: process.env.APP_IP
+  })
+}
+
 set(config, 'server.loadDetection', {
   queueLimit: 1000,
   desiredTxTime: 5,
@@ -97,6 +104,7 @@ set(config, 'server.loadDetection', {
   lowThreshold: 0.2
 })
 set(config, 'server.reporting', {
+  recipient: `http://${process.env.APP_MONITOR || '0.0.0.0'}:3000/api`,
   interval: 1
 })
 set(config, 'server.rateLimiting', {

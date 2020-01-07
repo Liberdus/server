@@ -9,7 +9,8 @@
     "stop": "node scripts/stop.js",
     "clean": "node scripts/clean.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "update-template": "node scripts/update-template.js"
+    "update-template": "node scripts/update-template.js",
+    "update-docker": "docker build -t registry.gitlab.com/liberdus/server . && docker push registry.gitlab.com/liberdus/server"
   },
   "author": "Kyle Shifflett",
   "license": "ISC",
