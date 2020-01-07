@@ -13,6 +13,11 @@
   "name_prefix": {
     "type": "string"
   },
+  "namespace": {
+    "type": "string",
+    "docDefault": "default",
+    "docDescription": "Process namespace"
+  },
   "install_url": {
     "type": "string"
   },
@@ -143,6 +148,11 @@
     "type": "number",
     "docDefault": 1600,
     "docDescription": "Time in ms before sending the final SIGKILL signal after SIGINT"
+  },
+  "shutdown_with_message": {
+    "type": "boolean",
+    "docDefault": false,
+    "docDescription": "Shutdown an application with process.send('shutdown') instead of process.kill(pid, SIGINT)"
   },
   "listen_timeout": {
     "type": "number",

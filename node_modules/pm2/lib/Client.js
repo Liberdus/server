@@ -168,6 +168,14 @@ Client.prototype.initFileStructure = function (opts) {
   }
 
   if (!process.env.PM2_PROGRAMMATIC && !fs.existsSync(path.join(opts.PM2_HOME, 'touch'))) {
+
+    var vCheck = require('./VersionCheck.js')
+
+    vCheck({
+      state: 'install',
+      version: pkg.version
+    })
+
     var dt = fs.readFileSync(path.join(__dirname, opts.PM2_BANNER));
     console.log(dt.toString());
     try {
@@ -688,6 +696,35 @@ Client.prototype.getProcessIdByName = function(name, force_all, cb) {
 
     list.forEach(function(proc) {
       if (proc.pm2_env.name == name || proc.pm2_env.pm_exec_path == path.resolve(name)) {
+        found_proc.push(proc.pm_id);
+        full_details[proc.pm_id] = proc;
+      }
+    });
+
+    return cb(null, found_proc, full_details);
+  });
+};
+
+Client.prototype.getProcessIdsByNamespace = function(namespace, force_all, cb) {
+  var found_proc   = [];
+  var full_details = {};
+
+  if (typeof(cb) === 'undefined') {
+    cb = force_all;
+    force_all = false;
+  }
+
+  if (typeof(namespace) == 'number')
+    namespace = namespace.toString();
+
+  this.executeRemote('getMonitorData', {}, function(err, list) {
+    if (err) {
+      Common.printError('Error retrieving process list: ' + err);
+      return cb(err);
+    }
+
+    list.forEach(function(proc) {
+      if (proc.pm2_env.namespace == namespace) {
         found_proc.push(proc.pm_id);
         full_details[proc.pm_id] = proc;
       }

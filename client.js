@@ -5,7 +5,7 @@ const vorpal = require('vorpal')()
 const crypto = require('shardus-crypto-utils')
 const stringify = require('fast-stable-stringify')
 const axios = require('axios')
-crypto('64f152869ca2d473e4ba64ab53f49ccdb2edae22da192c126850970e788af347')
+crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
 let USER

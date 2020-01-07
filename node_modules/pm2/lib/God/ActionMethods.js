@@ -131,7 +131,7 @@ module.exports = function(God) {
         cb(null, data)
       })
     else {
-      cb(null, {})
+      cb(new Error('Sysinfos not launched, type: pm2 sysmonit'))
     }
   };
 
@@ -378,6 +378,8 @@ module.exports = function(God) {
    * @return Literal
    */
   God.deleteProcessId = function(id, cb) {
+    God.deleteCron(id);
+
     God.stopProcessId(id, function(err, proc) {
       if (err) return cb(God.logAndGenerateError(err), {});
       // ! transform to slow object

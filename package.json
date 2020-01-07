@@ -27,7 +27,7 @@
     "nodemailer-smtp-transport": "^2.7.4",
     "shardus-crypto-utils": "git+https://gitlab.com/shardus/shardus-crypto-utils.git",
     "streamroller": "^2.2.3",
-    "shardus-global-server": "git+https://gitlab.com/shardus/global/shardus-global-server.git#archive-server-update-fix",
+    "shardus-global-server": "git+https://gitlab.com/shardus/global/shardus-global-server.git#demo-2019-q4",
     "vorpal": "^1.12.0"
   },
   "devDependencies": {

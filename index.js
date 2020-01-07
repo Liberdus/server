@@ -7,7 +7,7 @@ const nodemailer = require('nodemailer')
 const smtpTransport = require('nodemailer-smtp-transport')
 const { set } = require('dot-prop')
 const _ = require('lodash')
-crypto('64f152869ca2d473e4ba64ab53f49ccdb2edae22da192c126850970e788af347')
+crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 // FOR SENDING VERIFICATION EMAILS
 const transporter = nodemailer.createTransport(
@@ -31,8 +31,7 @@ const transporter = nodemailer.createTransport(
 
 // THE ENTIRE APP STATE FOR THIS NODE
 let accounts = {}
-let networkAccount =
-  '0000000000000000000000000000000000000000000000000000000000000000'
+const networkAccount = '1'.repeat(64)
 
 // DYNAMIC LOCAL DATA HELD BY THE NODES
 let IN_SYNC = false
@@ -244,7 +243,7 @@ async function syncDevParameters (timestamp) {
 }
 
 // CREATE A USER ACCOUNT
-function createAccount (accountId) {
+function createAccount (accountId, timestamp) {
   const account = {
     id: accountId,
     data: {
@@ -254,7 +253,7 @@ function createAccount (accountId) {
       friends: {},
       transactions: []
     },
-    lastMaintenance: Date.now(),
+    lastMaintenance: timestamp,
     timestamp: 0
   }
   account.hash = crypto.hashObj(account)
@@ -1136,23 +1135,23 @@ dapp.setup({
         return response
       }
       case 'node_reward': {
-        let nodeInfo
-        try {
-          nodeInfo = dapp.getNode(tx.nodeId)
-        } catch (err) {
-          console.log(err)
-        }
-        if (!nodeInfo) {
-          response.reason = 'no nodeInfo'
-          return response
-        }
-        if (
-          tx.timestamp - nodeInfo.activeTimestamp <
-          CURRENT.nodeRewardInterval
-        ) {
-          response.reason = 'Too early for this node to get paid'
-          return response
-        }
+        // let nodeInfo
+        // try {
+        //   nodeInfo = dapp.getNode(tx.nodeId)
+        // } catch (err) {
+        //   console.log(err)
+        // }
+        // if (!nodeInfo) {
+        //   response.reason = 'no nodeInfo'
+        //   return response
+        // }
+        // if (
+        //   tx.timestamp - nodeInfo.activeTimestamp <
+        //   CURRENT.nodeRewardInterval
+        // ) {
+        //   response.reason = 'Too early for this node to get paid'
+        //   return response
+        // }
         if (!from) {
           response.result = 'pass'
           response.reason = 'This transaction in valid'
@@ -2696,7 +2695,7 @@ dapp.setup({
         accounts[accountId] = account
         accountCreated = true
       } else {
-        account = createAccount(accountId)
+        account = createAccount(accountId, tx.timestamp)
         accounts[accountId] = account
         accountCreated = true
       }
@@ -3159,7 +3158,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       cycleStartTimestamp <= WINDOWS.proposalWindow[1]
     ) {
       if (!issueGenerated) {
-        if (true) {
+        if (nodeId === closest) {
           await generateIssue(nodeAddress, nodeId)
         }
         issueGenerated = true
@@ -3177,7 +3176,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
         syncedNextParams = true
       }
       if (!tallyGenerated) {
-        if (true) {
+        if (nodeId === closest) {
           await tallyVotes(nodeAddress, nodeId)
         }
         tallyGenerated = true
@@ -3191,7 +3190,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       cycleStartTimestamp <= WINDOWS.applyWindow[1]
     ) {
       if (!applyGenerated) {
-        if (true) {
+        if (nodeId === closest) {
           await applyParameters(nodeAddress, nodeId)
         }
         WINDOWS = NEXT_WINDOWS
@@ -3224,7 +3223,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       cycleStartTimestamp <= DEV_WINDOWS.devProposalWindow[1]
     ) {
       if (!devIssueGenerated) {
-        if (true) {
+        if (nodeId === closest) {
           await generateDevIssue(nodeAddress, nodeId)
         }
         devIssueGenerated = true
@@ -3242,7 +3241,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
         syncedNextDevParams = true
       }
       if (!devTallyGenerated) {
-        if (true) {
+        if (nodeId === closest) {
           await tallyDevVotes(nodeAddress, nodeId)
         }
         devTallyGenerated = true
@@ -3256,7 +3255,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       cycleStartTimestamp <= DEV_WINDOWS.devApplyWindow[1]
     ) {
       if (!devApplyGenerated) {
-        if (true) {
+        if (nodeId === closest) {
           await applyDevParameters(nodeAddress, nodeId)
         }
         DEV_WINDOWS = NEXT_DEV_WINDOWS
@@ -3274,7 +3273,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
     for (const payment of DEVELOPER_FUND) {
       // PAY DEVELOPER IF THE CURRENT TIME IS GREATER THAN THE PAYMENT TIME
       if (cycleStartTimestamp >= payment.timestamp) {
-        if (true) {
+        if (nodeId === closest) {
           releaseDeveloperFunds(payment, nodeAddress, nodeId)
         }
         DEVELOPER_FUND = DEVELOPER_FUND.filter(p => p.id !== payment.id)

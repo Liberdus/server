@@ -7,7 +7,7 @@
 
 var cst         = require('../../constants.js');
 var Common      = require('../Common.js');
-var UX          = require('./CliUx');
+var UX          = require('./UX');
 var chalk       = require('chalk');
 var path        = require('path');
 var fs          = require('fs');
@@ -28,6 +28,25 @@ module.exports = function(CLI) {
     that.Client.executeRemote('getVersion', {}, function(err) {
       return cb ? cb.apply(null, arguments) : that.exitCli(cst.SUCCESS_EXIT);
     });
+  };
+
+  /**
+   * Get version of the daemonized PM2
+   * @method getVersion
+   * @callback cb
+   */
+  CLI.prototype.launchSysMonitoring = function(cb) {
+    var that = this;
+
+    this.set('pm2:sysmonit', 'true', () => {
+      that.Client.executeRemote('launchSysMonitoring', {}, function(err) {
+        if (err)
+          Common.err(err)
+        else
+          Common.log('System Monitoring launched')
+        return cb ? cb.apply(null, arguments) : that.exitCli(cst.SUCCESS_EXIT);
+      })
+    })
   };
 
   /**
@@ -117,7 +136,7 @@ module.exports = function(CLI) {
 
         fmt.sep();
         fmt.title(chalk.bold.blue('PM2 list'));
-        UX.dispAsTable(list, that.gl_interact_infos);
+        UX.list(list, that.gl_interact_infos);
 
         fmt.sep();
         fmt.title(chalk.bold.blue('Daemon logs'));
@@ -209,6 +228,80 @@ module.exports = function(CLI) {
     });
   };
 
+
+  function basicMDHighlight(lines) {
+    console.log('\n\n+-------------------------------------+')
+    console.log(chalk.bold('README.md content:'))
+    lines = lines.split('\n')
+    var isInner = false
+    lines.forEach(l => {
+      if (l.startsWith('#'))
+        console.log(chalk.bold.green(l))
+      else if (isInner || l.startsWith('```')) {
+        if (isInner && l.startsWith('```'))
+          isInner = false
+        else if (isInner == false)
+          isInner = true
+        console.log(chalk.grey(l))
+      }
+      else if (l.startsWith('`'))
+        console.log(chalk.grey(l))
+      else
+        console.log(l)
+    })
+    console.log('+-------------------------------------+')
+  }
+  /**
+   * pm2 create command
+   * create boilerplate of application for fast try
+   * @method boilerplate
+   */
+  CLI.prototype.boilerplate = function(cb) {
+    var i = 0
+    var projects = []
+    var enquirer = require('enquirer')
+
+    fs.readdir(path.join(__dirname, '../templates/sample-apps'), (err, items) => {
+      require('async').forEach(items, (app, next) => {
+        var fp = path.join(__dirname, '../templates/sample-apps', app)
+        fs.readFile(path.join(fp, 'package.json'), (err, dt) => {
+          var meta = JSON.parse(dt)
+          meta.fullpath = fp
+          meta.folder_name = app
+          projects.push(meta)
+          next()
+        })
+      }, () => {
+        const prompt = new enquirer.Select({
+          name: 'boilerplate',
+          message: 'Select a boilerplate',
+          choices: projects.map((p, i) => {
+            return {
+              message: `${chalk.bold.blue(p.name)} ${p.description}`,
+              value: `${i}`
+            }
+          })
+        });
+
+        prompt.run()
+          .then(answer => {
+            var p = projects[parseInt(answer)]
+            basicMDHighlight(fs.readFileSync(path.join(p.fullpath, 'README.md')).toString())
+            console.log(chalk.bold(`>> Project copied inside folder ./${p.folder_name}/\n`))
+            require('shelljs').cp('-r', p.fullpath, process.cwd());
+            this.start(path.join(p.fullpath, 'ecosystem.config.js'), {
+              cwd: p.fullpath
+            }, () => {
+              return cb ? cb.apply(null, arguments) : this.speedList(cst.SUCCESS_EXIT);
+            })
+          })
+          .catch(e => {
+            return cb ? cb.apply(null, arguments) : this.speedList(cst.SUCCESS_EXIT);
+          });
+
+      })
+    })
+  }
 
   /**
    * Description
