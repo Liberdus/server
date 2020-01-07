@@ -93,7 +93,8 @@ set(config, 'server.p2p', {
 
 if (process.env.APP_IP) {
   set(config, 'server.ip', {
-    externalIp: process.env.APP_IP
+    externalIp: process.env.APP_IP,
+    internalIp: process.env.APP_IP
   })
 }
 
