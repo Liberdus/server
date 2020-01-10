@@ -31,7 +31,7 @@ const transporter = nodemailer.createTransport(
 
 // THE ENTIRE APP STATE FOR THIS NODE
 let accounts = {}
-const networkAccount = '1'.repeat(64)
+const networkAccount = '0'.repeat(64)
 
 // DYNAMIC LOCAL DATA HELD BY THE NODES
 let IN_SYNC = false
@@ -83,9 +83,9 @@ if (process.env.BASE_DIR) {
 set(config, 'server.p2p', {
   cycleDuration: cycleDuration,
   existingArchivers: JSON.parse(process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]'),
-  maxNodesPerCycle: 10,
-  minNodes: 60,
-  maxNodes: 60,
+  maxNodesPerCycle: 1,
+  minNodes: 5,
+  maxNodes: 10,
   minNodesToAllowTxs: 1,
   maxNodesToRotate: 1,
   maxPercentOfDelta: 40
@@ -100,7 +100,7 @@ if (process.env.APP_IP) {
 
 set(config, 'server.loadDetection', {
   queueLimit: 1000,
-  desiredTxTime: 5,
+  desiredTxTime: 15,
   highThreshold: 0.8,
   lowThreshold: 0.2
 })
@@ -834,6 +834,99 @@ dapp.registerExternalGet('messages/:chatId', async (req, res) => {
 
 // SDK SETUP FUNCTIONS
 dapp.setup({
+  async sync () {
+    if (dapp.p2p.isFirstSeed) {
+      await _sleep(ONE_SECOND * 20)
+      const timestamp = Date.now()
+      const nodeId = dapp.getNodeId()
+      const address = dapp.getNode(nodeId).address
+      const proposalWindow = [timestamp, timestamp + TIME_FOR_PROPOSALS]
+      const votingWindow = [
+        proposalWindow[1],
+        proposalWindow[1] + TIME_FOR_VOTING
+      ]
+      const graceWindow = [votingWindow[1], votingWindow[1] + TIME_FOR_GRACE]
+      const applyWindow = [graceWindow[1], graceWindow[1] + TIME_FOR_APPLY]
+
+      const devProposalWindow = [timestamp, timestamp + TIME_FOR_DEV_PROPOSALS]
+      const devVotingWindow = [
+        devProposalWindow[1],
+        devProposalWindow[1] + TIME_FOR_DEV_VOTING
+      ]
+      const devGraceWindow = [
+        devVotingWindow[1],
+        devVotingWindow[1] + TIME_FOR_DEV_GRACE
+      ]
+      const devApplyWindow = [
+        devGraceWindow[1],
+        devGraceWindow[1] + TIME_FOR_DEV_APPLY
+      ]
+      CURRENT = {
+        nodeRewardInterval: ONE_MINUTE * 2,
+        nodeRewardAmount: 10,
+        nodePenalty: 100,
+        transactionFee: 0.001,
+        stakeRequired: 500,
+        maintenanceInterval: ONE_MINUTE,
+        maintenanceFee: 0.01,
+        proposalFee: 500,
+        devProposalFee: 20
+      }
+      NEXT = {}
+      WINDOWS = {
+        proposalWindow,
+        votingWindow,
+        graceWindow,
+        applyWindow
+      }
+      NEXT_WINDOWS = {}
+      DEV_WINDOWS = {
+        devProposalWindow,
+        devVotingWindow,
+        devGraceWindow,
+        devApplyWindow
+      }
+      NEXT_DEV_WINDOWS = {}
+      DEVELOPER_FUND = []
+      NEXT_DEVELOPER_FUND = []
+      ISSUE = 1
+      DEV_ISSUE = 1
+      dapp.set({
+        type: 'issue',
+        nodeId,
+        from: address,
+        to: networkAccount,
+        issue: crypto.hash(`issue-${ISSUE}`),
+        proposal: crypto.hash(`issue-${ISSUE}-proposal-1`),
+        timestamp: Date.now()
+      })
+      dapp.set({
+        type: 'dev_issue',
+        nodeId,
+        from: address,
+        to: networkAccount,
+        devIssue: crypto.hash(`dev-issue-${DEV_ISSUE}`),
+        timestamp: Date.now()
+      })
+    } else {
+      const account = await dapp.getLocalOrRemoteAccount(networkAccount)
+      if (account && account.data) {
+        CURRENT = account.data.current
+        NEXT = account.data.next
+        WINDOWS = account.data.windows
+        DEV_WINDOWS = account.data.devWindows
+        NEXT_WINDOWS = account.data.nextWindows
+        NEXT_DEV_WINDOWS = account.data.nextDevWindows
+        DEVELOPER_FUND = account.data.developerFund
+        NEXT_DEVELOPER_FUND = account.data.nextDeveloperFund
+        ISSUE = account.data.issue
+        DEV_ISSUE = account.data.devIssue
+        IN_SYNC = true
+      } else {
+        console.log('no network account')
+      }
+    }
+  },
   validateTransaction (tx, wrappedStates) {
     const response = {
       result: 'fail',
@@ -2983,65 +3076,85 @@ function releaseDeveloperFunds (payment, address, nodeId) {
   dapp.put(tx)
 }
 
+function isLucky (cycleData, luckyNodes, nodeId) {
+  let [first, second, third] = luckyNodes
+  if (!cycleData.activated.includes(first)) {
+    if (first === nodeId) {
+      return true
+    } else {
+      return false
+    }
+  }
+  if (!cycleData.activated.includes(second)) {
+    if (second === nodeId) {
+      return true
+    } else {
+      return false
+    }
+  }
+  if (!cycleData.activated.includes(third)) {
+    if (third === nodeId) {
+      return true
+    } else {
+      return false
+    }
+  }
+}
+
 // CODE THAT GETS EXECUTED WHEN NODES START
 ;(async () => {
   const cycleInterval = cycleDuration * ONE_SECOND
-  await dapp.start()
-  // WAIT AT LEAST ONE CYCLE BEFORE ATTEMPTING TO QUERY THE NETWORK FOR THE PARAMETERS
-  await _sleep(cycleInterval + ONE_SECOND * 8)
-  // GET THE INITIAL CYCLE DATA FROM SHARDUS
-  let [cycleData] = dapp.getLatestCycles()
-  while (!cycleData || !cycleData.start) {
-    console.log('Failed to get cycleData.start, will try again in 1 cycleInterval...')
-    await _sleep(cycleInterval)
-    ;([cycleData] = dapp.getLatestCycles())
-  }
 
-  const nodeId = dapp.getNodeId()
-  const { address } = dapp.getNode(nodeId)
-  const nodeAddress = address
-
-  let cycleStartTimestamp = cycleData.start * 1000
-  let lastReward = cycleStartTimestamp
-
-  let issueGenerated = true
+  let issueGenerated = false
   let tallyGenerated = false
   let applyGenerated = false
 
-  let devIssueGenerated = true
+  let devIssueGenerated = false
   let devTallyGenerated = false
   let devApplyGenerated = false
 
   let syncedNextParams = true
   let syncedNextDevParams = true
 
-  let expectedInterval = cycleStartTimestamp + cycleInterval
+  let nodeId
+  let nodeAddress
+  let cycleStartTimestamp
+  let lastReward
+  let expectedInterval
 
-  return setTimeout(networkMaintenance, expectedInterval - Date.now())
+  await dapp.start()
+
+  // WAIT AT LEAST ONE CYCLE BEFORE ATTEMPTING TO QUERY THE NETWORK FOR THE PARAMETERS
+  dapp.p2p.on('joining', () => {
+    console.log('JOINING')
+  })
+  dapp.p2p.on('joined', () => {
+    console.log('JOINED')
+  })
+  dapp.p2p.on('active', async () => {
+    console.log('ACTIVE')
+    if (dapp.p2p.isFirstSeed) {
+      await _sleep(ONE_SECOND * 20)
+    }
+    let [cycleData] = dapp.getLatestCycles()
+    nodeId = dapp.getNodeId()
+    nodeAddress = dapp.getNode(nodeId).address
+    cycleStartTimestamp = cycleData.start * 1000
+    lastReward = cycleStartTimestamp
+    expectedInterval = cycleStartTimestamp + cycleInterval
+    return setTimeout(networkMaintenance, expectedInterval - Date.now())
+  })
 
   // THIS CODE IS CALLED ON EVERY NODE ON EVERY CYCLE
   async function networkMaintenance () {
+    console.log('MAINTENANCE')
     expectedInterval += cycleInterval
     let [cycleData] = dapp.getLatestCycles()
-    while (!cycleData || !cycleData.start) {
-      console.log('Failed to get cycleData.start, will try again in 1 cycleInterval...')
-      await _sleep(cycleInterval)
-      ;([cycleData] = dapp.getLatestCycles())
-    }
 
     // CONVERTS FROM SECONDS TO MILLISECONDS FOR COMPARISON WITH TIMESTAMPS
     cycleStartTimestamp = cycleData.start * 1000
 
-    let closest
-    while (!closest) {
-      try {
-        ;([closest] = dapp.getClosestNodes(cycleData.marker, 0))
-      } catch (err) {
-        console.log('Failed to getClosestNodes, will try again in 1 cycleInterval...', err)
-        await _sleep(cycleInterval)
-        ;([closest] = dapp.getClosestNodes(cycleData.marker, 0))
-      }
-    }
+    let luckyNodes = dapp.getClosestNodes(cycleData.marker, 2)
     // if (!closest) return setTimeout(networkMaintenance, expectedInterval - cycleStartTimestamp)
 
     console.log(
@@ -3049,8 +3162,8 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       CYCLE_DATA: `,
       cycleData,
       `
-      closest: `,
-      closest,
+      luckyNodes: `,
+      luckyNodes,
       `
       cycleStartTimestamp: `,
       cycleStartTimestamp,
@@ -3126,16 +3239,16 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       if (cycleData.active >= 3) {
         await syncParameters(cycleStartTimestamp + cycleInterval)
         await syncDevParameters(cycleStartTimestamp + cycleInterval)
-        if (
-          !IN_SYNC &&
-          closest === nodeId &&
-          ISSUE === 1 &&
-          DEV_ISSUE === 1
-        ) {
-          await generateIssue(nodeAddress, nodeId)
-          await generateDevIssue(nodeAddress, nodeId)
-          IN_SYNC = true
-        }
+        // if (
+        //   !IN_SYNC &&
+        //   closest === nodeId &&
+        //   ISSUE === 1 &&
+        //   DEV_ISSUE === 1
+        // ) {
+        //   await generateIssue(nodeAddress, nodeId)
+        //   await generateDevIssue(nodeAddress, nodeId)
+        //   IN_SYNC = true
+        // }
       }
 
       // return setTimeout(networkMaintenance, expectedInterval - cycleStartTimestamp) NO GOOD
@@ -3152,7 +3265,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
     // IS THE NETWORK READY TO GENERATE A NEW ISSUE?
     console.log(
       'ISSUE_DEBUG',
-      closest,
+      luckyNodes,
       nodeId,
       cycleStartTimestamp,
       WINDOWS.proposalWindow[0],
@@ -3167,7 +3280,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       cycleStartTimestamp <= WINDOWS.proposalWindow[1]
     ) {
       if (!issueGenerated) {
-        if (nodeId === closest) {
+        if (isLucky(cycleData, luckyNodes, nodeId) && ISSUE > 1) {
           await generateIssue(nodeAddress, nodeId)
         }
         issueGenerated = true
@@ -3185,7 +3298,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
         syncedNextParams = true
       }
       if (!tallyGenerated) {
-        if (nodeId === closest) {
+        if (isLucky(cycleData, luckyNodes, nodeId)) {
           await tallyVotes(nodeAddress, nodeId)
         }
         tallyGenerated = true
@@ -3199,7 +3312,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       cycleStartTimestamp <= WINDOWS.applyWindow[1]
     ) {
       if (!applyGenerated) {
-        if (nodeId === closest) {
+        if (isLucky(cycleData, luckyNodes, nodeId)) {
           await applyParameters(nodeAddress, nodeId)
         }
         WINDOWS = NEXT_WINDOWS
@@ -3207,15 +3320,15 @@ function releaseDeveloperFunds (payment, address, nodeId) {
         CURRENT = NEXT
         NEXT = {}
         ISSUE++
+        applyGenerated = true
         issueGenerated = false
         tallyGenerated = false
-        applyGenerated = true
       }
     }
 
     console.log(
       'DEV_ISSUE_DEBUG',
-      closest,
+      luckyNodes,
       nodeId,
       cycleStartTimestamp,
       DEV_WINDOWS.devProposalWindow[0],
@@ -3232,7 +3345,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       cycleStartTimestamp <= DEV_WINDOWS.devProposalWindow[1]
     ) {
       if (!devIssueGenerated) {
-        if (nodeId === closest) {
+        if (isLucky(cycleData, luckyNodes, nodeId) && DEV_ISSUE >= 2) {
           await generateDevIssue(nodeAddress, nodeId)
         }
         devIssueGenerated = true
@@ -3250,7 +3363,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
         syncedNextDevParams = true
       }
       if (!devTallyGenerated) {
-        if (nodeId === closest) {
+        if (isLucky(cycleData, luckyNodes, nodeId)) {
           await tallyDevVotes(nodeAddress, nodeId)
         }
         devTallyGenerated = true
@@ -3264,7 +3377,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       cycleStartTimestamp <= DEV_WINDOWS.devApplyWindow[1]
     ) {
       if (!devApplyGenerated) {
-        if (nodeId === closest) {
+        if (isLucky(cycleData, luckyNodes, nodeId)) {
           await applyDevParameters(nodeAddress, nodeId)
         }
         DEV_WINDOWS = NEXT_DEV_WINDOWS
@@ -3272,9 +3385,9 @@ function releaseDeveloperFunds (payment, address, nodeId) {
         DEVELOPER_FUND = [...DEVELOPER_FUND, ...NEXT_DEVELOPER_FUND]
         NEXT_DEVELOPER_FUND = []
         DEV_ISSUE++
+        devApplyGenerated = true
         devIssueGenerated = false
         devTallyGenerated = false
-        devApplyGenerated = true
       }
     }
 
@@ -3282,7 +3395,7 @@ function releaseDeveloperFunds (payment, address, nodeId) {
     for (const payment of DEVELOPER_FUND) {
       // PAY DEVELOPER IF THE CURRENT TIME IS GREATER THAN THE PAYMENT TIME
       if (cycleStartTimestamp >= payment.timestamp) {
-        if (nodeId === closest) {
+        if (isLucky(cycleData, luckyNodes, nodeId)) {
           releaseDeveloperFunds(payment, nodeAddress, nodeId)
         }
         DEVELOPER_FUND = DEVELOPER_FUND.filter(p => p.id !== payment.id)
