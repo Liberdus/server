@@ -1,364 +1,720 @@
 LoadPlaybackLogs
-loaded 24 files
-merged 24 files
+loaded 40 files
+merged 40 files
 wrote lines to file: /Users/kyle/Desktop/liberdus/instances/playbackMerged.txt
-merged 24 files
+merged 40 files
 wrote lines to file: /Users/kyle/Desktop/liberdus/instances/fatalMerged.txt
-merged 24 files
+merged 40 files
 wrote lines to file: /Users/kyle/Desktop/liberdus/instances/errorMerged.txt
-merged 24 files
+merged 40 files
 wrote lines to file: /Users/kyle/Desktop/liberdus/instances/shardDumpMerged.txt
-{"allNodeIds":["3bc5xff41d","7513xa2a58","83bex00879","89eex7ec82","f475x4ba5f"],"cycle":27,"nodesCovered":{"consensus":[],"extra":[],"fracID":0.10213599891917222,"hP":0,"id":"1a25x002a5","idx":-1,"ipPort":"127.0.0.1:9001","numP":5,"stored":[{"hp":1,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2},{"hp":2,"idx":3},{"hp":4,"idx":4}]},"partitions":[{"accounts":[],"parititionID":0},{"accounts":[],"parititionID":1,"skip":{"max":0,"min":0,"noSpread":true,"p":1}},{"accounts":[],"parititionID":2,"skip":{"max":0,"min":0,"noSpread":true,"p":2}},{"accounts":[],"parititionID":3,"skip":{"max":0,"min":0,"noSpread":true,"p":3}},{"accounts":[],"parititionID":4,"skip":{"max":0,"min":0,"noSpread":true,"p":4}}],"rangesCovered":{"cMax":0,"cMin":0,"fracID":0.10213599891917222,"hP":0,"id":"1a25x002a5","ipPort":"127.0.0.1:9001","numP":5,"stMax":4,"stMin":0}}
-{"allNodeIds":["3bc5xff41d","7513xa2a58","83bex00879","89eex7ec82","f475x4ba5f"],"cycle":27,"nodesCovered":{"consensus":[{"hp":2,"idx":2},{"hp":4,"idx":4}],"extra":[],"fracID":0.5388002150083893,"hP":2,"id":"89eex7ec82","idx":3,"ipPort":"127.0.0.1:9002","numP":5,"stored":[{"hp":1,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2},{"hp":2,"idx":3},{"hp":4,"idx":4}]},"partitions":[{"accounts":[],"parititionID":0,"skip":{"max":4,"min":2,"p":0}},{"accounts":[],"parititionID":1,"skip":{"max":4,"min":2,"p":1}},{"accounts":[{"hash":"c1f3x5e866","id":"7cd8x758eb","v":"{\"accountId\":\"7cd89f5a0178430d10d2bafbfd85c115e188e750981c658369c1f04e0d9758eb\",\"data\":{\"balance\":10,\"hash\":\"c1f317d5844d8146f2377aae3791121e53a95e868524fe165c5ab2600385e866\",\"id\":\"7cd89f5a0178430d10d2bafbfd85c115e188e750981c658369c1f04e0d9758eb\",\"nodeRewardTime\":1578940863006,\"timestamp\":1578940863006},\"stateId\":\"c1f317d5844d8146f2377aae3791121e53a95e868524fe165c5ab2600385e866\",\"timestamp\":1578940863006}"}],"parititionID":2},{"accounts":[],"parititionID":3},{"accounts":[{"hash":"2701x2c842","id":"dd8ex55acf","v":"{\"accountId\":\"dd8e86f477bb32280103118fd480f3e704d82667fa2a076aee8a059e79d55acf\",\"data\":{\"balance\":10,\"hash\":\"27013147aa1d56ba95fc88cc266d46f68709a0c38ed7d948192687271422c842\",\"id\":\"dd8e86f477bb32280103118fd480f3e704d82667fa2a076aee8a059e79d55acf\",\"nodeRewardTime\":1578940788005,\"timestamp\":1578940788005},\"stateId\":\"27013147aa1d56ba95fc88cc266d46f68709a0c38ed7d948192687271422c842\",\"timestamp\":1578940788005}"}],"parititionID":4}],"rangesCovered":{"cMax":4,"cMin":2,"fracID":0.5388002150083893,"hP":2,"id":"89eex7ec82","ipPort":"127.0.0.1:9002","numP":5,"stMax":4,"stMin":0}}
-{"allNodeIds":["3bc5xff41d","7513xa2a58","83bex00879","89eex7ec82","f475x4ba5f"],"cycle":27,"nodesCovered":{"consensus":[{"hp":1,"idx":0},{"hp":2,"idx":2}],"extra":[],"fracID":0.457325915213983,"hP":2,"id":"7513xa2a58","idx":1,"ipPort":"127.0.0.1:9003","numP":5,"stored":[{"hp":1,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2},{"hp":2,"idx":3},{"hp":4,"idx":4}]},"partitions":[{"accounts":[],"parititionID":0,"skip":{"max":2,"min":1,"p":0}},{"accounts":[],"parititionID":1},{"accounts":[{"hash":"c1f3x5e866","id":"7cd8x758eb","v":"{\"accountId\":\"7cd89f5a0178430d10d2bafbfd85c115e188e750981c658369c1f04e0d9758eb\",\"data\":{\"balance\":10,\"hash\":\"c1f317d5844d8146f2377aae3791121e53a95e868524fe165c5ab2600385e866\",\"id\":\"7cd89f5a0178430d10d2bafbfd85c115e188e750981c658369c1f04e0d9758eb\",\"nodeRewardTime\":1578940863006,\"timestamp\":1578940863006},\"stateId\":\"c1f317d5844d8146f2377aae3791121e53a95e868524fe165c5ab2600385e866\",\"timestamp\":1578940863006}"}],"parititionID":2},{"accounts":[],"parititionID":3,"skip":{"max":2,"min":1,"p":3}},{"accounts":[],"parititionID":4,"skip":{"max":2,"min":1,"p":4}}],"rangesCovered":{"cMax":2,"cMin":1,"fracID":0.457325915213983,"hP":2,"id":"7513xa2a58","ipPort":"127.0.0.1:9003","numP":5,"stMax":4,"stMin":0}}
-{"allNodeIds":["3bc5xff41d","7513xa2a58","83bex00879","89eex7ec82","f475x4ba5f"],"cycle":27,"nodesCovered":{"consensus":[{"hp":2,"idx":1},{"hp":2,"idx":3}],"extra":[],"fracID":0.5146189503172922,"hP":2,"id":"83bex00879","idx":2,"ipPort":"127.0.0.1:9004","numP":5,"stored":[{"hp":1,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2},{"hp":2,"idx":3},{"hp":4,"idx":4}]},"partitions":[{"accounts":[],"parititionID":0,"skip":{"max":2,"min":2,"noSpread":true,"p":0}},{"accounts":[],"parititionID":1,"skip":{"max":2,"min":2,"noSpread":true,"p":1}},{"accounts":[{"hash":"c1f3x5e866","id":"7cd8x758eb","v":"{\"accountId\":\"7cd89f5a0178430d10d2bafbfd85c115e188e750981c658369c1f04e0d9758eb\",\"data\":{\"balance\":10,\"hash\":\"c1f317d5844d8146f2377aae3791121e53a95e868524fe165c5ab2600385e866\",\"id\":\"7cd89f5a0178430d10d2bafbfd85c115e188e750981c658369c1f04e0d9758eb\",\"nodeRewardTime\":1578940863006,\"timestamp\":1578940863006},\"stateId\":\"c1f317d5844d8146f2377aae3791121e53a95e868524fe165c5ab2600385e866\",\"timestamp\":1578940863006}"}],"parititionID":2},{"accounts":[],"parititionID":3,"skip":{"max":2,"min":2,"noSpread":true,"p":3}},{"accounts":[],"parititionID":4,"skip":{"max":2,"min":2,"noSpread":true,"p":4}}],"rangesCovered":{"cMax":2,"cMin":2,"fracID":0.5146189503172922,"hP":2,"id":"83bex00879","ipPort":"127.0.0.1:9004","numP":5,"stMax":4,"stMin":0}}
-{"allNodeIds":["3bc5xff41d","7513xa2a58","83bex00879","89eex7ec82","f475x4ba5f"],"cycle":27,"nodesCovered":{"consensus":[{"hp":4,"idx":4},{"hp":2,"idx":1}],"extra":[],"fracID":0.23348381119628525,"hP":1,"id":"3bc5xff41d","idx":0,"ipPort":"127.0.0.1:9005","numP":5,"stored":[{"hp":1,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2},{"hp":2,"idx":3},{"hp":4,"idx":4}]},"partitions":[{"accounts":[],"parititionID":0},{"accounts":[],"parititionID":1},{"accounts":[{"hash":"c1f3x5e866","id":"7cd8x758eb","v":"{\"accountId\":\"7cd89f5a0178430d10d2bafbfd85c115e188e750981c658369c1f04e0d9758eb\",\"data\":{\"balance\":10,\"hash\":\"c1f317d5844d8146f2377aae3791121e53a95e868524fe165c5ab2600385e866\",\"id\":\"7cd89f5a0178430d10d2bafbfd85c115e188e750981c658369c1f04e0d9758eb\",\"nodeRewardTime\":1578940863006,\"timestamp\":1578940863006},\"stateId\":\"c1f317d5844d8146f2377aae3791121e53a95e868524fe165c5ab2600385e866\",\"timestamp\":1578940863006}"}],"parititionID":2},{"accounts":[],"parititionID":3,"skip":{"inverted":true,"max":2,"min":4,"p":3}},{"accounts":[{"hash":"2701x2c842","id":"dd8ex55acf","v":"{\"accountId\":\"dd8e86f477bb32280103118fd480f3e704d82667fa2a076aee8a059e79d55acf\",\"data\":{\"balance\":10,\"hash\":\"27013147aa1d56ba95fc88cc266d46f68709a0c38ed7d948192687271422c842\",\"id\":\"dd8e86f477bb32280103118fd480f3e704d82667fa2a076aee8a059e79d55acf\",\"nodeRewardTime\":1578940788005,\"timestamp\":1578940788005},\"stateId\":\"27013147aa1d56ba95fc88cc266d46f68709a0c38ed7d948192687271422c842\",\"timestamp\":1578940788005}"}],"parititionID":4}],"rangesCovered":{"cMax":2,"cMin":4,"fracID":0.23348381119628525,"hP":1,"id":"3bc5xff41d","ipPort":"127.0.0.1:9005","numP":5,"stMax":4,"stMin":0}}
-{"allNodeIds":["3bc5xff41d","7513xa2a58","83bex00879","89eex7ec82","f475x4ba5f"],"cycle":27,"nodesCovered":{"consensus":[{"hp":2,"idx":3},{"hp":1,"idx":0}],"extra":[],"fracID":0.9549116070742979,"hP":4,"id":"f475x4ba5f","idx":4,"ipPort":"127.0.0.1:9006","numP":5,"stored":[{"hp":1,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2},{"hp":2,"idx":3},{"hp":4,"idx":4}]},"partitions":[{"accounts":[],"parititionID":0},{"accounts":[],"parititionID":1},{"accounts":[{"hash":"c1f3x5e866","id":"7cd8x758eb","v":"{\"accountId\":\"7cd89f5a0178430d10d2bafbfd85c115e188e750981c658369c1f04e0d9758eb\",\"data\":{\"balance\":10,\"hash\":\"c1f317d5844d8146f2377aae3791121e53a95e868524fe165c5ab2600385e866\",\"id\":\"7cd89f5a0178430d10d2bafbfd85c115e188e750981c658369c1f04e0d9758eb\",\"nodeRewardTime\":1578940863006,\"timestamp\":1578940863006},\"stateId\":\"c1f317d5844d8146f2377aae3791121e53a95e868524fe165c5ab2600385e866\",\"timestamp\":1578940863006}"}],"parititionID":2},{"accounts":[],"parititionID":3},{"accounts":[{"hash":"2701x2c842","id":"dd8ex55acf","v":"{\"accountId\":\"dd8e86f477bb32280103118fd480f3e704d82667fa2a076aee8a059e79d55acf\",\"data\":{\"balance\":10,\"hash\":\"27013147aa1d56ba95fc88cc266d46f68709a0c38ed7d948192687271422c842\",\"id\":\"dd8e86f477bb32280103118fd480f3e704d82667fa2a076aee8a059e79d55acf\",\"nodeRewardTime\":1578940788005,\"timestamp\":1578940788005},\"stateId\":\"27013147aa1d56ba95fc88cc266d46f68709a0c38ed7d948192687271422c842\",\"timestamp\":1578940788005}"}],"parititionID":4}],"rangesCovered":{"cMax":1,"cMin":2,"fracID":0.9549116070742979,"hP":4,"id":"f475x4ba5f","ipPort":"127.0.0.1:9006","numP":5,"stMax":4,"stMin":0}}
+{"allNodeIds":["3e8axb4200","d017x046cf","df8dx2c366"],"cycle":42,"nodesCovered":{"consensus":[{"hp":0,"idx":0},{"hp":2,"idx":2}],"extra":[],"fracID":0.8128530061368022,"hP":2,"id":"d017x046cf","idx":1,"ipPort":"127.0.0.1:9001","numP":3,"stored":[{"hp":0,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2}]},"partitions":[{"accounts":[{"hash":"35e3x9e6ea","id":"0000x00000","v":"{\"accountId\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"data\":{\"current\":{\"devProposalFee\":20,\"maintenanceFee\":0.01,\"maintenanceInterval\":60000,\"nodePenalty\":100,\"nodeRewardAmount\":10,\"nodeRewardInterval\":120000,\"proposalFee\":500,\"stakeRequired\":500,\"transactionFee\":0.001},\"devIssue\":2,\"devWindows\":{\"devApplyWindow\":[1578945129878,1578945219878],\"devGraceWindow\":[1578945039878,1578945129878],\"devProposalWindow\":[1578944889878,1578944979878],\"devVotingWindow\":[1578944979878,1578945039878]},\"developerFund\":[],\"hash\":\"35e3d16e51cec72397e4ced3db978a18664824e544ca1eee9705b801ff59e6ea\",\"id\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"issue\":2,\"next\":{},\"nextDevWindows\":{},\"nextDeveloperFund\":[],\"nextWindows\":{},\"timestamp\":1578944843006,\"windows\":{\"applyWindow\":[1578945129878,1578945219878],\"graceWindow\":[1578945039878,1578945129878],\"proposalWindow\":[1578944889878,1578944979878],\"votingWindow\":[1578944979878,1578945039878]}},\"stateId\":\"35e3d16e51cec72397e4ced3db978a18664824e544ca1eee9705b801ff59e6ea\",\"timestamp\":1578944843006}"},{"hash":"daa8x6068d","id":"1d1fxcb0b9","v":"{\"accountId\":\"1d1fd8372dece63f821eed97c94375f2b42c28d57be5c2bdb6be809f300cb0b9\",\"data\":{\"active\":false,\"devProposalCount\":0,\"devProposals\":[],\"hash\":\"daa8772754d97eae18c2cc6311cedf7690ff5b255f802d28c41f2df8c7a6068d\",\"id\":\"1d1fd8372dece63f821eed97c94375f2b42c28d57be5c2bdb6be809f300cb0b9\",\"number\":1,\"timestamp\":1578944843006,\"winners\":[]},\"stateId\":\"daa8772754d97eae18c2cc6311cedf7690ff5b255f802d28c41f2df8c7a6068d\",\"timestamp\":1578944843006}"}],"parititionID":0},{"accounts":[{"hash":"4c9dx91fbf","id":"6f15xd77fa","v":"{\"accountId\":\"6f1513715917f7e1a33714f4b8104660965a965f67b30f7ba5050b26423d77fa\",\"data\":{\"active\":false,\"hash\":\"4c9dfe25626edd1b767a173f3a576312216e5a5cc9eef3c75d17c74fb0691fbf\",\"id\":\"6f1513715917f7e1a33714f4b8104660965a965f67b30f7ba5050b26423d77fa\",\"number\":1,\"proposalCount\":1,\"proposals\":[\"cbc16ff23fc230a74b92e890b9c2ee61df1ae48a40098cb086071ebf0bceac91\"],\"timestamp\":1578944843001,\"winner\":\"cbc16ff23fc230a74b92e890b9c2ee61df1ae48a40098cb086071ebf0bceac91\"},\"stateId\":\"4c9dfe25626edd1b767a173f3a576312216e5a5cc9eef3c75d17c74fb0691fbf\",\"timestamp\":1578944843001}"},{"hash":"c31cx1014b","id":"936dxc2247","v":"{\"accountId\":\"936dc29f02f643a57388413089c7ecd8f43b299167d5563044b97ab875ec2247\",\"data\":{\"active\":true,\"hash\":\"c31ce5fd43b634eb9863cdc9333ca3286a536e5da85fcc1259a859c3d031014b\",\"id\":\"936dc29f02f643a57388413089c7ecd8f43b299167d5563044b97ab875ec2247\",\"number\":2,\"proposalCount\":1,\"proposals\":[\"ec37f89827e4a207d1cc2333c7e9e880bd0f207dad49c7bd103db97b4f6c2824\"],\"timestamp\":1578944933003},\"stateId\":\"c31ce5fd43b634eb9863cdc9333ca3286a536e5da85fcc1259a859c3d031014b\",\"timestamp\":1578944933003}"},{"hash":"99e3x357f9","id":"76e8x0e25d","v":"{\"accountId\":\"76e814dfb8224ed80fb8eb1b4995a118272a2b1c82bed15ea10bdb78a480e25d\",\"data\":{\"active\":true,\"devProposalCount\":0,\"devProposals\":[],\"hash\":\"99e342e9cae4a0d0ca3f6e50f80e21c6b990dc90e1277edfa337603066a357f9\",\"id\":\"76e814dfb8224ed80fb8eb1b4995a118272a2b1c82bed15ea10bdb78a480e25d\",\"number\":2,\"timestamp\":1578944933008},\"stateId\":\"99e342e9cae4a0d0ca3f6e50f80e21c6b990dc90e1277edfa337603066a357f9\",\"timestamp\":1578944933008}"},{"hash":"1fd9x7c0e9","id":"68b0xfbd6a","v":"{\"accountId\":\"68b0373df00c119ab78b5debb043e452f1065d72668f42663e271fd1fa1fbd6a\",\"data\":{\"balance\":30,\"hash\":\"1fd91c3a39a0616978a781b1e282fab8d53b834b1611ec52d0f5038b7d87c0e9\",\"id\":\"68b0373df00c119ab78b5debb043e452f1065d72668f42663e271fd1fa1fbd6a\",\"nodeRewardTime\":1578945143003,\"timestamp\":1578945143003},\"stateId\":\"1fd91c3a39a0616978a781b1e282fab8d53b834b1611ec52d0f5038b7d87c0e9\",\"timestamp\":1578945143003}"},{"hash":"4fa1x119ae","id":"68f2x918d1","v":"{\"accountId\":\"68f2390f10cd047266f6892dffb8b5d0b49637e0dc83dfbc25a2282dcd0918d1\",\"data\":{\"balance\":40,\"hash\":\"4fa12807192a90d5f588168db92b62348f39da8491cb445c390a1dfedce119ae\",\"id\":\"68f2390f10cd047266f6892dffb8b5d0b49637e0dc83dfbc25a2282dcd0918d1\",\"nodeRewardTime\":1578945158005,\"timestamp\":1578945158005},\"stateId\":\"4fa12807192a90d5f588168db92b62348f39da8491cb445c390a1dfedce119ae\",\"timestamp\":1578945158005}"}],"parititionID":1},{"accounts":[{"hash":"24dfxd27ab","id":"cbc1xeac91","v":"{\"accountId\":\"cbc16ff23fc230a74b92e890b9c2ee61df1ae48a40098cb086071ebf0bceac91\",\"data\":{\"hash\":\"24df34c527643756687b7838d4809eb48651f47fe926ee5726364360bdad27ab\",\"id\":\"cbc16ff23fc230a74b92e890b9c2ee61df1ae48a40098cb086071ebf0bceac91\",\"number\":1,\"parameters\":{\"devProposalFee\":20,\"maintenanceFee\":0.01,\"maintenanceInterval\":60000,\"nodePenalty\":100,\"nodeRewardAmount\":10,\"nodeRewardInterval\":120000,\"proposalFee\":500,\"stakeRequired\":500,\"transactionFee\":0.001},\"power\":0,\"timestamp\":1578944753005,\"totalVotes\":0,\"winner\":true},\"stateId\":\"24df34c527643756687b7838d4809eb48651f47fe926ee5726364360bdad27ab\",\"timestamp\":1578944753005}"},{"hash":"15cdx7e0a4","id":"ec37xc2824","v":"{\"accountId\":\"ec37f89827e4a207d1cc2333c7e9e880bd0f207dad49c7bd103db97b4f6c2824\",\"data\":{\"hash\":\"15cd81244757316c658bd18f7c0cc70d64680086842f38204f6034976407e0a4\",\"id\":\"ec37f89827e4a207d1cc2333c7e9e880bd0f207dad49c7bd103db97b4f6c2824\",\"number\":1,\"parameters\":{\"devProposalFee\":20,\"maintenanceFee\":0.01,\"maintenanceInterval\":60000,\"nodePenalty\":100,\"nodeRewardAmount\":10,\"nodeRewardInterval\":120000,\"proposalFee\":500,\"stakeRequired\":500,\"transactionFee\":0.001},\"power\":0,\"timestamp\":1578944933003,\"totalVotes\":0},\"stateId\":\"15cd81244757316c658bd18f7c0cc70d64680086842f38204f6034976407e0a4\",\"timestamp\":1578944933003}"},{"hash":"e030x626f7","id":"c64cxc1b8e","v":"{\"accountId\":\"c64c9ac536bf9b893781b9b04601c9645b01343fbd183800492b28d0a69c1b8e\",\"data\":{\"balance\":30,\"hash\":\"e030b66984ace6380b1c85b499a16b9f32bc1982e47ba88d3c57e291b4d626f7\",\"id\":\"c64c9ac536bf9b893781b9b04601c9645b01343fbd183800492b28d0a69c1b8e\",\"nodeRewardTime\":1578945098002,\"timestamp\":1578945098002},\"stateId\":\"e030b66984ace6380b1c85b499a16b9f32bc1982e47ba88d3c57e291b4d626f7\",\"timestamp\":1578945098002}"}],"parititionID":2}],"rangesCovered":{"cMax":2,"cMin":0,"fracID":0.8128530061368022,"hP":2,"id":"d017x046cf","ipPort":"127.0.0.1:9001","numP":3,"stMax":2,"stMin":0}}
+{"allNodeIds":["3e8axb4200","d017x046cf","df8dx2c366"],"cycle":42,"nodesCovered":{"consensus":[],"extra":[],"fracID":0.08873749479854887,"hP":0,"id":"16b7xe3b19","idx":-1,"ipPort":"127.0.0.1:9002","numP":3,"stored":[{"hp":0,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2}]},"partitions":[{"accounts":[],"parititionID":0},{"accounts":[],"parititionID":1,"skip":{"max":0,"min":0,"noSpread":true,"p":1}},{"accounts":[],"parititionID":2,"skip":{"max":0,"min":0,"noSpread":true,"p":2}}],"rangesCovered":{"cMax":0,"cMin":0,"fracID":0.08873749479854887,"hP":0,"id":"16b7xe3b19","ipPort":"127.0.0.1:9002","numP":3,"stMax":2,"stMin":0}}
+{"allNodeIds":["3e8axb4200","d017x046cf","df8dx2c366"],"cycle":42,"nodesCovered":{"consensus":[],"extra":[],"fracID":0.7441383825484985,"hP":2,"id":"be7fx98b0b","idx":-1,"ipPort":"127.0.0.1:9003","numP":3,"stored":[{"hp":0,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2}]},"partitions":[{"accounts":[],"parititionID":0,"skip":{"max":2,"min":2,"noSpread":true,"p":0}},{"accounts":[],"parititionID":1,"skip":{"max":2,"min":2,"noSpread":true,"p":1}},{"accounts":[],"parititionID":2}],"rangesCovered":{"cMax":2,"cMin":2,"fracID":0.7441383825484985,"hP":2,"id":"be7fx98b0b","ipPort":"127.0.0.1:9003","numP":3,"stMax":2,"stMin":0}}
+{"allNodeIds":["3e8axb4200","d017x046cf","df8dx2c366"],"cycle":42,"nodesCovered":{"consensus":[],"extra":[],"fracID":0.38742094449406045,"hP":1,"id":"632ex06bc4","idx":-1,"ipPort":"127.0.0.1:9004","numP":3,"stored":[{"hp":0,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2}]},"partitions":[{"accounts":[],"parititionID":0,"skip":{"max":1,"min":1,"noSpread":true,"p":0}},{"accounts":[],"parititionID":1},{"accounts":[],"parititionID":2,"skip":{"max":1,"min":1,"noSpread":true,"p":2}}],"rangesCovered":{"cMax":1,"cMin":1,"fracID":0.38742094449406045,"hP":1,"id":"632ex06bc4","ipPort":"127.0.0.1:9004","numP":3,"stMax":2,"stMin":0}}
+{"allNodeIds":["3e8axb4200","d017x046cf","df8dx2c366"],"cycle":42,"nodesCovered":{"consensus":[],"extra":[],"fracID":0.5898956355149615,"hP":1,"id":"9703x0350e","idx":-1,"ipPort":"127.0.0.1:9005","numP":3,"stored":[{"hp":0,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2}]},"partitions":[{"accounts":[],"parititionID":0,"skip":{"max":1,"min":1,"noSpread":true,"p":0}},{"accounts":[],"parititionID":1},{"accounts":[],"parititionID":2,"skip":{"max":1,"min":1,"noSpread":true,"p":2}}],"rangesCovered":{"cMax":1,"cMin":1,"fracID":0.5898956355149615,"hP":1,"id":"9703x0350e","ipPort":"127.0.0.1:9005","numP":3,"stMax":2,"stMin":0}}
+{"allNodeIds":["3e8axb4200","d017x046cf","df8dx2c366"],"cycle":42,"nodesCovered":{"consensus":[{"hp":2,"idx":2},{"hp":2,"idx":1}],"extra":[],"fracID":0.2442948092343972,"hP":0,"id":"3e8axb4200","idx":0,"ipPort":"127.0.0.1:9006","numP":3,"stored":[{"hp":0,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2}]},"partitions":[{"accounts":[{"hash":"d068xeb2e4","id":"0000x00000","v":"{\"accountId\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"data\":{\"current\":{\"devProposalFee\":20,\"maintenanceFee\":0.01,\"maintenanceInterval\":60000,\"nodePenalty\":100,\"nodeRewardAmount\":10,\"nodeRewardInterval\":120000,\"proposalFee\":500,\"stakeRequired\":500,\"transactionFee\":0.001},\"devIssue\":1,\"devWindows\":{\"devApplyWindow\":[1578944799878,1578944889878],\"devGraceWindow\":[1578944709878,1578944799878],\"devProposalWindow\":[1578944559878,1578944649878],\"devVotingWindow\":[1578944649878,1578944709878]},\"developerFund\":[],\"hash\":\"d068c0fa60fa532b830fb9c4880adcd527ab464530e03cfe48aabe25290eb2e4\",\"id\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"issue\":1,\"next\":{},\"nextDevWindows\":{},\"nextDeveloperFund\":[],\"nextWindows\":{},\"timestamp\":0,\"windows\":{\"applyWindow\":[1578944799878,1578944889878],\"graceWindow\":[1578944709878,1578944799878],\"proposalWindow\":[1578944559878,1578944649878],\"votingWindow\":[1578944649878,1578944709878]}},\"stateId\":\"d068c0fa60fa532b830fb9c4880adcd527ab464530e03cfe48aabe25290eb2e4\",\"timestamp\":0}"},{"hash":"b3dfx7d49a","id":"1d1fxcb0b9","v":"{\"accountId\":\"1d1fd8372dece63f821eed97c94375f2b42c28d57be5c2bdb6be809f300cb0b9\",\"data\":{\"balance\":0,\"hash\":\"b3dfae8191544e7f5f16c3c9596758f1fd4c7240e107864a2df8a2efd7b7d49a\",\"id\":\"1d1fd8372dece63f821eed97c94375f2b42c28d57be5c2bdb6be809f300cb0b9\",\"timestamp\":0},\"stateId\":\"b3dfae8191544e7f5f16c3c9596758f1fd4c7240e107864a2df8a2efd7b7d49a\",\"timestamp\":0}"}],"parititionID":0},{"accounts":[{"hash":"b815xb6070","id":"6f15xd77fa","v":"{\"accountId\":\"6f1513715917f7e1a33714f4b8104660965a965f67b30f7ba5050b26423d77fa\",\"data\":{\"balance\":0,\"hash\":\"b8155d262bda9be6db80c488f10ecd57036cbe6e15251108ef037e96889b6070\",\"id\":\"6f1513715917f7e1a33714f4b8104660965a965f67b30f7ba5050b26423d77fa\",\"timestamp\":0},\"stateId\":\"b8155d262bda9be6db80c488f10ecd57036cbe6e15251108ef037e96889b6070\",\"timestamp\":0}"},{"hash":"dda8x3830b","id":"936dxc2247","v":"{\"accountId\":\"936dc29f02f643a57388413089c7ecd8f43b299167d5563044b97ab875ec2247\",\"data\":{\"hash\":\"dda8c8fcda5aa741c03e2256cebdb8a7048c1af8be6fc0286eca7588d6a3830b\",\"id\":\"936dc29f02f643a57388413089c7ecd8f43b299167d5563044b97ab875ec2247\",\"proposalCount\":0,\"proposals\":[],\"timestamp\":0},\"stateId\":\"dda8c8fcda5aa741c03e2256cebdb8a7048c1af8be6fc0286eca7588d6a3830b\",\"timestamp\":0}"},{"hash":"c7f9x58fea","id":"76e8x0e25d","v":"{\"accountId\":\"76e814dfb8224ed80fb8eb1b4995a118272a2b1c82bed15ea10bdb78a480e25d\",\"data\":{\"devProposalCount\":0,\"devProposals\":[],\"hash\":\"c7f99a037148c2c8e760c7592182e2ebfb41f52426eae3f7e1ac320182358fea\",\"id\":\"76e814dfb8224ed80fb8eb1b4995a118272a2b1c82bed15ea10bdb78a480e25d\",\"timestamp\":0},\"stateId\":\"c7f99a037148c2c8e760c7592182e2ebfb41f52426eae3f7e1ac320182358fea\",\"timestamp\":0}"},{"hash":"1fd9x7c0e9","id":"68b0xfbd6a","v":"{\"accountId\":\"68b0373df00c119ab78b5debb043e452f1065d72668f42663e271fd1fa1fbd6a\",\"data\":{\"balance\":30,\"hash\":\"1fd91c3a39a0616978a781b1e282fab8d53b834b1611ec52d0f5038b7d87c0e9\",\"id\":\"68b0373df00c119ab78b5debb043e452f1065d72668f42663e271fd1fa1fbd6a\",\"nodeRewardTime\":1578945143003,\"timestamp\":1578945143003},\"stateId\":\"1fd91c3a39a0616978a781b1e282fab8d53b834b1611ec52d0f5038b7d87c0e9\",\"timestamp\":1578945143003}"},{"hash":"4fa1x119ae","id":"68f2x918d1","v":"{\"accountId\":\"68f2390f10cd047266f6892dffb8b5d0b49637e0dc83dfbc25a2282dcd0918d1\",\"data\":{\"balance\":40,\"hash\":\"4fa12807192a90d5f588168db92b62348f39da8491cb445c390a1dfedce119ae\",\"id\":\"68f2390f10cd047266f6892dffb8b5d0b49637e0dc83dfbc25a2282dcd0918d1\",\"nodeRewardTime\":1578945158005,\"timestamp\":1578945158005},\"stateId\":\"4fa12807192a90d5f588168db92b62348f39da8491cb445c390a1dfedce119ae\",\"timestamp\":1578945158005}"}],"parititionID":1},{"accounts":[{"hash":"50a3x4521f","id":"cbc1xeac91","v":"{\"accountId\":\"cbc16ff23fc230a74b92e890b9c2ee61df1ae48a40098cb086071ebf0bceac91\",\"data\":{\"balance\":0,\"hash\":\"50a33e9cebd223f0f18f4526f4cee9aed907069675183a2a57f9e403c054521f\",\"id\":\"cbc16ff23fc230a74b92e890b9c2ee61df1ae48a40098cb086071ebf0bceac91\",\"timestamp\":0},\"stateId\":\"50a33e9cebd223f0f18f4526f4cee9aed907069675183a2a57f9e403c054521f\",\"timestamp\":0}"},{"hash":"f8e5x63e99","id":"ec37xc2824","v":"{\"accountId\":\"ec37f89827e4a207d1cc2333c7e9e880bd0f207dad49c7bd103db97b4f6c2824\",\"data\":{\"hash\":\"f8e561ad6c320e03a3fea6bc7900fb68f8f2b92f734a66a29f007b9c05463e99\",\"id\":\"ec37f89827e4a207d1cc2333c7e9e880bd0f207dad49c7bd103db97b4f6c2824\",\"power\":0,\"timestamp\":0,\"totalVotes\":0},\"stateId\":\"f8e561ad6c320e03a3fea6bc7900fb68f8f2b92f734a66a29f007b9c05463e99\",\"timestamp\":0}"},{"hash":"e030x626f7","id":"c64cxc1b8e","v":"{\"accountId\":\"c64c9ac536bf9b893781b9b04601c9645b01343fbd183800492b28d0a69c1b8e\",\"data\":{\"balance\":30,\"hash\":\"e030b66984ace6380b1c85b499a16b9f32bc1982e47ba88d3c57e291b4d626f7\",\"id\":\"c64c9ac536bf9b893781b9b04601c9645b01343fbd183800492b28d0a69c1b8e\",\"nodeRewardTime\":1578945098002,\"timestamp\":1578945098002},\"stateId\":\"e030b66984ace6380b1c85b499a16b9f32bc1982e47ba88d3c57e291b4d626f7\",\"timestamp\":1578945098002}"}],"parititionID":2}],"rangesCovered":{"cMax":2,"cMin":0,"fracID":0.2442948092343972,"hP":0,"id":"3e8axb4200","ipPort":"127.0.0.1:9006","numP":3,"stMax":2,"stMin":0}}
+{"allNodeIds":["3e8axb4200","d017x046cf","df8dx2c366"],"cycle":42,"nodesCovered":{"consensus":[{"hp":2,"idx":1},{"hp":0,"idx":0}],"extra":[],"fracID":0.8732493514831293,"hP":2,"id":"df8dx2c366","idx":2,"ipPort":"127.0.0.1:9007","numP":3,"stored":[{"hp":0,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2}]},"partitions":[{"accounts":[{"hash":"d068xeb2e4","id":"0000x00000","v":"{\"accountId\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"data\":{\"current\":{\"devProposalFee\":20,\"maintenanceFee\":0.01,\"maintenanceInterval\":60000,\"nodePenalty\":100,\"nodeRewardAmount\":10,\"nodeRewardInterval\":120000,\"proposalFee\":500,\"stakeRequired\":500,\"transactionFee\":0.001},\"devIssue\":1,\"devWindows\":{\"devApplyWindow\":[1578944799878,1578944889878],\"devGraceWindow\":[1578944709878,1578944799878],\"devProposalWindow\":[1578944559878,1578944649878],\"devVotingWindow\":[1578944649878,1578944709878]},\"developerFund\":[],\"hash\":\"d068c0fa60fa532b830fb9c4880adcd527ab464530e03cfe48aabe25290eb2e4\",\"id\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"issue\":1,\"next\":{},\"nextDevWindows\":{},\"nextDeveloperFund\":[],\"nextWindows\":{},\"timestamp\":0,\"windows\":{\"applyWindow\":[1578944799878,1578944889878],\"graceWindow\":[1578944709878,1578944799878],\"proposalWindow\":[1578944559878,1578944649878],\"votingWindow\":[1578944649878,1578944709878]}},\"stateId\":\"d068c0fa60fa532b830fb9c4880adcd527ab464530e03cfe48aabe25290eb2e4\",\"timestamp\":0}"},{"hash":"b3dfx7d49a","id":"1d1fxcb0b9","v":"{\"accountId\":\"1d1fd8372dece63f821eed97c94375f2b42c28d57be5c2bdb6be809f300cb0b9\",\"data\":{\"balance\":0,\"hash\":\"b3dfae8191544e7f5f16c3c9596758f1fd4c7240e107864a2df8a2efd7b7d49a\",\"id\":\"1d1fd8372dece63f821eed97c94375f2b42c28d57be5c2bdb6be809f300cb0b9\",\"timestamp\":0},\"stateId\":\"b3dfae8191544e7f5f16c3c9596758f1fd4c7240e107864a2df8a2efd7b7d49a\",\"timestamp\":0}"}],"parititionID":0},{"accounts":[],"parititionID":1,"skip":{"inverted":true,"max":0,"min":2,"p":1}},{"accounts":[{"hash":"50a3x4521f","id":"cbc1xeac91","v":"{\"accountId\":\"cbc16ff23fc230a74b92e890b9c2ee61df1ae48a40098cb086071ebf0bceac91\",\"data\":{\"balance\":0,\"hash\":\"50a33e9cebd223f0f18f4526f4cee9aed907069675183a2a57f9e403c054521f\",\"id\":\"cbc16ff23fc230a74b92e890b9c2ee61df1ae48a40098cb086071ebf0bceac91\",\"timestamp\":0},\"stateId\":\"50a33e9cebd223f0f18f4526f4cee9aed907069675183a2a57f9e403c054521f\",\"timestamp\":0}"},{"hash":"f8e5x63e99","id":"ec37xc2824","v":"{\"accountId\":\"ec37f89827e4a207d1cc2333c7e9e880bd0f207dad49c7bd103db97b4f6c2824\",\"data\":{\"hash\":\"f8e561ad6c320e03a3fea6bc7900fb68f8f2b92f734a66a29f007b9c05463e99\",\"id\":\"ec37f89827e4a207d1cc2333c7e9e880bd0f207dad49c7bd103db97b4f6c2824\",\"power\":0,\"timestamp\":0,\"totalVotes\":0},\"stateId\":\"f8e561ad6c320e03a3fea6bc7900fb68f8f2b92f734a66a29f007b9c05463e99\",\"timestamp\":0}"},{"hash":"e030x626f7","id":"c64cxc1b8e","v":"{\"accountId\":\"c64c9ac536bf9b893781b9b04601c9645b01343fbd183800492b28d0a69c1b8e\",\"data\":{\"balance\":30,\"hash\":\"e030b66984ace6380b1c85b499a16b9f32bc1982e47ba88d3c57e291b4d626f7\",\"id\":\"c64c9ac536bf9b893781b9b04601c9645b01343fbd183800492b28d0a69c1b8e\",\"nodeRewardTime\":1578945098002,\"timestamp\":1578945098002},\"stateId\":\"e030b66984ace6380b1c85b499a16b9f32bc1982e47ba88d3c57e291b4d626f7\",\"timestamp\":1578945098002}"}],"parititionID":2}],"rangesCovered":{"cMax":0,"cMin":2,"fracID":0.8732493514831293,"hP":2,"id":"df8dx2c366","ipPort":"127.0.0.1:9007","numP":3,"stMax":2,"stMin":0}}
+{"allNodeIds":["3e8axb4200","d017x046cf","df8dx2c366"],"cycle":42,"nodesCovered":{"consensus":[],"extra":[],"fracID":0.7259218617635597,"hP":2,"id":"b9d6x9794b","idx":-1,"ipPort":"127.0.0.1:9008","numP":3,"stored":[{"hp":0,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2}]},"partitions":[{"accounts":[],"parititionID":0,"skip":{"max":2,"min":2,"noSpread":true,"p":0}},{"accounts":[],"parititionID":1,"skip":{"max":2,"min":2,"noSpread":true,"p":1}},{"accounts":[],"parititionID":2}],"rangesCovered":{"cMax":2,"cMin":2,"fracID":0.7259218617635597,"hP":2,"id":"b9d6x9794b","ipPort":"127.0.0.1:9008","numP":3,"stMax":2,"stMin":0}}
+{"allNodeIds":["3e8axb4200","d017x046cf","df8dx2c366"],"cycle":42,"nodesCovered":{"consensus":[],"extra":[],"fracID":0.3161944868779263,"hP":0,"id":"50f2x7f191","idx":-1,"ipPort":"127.0.0.1:9009","numP":3,"stored":[{"hp":0,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2}]},"partitions":[{"accounts":[],"parititionID":0},{"accounts":[],"parititionID":1,"skip":{"max":0,"min":0,"noSpread":true,"p":1}},{"accounts":[],"parititionID":2,"skip":{"max":0,"min":0,"noSpread":true,"p":2}}],"rangesCovered":{"cMax":0,"cMin":0,"fracID":0.3161944868779263,"hP":0,"id":"50f2x7f191","ipPort":"127.0.0.1:9009","numP":3,"stMax":2,"stMin":0}}
+{"allNodeIds":["3e8axb4200","d017x046cf","df8dx2c366"],"cycle":42,"nodesCovered":{"consensus":[],"extra":[],"fracID":0.15131036288833952,"hP":0,"id":"26bcxf3810","idx":-1,"ipPort":"127.0.0.1:9010","numP":3,"stored":[{"hp":0,"idx":0},{"hp":2,"idx":1},{"hp":2,"idx":2}]},"partitions":[{"accounts":[],"parititionID":0},{"accounts":[],"parititionID":1,"skip":{"max":0,"min":0,"noSpread":true,"p":1}},{"accounts":[],"parititionID":2,"skip":{"max":0,"min":0,"noSpread":true,"p":2}}],"rangesCovered":{"cMax":0,"cMin":0,"fracID":0.15131036288833952,"hP":0,"id":"26bcxf3810","ipPort":"127.0.0.1:9010","numP":3,"stMax":2,"stMin":0}}
 Node Key:
-shardus-instance-9001	1a25x002a5:9001
-shardus-instance-9001	1a25x002a5:9001
-shardus-instance-9001	1a25x002a5:9001
-shardus-instance-9001	1a25x002a5:9001
-shardus-instance-9002	89eex7ec82:9002
-shardus-instance-9002	89eex7ec82:9002
-shardus-instance-9002	89eex7ec82:9002
-shardus-instance-9002	89eex7ec82:9002
-shardus-instance-9003	7513xa2a58:9003
-shardus-instance-9003	7513xa2a58:9003
-shardus-instance-9003	7513xa2a58:9003
-shardus-instance-9003	7513xa2a58:9003
-shardus-instance-9004	83bex00879:9004
-shardus-instance-9004	83bex00879:9004
-shardus-instance-9004	83bex00879:9004
-shardus-instance-9004	83bex00879:9004
-shardus-instance-9005	3bc5xff41d:9005
-shardus-instance-9005	3bc5xff41d:9005
-shardus-instance-9005	3bc5xff41d:9005
-shardus-instance-9005	3bc5xff41d:9005
-shardus-instance-9006	f475x4ba5f:9006
-shardus-instance-9006	f475x4ba5f:9006
-shardus-instance-9006	f475x4ba5f:9006
-shardus-instance-9006	f475x4ba5f:9006
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 1105	internal ask handler	1578940716757	post_partition_results
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 1106	internal ask handler	1578940716757	post_partition_results
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 1270	internal ask handler	1578940731756	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 1272	internal ask handler	1578940731756	post_partition_results
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 1275	internal ask handler	1578940731758	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 1278	internal ask handler	1578940731760	post_partition_results
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 1687	internal ask handler	1578940746758	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 1688	internal ask handler	1578940746758	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 1689	internal ask handler	1578940746759	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 1690	internal ask handler	1578940746759	post_partition_results
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 1691	internal ask handler	1578940746759	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 1692	internal ask handler	1578940746761	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 1994	internal ask handler	1578940761759	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 1996	internal ask handler	1578940761760	post_partition_results
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 1997	internal ask handler	1578940761760	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 2001	internal ask handler	1578940761761	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 2002	internal ask handler	1578940761761	post_partition_results
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 2003	internal ask handler	1578940761761	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 2310	internal ask handler	1578940776756	post_partition_results
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 2316	internal ask handler	1578940776757	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 2318	internal ask handler	1578940776758	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 2329	internal ask handler	1578940776760	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 2334	internal ask handler	1578940776760	post_partition_results
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 2335	internal ask handler	1578940776762	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 2719	internal ask handler	1578940791761	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 2723	internal ask handler	1578940791762	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 2725	internal ask handler	1578940791763	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 2726	internal ask handler	1578940791763	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 2727	internal ask handler	1578940791763	post_partition_results
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 2729	internal ask handler	1578940791763	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 2730	internal ask handler	1578940791763	post_partition_results
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 2731	internal ask handler	1578940791764	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 2733	internal ask handler	1578940791765	post_partition_results
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 2734	internal ask handler	1578940791765	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 2735	internal ask handler	1578940791766	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 2736	internal ask handler	1578940791766	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 2737	internal ask handler	1578940791766	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 2738	internal ask handler	1578940791766	post_partition_results
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 2739	internal ask handler	1578940791766	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 2740	internal ask handler	1578940791767	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 2741	internal ask handler	1578940791767	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 2742	internal ask handler	1578940791767	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 2743	internal ask handler	1578940791767	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 2744	internal ask handler	1578940791767	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 2745	internal ask handler	1578940791768	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 2746	internal ask handler	1578940791768	post_partition_results
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 2747	internal ask handler	1578940791768	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 2748	internal ask handler	1578940791769	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 2749	internal ask handler	1578940791769	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 2750	internal ask handler	1578940791770	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 2751	internal ask handler	1578940791770	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 2752	internal ask handler	1578940791771	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 2753	internal ask handler	1578940791771	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 2754	internal ask handler	1578940791773	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 3163	internal ask handler	1578940806762	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 3166	internal ask handler	1578940806762	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 3170	internal ask handler	1578940806763	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 3172	internal ask handler	1578940806763	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 3177	internal ask handler	1578940806764	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 3180	internal ask handler	1578940806764	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 3181	internal ask handler	1578940806765	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 3182	internal ask handler	1578940806765	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 3183	internal ask handler	1578940806765	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 3184	internal ask handler	1578940806766	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 3185	internal ask handler	1578940806766	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 3186	internal ask handler	1578940806766	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 3187	internal ask handler	1578940806767	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 3188	internal ask handler	1578940806767	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 3189	internal ask handler	1578940806768	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 3190	internal ask handler	1578940806768	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 3191	internal ask handler	1578940806768	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 3192	internal ask handler	1578940806769	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 3193	internal ask handler	1578940806769	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 3194	internal ask handler	1578940806769	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 3470	internal ask handler	1578940821761	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 3471	internal ask handler	1578940821762	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 3472	internal ask handler	1578940821762	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 3473	internal ask handler	1578940821762	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 3474	internal ask handler	1578940821762	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 3477	internal ask handler	1578940821763	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 3478	internal ask handler	1578940821763	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 3479	internal ask handler	1578940821764	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 3480	internal ask handler	1578940821765	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 3481	internal ask handler	1578940821765	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 3482	internal ask handler	1578940821765	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 3483	internal ask handler	1578940821765	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 3484	internal ask handler	1578940821765	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 3485	internal ask handler	1578940821766	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 3486	internal ask handler	1578940821766	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 3487	internal ask handler	1578940821766	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 3488	internal ask handler	1578940821766	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 3489	internal ask handler	1578940821766	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 3490	internal ask handler	1578940821767	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 3491	internal ask handler	1578940821768	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 3800	internal ask handler	1578940836755	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 3812	internal ask handler	1578940836757	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 3824	internal ask handler	1578940836758	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 3825	internal ask handler	1578940836758	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 3832	internal ask handler	1578940836758	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 3836	internal ask handler	1578940836758	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 3837	internal ask handler	1578940836759	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 3838	internal ask handler	1578940836759	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 3839	internal ask handler	1578940836759	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 3840	internal ask handler	1578940836759	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 3842	internal ask handler	1578940836760	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 3843	internal ask handler	1578940836760	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 3844	internal ask handler	1578940836760	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 3845	internal ask handler	1578940836760	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 3846	internal ask handler	1578940836760	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 3847	internal ask handler	1578940836760	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 3848	internal ask handler	1578940836761	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 3849	internal ask handler	1578940836761	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 3850	internal ask handler	1578940836761	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 3851	internal ask handler	1578940836762	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 4144	internal ask handler	1578940851759	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 4145	internal ask handler	1578940851759	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 4146	internal ask handler	1578940851760	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 4147	internal ask handler	1578940851760	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 4148	internal ask handler	1578940851760	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 4149	internal ask handler	1578940851760	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 4150	internal ask handler	1578940851761	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 4151	internal ask handler	1578940851761	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 4152	internal ask handler	1578940851761	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 4153	internal ask handler	1578940851761	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 4154	internal ask handler	1578940851762	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 4155	internal ask handler	1578940851762	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 4156	internal ask handler	1578940851762	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 4157	internal ask handler	1578940851762	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 4158	internal ask handler	1578940851763	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 4159	internal ask handler	1578940851763	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 4160	internal ask handler	1578940851763	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 4161	internal ask handler	1578940851763	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 4162	internal ask handler	1578940851764	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 4163	internal ask handler	1578940851764	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 4550	internal ask handler	1578940866760	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 4551	internal ask handler	1578940866760	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 4552	internal ask handler	1578940866760	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 4553	internal ask handler	1578940866760	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 4554	internal ask handler	1578940866760	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 4555	internal ask handler	1578940866760	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 4556	internal ask handler	1578940866761	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 4557	internal ask handler	1578940866761	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 4558	internal ask handler	1578940866761	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 4559	internal ask handler	1578940866762	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 4560	internal ask handler	1578940866762	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 4561	internal ask handler	1578940866762	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 4562	internal ask handler	1578940866762	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 4563	internal ask handler	1578940866762	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 4564	internal ask handler	1578940866762	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 4565	internal ask handler	1578940866762	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 4566	internal ask handler	1578940866762	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 4567	internal ask handler	1578940866763	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 4568	internal ask handler	1578940866763	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 4569	internal ask handler	1578940866763	post_partition_results
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 4610	internal ask handler	1578940869073	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 4623	internal ask handler	1578940869080	broadcast_state
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 4903	internal ask handler	1578940881759	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 4905	internal ask handler	1578940881759	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 4906	internal ask handler	1578940881759	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 4909	internal ask handler	1578940881760	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 4910	internal ask handler	1578940881760	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 4911	internal ask handler	1578940881760	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 4912	internal ask handler	1578940881760	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 4913	internal ask handler	1578940881760	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 4918	internal ask handler	1578940881760	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 4919	internal ask handler	1578940881761	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 4920	internal ask handler	1578940881761	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 4921	internal ask handler	1578940881761	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 4922	internal ask handler	1578940881761	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 4923	internal ask handler	1578940881761	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 4924	internal ask handler	1578940881761	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 4925	internal ask handler	1578940881761	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 4926	internal ask handler	1578940881762	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 4927	internal ask handler	1578940881762	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 4928	internal ask handler	1578940881763	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 4929	internal ask handler	1578940881763	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 5278	internal ask handler	1578940896758	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 5281	internal ask handler	1578940896758	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 5283	internal ask handler	1578940896759	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 5284	internal ask handler	1578940896759	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 5285	internal ask handler	1578940896759	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 5286	internal ask handler	1578940896759	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 5287	internal ask handler	1578940896759	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 5288	internal ask handler	1578940896760	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 5289	internal ask handler	1578940896760	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 5290	internal ask handler	1578940896760	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 5291	internal ask handler	1578940896760	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 5292	internal ask handler	1578940896760	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 5293	internal ask handler	1578940896760	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 5294	internal ask handler	1578940896761	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 5295	internal ask handler	1578940896761	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 5296	internal ask handler	1578940896761	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 5297	internal ask handler	1578940896761	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 5298	internal ask handler	1578940896761	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 5299	internal ask handler	1578940896761	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 5300	internal ask handler	1578940896762	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 5696	internal ask handler	1578940911759	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 5697	internal ask handler	1578940911759	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 5700	internal ask handler	1578940911759	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 5701	internal ask handler	1578940911759	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 5702	internal ask handler	1578940911760	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 5703	internal ask handler	1578940911760	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 5704	internal ask handler	1578940911760	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 5705	internal ask handler	1578940911760	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 5706	internal ask handler	1578940911760	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 5707	internal ask handler	1578940911760	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 5708	internal ask handler	1578940911760	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 5709	internal ask handler	1578940911760	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 5710	internal ask handler	1578940911761	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 5711	internal ask handler	1578940911761	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 5712	internal ask handler	1578940911761	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 5713	internal ask handler	1578940911761	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 5714	internal ask handler	1578940911761	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 5715	internal ask handler	1578940911761	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 5716	internal ask handler	1578940911761	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 5717	internal ask handler	1578940911762	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 6060	internal ask handler	1578940926754	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 6061	internal ask handler	1578940926754	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 6098	internal ask handler	1578940926759	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 6099	internal ask handler	1578940926759	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 6100	internal ask handler	1578940926759	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 6101	internal ask handler	1578940926759	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 6102	internal ask handler	1578940926759	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 6103	internal ask handler	1578940926759	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 6104	internal ask handler	1578940926760	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 6105	internal ask handler	1578940926760	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 6106	internal ask handler	1578940926760	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 6107	internal ask handler	1578940926760	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 6108	internal ask handler	1578940926760	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 6109	internal ask handler	1578940926760	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 6110	internal ask handler	1578940926760	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 6111	internal ask handler	1578940926760	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 6112	internal ask handler	1578940926761	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 6113	internal ask handler	1578940926761	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 6114	internal ask handler	1578940926761	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 6115	internal ask handler	1578940926761	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 6496	internal ask handler	1578940941757	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 6502	internal ask handler	1578940941757	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 6503	internal ask handler	1578940941757	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 6507	internal ask handler	1578940941758	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 6508	internal ask handler	1578940941758	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 6509	internal ask handler	1578940941758	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 6511	internal ask handler	1578940941758	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 6513	internal ask handler	1578940941758	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 6514	internal ask handler	1578940941759	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 6515	internal ask handler	1578940941759	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 6516	internal ask handler	1578940941759	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 6517	internal ask handler	1578940941759	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 6518	internal ask handler	1578940941759	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 6519	internal ask handler	1578940941759	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 6520	internal ask handler	1578940941759	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 6521	internal ask handler	1578940941760	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 6522	internal ask handler	1578940941760	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 6523	internal ask handler	1578940941761	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 6524	internal ask handler	1578940941761	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 6525	internal ask handler	1578940941762	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 6898	internal ask handler	1578940956754	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 6911	internal ask handler	1578940956755	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 6912	internal ask handler	1578940956755	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 6914	internal ask handler	1578940956755	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 6915	internal ask handler	1578940956755	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 6916	internal ask handler	1578940956755	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 6917	internal ask handler	1578940956756	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 6920	internal ask handler	1578940956756	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 6921	internal ask handler	1578940956756	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 6922	internal ask handler	1578940956757	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 6923	internal ask handler	1578940956757	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 6924	internal ask handler	1578940956757	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 6925	internal ask handler	1578940956757	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 6926	internal ask handler	1578940956757	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 6927	internal ask handler	1578940956757	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 6931	internal ask handler	1578940956758	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 6934	internal ask handler	1578940956759	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 6936	internal ask handler	1578940956759	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 6937	internal ask handler	1578940956759	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 6938	internal ask handler	1578940956760	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 7330	internal ask handler	1578940971758	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 7338	internal ask handler	1578940971759	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 7339	internal ask handler	1578940971759	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 7340	internal ask handler	1578940971759	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 7341	internal ask handler	1578940971759	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 7342	internal ask handler	1578940971760	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 7343	internal ask handler	1578940971760	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 7344	internal ask handler	1578940971760	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 7345	internal ask handler	1578940971760	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 7346	internal ask handler	1578940971760	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 7347	internal ask handler	1578940971761	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 7348	internal ask handler	1578940971761	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 7349	internal ask handler	1578940971761	post_partition_results
-failed to match job in shardus-instance-9004	83bex00879:9004 at line : 7350	internal ask handler	1578940971761	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 7351	internal ask handler	1578940971761	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 7352	internal ask handler	1578940971761	post_partition_results
-failed to match job in shardus-instance-9002	89eex7ec82:9002 at line : 7353	internal ask handler	1578940971761	post_partition_results
-failed to match job in shardus-instance-9005	3bc5xff41d:9005 at line : 7354	internal ask handler	1578940971761	post_partition_results
-failed to match job in shardus-instance-9006	f475x4ba5f:9006 at line : 7355	internal ask handler	1578940971762	post_partition_results
-failed to match job in shardus-instance-9003	7513xa2a58:9003 at line : 7356	internal ask handler	1578940971763	post_partition_results
-validateMessageMatching scanned 937 jobs with 296 failures
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 290	internal tell	1578940601355	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 292	internal tell	1578940601358	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 296	internal tell	1578940601359	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 297	internal tell	1578940601359	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 298	internal tell	1578940601360	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 300	internal tell	1578940601360	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 301	internal tell	1578940601361	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 303	internal tell	1578940601361	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 307	internal tell	1578940601362	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 309	internal tell	1578940601362	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 310	internal tell	1578940601363	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 312	internal tell	1578940601363	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 321	internal tell	1578940601395	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 323	internal tell	1578940601395	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 326	internal tell	1578940601396	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 328	internal tell	1578940601396	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 330	internal tell	1578940601397	broadcast_state
-failed to match job in shardus-instance-9001	1a25x002a5:9001 at line : 331	internal tell	1578940601397	broadcast_state
-validateMessageMatching scanned 732 jobs with 18 failures
-failed to match job at line : 1965	gossip in	1578940759671	active		7513xa2a58:9003, 
-failed to match job at line : 2577	gossip in	1578940788007	spread_tx_to_group		89eex7ec82:9002, 7513xa2a58:9003, 83bex00879:9004, 
-failed to match job at line : 2615	gossip in	1578940788019	spread_tx_to_group		23b8x2f890:9001, f475x4ba5f:9006, 3bc5xff41d:9005, 
-failed to match job at line : 3736	gossip in	1578940834541	join		23b8x2f890:9001, 3bc5xff41d:9005, 
-failed to match job at line : 3746	gossip in	1578940834543	join		23b8x2f890:9001, f475x4ba5f:9006, 89eex7ec82:9002, 7513xa2a58:9003, 83bex00879:9004, 
-failed to match job at line : 4334	gossip in	1578940863009	spread_tx_to_group		23b8x2f890:9001, 
-validateGossip scanned 11 jobs with 6 failures
+shardus-instance-9001	d017x046cf:9001
+shardus-instance-9001	d017x046cf:9001
+shardus-instance-9001	d017x046cf:9001
+shardus-instance-9001	d017x046cf:9001
+shardus-instance-9002	16b7xe3b19:9002
+shardus-instance-9002	16b7xe3b19:9002
+shardus-instance-9002	16b7xe3b19:9002
+shardus-instance-9002	16b7xe3b19:9002
+shardus-instance-9003	be7fx98b0b:9003
+shardus-instance-9003	be7fx98b0b:9003
+shardus-instance-9003	be7fx98b0b:9003
+shardus-instance-9003	be7fx98b0b:9003
+shardus-instance-9004	632ex06bc4:9004
+shardus-instance-9004	632ex06bc4:9004
+shardus-instance-9004	632ex06bc4:9004
+shardus-instance-9004	632ex06bc4:9004
+shardus-instance-9005	9703x0350e:9005
+shardus-instance-9005	9703x0350e:9005
+shardus-instance-9005	9703x0350e:9005
+shardus-instance-9005	9703x0350e:9005
+shardus-instance-9006	3e8axb4200:9006
+shardus-instance-9006	3e8axb4200:9006
+shardus-instance-9006	3e8axb4200:9006
+shardus-instance-9006	3e8axb4200:9006
+shardus-instance-9007	df8dx2c366:9007
+shardus-instance-9007	df8dx2c366:9007
+shardus-instance-9007	df8dx2c366:9007
+shardus-instance-9007	df8dx2c366:9007
+shardus-instance-9008	b9d6x9794b:9008
+shardus-instance-9008	b9d6x9794b:9008
+shardus-instance-9008	b9d6x9794b:9008
+shardus-instance-9008	b9d6x9794b:9008
+shardus-instance-9009	50f2x7f191:9009
+shardus-instance-9009	50f2x7f191:9009
+shardus-instance-9009	50f2x7f191:9009
+shardus-instance-9009	50f2x7f191:9009
+shardus-instance-9010	26bcxf3810:9010
+shardus-instance-9010	26bcxf3810:9010
+shardus-instance-9010	26bcxf3810:9010
+shardus-instance-9010	26bcxf3810:9010
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 1062	internal ask handler	1578944666758	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 1264	internal ask handler	1578944681757	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 1265	internal ask handler	1578944681757	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 1432	internal ask handler	1578944696757	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 1434	internal ask handler	1578944696757	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 1436	internal ask handler	1578944696758	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 1438	internal ask handler	1578944696759	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 1977	internal ask handler	1578944711759	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 1978	internal ask handler	1578944711759	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 1979	internal ask handler	1578944711759	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 1980	internal ask handler	1578944711759	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 1981	internal ask handler	1578944711760	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 1982	internal ask handler	1578944711762	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 2445	internal ask handler	1578944726753	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 2448	internal ask handler	1578944726754	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 2456	internal ask handler	1578944726756	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 2457	internal ask handler	1578944726756	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 2459	internal ask handler	1578944726756	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 2460	internal ask handler	1578944726757	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 3259	internal ask handler	1578944741755	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 3261	internal ask handler	1578944741755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 3265	internal ask handler	1578944741755	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 3267	internal ask handler	1578944741756	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 3268	internal ask handler	1578944741756	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 3269	internal ask handler	1578944741757	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4171	internal ask handler	1578944756753	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4172	internal ask handler	1578944756754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4173	internal ask handler	1578944756754	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4177	internal ask handler	1578944756756	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4179	internal ask handler	1578944756756	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4180	internal ask handler	1578944756756	post_partition_results
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 4303	internal ask handler	1578944759034	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 4332	internal ask handler	1578944759040	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 4339	internal ask handler	1578944759040	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 4357	internal ask handler	1578944759042	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 4358	internal ask handler	1578944759042	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 4367	internal ask handler	1578944759043	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 4423	internal ask handler	1578944759063	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 4430	internal ask handler	1578944759063	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 4447	internal ask handler	1578944759064	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 4474	internal ask handler	1578944759069	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 4475	internal ask handler	1578944759069	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 4482	internal ask handler	1578944759070	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 4508	internal ask handler	1578944759100	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 4511	internal ask handler	1578944759101	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 4527	internal ask handler	1578944759105	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 4539	internal ask handler	1578944759107	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 4541	internal ask handler	1578944759108	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 4543	internal ask handler	1578944759109	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 5538	internal ask handler	1578944771752	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 5539	internal ask handler	1578944771752	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 5544	internal ask handler	1578944771753	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 5548	internal ask handler	1578944771754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 5551	internal ask handler	1578944771755	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 5552	internal ask handler	1578944771755	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 6622	internal ask handler	1578944786755	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 6623	internal ask handler	1578944786755	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 6626	internal ask handler	1578944786756	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 6627	internal ask handler	1578944786756	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 6628	internal ask handler	1578944786756	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 6629	internal ask handler	1578944786757	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 7900	internal ask handler	1578944801752	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 7907	internal ask handler	1578944801754	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 7912	internal ask handler	1578944801754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 7913	internal ask handler	1578944801754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 7915	internal ask handler	1578944801755	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 7916	internal ask handler	1578944801755	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 9309	internal ask handler	1578944816757	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 9313	internal ask handler	1578944816758	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 9314	internal ask handler	1578944816758	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 9315	internal ask handler	1578944816758	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 9316	internal ask handler	1578944816759	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 9317	internal ask handler	1578944816759	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 10929	internal ask handler	1578944831754	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 10930	internal ask handler	1578944831754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 10931	internal ask handler	1578944831754	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 10932	internal ask handler	1578944831754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 10933	internal ask handler	1578944831754	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 10935	internal ask handler	1578944831755	post_partition_results
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 11159	internal ask handler	1578944834064	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 11160	internal ask handler	1578944834064	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 11161	internal ask handler	1578944834064	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 11162	internal ask handler	1578944834064	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 11163	internal ask handler	1578944834064	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 11166	internal ask handler	1578944834064	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 11171	internal ask handler	1578944834065	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 11173	internal ask handler	1578944834065	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 11175	internal ask handler	1578944834065	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 11182	internal ask handler	1578944834066	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 11190	internal ask handler	1578944834075	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 11193	internal ask handler	1578944834075	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 12810	internal ask handler	1578944846753	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 12811	internal ask handler	1578944846754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 12815	internal ask handler	1578944846754	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 12817	internal ask handler	1578944846755	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 12819	internal ask handler	1578944846756	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 12820	internal ask handler	1578944846756	post_partition_results
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 13096	internal ask handler	1578944849030	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 13101	internal ask handler	1578944849031	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 13111	internal ask handler	1578944849031	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 13126	internal ask handler	1578944849032	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 13127	internal ask handler	1578944849032	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 13132	internal ask handler	1578944849032	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 13160	internal ask handler	1578944849033	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 13162	internal ask handler	1578944849034	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 13178	internal ask handler	1578944849035	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 13195	internal ask handler	1578944849036	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 13200	internal ask handler	1578944849036	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 13207	internal ask handler	1578944849036	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 13232	internal ask handler	1578944849053	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 13234	internal ask handler	1578944849053	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 13248	internal ask handler	1578944849056	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 13256	internal ask handler	1578944849056	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 13257	internal ask handler	1578944849056	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 13269	internal ask handler	1578944849057	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 13281	internal ask handler	1578944849057	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 13284	internal ask handler	1578944849058	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 13290	internal ask handler	1578944849058	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 13292	internal ask handler	1578944849058	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 13296	internal ask handler	1578944849059	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 13300	internal ask handler	1578944849059	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 14837	internal ask handler	1578944861754	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 14840	internal ask handler	1578944861754	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 14841	internal ask handler	1578944861755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 14842	internal ask handler	1578944861755	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 14843	internal ask handler	1578944861755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 14844	internal ask handler	1578944861756	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 16767	internal ask handler	1578944876754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 16768	internal ask handler	1578944876754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 16769	internal ask handler	1578944876754	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 16770	internal ask handler	1578944876754	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 16771	internal ask handler	1578944876755	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 16772	internal ask handler	1578944876755	post_partition_results
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 17061	internal ask handler	1578944879059	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 17067	internal ask handler	1578944879059	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 17071	internal ask handler	1578944879060	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 17076	internal ask handler	1578944879060	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 17078	internal ask handler	1578944879060	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 17081	internal ask handler	1578944879060	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 17083	internal ask handler	1578944879060	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 17088	internal ask handler	1578944879060	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 17089	internal ask handler	1578944879061	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 17091	internal ask handler	1578944879061	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 17093	internal ask handler	1578944879061	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 17094	internal ask handler	1578944879061	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 17102	internal ask handler	1578944879063	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 17105	internal ask handler	1578944879063	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 18877	internal ask handler	1578944891754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 18878	internal ask handler	1578944891754	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 18879	internal ask handler	1578944891754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 18880	internal ask handler	1578944891755	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 18881	internal ask handler	1578944891755	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 18882	internal ask handler	1578944891755	post_partition_results
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 19171	internal ask handler	1578944894070	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 19175	internal ask handler	1578944894070	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 19178	internal ask handler	1578944894070	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 19182	internal ask handler	1578944894071	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 19183	internal ask handler	1578944894071	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 19186	internal ask handler	1578944894071	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 19187	internal ask handler	1578944894071	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 19196	internal ask handler	1578944894071	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 19199	internal ask handler	1578944894073	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 19206	internal ask handler	1578944894074	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 19208	internal ask handler	1578944894074	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 19209	internal ask handler	1578944894074	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 19212	internal ask handler	1578944894074	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 19214	internal ask handler	1578944894074	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 21065	internal ask handler	1578944906753	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 21066	internal ask handler	1578944906753	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 21068	internal ask handler	1578944906753	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 21073	internal ask handler	1578944906755	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 21074	internal ask handler	1578944906755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 21075	internal ask handler	1578944906755	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 23222	internal ask handler	1578944921755	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 23223	internal ask handler	1578944921755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 23224	internal ask handler	1578944921755	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 23225	internal ask handler	1578944921756	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 23226	internal ask handler	1578944921756	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 23227	internal ask handler	1578944921756	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25483	internal ask handler	1578944936753	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 25484	internal ask handler	1578944936753	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25485	internal ask handler	1578944936753	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25486	internal ask handler	1578944936753	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 25487	internal ask handler	1578944936753	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25490	internal ask handler	1578944936753	post_partition_results
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 25892	internal ask handler	1578944939029	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 25898	internal ask handler	1578944939029	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 25914	internal ask handler	1578944939030	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 25924	internal ask handler	1578944939031	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 25944	internal ask handler	1578944939031	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 25951	internal ask handler	1578944939031	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 25976	internal ask handler	1578944939032	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 25977	internal ask handler	1578944939032	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 25984	internal ask handler	1578944939032	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 26001	internal ask handler	1578944939033	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 26006	internal ask handler	1578944939033	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 26018	internal ask handler	1578944939034	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 26019	internal ask handler	1578944939034	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 26050	internal ask handler	1578944939036	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 26060	internal ask handler	1578944939051	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 26063	internal ask handler	1578944939051	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 26071	internal ask handler	1578944939052	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 26084	internal ask handler	1578944939052	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 26089	internal ask handler	1578944939052	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 26090	internal ask handler	1578944939052	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 26103	internal ask handler	1578944939053	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 26108	internal ask handler	1578944939053	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 26120	internal ask handler	1578944939053	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 26139	internal ask handler	1578944939056	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 26143	internal ask handler	1578944939056	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 26144	internal ask handler	1578944939057	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 26150	internal ask handler	1578944939057	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 26151	internal ask handler	1578944939057	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 27914	internal ask handler	1578944951755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 27915	internal ask handler	1578944951755	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 27916	internal ask handler	1578944951755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 27917	internal ask handler	1578944951755	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 27923	internal ask handler	1578944951757	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 27925	internal ask handler	1578944951757	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 30089	internal ask handler	1578944966754	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 30090	internal ask handler	1578944966754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 30091	internal ask handler	1578944966754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 30092	internal ask handler	1578944966754	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 30093	internal ask handler	1578944966754	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 30094	internal ask handler	1578944966754	post_partition_results
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 30417	internal ask handler	1578944969063	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 30418	internal ask handler	1578944969063	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 30431	internal ask handler	1578944969066	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 30435	internal ask handler	1578944969066	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 30436	internal ask handler	1578944969066	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 30442	internal ask handler	1578944969066	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 30445	internal ask handler	1578944969067	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 30447	internal ask handler	1578944969067	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 30453	internal ask handler	1578944969067	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 30455	internal ask handler	1578944969067	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 30461	internal ask handler	1578944969067	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 30463	internal ask handler	1578944969067	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 30464	internal ask handler	1578944969067	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 30465	internal ask handler	1578944969067	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 32256	internal ask handler	1578944981756	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 32260	internal ask handler	1578944981756	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 32262	internal ask handler	1578944981757	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 32264	internal ask handler	1578944981757	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 32265	internal ask handler	1578944981757	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 32266	internal ask handler	1578944981758	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 34414	internal ask handler	1578944996757	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 34416	internal ask handler	1578944996758	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 34417	internal ask handler	1578944996758	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 34418	internal ask handler	1578944996758	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 34419	internal ask handler	1578944996758	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 34420	internal ask handler	1578944996758	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 36611	internal ask handler	1578945011754	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 36616	internal ask handler	1578945011755	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 36617	internal ask handler	1578945011755	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 36618	internal ask handler	1578945011755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 36619	internal ask handler	1578945011755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 36620	internal ask handler	1578945011756	post_partition_results
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 36887	internal ask handler	1578945014063	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 36890	internal ask handler	1578945014063	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 36906	internal ask handler	1578945014064	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 36907	internal ask handler	1578945014065	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 36908	internal ask handler	1578945014065	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 36916	internal ask handler	1578945014065	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 36918	internal ask handler	1578945014065	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 36923	internal ask handler	1578945014065	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 36926	internal ask handler	1578945014065	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 36927	internal ask handler	1578945014065	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 36934	internal ask handler	1578945014066	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 36936	internal ask handler	1578945014066	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 36938	internal ask handler	1578945014066	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 36939	internal ask handler	1578945014066	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 38834	internal ask handler	1578945026754	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 38835	internal ask handler	1578945026754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 38837	internal ask handler	1578945026754	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 38838	internal ask handler	1578945026754	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 38839	internal ask handler	1578945026755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 38840	internal ask handler	1578945026755	post_partition_results
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 39162	internal ask handler	1578945029063	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 39164	internal ask handler	1578945029063	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 39166	internal ask handler	1578945029063	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 39171	internal ask handler	1578945029063	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 39173	internal ask handler	1578945029063	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 39179	internal ask handler	1578945029063	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 39181	internal ask handler	1578945029064	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 39193	internal ask handler	1578945029074	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 39194	internal ask handler	1578945029074	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 39195	internal ask handler	1578945029074	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 39200	internal ask handler	1578945029075	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 39203	internal ask handler	1578945029075	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 39205	internal ask handler	1578945029075	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 39208	internal ask handler	1578945029075	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 40944	internal ask handler	1578945041755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 40945	internal ask handler	1578945041755	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 40948	internal ask handler	1578945041755	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 40951	internal ask handler	1578945041756	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 40952	internal ask handler	1578945041756	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 40953	internal ask handler	1578945041756	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 43061	internal ask handler	1578945056755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 43063	internal ask handler	1578945056755	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 43064	internal ask handler	1578945056755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 43068	internal ask handler	1578945056756	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 43069	internal ask handler	1578945056756	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 43070	internal ask handler	1578945056756	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 45160	internal ask handler	1578945071752	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 45161	internal ask handler	1578945071752	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 45168	internal ask handler	1578945071754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 45171	internal ask handler	1578945071754	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 45172	internal ask handler	1578945071754	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 45173	internal ask handler	1578945071754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 47301	internal ask handler	1578945086757	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 47302	internal ask handler	1578945086757	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 47303	internal ask handler	1578945086757	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 47304	internal ask handler	1578945086757	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 47308	internal ask handler	1578945086758	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 47309	internal ask handler	1578945086758	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 49434	internal ask handler	1578945101754	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 49435	internal ask handler	1578945101754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 49440	internal ask handler	1578945101755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 49441	internal ask handler	1578945101755	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 49442	internal ask handler	1578945101755	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 49443	internal ask handler	1578945101755	post_partition_results
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 49764	internal ask handler	1578945104061	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 49769	internal ask handler	1578945104061	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 49770	internal ask handler	1578945104061	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 49773	internal ask handler	1578945104061	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 49778	internal ask handler	1578945104061	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 49784	internal ask handler	1578945104062	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 49788	internal ask handler	1578945104062	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 49796	internal ask handler	1578945104069	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 49800	internal ask handler	1578945104070	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 49801	internal ask handler	1578945104070	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 49805	internal ask handler	1578945104070	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 49807	internal ask handler	1578945104070	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 49812	internal ask handler	1578945104071	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 49813	internal ask handler	1578945104071	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 51603	internal ask handler	1578945116753	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 51611	internal ask handler	1578945116753	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 51613	internal ask handler	1578945116754	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 51614	internal ask handler	1578945116754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 51615	internal ask handler	1578945116754	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 51616	internal ask handler	1578945116754	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 53677	internal ask handler	1578945131757	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 53679	internal ask handler	1578945131757	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 53682	internal ask handler	1578945131757	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 53684	internal ask handler	1578945131758	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 53685	internal ask handler	1578945131758	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 53686	internal ask handler	1578945131758	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 55871	internal ask handler	1578945146753	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 55875	internal ask handler	1578945146754	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 55878	internal ask handler	1578945146755	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 55879	internal ask handler	1578945146755	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 55880	internal ask handler	1578945146755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 55881	internal ask handler	1578945146756	post_partition_results
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 56151	internal ask handler	1578945149056	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 56155	internal ask handler	1578945149056	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 56158	internal ask handler	1578945149056	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 56159	internal ask handler	1578945149056	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 56165	internal ask handler	1578945149056	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 56172	internal ask handler	1578945149058	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 56178	internal ask handler	1578945149058	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 56181	internal ask handler	1578945149059	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 56183	internal ask handler	1578945149059	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 56188	internal ask handler	1578945149059	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 56193	internal ask handler	1578945149060	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 56194	internal ask handler	1578945149061	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 56196	internal ask handler	1578945149061	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 56199	internal ask handler	1578945149061	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 58130	internal ask handler	1578945161754	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 58137	internal ask handler	1578945161754	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 58138	internal ask handler	1578945161755	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 58140	internal ask handler	1578945161755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 58142	internal ask handler	1578945161755	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 58143	internal ask handler	1578945161756	post_partition_results
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 58410	internal ask handler	1578945164061	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 58416	internal ask handler	1578945164062	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 58418	internal ask handler	1578945164062	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 58421	internal ask handler	1578945164063	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 58422	internal ask handler	1578945164063	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 58425	internal ask handler	1578945164063	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 58427	internal ask handler	1578945164063	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 58438	internal ask handler	1578945164065	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 58439	internal ask handler	1578945164065	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 58450	internal ask handler	1578945164071	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 58451	internal ask handler	1578945164071	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 58459	internal ask handler	1578945164071	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 58460	internal ask handler	1578945164071	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 58462	internal ask handler	1578945164071	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 60469	internal ask handler	1578945176752	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 60480	internal ask handler	1578945176753	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 60481	internal ask handler	1578945176753	post_partition_results
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 60482	internal ask handler	1578945176754	post_partition_results
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 60483	internal ask handler	1578945176754	post_partition_results
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 60484	internal ask handler	1578945176754	post_partition_results
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 60812	internal ask handler	1578945179033	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 60831	internal ask handler	1578945179034	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 60838	internal ask handler	1578945179034	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 60841	internal ask handler	1578945179034	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 60850	internal ask handler	1578945179034	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 60865	internal ask handler	1578945179035	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 60876	internal ask handler	1578945179035	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 60879	internal ask handler	1578945179035	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 60884	internal ask handler	1578945179035	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 60901	internal ask handler	1578945179036	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 60910	internal ask handler	1578945179036	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 60917	internal ask handler	1578945179036	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 60931	internal ask handler	1578945179037	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 60939	internal ask handler	1578945179037	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 60977	internal ask handler	1578945179057	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 60978	internal ask handler	1578945179057	broadcast_state
+failed to match job in shardus-instance-9010	26bcxf3810:9010 at line : 60983	internal ask handler	1578945179058	broadcast_state
+failed to match job in shardus-instance-9002	16b7xe3b19:9002 at line : 60985	internal ask handler	1578945179058	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 60992	internal ask handler	1578945179058	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 60997	internal ask handler	1578945179058	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 61006	internal ask handler	1578945179058	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 61015	internal ask handler	1578945179059	broadcast_state
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 61025	internal ask handler	1578945179060	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 61030	internal ask handler	1578945179060	broadcast_state
+failed to match job in shardus-instance-9008	b9d6x9794b:9008 at line : 61038	internal ask handler	1578945179060	broadcast_state
+failed to match job in shardus-instance-9005	9703x0350e:9005 at line : 61041	internal ask handler	1578945179061	broadcast_state
+failed to match job in shardus-instance-9004	632ex06bc4:9004 at line : 61051	internal ask handler	1578945179061	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 61053	internal ask handler	1578945179062	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 62176	internal ask handler	1578945186480	get_account_state_hash
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 62180	internal ask handler	1578945186481	get_account_state_hash
+validateMessageMatching scanned 21769 jobs with 423 failures
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 327	internal tell	1578944565896	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 329	internal tell	1578944565898	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 331	internal tell	1578944565899	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 334	internal tell	1578944565899	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 337	internal tell	1578944565900	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 338	internal tell	1578944565900	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 339	internal tell	1578944565901	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 342	internal tell	1578944565901	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 343	internal tell	1578944565901	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 345	internal tell	1578944565901	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 348	internal tell	1578944565902	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 349	internal tell	1578944565902	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 358	internal tell	1578944565938	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 360	internal tell	1578944565938	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 363	internal tell	1578944565939	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 364	internal tell	1578944565939	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 367	internal tell	1578944565940	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 370	internal tell	1578944565940	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4301	internal tell	1578944759034	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4302	internal tell	1578944759034	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4305	internal tell	1578944759035	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4307	internal tell	1578944759035	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4309	internal tell	1578944759035	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4310	internal tell	1578944759035	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4312	internal tell	1578944759036	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4314	internal tell	1578944759036	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4315	internal tell	1578944759036	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4319	internal tell	1578944759037	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4321	internal tell	1578944759037	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4323	internal tell	1578944759037	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4324	internal tell	1578944759038	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4341	internal tell	1578944759041	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4346	internal tell	1578944759041	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4347	internal tell	1578944759041	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4349	internal tell	1578944759041	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4351	internal tell	1578944759042	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4353	internal tell	1578944759042	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4354	internal tell	1578944759042	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4359	internal tell	1578944759042	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4362	internal tell	1578944759042	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4364	internal tell	1578944759042	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4370	internal tell	1578944759043	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4372	internal tell	1578944759043	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4373	internal tell	1578944759043	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4381	internal tell	1578944759044	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4383	internal tell	1578944759044	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4385	internal tell	1578944759045	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4386	internal tell	1578944759045	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4387	internal tell	1578944759045	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4389	internal tell	1578944759045	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4392	internal tell	1578944759045	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4396	internal tell	1578944759046	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4398	internal tell	1578944759046	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4400	internal tell	1578944759046	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4402	internal tell	1578944759046	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4403	internal tell	1578944759047	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4417	internal tell	1578944759063	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4420	internal tell	1578944759063	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4421	internal tell	1578944759063	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4432	internal tell	1578944759064	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4434	internal tell	1578944759064	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4445	internal tell	1578944759064	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4449	internal tell	1578944759064	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4450	internal tell	1578944759064	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4452	internal tell	1578944759064	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4454	internal tell	1578944759064	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 4461	internal tell	1578944759064	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4465	internal tell	1578944759065	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4467	internal tell	1578944759065	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4479	internal tell	1578944759069	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4485	internal tell	1578944759070	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4491	internal tell	1578944759070	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4492	internal tell	1578944759070	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4497	internal tell	1578944759071	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4499	internal tell	1578944759071	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4502	internal tell	1578944759072	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 4522	internal tell	1578944759104	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 4542	internal tell	1578944759108	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 13050	internal tell	1578944849008	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 13052	internal tell	1578944849008	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 13054	internal tell	1578944849008	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 13056	internal tell	1578944849008	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 13058	internal tell	1578944849008	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 13059	internal tell	1578944849008	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 13060	internal tell	1578944849009	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 13062	internal tell	1578944849009	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 13064	internal tell	1578944849009	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 13065	internal tell	1578944849009	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 13068	internal tell	1578944849009	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 13070	internal tell	1578944849009	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 13071	internal tell	1578944849010	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 13075	internal tell	1578944849010	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 13077	internal tell	1578944849010	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 13078	internal tell	1578944849010	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 13080	internal tell	1578944849010	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 13082	internal tell	1578944849011	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 13102	internal tell	1578944849031	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 13108	internal tell	1578944849031	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 13119	internal tell	1578944849032	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 13137	internal tell	1578944849032	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 13141	internal tell	1578944849033	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 13148	internal tell	1578944849033	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 13149	internal tell	1578944849033	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 13161	internal tell	1578944849034	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 13165	internal tell	1578944849034	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 13167	internal tell	1578944849034	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 13169	internal tell	1578944849034	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 13176	internal tell	1578944849035	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 13185	internal tell	1578944849035	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 13191	internal tell	1578944849036	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 13193	internal tell	1578944849036	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 13194	internal tell	1578944849036	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 13198	internal tell	1578944849036	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 13209	internal tell	1578944849037	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 13211	internal tell	1578944849037	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 13213	internal tell	1578944849037	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 13259	internal tell	1578944849057	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 13260	internal tell	1578944849057	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25799	internal tell	1578944939006	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25806	internal tell	1578944939006	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 25809	internal tell	1578944939006	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 25814	internal tell	1578944939007	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 25816	internal tell	1578944939007	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25818	internal tell	1578944939007	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25820	internal tell	1578944939007	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25822	internal tell	1578944939007	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 25823	internal tell	1578944939007	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25825	internal tell	1578944939007	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25827	internal tell	1578944939007	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25829	internal tell	1578944939007	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25831	internal tell	1578944939008	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 25832	internal tell	1578944939008	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25834	internal tell	1578944939008	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25836	internal tell	1578944939008	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 25839	internal tell	1578944939008	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25841	internal tell	1578944939008	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 25844	internal tell	1578944939008	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 25847	internal tell	1578944939009	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 25849	internal tell	1578944939009	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25851	internal tell	1578944939009	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25853	internal tell	1578944939009	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25855	internal tell	1578944939009	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25857	internal tell	1578944939009	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25858	internal tell	1578944939009	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25860	internal tell	1578944939009	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 25862	internal tell	1578944939009	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 25864	internal tell	1578944939009	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25865	internal tell	1578944939009	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25867	internal tell	1578944939009	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25871	internal tell	1578944939010	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25873	internal tell	1578944939010	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 25875	internal tell	1578944939010	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25876	internal tell	1578944939010	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25878	internal tell	1578944939010	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25906	internal tell	1578944939030	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25916	internal tell	1578944939030	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25918	internal tell	1578944939030	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25941	internal tell	1578944939031	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25943	internal tell	1578944939031	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25961	internal tell	1578944939032	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 25964	internal tell	1578944939032	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25966	internal tell	1578944939032	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25985	internal tell	1578944939033	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 25987	internal tell	1578944939033	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 26028	internal tell	1578944939034	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 26030	internal tell	1578944939034	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 26032	internal tell	1578944939034	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 26034	internal tell	1578944939034	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 26035	internal tell	1578944939034	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 26037	internal tell	1578944939035	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 26044	internal tell	1578944939035	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 26046	internal tell	1578944939035	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 60756	internal tell	1578945179012	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 60758	internal tell	1578945179012	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 60770	internal tell	1578945179012	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 60772	internal tell	1578945179013	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 60775	internal tell	1578945179013	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 60777	internal tell	1578945179013	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 60780	internal tell	1578945179013	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 60782	internal tell	1578945179013	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 60784	internal tell	1578945179013	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 60786	internal tell	1578945179013	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 60787	internal tell	1578945179013	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 60788	internal tell	1578945179013	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 60789	internal tell	1578945179014	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 60790	internal tell	1578945179014	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 60794	internal tell	1578945179014	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 60796	internal tell	1578945179014	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 60799	internal tell	1578945179014	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 60801	internal tell	1578945179014	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 60826	internal tell	1578945179033	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 60828	internal tell	1578945179033	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 60853	internal tell	1578945179034	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 60869	internal tell	1578945179035	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 60894	internal tell	1578945179035	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 60896	internal tell	1578945179035	broadcast_state
+failed to match job in shardus-instance-9007	df8dx2c366:9007 at line : 60909	internal tell	1578945179036	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 60925	internal tell	1578945179037	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 60927	internal tell	1578945179037	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 60929	internal tell	1578945179037	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 60936	internal tell	1578945179037	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 60937	internal tell	1578945179037	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 60940	internal tell	1578945179038	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 60941	internal tell	1578945179038	broadcast_state
+failed to match job in shardus-instance-9006	3e8axb4200:9006 at line : 60943	internal tell	1578945179038	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 60947	internal tell	1578945179038	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 60949	internal tell	1578945179038	broadcast_state
+failed to match job in shardus-instance-9001	d017x046cf:9001 at line : 60951	internal tell	1578945179038	broadcast_state
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 62167	internal ask	1578945186478	get_account_state_hash
+failed to match job in shardus-instance-9003	be7fx98b0b:9003 at line : 62177	internal ask	1578945186480	get_account_state_hash
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 62182	internal ask	1578945186482	get_account_state_hash
+failed to match job in shardus-instance-9009	50f2x7f191:9009 at line : 62182	internal ask	1578945186482	get_account_state_hash
+validateMessageMatching scanned 12022 jobs with 212 failures
+failed to match job at line : 3869	gossip in	1578944753002	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 
+failed to match job at line : 3905	gossip in	1578944753007	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 
+failed to match job at line : 3924	gossip in	1578944753010	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 
+failed to match job at line : 7718	gossip in	1578944799700	join		d017x046cf:9001, df8dx2c366:9007, 632ex06bc4:9004, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, 
+failed to match job at line : 10370	gossip in	1578944828007	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, 
+failed to match job at line : 10732	gossip in	1578944830152	join		3e8axb4200:9006, 632ex06bc4:9004, 26bcxf3810:9010, 
+failed to match job at line : 10750	gossip in	1578944830158	join		d017x046cf:9001, df8dx2c366:9007, 632ex06bc4:9004, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, be7fx98b0b:9003, 
+failed to match job at line : 12310	gossip in	1578944843004	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, be7fx98b0b:9003, 
+failed to match job at line : 12342	gossip in	1578944843007	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, be7fx98b0b:9003, 
+failed to match job at line : 16310	gossip in	1578944873007	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, be7fx98b0b:9003, b9d6x9794b:9008, 
+failed to match job at line : 18296	gossip in	1578944888007	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, be7fx98b0b:9003, b9d6x9794b:9008, 
+failed to match job at line : 24819	gossip in	1578944933005	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, be7fx98b0b:9003, b9d6x9794b:9008, 
+failed to match job at line : 24917	gossip in	1578944933010	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, be7fx98b0b:9003, b9d6x9794b:9008, 
+failed to match job at line : 29551	gossip in	1578944963007	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, be7fx98b0b:9003, b9d6x9794b:9008, 
+failed to match job at line : 36027	gossip in	1578945008006	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, be7fx98b0b:9003, b9d6x9794b:9008, 
+failed to match job at line : 38293	gossip in	1578945023004	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, be7fx98b0b:9003, b9d6x9794b:9008, 
+failed to match job at line : 48895	gossip in	1578945098004	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, be7fx98b0b:9003, b9d6x9794b:9008, 
+failed to match job at line : 55305	gossip in	1578945143005	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, be7fx98b0b:9003, b9d6x9794b:9008, 
+failed to match job at line : 57539	gossip in	1578945158007	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, be7fx98b0b:9003, b9d6x9794b:9008, 
+failed to match job at line : 59795	gossip in	1578945173006	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, be7fx98b0b:9003, b9d6x9794b:9008, 
+failed to match job at line : 59866	gossip in	1578945173010	spread_tx_to_group		632ex06bc4:9004, 26bcxf3810:9010, 16b7xe3b19:9002, 50f2x7f191:9009, 9703x0350e:9005, be7fx98b0b:9003, b9d6x9794b:9008, 
+validateGossip scanned 24 jobs with 21 failures

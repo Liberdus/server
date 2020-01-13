@@ -423,19 +423,18 @@ dapp.registerExternalGet('network/parameters/node/next', async (req, res) => {
 dapp.registerExternalGet('network/parameters', async (req, res) => {
   try {
     const network = await dapp.getLocalOrRemoteAccount(networkAccount)
-    const data = network.data
     res.json({
       parameters: {
-        CURRENT: data.current,
-        NEXT: data.next,
-        DEVELOPER_FUND: data.developerFund,
-        NEXT_DEVELOPER_FUND: data.nextDeveloperFund,
-        WINDOWS: data.windows,
-        DEV_WINDOWS: data.devWindows,
-        NEXT_WINDOWS: data.nextWindows,
-        NEXT_DEV_WINDOWS: data.nextDevWindows,
-        ISSUE: data.issue,
-        DEV_ISSUE: data.devIssue
+        CURRENT: network.data.current,
+        NEXT: network.data.next,
+        DEVELOPER_FUND: network.data.developerFund,
+        NEXT_DEVELOPER_FUND: network.data.nextDeveloperFund,
+        WINDOWS: network.data.windows,
+        DEV_WINDOWS: network.data.devWindows,
+        NEXT_WINDOWS: network.data.nextWindows,
+        NEXT_DEV_WINDOWS: network.data.nextDevWindows,
+        ISSUE: network.data.issue,
+        DEV_ISSUE: network.data.devIssue
       }
     })
   } catch (error) {
@@ -456,10 +455,9 @@ dapp.registerExternalGet('network/parameters/next', async (req, res) => {
 
 dapp.registerExternalGet('network/windows/all', async (req, res) => {
   try {
-    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     res.json({
-      windows: network.data.windows,
-      devWindows: network.data.devWindows
+      windows: WINDOWS,
+      devWindows: DEV_WINDOWS
     })
   } catch (error) {
     res.json({ error })
