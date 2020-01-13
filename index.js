@@ -836,7 +836,7 @@ dapp.registerExternalGet('messages/:chatId', async (req, res) => {
 dapp.setup({
   async sync () {
     if (dapp.p2p.isFirstSeed) {
-      await _sleep(ONE_SECOND * 20)
+      await _sleep(ONE_SECOND * 15)
       const timestamp = Date.now()
       const nodeId = dapp.getNodeId()
       const address = dapp.getNode(nodeId).address
@@ -847,7 +847,7 @@ dapp.setup({
       ]
       const graceWindow = [votingWindow[1], votingWindow[1] + TIME_FOR_GRACE]
       const applyWindow = [graceWindow[1], graceWindow[1] + TIME_FOR_APPLY]
-
+      
       const devProposalWindow = [timestamp, timestamp + TIME_FOR_DEV_PROPOSALS]
       const devVotingWindow = [
         devProposalWindow[1],
@@ -908,8 +908,13 @@ dapp.setup({
         devIssue: crypto.hash(`dev-issue-${DEV_ISSUE}`),
         timestamp: Date.now()
       })
+      await _sleep(ONE_SECOND * 10)
     } else {
-      const account = await dapp.getLocalOrRemoteAccount(networkAccount)
+      let account = await dapp.getRemoteAccount(networkAccount)
+      while (!account) {
+        await _sleep(1000)
+        account = await dapp.getRemoteAccount(networkAccount)
+      }
       if (account && account.data) {
         CURRENT = account.data.current
         NEXT = account.data.next
@@ -923,7 +928,7 @@ dapp.setup({
         DEV_ISSUE = account.data.devIssue
         IN_SYNC = true
       } else {
-        console.log('no network account')
+        console.log('ERROR???')
       }
     }
   },
@@ -3004,36 +3009,48 @@ async function generateDevIssue (address, nodeId) {
 
 // TALLY TRANSACTION FUNCTION
 async function tallyVotes (address, nodeId) {
-  const issue = await dapp.getLocalOrRemoteAccount(
+  let issue = await dapp.getLocalOrRemoteAccount(
     crypto.hash(`issue-${ISSUE}`)
   )
-  const tx = {
-    type: 'tally',
-    nodeId,
-    from: address,
-    to: networkAccount,
-    issue: issue.data.id,
-    proposals: issue.data.proposals,
-    timestamp: Date.now()
+  try {
+    const tx = {
+      type: 'tally',
+      nodeId,
+      from: address,
+      to: networkAccount,
+      issue: issue.data.id,
+      proposals: issue.data.proposals,
+      timestamp: Date.now()
+    }
+    dapp.put(tx)
+  } catch (err) {
+    console.log('ERR: ', err)
+    await _sleep(1000)
+    return tallyVotes(address, nodeId)
   }
-  dapp.put(tx)
 }
 
 // DEV_TALLY TRANSACTION FUNCTION
 async function tallyDevVotes (address, nodeId) {
-  const devIssue = await dapp.getLocalOrRemoteAccount(
-    crypto.hash(`dev-issue-${DEV_ISSUE}`)
-  )
-  const tx = {
-    type: 'dev_tally',
-    nodeId: nodeId,
-    from: address,
-    to: networkAccount,
-    devIssue: devIssue.data.id,
-    devProposals: devIssue.data.devProposals,
-    timestamp: Date.now()
+  try {
+    const devIssue = await dapp.getLocalOrRemoteAccount(
+      crypto.hash(`dev-issue-${DEV_ISSUE}`)
+    )
+    const tx = {
+      type: 'dev_tally',
+      nodeId: nodeId,
+      from: address,
+      to: networkAccount,
+      devIssue: devIssue.data.id,
+      devProposals: devIssue.data.devProposals,
+      timestamp: Date.now()
+    }
+    dapp.put(tx)
+  } catch (err) {
+    console.log('ERR: ', err)
+    await _sleep(1000)
+    return tallyDevVotes(address, nodeId)
   }
-  dapp.put(tx)
 }
 
 // APPLY_PARAMETERS TRANSACTION FUNCTION
@@ -3121,6 +3138,8 @@ function isLucky (cycleData, luckyNodes, nodeId) {
   let cycleStartTimestamp
   let lastReward
   let expectedInterval
+  let cycleData
+  let luckyNodes
 
   await dapp.start()
 
@@ -3149,13 +3168,15 @@ function isLucky (cycleData, luckyNodes, nodeId) {
   async function networkMaintenance () {
     console.log('MAINTENANCE')
     expectedInterval += cycleInterval
-    let [cycleData] = dapp.getLatestCycles()
 
-    // CONVERTS FROM SECONDS TO MILLISECONDS FOR COMPARISON WITH TIMESTAMPS
-    cycleStartTimestamp = cycleData.start * 1000
-
-    let luckyNodes = dapp.getClosestNodes(cycleData.marker, 2)
-    // if (!closest) return setTimeout(networkMaintenance, expectedInterval - cycleStartTimestamp)
+    try {
+      [cycleData] = dapp.getLatestCycles()
+      cycleStartTimestamp = cycleData.start * 1000
+      luckyNodes = dapp.getClosestNodes(cycleData.marker, 2)
+    } catch (err) {
+      console.log('ERR: ', err)
+      return setTimeout(networkMaintenance, 1000)
+    }
 
     console.log(
       `
