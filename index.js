@@ -84,8 +84,8 @@ set(config, 'server.p2p', {
   cycleDuration: cycleDuration,
   existingArchivers: JSON.parse(process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]'),
   maxNodesPerCycle: 1,
-  minNodes: 9,
-  maxNodes: 10,
+  minNodes: 60,
+  maxNodes: 60,
   minNodesToAllowTxs: 1,
   maxNodesToRotate: 1,
   maxPercentOfDelta: 40
@@ -113,7 +113,7 @@ set(config, 'server.rateLimiting', {
   loadLimit: 0.5
 })
 set(config, 'server.sharding', {
-  nodesPerConsensusGroup: 3
+  nodesPerConsensusGroup: 5
 })
 set(config, 'logs', {
   dir: './logs',
@@ -156,15 +156,15 @@ set(config, 'logs', {
         maxLogSize: 10000000,
         backups: 10
       }
+    },
+    categories: {
+      default: { appenders: ['out'], level: 'fatal' },
+      app: { appenders: ['app', 'errors'], level: 'fatal' },
+      main: { appenders: ['main', 'errors'], level: 'fatal' },
+      fatal: { appenders: ['fatal'], level: 'fatal' },
+      net: { appenders: ['net'], level: 'fatal' },
+      playback: { appenders: ['playback'], level: 'fatal' }
     }
-    // categories: {
-    //   default: { appenders: ['out'], level: 'fatal' },
-    //   app: { appenders: ['app', 'errors'], level: 'TRACE' },
-    //   main: { appenders: ['main', 'errors'], level: 'fatal' },
-    //   fatal: { appenders: ['fatal'], level: 'fatal' },
-    //   net: { appenders: ['net'], level: 'fatal' },
-    //   playback: { appenders: ['playback'], level: 'fatal' }
-    // }
   }
 })
 
