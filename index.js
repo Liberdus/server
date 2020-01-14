@@ -5,6 +5,7 @@ const crypto = require('shardus-crypto-utils')
 const stringify = require('fast-stable-stringify')
 const nodemailer = require('nodemailer')
 const smtpTransport = require('nodemailer-smtp-transport')
+const axios = require('axios')
 const { set } = require('dot-prop')
 const _ = require('lodash')
 crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
@@ -938,6 +939,7 @@ dapp.setup({
 
     const from = wrappedStates[tx.from] && wrappedStates[tx.from].data
     const to = wrappedStates[tx.to] && wrappedStates[tx.to].data
+    const network = wrappedStates[tx.network] && wrappedStates[tx.network].data
 
     switch (tx.type) {
       case 'snapshot': {
@@ -1268,7 +1270,7 @@ dapp.setup({
             response.reason = 'This transaction in valid'
             return response
           }
-          if (tx.timestamp - from.nodeRewardTime < CURRENT.nodeRewardInterval) {
+          if (tx.timestamp - from.nodeRewardTime < network.nodeRewardInterval) {
             response.reason = 'Too early for this node to get paid'
             return response
           }
@@ -2118,7 +2120,7 @@ dapp.setup({
   apply (tx, wrappedStates) {
     let from = wrappedStates[tx.from] && wrappedStates[tx.from].data
     let to = wrappedStates[tx.to] && wrappedStates[tx.to].data
-
+    let network = wrappedStates[tx.network] && wrappedStates[tx.network].data
     // Validate the tx
     const { result, reason } = this.validateTransaction(tx, wrappedStates)
 
@@ -2146,28 +2148,18 @@ dapp.setup({
         const source = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data
         const nodeId = dapp.getNodeId()
         const { address } = dapp.getNode(nodeId)
-        // let [cycleData] = dapp.getLatestCycles()
-        let [closest] = dapp.getClosestNodes(tx.signedTx.from, 3)
-        // let targets = closest.map(nodeId => dapp.getNode(nodeId))
-        console.log('NODEID === CLOSEST', nodeId === closest, nodeId, closest)
+        let [closest] = dapp.getClosestNodes(tx.signedTx.from, 5)
         if (nodeId === closest) {
           const baseNumber = 99999
           const randomNumber = Math.floor((Math.random() * 899999)) + 1
           const verificationNumber = baseNumber + randomNumber
 
-          const mailOptions = {
-            from: 'liberdus.verify@gmail.com',
+          axios.post('http://arimaa.com/mailAPI/index.cgi', {
+            from: 'liberdus.verify',
             to: `${tx.email}`,
             subject: 'Verify your email for liberdus',
-            text: `Please verify your email address by sending a "verify" transaction with the number: ${verificationNumber}`
-          }
-
-          transporter.sendMail(mailOptions, function (error, info) {
-            if (error) {
-              console.log(error)
-            } else {
-              console.log('Email sent: ' + info.response)
-            }
+            message: `Please verify your email address by sending a "verify" transaction with the number: ${verificationNumber}`,
+            secret: 'Liberdus'
           })
 
           dapp.put({
@@ -2175,7 +2167,6 @@ dapp.setup({
             nodeId,
             account: source.id,
             from: address,
-            // targets,
             emailHash: tx.signedTx.emailHash,
             verified: crypto.hash(`${verificationNumber}`),
             timestamp: Date.now()
@@ -2308,7 +2299,7 @@ dapp.setup({
         break
       }
       case 'node_reward': {
-        to.balance += CURRENT.nodeRewardAmount
+        to.balance += network.nodeRewardAmount
         from.nodeRewardTime = tx.timestamp
         from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
@@ -2649,7 +2640,7 @@ dapp.setup({
         break
       case 'node_reward':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.to]
+        result.targetKeys = [tx.to, tx.network]
         break
       case 'bond':
         result.sourceKeys = [tx.from]
@@ -2973,7 +2964,8 @@ function nodeReward (address, nodeId) {
     timestamp: Date.now(),
     nodeId: nodeId,
     from: address,
-    to: payAddress
+    to: payAddress,
+    network: networkAccount
   }
   dapp.put(tx)
 }
