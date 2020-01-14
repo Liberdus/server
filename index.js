@@ -84,7 +84,7 @@ set(config, 'server.p2p', {
   cycleDuration: cycleDuration,
   existingArchivers: JSON.parse(process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]'),
   maxNodesPerCycle: 1,
-  minNodes: 5,
+  minNodes: 9,
   maxNodes: 10,
   minNodesToAllowTxs: 1,
   maxNodesToRotate: 1,
@@ -3091,30 +3091,30 @@ function releaseDeveloperFunds (payment, address, nodeId) {
   dapp.put(tx)
 }
 
-function isLucky (cycleData, luckyNodes, nodeId) {
-  let [first, second, third] = luckyNodes
-  if (!cycleData.activated.includes(first)) {
-    if (first === nodeId) {
-      return true
-    } else {
-      return false
-    }
-  }
-  if (!cycleData.activated.includes(second)) {
-    if (second === nodeId) {
-      return true
-    } else {
-      return false
-    }
-  }
-  if (!cycleData.activated.includes(third)) {
-    if (third === nodeId) {
-      return true
-    } else {
-      return false
-    }
-  }
-}
+// function isLucky (cycleData, luckyNodes, nodeId) {
+//   let [first, second, third] = luckyNodes
+//   if (!cycleData.activated.includes(first)) {
+//     if (first === nodeId) {
+//       return true
+//     } else {
+//       return false
+//     }
+//   }
+//   if (!cycleData.activated.includes(second)) {
+//     if (second === nodeId) {
+//       return true
+//     } else {
+//       return false
+//     }
+//   }
+//   if (!cycleData.activated.includes(third)) {
+//     if (third === nodeId) {
+//       return true
+//     } else {
+//       return false
+//     }
+//   }
+// }
 
 // CODE THAT GETS EXECUTED WHEN NODES START
 ;(async () => {
@@ -3137,17 +3137,10 @@ function isLucky (cycleData, luckyNodes, nodeId) {
   let lastReward
   let expectedInterval
   let cycleData
-  let luckyNodes
+  let luckyNode
 
   await dapp.start()
 
-  // WAIT AT LEAST ONE CYCLE BEFORE ATTEMPTING TO QUERY THE NETWORK FOR THE PARAMETERS
-  dapp.p2p.on('joining', () => {
-    console.log('JOINING')
-  })
-  dapp.p2p.on('joined', () => {
-    console.log('JOINED')
-  })
   dapp.p2p.on('active', async () => {
     console.log('ACTIVE')
     if (dapp.p2p.isFirstSeed) {
@@ -3164,14 +3157,13 @@ function isLucky (cycleData, luckyNodes, nodeId) {
 
   // THIS CODE IS CALLED ON EVERY NODE ON EVERY CYCLE
   async function networkMaintenance () {
-    console.log('MAINTENANCE')
     expectedInterval += cycleInterval
 
     try {
       [cycleData] = dapp.getLatestCycles()
       cycleStartTimestamp = cycleData.start * 1000
-      luckyNodes = dapp.getClosestNodesGlobal(cycleData.marker, 3)
-      nodeId = dapp.getNode()
+      ;([luckyNode] = dapp.getClosestNodes(cycleData.marker, 2))
+      nodeId = dapp.getNodeId()
       nodeAddress = dapp.getNode(nodeId).address
     } catch (err) {
       console.log('ERR: ', err)
@@ -3183,8 +3175,8 @@ function isLucky (cycleData, luckyNodes, nodeId) {
       CYCLE_DATA: `,
       cycleData,
       `
-      luckyNodes: `,
-      luckyNodes,
+      luckyNode: `,
+      luckyNode,
       `
       IN_SYNC: `,
       IN_SYNC,
@@ -3246,19 +3238,19 @@ function isLucky (cycleData, luckyNodes, nodeId) {
     `
     )
 
-    if (_.isEmpty(CURRENT) || _.isEmpty(WINDOWS) || _.isEmpty(DEV_WINDOWS)) {
-      IN_SYNC = false
-    }
+    // if (_.isEmpty(CURRENT) || _.isEmpty(WINDOWS) || _.isEmpty(DEV_WINDOWS)) {
+    //   IN_SYNC = false
+    // }
 
-    if (!IN_SYNC) {
-      if (cycleData.active >= 3) {
-        await syncParameters(cycleStartTimestamp + cycleInterval)
-        await syncDevParameters(cycleStartTimestamp + cycleInterval)
-      }
+    // if (!IN_SYNC) {
+    //   if (cycleData.active >= 3) {
+    //     await syncParameters(cycleStartTimestamp + cycleInterval)
+    //     await syncDevParameters(cycleStartTimestamp + cycleInterval)
+    //   }
 
-      // return setTimeout(networkMaintenance, expectedInterval - cycleStartTimestamp) NO GOOD
-      return setTimeout(networkMaintenance, 0)
-    }
+    //   // return setTimeout(networkMaintenance, expectedInterval - cycleStartTimestamp) NO GOOD
+    //   return setTimeout(networkMaintenance, 0)
+    // }
 
     // THIS IS FOR NODE_REWARD
     if (cycleStartTimestamp - lastReward > CURRENT.nodeRewardInterval) {
@@ -3285,7 +3277,7 @@ function isLucky (cycleData, luckyNodes, nodeId) {
       cycleStartTimestamp <= WINDOWS.proposalWindow[1]
     ) {
       if (!issueGenerated) {
-        if (isLucky(cycleData, luckyNodes, nodeId) && ISSUE > 1) {
+        if (nodeId === luckyNode && ISSUE > 1) {
           await generateIssue(nodeAddress, nodeId)
         }
         issueGenerated = true
@@ -3303,7 +3295,7 @@ function isLucky (cycleData, luckyNodes, nodeId) {
         syncedNextParams = true
       }
       if (!tallyGenerated) {
-        if (isLucky(cycleData, luckyNodes, nodeId)) {
+        if (nodeId === luckyNode) {
           await tallyVotes(nodeAddress, nodeId)
         }
         tallyGenerated = true
@@ -3317,7 +3309,7 @@ function isLucky (cycleData, luckyNodes, nodeId) {
       cycleStartTimestamp <= WINDOWS.applyWindow[1]
     ) {
       if (!applyGenerated) {
-        if (isLucky(cycleData, luckyNodes, nodeId)) {
+        if (nodeId === luckyNode) {
           await applyParameters(nodeAddress, nodeId)
         }
         WINDOWS = NEXT_WINDOWS
@@ -3350,7 +3342,7 @@ function isLucky (cycleData, luckyNodes, nodeId) {
       cycleStartTimestamp <= DEV_WINDOWS.devProposalWindow[1]
     ) {
       if (!devIssueGenerated) {
-        if (isLucky(cycleData, luckyNodes, nodeId) && DEV_ISSUE >= 2) {
+        if (nodeId === luckyNode && DEV_ISSUE >= 2) {
           await generateDevIssue(nodeAddress, nodeId)
         }
         devIssueGenerated = true
@@ -3368,7 +3360,7 @@ function isLucky (cycleData, luckyNodes, nodeId) {
         syncedNextDevParams = true
       }
       if (!devTallyGenerated) {
-        if (isLucky(cycleData, luckyNodes, nodeId)) {
+        if (nodeId === luckyNode) {
           await tallyDevVotes(nodeAddress, nodeId)
         }
         devTallyGenerated = true
@@ -3382,7 +3374,7 @@ function isLucky (cycleData, luckyNodes, nodeId) {
       cycleStartTimestamp <= DEV_WINDOWS.devApplyWindow[1]
     ) {
       if (!devApplyGenerated) {
-        if (isLucky(cycleData, luckyNodes, nodeId)) {
+        if (nodeId === luckyNode) {
           await applyDevParameters(nodeAddress, nodeId)
         }
         DEV_WINDOWS = NEXT_DEV_WINDOWS
@@ -3400,7 +3392,7 @@ function isLucky (cycleData, luckyNodes, nodeId) {
     for (const payment of DEVELOPER_FUND) {
       // PAY DEVELOPER IF THE CURRENT TIME IS GREATER THAN THE PAYMENT TIME
       if (cycleStartTimestamp >= payment.timestamp) {
-        if (isLucky(cycleData, luckyNodes, nodeId)) {
+        if (nodeId === luckyNode) {
           releaseDeveloperFunds(payment, nodeAddress, nodeId)
         }
         DEVELOPER_FUND = DEVELOPER_FUND.filter(p => p.id !== payment.id)
