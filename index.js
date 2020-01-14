@@ -3170,7 +3170,9 @@ function isLucky (cycleData, luckyNodes, nodeId) {
     try {
       [cycleData] = dapp.getLatestCycles()
       cycleStartTimestamp = cycleData.start * 1000
-      luckyNodes = dapp.getClosestNodes(cycleData.marker, 2)
+      luckyNodes = dapp.getClosestNodesGlobal(cycleData.marker, 3)
+      nodeId = dapp.getNode()
+      nodeAddress = dapp.getNode(nodeId).address
     } catch (err) {
       console.log('ERR: ', err)
       return setTimeout(networkMaintenance, 1000)
@@ -3183,12 +3185,6 @@ function isLucky (cycleData, luckyNodes, nodeId) {
       `
       luckyNodes: `,
       luckyNodes,
-      `
-      cycleStartTimestamp: `,
-      cycleStartTimestamp,
-      `
-      expectedInterval: `,
-      expectedInterval,
       `
       IN_SYNC: `,
       IN_SYNC,
@@ -3258,20 +3254,10 @@ function isLucky (cycleData, luckyNodes, nodeId) {
       if (cycleData.active >= 3) {
         await syncParameters(cycleStartTimestamp + cycleInterval)
         await syncDevParameters(cycleStartTimestamp + cycleInterval)
-        // if (
-        //   !IN_SYNC &&
-        //   closest === nodeId &&
-        //   ISSUE === 1 &&
-        //   DEV_ISSUE === 1
-        // ) {
-        //   await generateIssue(nodeAddress, nodeId)
-        //   await generateDevIssue(nodeAddress, nodeId)
-        //   IN_SYNC = true
-        // }
       }
 
       // return setTimeout(networkMaintenance, expectedInterval - cycleStartTimestamp) NO GOOD
-      return setTimeout(networkMaintenance, expectedInterval - Date.now())
+      return setTimeout(networkMaintenance, 0)
     }
 
     // THIS IS FOR NODE_REWARD
@@ -3282,17 +3268,17 @@ function isLucky (cycleData, luckyNodes, nodeId) {
 
     // AUTOMATIC (ISSUE | TALLY | APPLY_PARAMETERS) TRANSACTION GENERATION
     // IS THE NETWORK READY TO GENERATE A NEW ISSUE?
-    console.log(
-      'ISSUE_DEBUG',
-      luckyNodes,
-      nodeId,
-      cycleStartTimestamp,
-      WINDOWS.proposalWindow[0],
-      WINDOWS.proposalWindow[1],
-      issueGenerated,
-      cycleStartTimestamp >= WINDOWS.proposalWindow[0] &&
-        cycleStartTimestamp <= WINDOWS.proposalWindow[1]
-    )
+    // console.log(
+    //   'ISSUE_DEBUG',
+    //   luckyNodes,
+    //   nodeId,
+    //   cycleStartTimestamp,
+    //   WINDOWS.proposalWindow[0],
+    //   WINDOWS.proposalWindow[1],
+    //   issueGenerated,
+    //   cycleStartTimestamp >= WINDOWS.proposalWindow[0] &&
+    //     cycleStartTimestamp <= WINDOWS.proposalWindow[1]
+    // )
 
     if (
       cycleStartTimestamp >= WINDOWS.proposalWindow[0] &&
@@ -3345,17 +3331,17 @@ function isLucky (cycleData, luckyNodes, nodeId) {
       }
     }
 
-    console.log(
-      'DEV_ISSUE_DEBUG',
-      luckyNodes,
-      nodeId,
-      cycleStartTimestamp,
-      DEV_WINDOWS.devProposalWindow[0],
-      DEV_WINDOWS.devProposalWindow[1],
-      devIssueGenerated,
-      cycleStartTimestamp >= DEV_WINDOWS.devProposalWindow[0] &&
-        cycleStartTimestamp <= DEV_WINDOWS.devProposalWindow[1]
-    )
+    // console.log(
+    //   'DEV_ISSUE_DEBUG',
+    //   luckyNodes,
+    //   nodeId,
+    //   cycleStartTimestamp,
+    //   DEV_WINDOWS.devProposalWindow[0],
+    //   DEV_WINDOWS.devProposalWindow[1],
+    //   devIssueGenerated,
+    //   cycleStartTimestamp >= DEV_WINDOWS.devProposalWindow[0] &&
+    //     cycleStartTimestamp <= DEV_WINDOWS.devProposalWindow[1]
+    // )
 
     // AUTOMATIC (DEV_ISSUE | DEV_TALLY | APPLY_DEV_PARAMETERS) TRANSACTION GENERATION
     // IS THE NETWORK READY TO GENERATE A NEW DEV_ISSUE?
