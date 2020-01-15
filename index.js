@@ -3,24 +3,10 @@ const path = require('path')
 const shardus = require('shardus-global-server')
 const crypto = require('shardus-crypto-utils')
 const stringify = require('fast-stable-stringify')
-const nodemailer = require('nodemailer')
-const smtpTransport = require('nodemailer-smtp-transport')
 const axios = require('axios')
 const { set } = require('dot-prop')
 const _ = require('lodash')
 crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
-
-// FOR SENDING VERIFICATION EMAILS
-const transporter = nodemailer.createTransport(
-  smtpTransport({
-    service: 'gmail',
-    host: 'smtp.gmail.com',
-    auth: {
-      user: 'liberdus.verify@gmail.com',
-      pass: 'CTss94574!'
-    }
-  })
-)
 
 /**
  * @typedef {import('shardus-enterprise-server/src/shardus')} Shardus
@@ -157,15 +143,15 @@ set(config, 'logs', {
         maxLogSize: 10000000,
         backups: 10
       }
+    },
+    categories: {
+      default: { appenders: ['out'], level: 'fatal' },
+      app: { appenders: ['app', 'errors'], level: 'fatal' },
+      main: { appenders: ['main', 'errors'], level: 'fatal' },
+      fatal: { appenders: ['fatal'], level: 'fatal' },
+      net: { appenders: ['net'], level: 'fatal' },
+      playback: { appenders: ['playback'], level: 'fatal' }
     }
-    // categories: {
-    //   default: { appenders: ['out'], level: 'fatal' },
-    //   app: { appenders: ['app', 'errors'], level: 'fatal' },
-    //   main: { appenders: ['main', 'errors'], level: 'fatal' },
-    //   fatal: { appenders: ['fatal'], level: 'fatal' },
-    //   net: { appenders: ['net'], level: 'fatal' },
-    //   playback: { appenders: ['playback'], level: 'fatal' }
-    // }
   }
 })
 
@@ -835,7 +821,7 @@ dapp.registerExternalGet('messages/:chatId', async (req, res) => {
 dapp.setup({
   async sync () {
     if (dapp.p2p.isFirstSeed) {
-      await _sleep(ONE_SECOND * 15)
+      await _sleep(ONE_SECOND * 20)
       const timestamp = Date.now()
       const nodeId = dapp.getNodeId()
       const address = dapp.getNode(nodeId).address
@@ -846,7 +832,7 @@ dapp.setup({
       ]
       const graceWindow = [votingWindow[1], votingWindow[1] + TIME_FOR_GRACE]
       const applyWindow = [graceWindow[1], graceWindow[1] + TIME_FOR_APPLY]
-      
+
       const devProposalWindow = [timestamp, timestamp + TIME_FOR_DEV_PROPOSALS]
       const devVotingWindow = [
         devProposalWindow[1],
@@ -890,6 +876,7 @@ dapp.setup({
       NEXT_DEVELOPER_FUND = []
       ISSUE = 1
       DEV_ISSUE = 1
+      IN_SYNC = true
       dapp.set({
         type: 'issue',
         nodeId,
@@ -2328,6 +2315,8 @@ dapp.setup({
         const proposal = wrappedStates[tx.proposal].data
 
         proposal.parameters = to.current
+        proposal.parameters.title = 'Default parameters'
+        proposal.parameters.description = 'Keep the current network parameters as they are'
         proposal.number = 1
 
         issue.number = to.issue
@@ -2945,19 +2934,16 @@ async function _sleep (ms = 0) {
 }
 
 function maintenanceAmount (timestamp, account) {
-  console.log('TIMESTAMP: ', timestamp, 'ACCOUNT', account)
   let amount
   if (timestamp - account.lastMaintenance < CURRENT.maintenanceInterval) {
     amount = 0
   } else {
-    console.log('CURRENT', CURRENT)
     amount =
       account.data.balance *
       (CURRENT.maintenanceFee *
         Math.floor(
           (timestamp - account.lastMaintenance) / CURRENT.maintenanceInterval
         ))
-    console.log('AMOUNT', amount)
     account.lastMaintenance = timestamp
   }
   return amount
@@ -2988,6 +2974,7 @@ async function generateIssue (address, nodeId) {
     timestamp: Date.now()
   }
   dapp.put(tx)
+  console.log('GENERATED_ISSUE: ', nodeId)
 }
 
 // DEV_ISSUE TRANSACTION FUNCTION
@@ -3001,6 +2988,7 @@ async function generateDevIssue (address, nodeId) {
     timestamp: Date.now()
   }
   dapp.put(tx)
+  console.log('GENERATED_DEV_ISSUE: ', nodeId)
 }
 
 // TALLY TRANSACTION FUNCTION
@@ -3019,6 +3007,7 @@ async function tallyVotes (address, nodeId) {
       timestamp: Date.now()
     }
     dapp.put(tx)
+    console.log('GENERATED_TALLY: ', nodeId)
   } catch (err) {
     console.log('ERR: ', err)
     await _sleep(1000)
@@ -3042,6 +3031,7 @@ async function tallyDevVotes (address, nodeId) {
       timestamp: Date.now()
     }
     dapp.put(tx)
+    console.log('GENERATED_DEV_TALLY: ', nodeId)
   } catch (err) {
     console.log('ERR: ', err)
     await _sleep(1000)
@@ -3060,6 +3050,7 @@ async function applyParameters (address, nodeId) {
     timestamp: Date.now()
   }
   dapp.put(tx)
+  console.log('GENERATED_APPLY: ', nodeId)
 }
 
 // APPLY_DEV_PARAMETERS TRANSACTION FUNCTION
@@ -3073,6 +3064,7 @@ async function applyDevParameters (address, nodeId) {
     timestamp: Date.now()
   }
   dapp.put(tx)
+  console.log('GENERATED_DEV_APPLY: ', nodeId)
 }
 
 // RELEASE DEVELOPER FUNDS FOR A PAYMENT
@@ -3087,32 +3079,8 @@ function releaseDeveloperFunds (payment, address, nodeId) {
     timestamp: Date.now()
   }
   dapp.put(tx)
+  console.log('GENERATED_DEV_FUND_RELEASE: ', nodeId)
 }
-
-// function isLucky (cycleData, luckyNodes, nodeId) {
-//   let [first, second, third] = luckyNodes
-//   if (!cycleData.activated.includes(first)) {
-//     if (first === nodeId) {
-//       return true
-//     } else {
-//       return false
-//     }
-//   }
-//   if (!cycleData.activated.includes(second)) {
-//     if (second === nodeId) {
-//       return true
-//     } else {
-//       return false
-//     }
-//   }
-//   if (!cycleData.activated.includes(third)) {
-//     if (third === nodeId) {
-//       return true
-//     } else {
-//       return false
-//     }
-//   }
-// }
 
 // CODE THAT GETS EXECUTED WHEN NODES START
 ;(async () => {
@@ -3185,18 +3153,6 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       NEXT: `,
       NEXT,
       `
-      WINDOWS: `,
-      WINDOWS,
-      `
-      NEXT_WINDOWS: `,
-      NEXT_WINDOWS,
-      `
-      DEV_WINDOWS: `,
-      DEV_WINDOWS,
-      `
-      NEXT_DEV_WINDOWS: `,
-      NEXT_DEV_WINDOWS,
-      `
       DEVELOPER_FUND: `,
       DEVELOPER_FUND,
       `
@@ -3212,43 +3168,18 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       nodeId: `,
       nodeId,
       `
-      nodeAddress: `,
-      nodeAddress,
-      `
-      issueGenerated: `,
-      issueGenerated,
-      `
-      tallyGenerated: `,
-      tallyGenerated,
-      `
-      applyGenerated: `,
-      applyGenerated,
-      `
-      devIssueGenerated: `,
-      devIssueGenerated,
-      `
-      devTallyGenerated: `,
-      devTallyGenerated,
-      `
-      devApplyGenerated: `,
-      devApplyGenerated,
-      `
     `
     )
 
-    // if (_.isEmpty(CURRENT) || _.isEmpty(WINDOWS) || _.isEmpty(DEV_WINDOWS)) {
-    //   IN_SYNC = false
-    // }
+    if (_.isEmpty(CURRENT) || _.isEmpty(WINDOWS) || _.isEmpty(DEV_WINDOWS)) {
+      IN_SYNC = false
+    }
 
-    // if (!IN_SYNC) {
-    //   if (cycleData.active >= 3) {
-    //     await syncParameters(cycleStartTimestamp + cycleInterval)
-    //     await syncDevParameters(cycleStartTimestamp + cycleInterval)
-    //   }
-
-    //   // return setTimeout(networkMaintenance, expectedInterval - cycleStartTimestamp) NO GOOD
-    //   return setTimeout(networkMaintenance, 0)
-    // }
+    if (!IN_SYNC) {
+      await syncParameters(cycleStartTimestamp + cycleInterval)
+      await syncDevParameters(cycleStartTimestamp + cycleInterval)
+      return setTimeout(networkMaintenance, 1000)
+    }
 
     // THIS IS FOR NODE_REWARD
     if (cycleStartTimestamp - lastReward > CURRENT.nodeRewardInterval) {
@@ -3258,17 +3189,17 @@ function releaseDeveloperFunds (payment, address, nodeId) {
 
     // AUTOMATIC (ISSUE | TALLY | APPLY_PARAMETERS) TRANSACTION GENERATION
     // IS THE NETWORK READY TO GENERATE A NEW ISSUE?
-    // console.log(
-    //   'ISSUE_DEBUG',
-    //   luckyNodes,
-    //   nodeId,
-    //   cycleStartTimestamp,
-    //   WINDOWS.proposalWindow[0],
-    //   WINDOWS.proposalWindow[1],
-    //   issueGenerated,
-    //   cycleStartTimestamp >= WINDOWS.proposalWindow[0] &&
-    //     cycleStartTimestamp <= WINDOWS.proposalWindow[1]
-    // )
+    console.log(
+      'ISSUE_DEBUG ---------- ',
+      'ISSUE_GENERATED: ', issueGenerated,
+      'LUCKY_NODE: ', luckyNode,
+      'NODE_ID: ', nodeId,
+      'CYCLE_START_TIME: ', cycleStartTimestamp,
+      'ISSUE_WINDOW_START_TIME: ', WINDOWS.proposalWindow[0],
+      'ISSUE_WINDOW_END_TIME: ', WINDOWS.proposalWindow[1],
+      'WITHIN_ISSUE_WINDOW: ', cycleStartTimestamp >= WINDOWS.proposalWindow[0] &&
+        cycleStartTimestamp <= WINDOWS.proposalWindow[1]
+    )
 
     if (
       cycleStartTimestamp >= WINDOWS.proposalWindow[0] &&
@@ -3282,6 +3213,18 @@ function releaseDeveloperFunds (payment, address, nodeId) {
         applyGenerated = false
       }
     }
+
+    console.log(
+      'TALLY_DEBUG ---------- ',
+      'TALLY_GENERATED: ', tallyGenerated,
+      'LUCKY_NODE: ', luckyNode,
+      'NODE_ID: ', nodeId,
+      'CYCLE_START_TIME: ', cycleStartTimestamp,
+      'TALLY_WINDOW_START_TIME: ', WINDOWS.graceWindow[0],
+      'TALLY_WINDOW_END_TIME: ', WINDOWS.graceWindow[1],
+      'WITHIN_TALLY_WINDOW: ', cycleStartTimestamp >= WINDOWS.graceWindow[0] &&
+        cycleStartTimestamp <= WINDOWS.graceWindow[1]
+    )
 
     // IF THE WINNER FOR THE PROPOSAL HASN'T BEEN DETERMINED YET AND ITS PAST THE VOTING_WINDOW
     if (
@@ -3300,6 +3243,18 @@ function releaseDeveloperFunds (payment, address, nodeId) {
         syncedNextParams = false
       }
     }
+
+    console.log(
+      'APPLY_DEBUG ---------- ',
+      'APPLY_GENERATED: ', applyGenerated,
+      'LUCKY_NODE: ', luckyNode,
+      'NODE_ID: ', nodeId,
+      'CYCLE_START_TIME: ', cycleStartTimestamp,
+      'APPLY_WINDOW_START_TIME: ', WINDOWS.applyWindow[0],
+      'APPLY_WINDOW_END_TIME: ', WINDOWS.applyWindow[1],
+      'WITHIN_APPLY_WINDOW: ', cycleStartTimestamp >= WINDOWS.applyWindow[0] &&
+        cycleStartTimestamp <= WINDOWS.applyWindow[1]
+    )
 
     // IF THE WINNING PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE GRACE_WINDOW
     if (
@@ -3321,17 +3276,17 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       }
     }
 
-    // console.log(
-    //   'DEV_ISSUE_DEBUG',
-    //   luckyNodes,
-    //   nodeId,
-    //   cycleStartTimestamp,
-    //   DEV_WINDOWS.devProposalWindow[0],
-    //   DEV_WINDOWS.devProposalWindow[1],
-    //   devIssueGenerated,
-    //   cycleStartTimestamp >= DEV_WINDOWS.devProposalWindow[0] &&
-    //     cycleStartTimestamp <= DEV_WINDOWS.devProposalWindow[1]
-    // )
+    console.log(
+      'DEV_ISSUE_DEBUG ---------- ',
+      'DEV_ISSUE_GENERATED: ', tallyGenerated,
+      'LUCKY_NODE: ', luckyNode,
+      'NODE_ID: ', nodeId,
+      'CYCLE_START_TIME: ', cycleStartTimestamp,
+      'DEV_ISSUE_WINDOW_START_TIME: ', DEV_WINDOWS.devProposalWindow[0],
+      'DEV_ISSUE_WINDOW_END_TIME: ', DEV_WINDOWS.devProposalWindow[1],
+      'WITHIN_DEV_ISSUE_WINDOW: ', cycleStartTimestamp >= DEV_WINDOWS.devProposalWindow[0] &&
+        cycleStartTimestamp <= DEV_WINDOWS.devProposalWindow[1]
+    )
 
     // AUTOMATIC (DEV_ISSUE | DEV_TALLY | APPLY_DEV_PARAMETERS) TRANSACTION GENERATION
     // IS THE NETWORK READY TO GENERATE A NEW DEV_ISSUE?
@@ -3347,6 +3302,18 @@ function releaseDeveloperFunds (payment, address, nodeId) {
         devApplyGenerated = false
       }
     }
+
+    console.log(
+      'DEV_TALLY_DEBUG ---------- ',
+      'DEV_TALLY_GENERATED: ', devTallyGenerated,
+      'LUCKY_NODE: ', luckyNode,
+      'NODE_ID: ', nodeId,
+      'CYCLE_START_TIME: ', cycleStartTimestamp,
+      'DEV_TALLY_WINDOW_START_TIME: ', DEV_WINDOWS.devGraceWindow[0],
+      'DEV_TALLY_WINDOW_END_TIME: ', DEV_WINDOWS.devGraceWindow[1],
+      'WITHIN_DEV_TALLY_WINDOW: ', cycleStartTimestamp >= DEV_WINDOWS.devGraceWindow[0] &&
+        cycleStartTimestamp <= DEV_WINDOWS.devGraceWindow[1]
+    )
 
     // IF THE WINNERS FOR THE DEV PROPOSALS HAVEN'T BEEN DETERMINED YET AND ITS PAST THE DEV_VOTING_WINDOW
     if (
@@ -3365,6 +3332,18 @@ function releaseDeveloperFunds (payment, address, nodeId) {
         syncedNextDevParams = false
       }
     }
+
+    console.log(
+      'DEV_APPLY_DEBUG ---------- ',
+      'DEV_APPLY_GENERATED: ', devApplyGenerated,
+      'LUCKY_NODE: ', luckyNode,
+      'NODE_ID: ', nodeId,
+      'CYCLE_START_TIME: ', cycleStartTimestamp,
+      'DEV_APPLY_WINDOW_START_TIME: ', DEV_WINDOWS.devApplyWindow[0],
+      'DEV_APPLY_WINDOW_END_TIME: ', DEV_WINDOWS.devApplyWindow[1],
+      'WITHIN_DEV_APPLY_WINDOW: ', cycleStartTimestamp >= DEV_WINDOWS.devApplyWindow[0] &&
+        cycleStartTimestamp <= DEV_WINDOWS.devApplyWindow[1]
+    )
 
     // IF THE WINNING DEV PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE DEV_GRACE_WINDOW
     if (

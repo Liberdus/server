@@ -888,6 +888,18 @@ vorpal.command('proposal', 'submits a proposal to change network parameters')
     const defaults = network.CURRENT
     this.log('Choose the network parameters (Using default value keeps the current parameter value)')
     const answers = await this.prompt([{
+      type: 'input',
+      name: 'title',
+      message: 'Enter a Title for your proposal: ',
+      default: defaults.title
+    },
+    {
+      type: 'input',
+      name: 'description',
+      message: 'Enter a description for your proposal: ',
+      default: defaults.description
+    },
+    {
       type: 'number',
       name: 'nodeRewardInterval',
       message: 'Specify node reward interval (in minutes): ',
