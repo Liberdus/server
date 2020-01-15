@@ -1029,7 +1029,7 @@ dapp.setup({
           return response
         }
         if (tx.amount < 1) {
-          response.reason = 'create amount needs to be positive'
+          response.reason = 'create amount needs to be positive (1 or greater)'
           return response
         }
         response.result = 'pass'
@@ -1776,6 +1776,11 @@ dapp.setup({
           reason = '"email" must be a string.'
           throw new Error(reason)
         }
+        if (tx.email.length > 30) {
+          result = 'fail'
+          reason = '"Email" length must be less than 31 characters (30 max)'
+          throw new Error(reason)
+        }
         break
       }
       case 'verify': {
@@ -1817,9 +1822,9 @@ dapp.setup({
           reason = '"alias" must be a string.'
           throw new Error(reason)
         }
-        if (tx.alias && tx.alias.length >= 17) {
+        if (tx.alias.length >= 20) {
           result = 'fail'
-          reason = '"alias" must be less than 17 characters'
+          reason = '"alias" must be less than 21 characters (20 max)'
           throw new Error(reason)
         }
         break
@@ -1881,6 +1886,11 @@ dapp.setup({
           reason = '"Amount" must be a number.'
           throw new Error(reason)
         }
+        if (tx.amount <= 0) {
+          result = 'fail'
+          reason = '"Amount" must be a positive number.'
+          throw new Error(reason)
+        }
         break
       }
       case 'message': {
@@ -1899,6 +1909,11 @@ dapp.setup({
           reason = '"Message" must be a string.'
           throw new Error(reason)
         }
+        if (tx.message.length > 5000) {
+          result = 'fail'
+          reason = '"Message" length must be less than 5000 characters.'
+          throw new Error(reason)
+        }
         break
       }
       case 'toll': {
@@ -1910,6 +1925,16 @@ dapp.setup({
         if (typeof tx.toll !== 'number') {
           result = 'fail'
           reason = '"Toll" must be a number.'
+          throw new Error(reason)
+        }
+        if (tx.toll < 1) {
+          result = 'fail'
+          reason = 'Minimum "toll" allowed is 1 token'
+          throw new Error(reason)
+        }
+        if (tx.toll > 1000000) {
+          result = 'fail'
+          reason = 'Maximum toll allowed is 1,000,000 tokens.'
           throw new Error(reason)
         }
         break
@@ -2018,6 +2043,16 @@ dapp.setup({
           reason = '"totalAmount" must be a number.'
           throw new Error(reason)
         }
+        if (tx.totalAmount < 1) {
+          result = 'fail'
+          reason = 'Minimum "totalAmount" allowed is 1 token'
+          throw new Error(reason)
+        }
+        if (tx.totalAmount > 100000) {
+          result = 'fail'
+          reason = 'Maximum "totalAmount" allowed is 100,000 tokens'
+          throw new Error(reason)
+        }
         if (Array.isArray(tx.payments) !== true) {
           result = 'fail'
           reason = '"payments" must be an array.'
@@ -2028,9 +2063,24 @@ dapp.setup({
           reason = '"description" must be a string.'
           throw new Error(reason)
         }
+        if (tx.description.length < 1) {
+          result = 'fail'
+          reason = 'Minimum "description" character count is 1'
+          throw new Error(reason)
+        }
+        if (tx.description.length > 1000) {
+          result = 'fail'
+          reason = 'Maximum "description" character count is 1000'
+          throw new Error(reason)
+        }
         if (typeof tx.payAddress !== 'string') {
           result = 'fail'
           reason = '"payAddress" must be a string.'
+          throw new Error(reason)
+        }
+        if (tx.payAddress.length !== 64) {
+          result = 'fail'
+          reason = '"payAddress" length must be 64 characters (A valid public address)'
           throw new Error(reason)
         }
         if (
@@ -2038,7 +2088,7 @@ dapp.setup({
           tx.timestamp > DEV_WINDOWS.devProposalWindow[1]
         ) {
           result = 'fail'
-          reason = 'Network is not Ready to generate dev proposals'
+          reason = 'Network is not accepting dev proposals'
           throw new Error(reason)
         }
         break
@@ -2052,6 +2102,11 @@ dapp.setup({
         if (typeof tx.amount !== 'number') {
           result = 'fail'
           reason = '"amount" must be a number.'
+          throw new Error(reason)
+        }
+        if (tx.amount < 1) {
+          result = 'fail'
+          reason = 'Minimum voting "amount" allowed is 1 token'
           throw new Error(reason)
         }
         if (typeof tx.issue !== 'string') {
@@ -2083,6 +2138,11 @@ dapp.setup({
         if (typeof tx.amount !== 'number') {
           result = 'fail'
           reason = '"amount" must be a number.'
+          throw new Error(reason)
+        }
+        if (typeof tx.amount < 1) {
+          result = 'fail'
+          reason = 'Minimum voting "amount" allowed is 1 token'
           throw new Error(reason)
         }
         if (typeof tx.approve !== 'boolean') {
@@ -2592,6 +2652,8 @@ dapp.setup({
       }
       case 'developer_payment': {
         const developer = wrappedStates[tx.developer].data
+        console.log('DEVELOPER_BALANCE: ', developer.data.balance)
+        console.log('PAYMENT_AMOUNT: ', tx.payment.amount)
         developer.data.balance += tx.payment.amount
         to.developerFund = to.developerFund.filter(
           payment => payment.id !== tx.payment.id
