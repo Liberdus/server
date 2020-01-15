@@ -1270,7 +1270,7 @@ dapp.setup({
             response.reason = 'This transaction in valid'
             return response
           }
-          if (tx.timestamp - from.nodeRewardTime < network.nodeRewardInterval) {
+          if (tx.timestamp - from.nodeRewardTime < network.current.nodeRewardInterval) {
             response.reason = 'Too early for this node to get paid'
             return response
           }
@@ -2299,7 +2299,7 @@ dapp.setup({
         break
       }
       case 'node_reward': {
-        to.balance += network.nodeRewardAmount
+        to.balance += network.current.nodeRewardAmount
         from.nodeRewardTime = tx.timestamp
         from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
