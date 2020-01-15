@@ -10,6 +10,7 @@ crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
 let USER
 let HOST = process.argv[2] || 'localhost:9001'
+let ARCHIVESERVER = process.argv[3] || '127.0.0.1:4000'
 console.log(`Using ${HOST} as node for queries and transactions.`)
 
 // USEFUL CONSTANTS FOR TIME IN MILLISECONDS
@@ -35,8 +36,15 @@ try {
 console.log(`Loaded wallet entries from '${walletFile}'.`)
 
 async function getSeedNodes () {
-  const res = await axios.get(`http://${HOST}:4000/api/seednodes`)
-  const { seedNodes } = res.data
+  let result = await axios.get(`http://${ARCHIVESERVER}/nodelist`) // await utils.getJson(`${glob.seedNode}/nodelist`)
+
+  let seedNodes = []
+  let nodelist = result.data.nodeList
+  if (nodelist !== null) {
+    // Filter out all non-active nodes. dont filter yet no one will say active.
+    // nodelist = nodelist.filter(node => node.status ? node.status === 'active' : false)
+    seedNodes = nodelist
+  }
   return seedNodes
 }
 
@@ -238,16 +246,20 @@ function buildTx ({ type, from = {}, to, handle, id, amount, message, toll }) {
 
 let logError = false
 
-async function sendTx (tx, port = null, verbose = true) {
+async function sendTx (tx, node = null, verbose = true) {
   if (!tx.sign) {
     tx = buildTx(tx)
   }
   if (verbose) {
-    console.log(`Sending tx to ${port}...`)
+    console.log(`Sending tx to ${node}...`)
     console.log(tx)
   }
   try {
-    const { data } = await axios.post(`http://${HOST}:${port}/inject`, tx)
+    let target = HOST
+    if (node != null) {
+      target = node
+    }
+    const { data } = await axios.post(`http://${target}/inject`, tx)
     if (verbose) console.log('Got response:', data)
     return data
   } catch (err) {
@@ -258,14 +270,14 @@ async function sendTx (tx, port = null, verbose = true) {
 async function spamTxs ({
   txs,
   rate,
-  ports = [],
+  nodes = [],
   saveFile = null,
   verbose = true
 }) {
-  if (!Array.isArray(ports)) ports = [ports]
+  if (!Array.isArray(nodes)) nodes = [nodes]
 
   console.log(
-    `Spamming ${ports.length > 1 ? 'ports' : 'port'} ${ports.join()} with ${
+    `Spamming ${nodes.length > 1 ? 'nodes' : 'node'} ${nodes.join()} with ${
       txs.length ? txs.length + ' ' : ''
     }txs at ${rate} TPS...`
   )
@@ -275,12 +287,12 @@ async function spamTxs ({
     : null
 
   const promises = []
-  let port
+  let node
 
   for (const tx of txs) {
     if (writeStream) writeStream.write(JSON.stringify(tx, null, 2) + '\n')
-    port = ports[Math.floor(Math.random() * ports.length)]
-    promises.push(sendTx(tx, port, verbose))
+    node = nodes[Math.floor(Math.random() * nodes.length)]
+    promises.push(sendTx(tx, node, verbose))
     await _sleep((1 / rate) * 1000)
   }
   if (writeStream) writeStream.end()
@@ -1186,8 +1198,9 @@ vorpal
     const txs = makeTxGenerator(accounts, args.count, args.type)
     const seedNodes = await getSeedNodes()
     this.log('SEED_NODES:', seedNodes)
-    const ports = seedNodes.map(url => url.port)
-    await spamTxs({ txs, rate: args.tps, ports, saveFile: 'spam-test.json' })
+    // const ports = seedNodes.map(url => url.port)
+    const nodes = seedNodes.map(url => `${url.ip}:${url.port}`)
+    await spamTxs({ txs, rate: args.tps, nodes, saveFile: 'spam-test.json' })
     this.log('Done spamming...')
     callback()
   })
