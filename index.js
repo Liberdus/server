@@ -1653,6 +1653,7 @@ dapp.setup({
         return response
       }
       case 'developer_payment': {
+        const developer = wrappedStates[tx.developer] && wrappedStates[tx.developer].data
         // let nodeInfo
         // try {
         //   nodeInfo = dapp.getNode(tx.nodeId)
@@ -1678,6 +1679,18 @@ dapp.setup({
         }
         if (tx.timestamp < tx.payment.timestamp) {
           response.reason = 'This payment is not ready to be released'
+          return response
+        }
+        if (!developer || !developer.data) {
+          response.reason = 'No account exists for the passed in tx.developer'
+          return response
+        }
+        if (typeof developer.data.balance === 'string') {
+          response.reason = 'developer.data.balance is a string for some reason'
+          return response
+        }
+        if (typeof tx.payment.amount === 'string') {
+          response.reason = 'payment.amount is a string for some reason'
           return response
         }
         response.result = 'pass'
@@ -2096,6 +2109,18 @@ dapp.setup({
           throw new Error(reason)
         }
         break
+      }
+      case 'developer_payment': {
+        if (typeof tx.payment !== 'object') {
+          result = 'fail'
+          reason = '"Payment" must be an object.'
+          throw new Error(reason)
+        }
+        if (typeof tx.payment.amount !== 'number') {
+          result = 'fail'
+          reason = '"payment.amount" must be a number.'
+          throw new Error(reason)
+        }
       }
     }
 
@@ -2567,7 +2592,6 @@ dapp.setup({
       }
       case 'developer_payment': {
         const developer = wrappedStates[tx.developer].data
-
         developer.data.balance += tx.payment.amount
         to.developerFund = to.developerFund.filter(
           payment => payment.id !== tx.payment.id
