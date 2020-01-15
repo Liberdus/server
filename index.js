@@ -157,15 +157,15 @@ set(config, 'logs', {
         maxLogSize: 10000000,
         backups: 10
       }
-    },
-    categories: {
-      default: { appenders: ['out'], level: 'fatal' },
-      app: { appenders: ['app', 'errors'], level: 'fatal' },
-      main: { appenders: ['main', 'errors'], level: 'fatal' },
-      fatal: { appenders: ['fatal'], level: 'fatal' },
-      net: { appenders: ['net'], level: 'fatal' },
-      playback: { appenders: ['playback'], level: 'fatal' }
     }
+    // categories: {
+    //   default: { appenders: ['out'], level: 'fatal' },
+    //   app: { appenders: ['app', 'errors'], level: 'fatal' },
+    //   main: { appenders: ['main', 'errors'], level: 'fatal' },
+    //   fatal: { appenders: ['fatal'], level: 'fatal' },
+    //   net: { appenders: ['net'], level: 'fatal' },
+    //   playback: { appenders: ['playback'], level: 'fatal' }
+    // }
   }
 })
 
@@ -939,7 +939,6 @@ dapp.setup({
 
     const from = wrappedStates[tx.from] && wrappedStates[tx.from].data
     const to = wrappedStates[tx.to] && wrappedStates[tx.to].data
-    const network = wrappedStates[tx.network] && wrappedStates[tx.network].data
 
     switch (tx.type) {
       case 'snapshot': {
@@ -1242,6 +1241,8 @@ dapp.setup({
         return response
       }
       case 'node_reward': {
+        // const network = wrappedStates[tx.network] && wrappedStates[tx.network].data
+        // console.log(network.current.nodeRewardInterval)
         // let nodeInfo
         // try {
         //   nodeInfo = dapp.getNode(tx.nodeId)
@@ -1270,7 +1271,7 @@ dapp.setup({
             response.reason = 'This transaction in valid'
             return response
           }
-          if (tx.timestamp - from.nodeRewardTime < network.current.nodeRewardInterval) {
+          if (tx.timestamp - from.nodeRewardTime < CURRENT.nodeRewardInterval) {
             response.reason = 'Too early for this node to get paid'
             return response
           }
@@ -2120,7 +2121,6 @@ dapp.setup({
   apply (tx, wrappedStates) {
     let from = wrappedStates[tx.from] && wrappedStates[tx.from].data
     let to = wrappedStates[tx.to] && wrappedStates[tx.to].data
-    let network = wrappedStates[tx.network] && wrappedStates[tx.network].data
     // Validate the tx
     const { result, reason } = this.validateTransaction(tx, wrappedStates)
 
@@ -2131,7 +2131,12 @@ dapp.setup({
     }
 
     // Create an applyResponse which will be used to tell Shardus that the tx has been applied
-    const txId = crypto.hashObj(tx) // compute from tx
+    let txId
+    if (!tx.sign) {
+      txId = crypto.hashObj(tx)
+    } else {
+      txId = crypto.hashObj(tx, true) // compute from tx
+    }
     const applyResponse = dapp.createApplyResponse(txId, tx.timestamp)
 
     // Apply the tx
@@ -2299,7 +2304,9 @@ dapp.setup({
         break
       }
       case 'node_reward': {
-        to.balance += network.current.nodeRewardAmount
+        // let network = wrappedStates[tx.network] && wrappedStates[tx.network].data
+        // console.log(network.current.nodeRewardAmount)
+        to.balance += CURRENT.nodeRewardAmount
         from.nodeRewardTime = tx.timestamp
         from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
@@ -2640,7 +2647,7 @@ dapp.setup({
         break
       case 'node_reward':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.to, tx.network]
+        result.targetKeys = [tx.to]
         break
       case 'bond':
         result.sourceKeys = [tx.from]
@@ -2964,8 +2971,7 @@ function nodeReward (address, nodeId) {
     timestamp: Date.now(),
     nodeId: nodeId,
     from: address,
-    to: payAddress,
-    network: networkAccount
+    to: payAddress
   }
   dapp.put(tx)
 }
