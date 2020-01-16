@@ -1332,5 +1332,11 @@ vorpal.command('transactions', 'gets all the transactions for your account')
     callback()
   })
 
+vorpal.command('kill node <host>', 'Kicks node running on host <host>')
+  .action(async function (args, callback) {
+    await axios.post(`http://${args.host}/exit`)
+    callback()
+  })
+
 vorpal.delimiter('>').show()
 vorpal.exec('init').then(res => (USER = res))
