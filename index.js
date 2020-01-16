@@ -1428,7 +1428,7 @@ dapp.setup({
             'From account has insufficient balance to submit a devProposal'
           return response
         }
-        if (tx.payments.reduce((acc, payment) => acc + payment.amount) > 1) {
+        if (tx.payments.reduce((acc, payment) => acc + payment.amount, 0) > 1) {
           response.reason = 'tx payment amounts added up to more than 100%'
           return response
         }
