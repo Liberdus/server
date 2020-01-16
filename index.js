@@ -2454,6 +2454,7 @@ dapp.setup({
 
         devProposal.totalAmount = tx.totalAmount
         devProposal.payAddress = tx.payAddress
+        devProposal.title = tx.title
         devProposal.description = tx.description
         devProposal.payments = tx.payments
         devIssue.devProposalCount++
