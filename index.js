@@ -143,15 +143,15 @@ set(config, 'logs', {
         maxLogSize: 10000000,
         backups: 10
       }
-    },
-    categories: {
-      default: { appenders: ['out'], level: 'fatal' },
-      app: { appenders: ['app', 'errors'], level: 'fatal' },
-      main: { appenders: ['main', 'errors'], level: 'fatal' },
-      fatal: { appenders: ['fatal'], level: 'fatal' },
-      net: { appenders: ['net'], level: 'fatal' },
-      playback: { appenders: ['playback'], level: 'fatal' }
     }
+    // categories: {
+    //   default: { appenders: ['out'], level: 'fatal' },
+    //   app: { appenders: ['app', 'errors'], level: 'fatal' },
+    //   main: { appenders: ['main', 'errors'], level: 'fatal' },
+    //   fatal: { appenders: ['fatal'], level: 'fatal' },
+    //   net: { appenders: ['net'], level: 'fatal' },
+    //   playback: { appenders: ['playback'], level: 'fatal' }
+    // }
   }
 })
 
