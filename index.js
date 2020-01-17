@@ -2484,6 +2484,7 @@ dapp.setup({
         const issue = wrappedStates[tx.issue].data
 
         from.data.balance -= CURRENT.proposalFee
+        from.data.balance -= CURRENT.transactionFee
         from.data.balance -= maintenanceAmount(tx.timestamp, from)
 
         proposal.parameters = tx.parameters
@@ -2503,6 +2504,7 @@ dapp.setup({
         const devProposal = wrappedStates[tx.devProposal].data
 
         from.data.balance -= CURRENT.devProposalFee
+        from.data.balance -= CURRENT.transactionFee
         from.data.balance -= maintenanceAmount(tx.timestamp, from)
 
         devProposal.totalAmount = tx.totalAmount
