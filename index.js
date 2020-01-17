@@ -748,7 +748,7 @@ dapp.registerExternalGet('account/:id/:friendId/toll', async (req, res) => {
   try {
     const account = await dapp.getLocalOrRemoteAccount(id)
     if (account && account.data.data.friends[friendId]) {
-      res.json({ toll: 1 })
+      res.json({ toll: 0 })
     } else if (account) {
       res.json({ toll: account.data.data.toll })
     } else {
@@ -2373,10 +2373,7 @@ dapp.setup({
       case 'message': {
         const chat = wrappedStates[tx.chatId].data
         from.data.balance -= CURRENT.transactionFee
-        if (to.data.friends[from.id]) {
-          from.data.balance -= 1
-          to.data.balance += 1
-        } else {
+        if (!to.data.friends[from.id]) {
           from.data.balance -= to.data.toll
           to.data.balance += to.data.toll
         }
