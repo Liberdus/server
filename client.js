@@ -982,17 +982,23 @@ vorpal.command('proposal', 'submits a proposal to change network parameters')
 vorpal.command('dev proposal', 'submits a development proposal')
   .action(async function (_, callback) {
     const answers = await this.prompt([{
-      type: 'number',
-      name: 'totalAmount',
-      message: 'Enter the requested funds: ',
-      default: 10000,
-      filter: value => parseInt(value)
+      type: 'input',
+      name: 'title',
+      message: 'Enter a title for the development proposal: ',
+      default: `Default title`
     },
     {
       type: 'input',
       name: 'description',
       message: 'Enter a description for the proposal: ',
       default: `${USER.address.slice(0, 5)}... proposal`
+    },
+    {
+      type: 'number',
+      name: 'totalAmount',
+      message: 'Enter the requested funds: ',
+      default: 10000,
+      filter: value => parseInt(value)
     },
     {
       type: 'input',
@@ -1046,6 +1052,7 @@ vorpal.command('dev proposal', 'submits a development proposal')
       devProposal: crypto.hash(`dev-issue-${latestIssue}-dev-proposal-${count + 1}`),
       totalAmount: answers.totalAmount,
       payments: payments,
+      title: answers.title,
       description: answers.description,
       payAddress: answers.payAddress,
       timestamp: Date.now()
