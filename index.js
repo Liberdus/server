@@ -37,12 +37,12 @@ const ONE_DAY = 24 * ONE_HOUR
 const ONE_WEEK = 7 * ONE_DAY
 const ONE_YEAR = 365 * ONE_DAY
 
-const TIME_FOR_PROPOSALS = ONE_MINUTE * 2
+const TIME_FOR_PROPOSALS = ONE_MINUTE * 3
 const TIME_FOR_VOTING = ONE_MINUTE * 2
 const TIME_FOR_GRACE = ONE_MINUTE + ONE_SECOND * 30
 const TIME_FOR_APPLY = ONE_MINUTE + ONE_SECOND * 30
 
-const TIME_FOR_DEV_PROPOSALS = ONE_MINUTE * 2
+const TIME_FOR_DEV_PROPOSALS = ONE_MINUTE * 3
 const TIME_FOR_DEV_VOTING = ONE_MINUTE * 2
 const TIME_FOR_DEV_GRACE = ONE_MINUTE + ONE_SECOND * 30
 const TIME_FOR_DEV_APPLY = ONE_MINUTE + ONE_SECOND * 30
@@ -850,12 +850,12 @@ dapp.setup({
         nodeRewardInterval: ONE_MINUTE * 2,
         nodeRewardAmount: 10,
         nodePenalty: 100,
-        transactionFee: 0.001,
+        transactionFee: 0.01,
         stakeRequired: 500,
-        maintenanceInterval: ONE_MINUTE,
-        maintenanceFee: 0.01,
+        maintenanceInterval: 600000,
+        maintenanceFee: 0,
         proposalFee: 500,
-        devProposalFee: 20
+        devProposalFee: 100
       }
       NEXT = {}
       WINDOWS = {
@@ -1360,7 +1360,7 @@ dapp.setup({
       }
       case 'proposal': {
         const issue = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
-
+        const parameters = tx.parameters
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
           return response
@@ -1387,6 +1387,62 @@ dapp.setup({
         if (from.data.balance < CURRENT.proposalFee) {
           response.reason =
             'From account has insufficient balance to submit a proposal'
+          return response
+        }
+        if (parameters.transactionFee < 0) {
+          response.reason = 'Min transaction fee permitted is 0'
+          return response
+        }
+        if (parameters.transactionFee > 10) {
+          response.reason = 'Max transaction fee permitted is 10'
+          return response
+        }
+        if (parameters.maintenanceFee > 0.1) {
+          response.reason = 'Max maintenanceFee fee permitted is 10%'
+          return response
+        }
+        if (parameters.maintenanceFee < 0) {
+          response.reason = 'Min maintenanceFee fee permitted is 0%'
+          return response
+        }
+        if (parameters.maintenanceInterval > 1000000000000) {
+          response.reason = 'Max maintenanceInterval permitted is 1000000000000'
+          return response
+        }
+        if (parameters.maintenanceInterval < 600000) {
+          response.reason = 'Min maintenanceInterval permitted is 600000 (10 minutes)'
+          return response
+        }
+        if (parameters.nodeRewardInterval < 60000) {
+          response.reason = 'Min nodeRewardInterval permitted is 60000 (1 minute)'
+          return response
+        }
+        if (parameters.nodeRewardInterval > 900000000000) {
+          response.reason = 'Max nodeRewardInterval fee permitted is 900000000000'
+          return response
+        }
+        if (parameters.nodeRewardAmount < 0) {
+          response.reason = 'Min nodeRewardAmount permitted is 0 tokens'
+          return response
+        }
+        if (parameters.nodeRewardAmount > 1000000000) {
+          response.reason = 'Max nodeRewardAmount permitted is 1000000000'
+          return response
+        }
+        if (parameters.proposalFee < 0) {
+          response.reason = 'Min proposalFee permitted is 0 tokens'
+          return response
+        }
+        if (parameters.proposalFee > 1000000000) {
+          response.reason = 'Max proposalFee permitted is 1000000000 tokens'
+          return response
+        }
+        if (parameters.devProposalFee < 0) {
+          response.reason = 'Min devProposalFee permitted is 0 tokens'
+          return response
+        }
+        if (parameters.devProposalFee > 1000000000) {
+          response.reason = 'Max devProposalFee permitted is 1000000000 tokens'
           return response
         }
         response.result = 'pass'

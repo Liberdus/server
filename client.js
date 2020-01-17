@@ -10,7 +10,7 @@ crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
 let USER
 let HOST = process.argv[2] || 'localhost:9001'
-let ARCHIVESERVER = process.argv[3] || 'arc.liberdus.com:4000'
+let ARCHIVESERVER = process.argv[3] || 'localhost:4000'
 console.log(`Using ${HOST} as node for queries and transactions.`)
 
 // USEFUL CONSTANTS FOR TIME IN MILLISECONDS
@@ -246,14 +246,14 @@ function buildTx ({ type, from = {}, to, handle, id, amount, message, toll }) {
 
 let logError = false
 
-async function sendTx (tx, node = null, verbose = true) {
+async function sendTx (tx, node = null, verbose = false) {
   if (!tx.sign) {
     tx = buildTx(tx)
   }
-  if (verbose) {
-    console.log(`Sending tx to ${node}...`)
-    console.log(tx)
-  }
+  // if (verbose) {
+  //   console.log(`Sending tx to ${node}...`)
+  //   console.log(tx)
+  // }
   try {
     let target = HOST
     if (node != null) {
@@ -271,8 +271,7 @@ async function spamTxs ({
   txs,
   rate,
   nodes = [],
-  saveFile = null,
-  verbose = true
+  saveFile = null
 }) {
   if (!Array.isArray(nodes)) nodes = [nodes]
 
@@ -292,7 +291,7 @@ async function spamTxs ({
   for (const tx of txs) {
     if (writeStream) writeStream.write(JSON.stringify(tx, null, 2) + '\n')
     node = nodes[Math.floor(Math.random() * nodes.length)]
-    promises.push(sendTx(tx, node, verbose))
+    promises.push(sendTx(tx, node))
     await _sleep((1 / rate) * 1000)
   }
   if (writeStream) writeStream.end()
