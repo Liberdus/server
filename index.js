@@ -1015,10 +1015,10 @@ dapp.setup({
           response.reason = 'This alias is already taken'
           return response
         }
-        if (from.data.balance < CURRENT.transactionFee) {
-          response.reason = "From account doesn't have enough tokens to cover the transaction fee"
-          return response
-        }
+        // if (from.data.balance < CURRENT.transactionFee) {
+        //   response.reason = "From account doesn't have enough tokens to cover the transaction fee"
+        //   return response
+        // }
         response.result = 'pass'
         response.reason = 'This transaction is valid!'
         return response
@@ -2269,8 +2269,8 @@ dapp.setup({
       }
       case 'register': {
         let alias = wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
-        from.data.balance -= CURRENT.transactionFee
-        from.data.balance -= maintenanceAmount(tx.timestamp, from)
+        // from.data.balance -= CURRENT.transactionFee
+        // from.data.balance -= maintenanceAmount(tx.timestamp, from)
         alias.inbox = tx.alias
         from.alias = tx.alias
         alias.address = tx.from

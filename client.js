@@ -10,7 +10,7 @@ crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
 let USER
 let HOST = process.argv[2] || 'localhost:9001'
-let ARCHIVESERVER = process.argv[3] || '127.0.0.1:4000'
+let ARCHIVESERVER = process.argv[3] || 'arc.liberdus.com:4000'
 console.log(`Using ${HOST} as node for queries and transactions.`)
 
 // USEFUL CONSTANTS FOR TIME IN MILLISECONDS
