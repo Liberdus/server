@@ -1384,7 +1384,7 @@ dapp.setup({
           response.reason = 'Must give the next issue proposalCount hash'
           return response
         }
-        if (from.data.balance < CURRENT.proposalFee) {
+        if (from.data.balance < CURRENT.proposalFee + CURRENT.transactionFee) {
           response.reason =
             'From account has insufficient balance to submit a proposal'
           return response
@@ -1479,7 +1479,7 @@ dapp.setup({
           response.reason = 'Must give the next devIssue devProposalCount hash'
           return response
         }
-        if (from.data.balance < CURRENT.devProposalFee) {
+        if (from.data.balance < CURRENT.devProposalFee + CURRENT.transactionFee) {
           response.reason =
             'From account has insufficient balance to submit a devProposal'
           return response
@@ -1521,7 +1521,7 @@ dapp.setup({
           response.reason = 'Must send tokens to vote'
           return response
         }
-        if (from.data.balance < tx.amount) {
+        if (from.data.balance < tx.amount + CURRENT.transactionFee) {
           response.reason =
             'From account has insufficient balance to cover the amount sent in the transaction'
           return response
@@ -1560,7 +1560,7 @@ dapp.setup({
           response.reason = 'Must send tokens in order to vote'
           return response
         }
-        if (from.data.balance < tx.amount) {
+        if (from.data.balance < tx.amount + CURRENT.transactionFee) {
           response.reason =
             'From account has insufficient balance to cover the amount sent in the transaction'
           return response
@@ -2532,6 +2532,7 @@ dapp.setup({
       case 'vote': {
         const proposal = wrappedStates[tx.proposal].data
         from.data.balance -= tx.amount
+        from.data.balance -= CURRENT.transactionFee
         from.data.balance -= maintenanceAmount(tx.timestamp, from)
         proposal.power += tx.amount
         proposal.totalVotes++
@@ -2546,6 +2547,7 @@ dapp.setup({
         const devProposal = wrappedStates[tx.devProposal].data
 
         from.data.balance -= tx.amount
+        from.data.balance -= CURRENT.transactionFee
         from.data.balance -= maintenanceAmount(tx.timestamp, from)
 
         if (tx.approve) {
