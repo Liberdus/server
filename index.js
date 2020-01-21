@@ -4,6 +4,7 @@ const shardus = require('shardus-global-server')
 const crypto = require('shardus-crypto-utils')
 const stringify = require('fast-stable-stringify')
 const axios = require('axios')
+const Decimal = require('decimal.js')
 const { set } = require('dot-prop')
 const _ = require('lodash')
 crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
@@ -142,15 +143,15 @@ set(config, 'logs', {
         maxLogSize: 10000000,
         backups: 10
       }
+    },
+    categories: {
+      default: { appenders: ['out'], level: 'fatal' },
+      app: { appenders: ['app', 'errors'], level: 'trace' },
+      main: { appenders: ['main', 'errors'], level: 'fatal' },
+      fatal: { appenders: ['fatal'], level: 'fatal' },
+      net: { appenders: ['net'], level: 'fatal' },
+      playback: { appenders: ['playback'], level: 'fatal' }
     }
-    // categories: {
-    //   default: { appenders: ['out'], level: 'fatal' },
-    //   app: { appenders: ['app', 'errors'], level: 'fatal' },
-    //   main: { appenders: ['main', 'errors'], level: 'fatal' },
-    //   fatal: { appenders: ['fatal'], level: 'fatal' },
-    //   net: { appenders: ['net'], level: 'fatal' },
-    //   playback: { appenders: ['playback'], level: 'fatal' }
-    // }
   }
 })
 
@@ -1488,7 +1489,7 @@ dapp.setup({
             'From account has insufficient balance to submit a devProposal'
           return response
         }
-        if (tx.payments.reduce((acc, payment) => acc + payment.amount, 0) > 1) {
+        if (tx.payments.reduce((acc, payment) => Decimal(payment.amount).plus(acc), 0) > 1) {
           response.reason = 'tx payment amounts added up to more than 100%'
           return response
         }
