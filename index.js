@@ -3513,6 +3513,8 @@ function releaseDeveloperFunds (payment, address, nodeId) {
           releaseDeveloperFunds(payment, nodeAddress, nodeId)
         }
         DEVELOPER_FUND = DEVELOPER_FUND.filter(p => p.id !== payment.id)
+      } else {
+        break
       }
     }
 
