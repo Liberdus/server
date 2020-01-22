@@ -2583,7 +2583,7 @@ dapp.setup({
           const firstPlace = sortedProposals[0]
           const secondPlace = sortedProposals[1]
           const marginToWin = secondPlace.power + margin * secondPlace.power
-          if (firstPlace.power > marginToWin) {
+          if (firstPlace.power >= marginToWin) {
             winner = firstPlace
           }
         }
@@ -2621,7 +2621,7 @@ dapp.setup({
         devIssue.winners = []
         for (const devProposal of devProposals) {
           if (
-            devProposal.approve >
+            devProposal.approve >=
             devProposal.reject + devProposal.reject * 0.15
           ) {
             devProposal.approved = true
@@ -2642,8 +2642,6 @@ dapp.setup({
             devProposal.timestamp = tx.timestamp
           }
         }
-
-        to.nextDeveloperFund.sort((a, b) => a.timestamp - b.timestamp)
 
         to.nextDevWindows.devProposalWindow = [
           to.devWindows.devApplyWindow[1],
@@ -2696,7 +2694,7 @@ dapp.setup({
 
         to.devWindows = to.nextDevWindows
         to.nextDevWindows = {}
-        to.developerFund = [...to.developerFund, ...to.nextDeveloperFund]
+        to.developerFund = [...to.developerFund, ...to.nextDeveloperFund].sort((a, b) => a.timestamp - b.timestamp)
         to.nextDeveloperFund = []
         to.devIssue++
 
