@@ -116,7 +116,7 @@ set(config, 'logs', {
       errorFile: {
         type: 'file',
         maxLogSize: 10000000,
-        backups: 10
+        backups: 2
       },
       errors: {
         type: 'logLevelFilter',
@@ -126,31 +126,37 @@ set(config, 'logs', {
       main: {
         type: 'file',
         maxLogSize: 10000000,
-        backups: 10
+        backups: 2
       },
       fatal: {
         type: 'file',
         maxLogSize: 10000000,
-        backups: 10
+        backups: 2
       },
       net: {
         type: 'file',
         maxLogSize: 10000000,
-        backups: 10
+        backups: 2
       },
       playback: {
         type: 'file',
         maxLogSize: 10000000,
-        backups: 10
+        backups: 2
+      },
+      shardDump: {
+        type: 'file',
+        maxLogSize: 10000000,
+        backups: 2
       }
     },
     categories: {
       default: { appenders: ['out'], level: 'fatal' },
       app: { appenders: ['app', 'errors'], level: 'trace' },
-      main: { appenders: ['main', 'errors'], level: 'fatal' },
+      main: { appenders: ['main', 'errors'], level: 'trace' },
       fatal: { appenders: ['fatal'], level: 'fatal' },
-      net: { appenders: ['net'], level: 'fatal' },
-      playback: { appenders: ['playback'], level: 'fatal' }
+      net: { appenders: ['net'], level: 'trace' },
+      playback: { appenders: ['playback'], level: 'trace' },
+      shardDump: { appenders: [ 'shardDump' ], level: 'trace' }
     }
   }
 })
