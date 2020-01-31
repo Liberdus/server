@@ -6,15 +6,14 @@ const stringify = require('fast-stable-stringify')
 const axios = require('axios')
 const Decimal = require('decimal.js')
 const { set } = require('dot-prop')
+const heapdump = require('heapdump')
+// const _ = require('lodash')
 
 // THE ENTIRE APP STATE FOR THIS NODE
 let accounts = {}
 
 ;(async () => {
-  // const _ = require('lodash')
-  // const heapdump = require('heapdump')
   crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
-
 
   const cycleDuration = 15
 
@@ -28,6 +27,13 @@ let accounts = {}
     }
     config.server.baseDir = process.env.BASE_DIR
   }
+  
+  if (process.env.APP_IP) {
+    set(config, 'server.ip', {
+      externalIp: process.env.APP_IP,
+      internalIp: process.env.APP_IP
+    })
+  }
 
   // CONFIGURATION PARAMETERS PASSED INTO SHARDUS
   set(config, 'server.p2p', {
@@ -40,14 +46,6 @@ let accounts = {}
     maxNodesToRotate: 1,
     maxPercentOfDelta: 40
   })
-
-  if (process.env.APP_IP) {
-    set(config, 'server.ip', {
-      externalIp: process.env.APP_IP,
-      internalIp: process.env.APP_IP
-    })
-  }
-
   set(config, 'server.loadDetection', {
     queueLimit: 1000,
     desiredTxTime: 15,
@@ -698,6 +696,18 @@ let accounts = {}
       dapp.log(error)
       res.json({ error })
     }
+  })
+
+  dapp.registerExternalGet('debug/dump', (req, res) => {
+    heapdump.writeSnapshot((error, filename) => {
+      if (error) {
+        console.log(error)
+        res.json({ error })
+      } else {
+        console.log('dump written to', filename)
+        res.json({ success: 'Dump was written to ' + filename })
+      }
+    })
   })
 
   // SDK SETUP FUNCTIONS
@@ -3030,7 +3040,7 @@ let accounts = {}
     // ``)
 
     // THIS IS FOR NODE_REWARD
-    if (cycleStartTimestamp - lastReward > DATA.nodeRewardInterval) {
+    if (cycleStartTimestamp - lastReward > DATA.CURRENT.nodeRewardInterval) {
       nodeReward(nodeAddress, nodeId)
       lastReward = cycleStartTimestamp
     }
@@ -3202,10 +3212,6 @@ let accounts = {}
       if (!devApply) {
         if (nodeId === luckyNode) {
           await applyDevParameters(nodeAddress, nodeId)
-          // heapdump.writeSnapshot((err, filename) => {
-          //   if (err) console.log(err)
-          //   console.log('dump written to', filename)
-          // })
         }
         DEV_DATA.DEV_WINDOWS = DEV_DATA.NEXT_DEV_WINDOWS
         DEV_DATA.NEXT_DEV_WINDOWS = {}
