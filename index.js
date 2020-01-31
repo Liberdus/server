@@ -1,14 +1,18 @@
-(async () => {
-  const fs = require('fs')
-  const path = require('path')
-  const shardus = require('shardus-global-server')
-  const crypto = require('shardus-crypto-utils')
-  const stringify = require('fast-stable-stringify')
-  const axios = require('axios')
-  const Decimal = require('decimal.js')
-  const { set } = require('dot-prop')
-  const _ = require('lodash')
-  const heapdump = require('heapdump')
+const fs = require('fs')
+const path = require('path')
+const shardus = require('shardus-global-server')
+const crypto = require('shardus-crypto-utils')
+const stringify = require('fast-stable-stringify')
+const axios = require('axios')
+const Decimal = require('decimal.js')
+const { set } = require('dot-prop')
+
+// THE ENTIRE APP STATE FOR THIS NODE
+let accounts = {}
+
+;(async () => {
+  // const _ = require('lodash')
+  // const heapdump = require('heapdump')
   crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 
@@ -129,9 +133,6 @@
 
   const dapp = shardus(config)
 
-  // THE ENTIRE APP STATE FOR THIS NODE
-  let accounts = {}
-
   const networkAccount = '0'.repeat(64)
 
   // DYNAMIC LOCAL DATA HELD BY THE NODES
@@ -151,6 +152,14 @@
   const TIME_FOR_DEV_GRACE = ONE_MINUTE
   const TIME_FOR_DEV_APPLY = ONE_MINUTE
 
+  function updateGlobal (data) {
+    DATA = data
+  }
+
+  function updateDevGlobal (data) {
+    DEV_DATA = data
+  }
+
   // INITIAL PARAMETERS THE NODES SET WHEN THEY BECOME ACTIVE
   async function syncParameters (timestamp, remote) {
     let account
@@ -166,6 +175,7 @@
       DATA.NEXT = account.data.next
       DATA.WINDOWS = account.data.windows
       DATA.NEXT_WINDOWS = account.data.nextWindows
+      DATA.ISSUE = account.data.issue
       DATA.IN_SYNC = true
       return DATA
     } else {
@@ -209,7 +219,7 @@
       DEV_DATA.NEXT_DEV_WINDOWS = account.data.nextDevWindows
       DEV_DATA.DEVELOPER_FUND = account.data.developerFund
       DEV_DATA.NEXT_DEVELOPER_FUND = account.data.nextDeveloperFund
-      DEV_DATA.DEV_ISSUE = account.data
+      DEV_DATA.DEV_ISSUE = account.data.devIssue
       DEV_DATA.IN_SYNC = true
       return DEV_DATA
     } else {
@@ -338,6 +348,7 @@
 
   dapp.registerExternalGet('issues', async (req, res) => {
     try {
+      global.gc()
       const issues = []
       for (let i = 1; i <= DATA.ISSUE; i++) {
         let issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${i}`))
@@ -723,7 +734,7 @@
         }
       } else {
         try {
-          await _sleep(10000)
+          await _sleep(5000)
           let timestamp = Date.now()
           DATA = await syncParameters(timestamp, true)
           DEV_DATA = await syncDevParameters(timestamp, true)
@@ -734,7 +745,7 @@
             DEV_DATA = await syncDevParameters(timestamp, true)
           }
         } catch (err) {
-          dapp.log('ERROR: Unablee to sync network data', err)
+          dapp.log('ERROR: Unable to sync network data: ', err)
         }
       }
     },
@@ -2890,25 +2901,26 @@
     if (dapp.p2p.isFirstSeed) {
       await _sleep(ONE_SECOND * 20)
     }
-    setTimeout(() => {
-      networkMaintenance(
+    return setTimeout(async function () {
+      await networkMaintenance(
+        dapp,
         DATA,
         DEV_DATA,
+        dapp.p2p.isFirstSeed ? true : false,
         false,
         false,
+        dapp.p2p.isFirstSeed ? true : false,
         false,
         false,
-        false,
-        false,
-        DATA.IN_SYNC,
-        DEV_DATA.IN_SYNC
+        DATA.WINDOWS ? true : false,
+        DEV_DATA.DEV_WINDOWS ? true : false
       )
-    }, 5000)
+    })
   })
-      
-    
+
   // THIS CODE IS CALLED ON EVERY NODE ON EVERY CYCLE
   async function networkMaintenance(
+    dapp,
     DATA,
     DEV_DATA,
     issue,
@@ -2920,32 +2932,26 @@
     synced,
     syncedDev
   ) {
-    const cycleInterval = 15 * 60 * 1000
-
+    // const cycleInterval = 15 * 60 * 1000
     let nodeId
     let nodeAddress
     let cycleStartTimestamp
     let lastReward
     let cycleData
     let luckyNode
-    let expectedInterval = 14000
+    let expectedInterval = Date.now() + 10000
 
     try {
       [cycleData] = dapp.getLatestCycles()
       cycleStartTimestamp = cycleData.start * 1000 + (ONE_SECOND * 30)
-      ;([luckyNode] = dapp.getClosestNodes(cycleData.marker, 2))
+      ;[luckyNode] = dapp.getClosestNodes(cycleData.marker, 2)
       nodeId = dapp.getNodeId()
       nodeAddress = dapp.getNode(nodeId).address
-      if (!DATA || !DATA.WINDOWS) {
-        DATA = await syncParameters(cycleStartTimestamp)
-      }
-      if (!DEV_DATA || !DEV_DATA.DEV_WINDOWS) {
-        DEV_DATA = await syncDevParameters(cycleStartTimestamp)
-      }
     } catch (err) {
-      dapp.log('ERR: ', err)
-      return setTimeout(() => {
-        networkMaintenance(
+      dapp.log('ERROR: ', err)
+      return setTimeout(async function () {
+        await networkMaintenance(
+          dapp,
           DATA,
           DEV_DATA,
           issue,
@@ -2957,22 +2963,71 @@
           synced,
           syncedDev
         )
-      }, expectedInterval)
+      }, 1000)
     }
 
-    dapp.log(
-      `CYCLE_DATA: `, cycleData,
-      `luckyNode: `, luckyNode, 
-      `IN_SYNC: `, DATA.IN_SYNC,
-      `CURRENT: `,DATA.CURRENT,
-      `NEXT: `,DATA.NEXT,
-      `WINDOWS: `,DATA.WINDOWS,
-      `DEV_WINDOWS: `,DEV_DATA.DEV_WINDOWS,
-      `DEVELOPER_FUND: `,DEV_DATA.DEVELOPER_FUND,
-      `NEXT_DEVELOPER_FUND: `,DEV_DATA.NEXT_DEVELOPER_FUND,
-      `ISSUE: `,DATA.ISSUE,
-      `DEV_ISSUE: `,DEV_DATA.DEV_ISSUE,
-    ``)
+    if (!DATA.IN_SYNC) {
+      DATA = await syncParameters(cycleStartTimestamp)
+      return setTimeout(async function () {
+        await networkMaintenance(
+          dapp,
+          DATA,
+          DEV_DATA,
+          issue,
+          tally,
+          apply,
+          devIssue,
+          devTally,
+          devApply,
+          synced,
+          syncedDev
+        )
+      }, 1000)
+    }
+
+    if (!DEV_DATA.IN_SYNC) {
+      DATA = await syncDevParameters(cycleStartTimestamp)
+      return setTimeout(async function () {
+        await networkMaintenance(
+          dapp,
+          DATA,
+          DEV_DATA,
+          issue,
+          tally,
+          apply,
+          devIssue,
+          devTally,
+          devApply,
+          synced,
+          syncedDev
+        )
+      }, 1000)
+    }
+
+    // dapp.log(
+    //   `CYCLE_DATA: 
+    //   `, cycleData,
+    //   `luckyNode: 
+    //   `, luckyNode, 
+    //   `IN_SYNC: 
+    //   `, DATA.IN_SYNC,
+    //   `CURRENT: 
+    //   `, DATA.CURRENT,
+    //   `NEXT: 
+    //   `, DATA.NEXT,
+    //   `WINDOWS: 
+    //   `, DATA.WINDOWS,
+    //   `DEV_WINDOWS: 
+    //   `, DEV_DATA.DEV_WINDOWS,
+    //   `DEVELOPER_FUND: 
+    //   `, DEV_DATA.DEVELOPER_FUND,
+    //   `NEXT_DEVELOPER_FUND: 
+    //   `, DEV_DATA.NEXT_DEVELOPER_FUND,
+    //   `ISSUE: 
+    //   `, DATA.ISSUE,
+    //   `DEV_ISSUE: 
+    //   `, DEV_DATA.DEV_ISSUE,
+    // ``)
 
     // THIS IS FOR NODE_REWARD
     if (cycleStartTimestamp - lastReward > DATA.nodeRewardInterval) {
@@ -2982,23 +3037,24 @@
 
     // AUTOMATIC (ISSUE | TALLY | APPLY_PARAMETERS) TRANSACTION GENERATION
     // IS THE NETWORK READY TO GENERATE A NEW ISSUE?
-    dapp.log(
-      'ISSUE_DEBUG ---------- ',
-      'ISSUE_GENERATED: ', issue,
-      'LUCKY_NODE: ', luckyNode,
-      'NODE_ID: ', nodeId,
-      'CYCLE_START_TIME: ', cycleStartTimestamp,
-      'ISSUE_WINDOW_START_TIME: ', DATA.WINDOWS.proposalWindow[0],
-      'ISSUE_WINDOW_END_TIME: ', DATA.WINDOWS.proposalWindow[1],
-      'WITHIN_ISSUE_WINDOW: ', cycleStartTimestamp >= DATA.WINDOWS.proposalWindow[0] && cycleStartTimestamp <= DATA.WINDOWS.proposalWindow[1]
-    )
+    // dapp.log(
+    //   'ISSUE_DEBUG ---------- ',
+    //   'ISSUE_GENERATED: ', issue,
+    //   'LUCKY_NODE: ', luckyNode,
+    //   'NODE_ID: ', nodeId,
+    //   'CYCLE_START_TIME: ', cycleStartTimestamp,
+    //   'ISSUE_WINDOW_START_TIME: ', DATA.WINDOWS.proposalWindow[0],
+    //   'ISSUE_WINDOW_END_TIME: ', DATA.WINDOWS.proposalWindow[1],
+    //   'WITHIN_ISSUE_WINDOW: ', cycleStartTimestamp >= DATA.WINDOWS.proposalWindow[0] && cycleStartTimestamp <= DATA.WINDOWS.proposalWindow[1]
+    // )
 
     if (
       cycleStartTimestamp >= DATA.WINDOWS.proposalWindow[0] &&
       cycleStartTimestamp <= DATA.WINDOWS.proposalWindow[1]
     ) {
       if (!issue) {
-        if (nodeId === luckyNode && DATA.ISSUE > 1) {
+        // global.gc()
+        if (nodeId === luckyNode) {
           await generateIssue(nodeAddress, nodeId)
         }
         issue = true
@@ -3006,17 +3062,17 @@
       }
     }
 
-    dapp.log(
-      'TALLY_DEBUG ---------- ',
-      'TALLY_GENERATED: ', tally,
-      'LUCKY_NODE: ', luckyNode,
-      'NODE_ID: ', nodeId,
-      'CYCLE_START_TIME: ', cycleStartTimestamp,
-      'TALLY_WINDOW_START_TIME: ', DATA.WINDOWS.graceWindow[0],
-      'TALLY_WINDOW_END_TIME: ', DATA.WINDOWS.graceWindow[1],
-      'WITHIN_TALLY_WINDOW: ', cycleStartTimestamp >= DATA.WINDOWS.graceWindow[0] &&
-        cycleStartTimestamp <= DATA.WINDOWS.graceWindow[1]
-    )
+    // dapp.log(
+    //   'TALLY_DEBUG ---------- ',
+    //   'TALLY_GENERATED: ', tally,
+    //   'LUCKY_NODE: ', luckyNode,
+    //   'NODE_ID: ', nodeId,
+    //   'CYCLE_START_TIME: ', cycleStartTimestamp,
+    //   'TALLY_WINDOW_START_TIME: ', DATA.WINDOWS.graceWindow[0],
+    //   'TALLY_WINDOW_END_TIME: ', DATA.WINDOWS.graceWindow[1],
+    //   'WITHIN_TALLY_WINDOW: ', cycleStartTimestamp >= DATA.WINDOWS.graceWindow[0] &&
+    //     cycleStartTimestamp <= DATA.WINDOWS.graceWindow[1]
+    // )
 
     // IF THE WINNER FOR THE PROPOSAL HASN'T BEEN DETERMINED YET AND ITS PAST THE VOTING_WINDOW
     if (
@@ -3036,17 +3092,17 @@
       }
     }
 
-    dapp.log(
-      'APPLY_DEBUG ---------- ',
-      'APPLY_GENERATED: ', apply,
-      'LUCKY_NODE: ', luckyNode,
-      'NODE_ID: ', nodeId,
-      'CYCLE_START_TIME: ', cycleStartTimestamp,
-      'APPLY_WINDOW_START_TIME: ', DATA.WINDOWS.applyWindow[0],
-      'APPLY_WINDOW_END_TIME: ', DATA.WINDOWS.applyWindow[1],
-      'WITHIN_APPLY_WINDOW: ', cycleStartTimestamp >= DATA.WINDOWS.applyWindow[0] &&
-        cycleStartTimestamp <= DATA.WINDOWS.applyWindow[1]
-    )
+    // dapp.log(
+    //   'APPLY_DEBUG ---------- ',
+    //   'APPLY_GENERATED: ', apply,
+    //   'LUCKY_NODE: ', luckyNode,
+    //   'NODE_ID: ', nodeId,
+    //   'CYCLE_START_TIME: ', cycleStartTimestamp,
+    //   'APPLY_WINDOW_START_TIME: ', DATA.WINDOWS.applyWindow[0],
+    //   'APPLY_WINDOW_END_TIME: ', DATA.WINDOWS.applyWindow[1],
+    //   'WITHIN_APPLY_WINDOW: ', cycleStartTimestamp >= DATA.WINDOWS.applyWindow[0] &&
+    //     cycleStartTimestamp <= DATA.WINDOWS.applyWindow[1]
+    // )
 
     // IF THE WINNING PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE GRACE_WINDOW
     if (
@@ -3065,20 +3121,21 @@
         apply = true
         issue = false
         tally = false
+        updateGlobal(DATA)
       }
     }
 
-    dapp.log(
-      'DEV_ISSUE_DEBUG ---------- ',
-      'DEV_ISSUE_GENERATED: ', tally,
-      'LUCKY_NODE: ', luckyNode,
-      'NODE_ID: ', nodeId,
-      'CYCLE_START_TIME: ', cycleStartTimestamp,
-      'DEV_ISSUE_WINDOW_START_TIME: ', DEV_DATA.DEV_WINDOWS.devProposalWindow[0],
-      'DEV_ISSUE_WINDOW_END_TIME: ', DEV_DATA.DEV_WINDOWS.devProposalWindow[1],
-      'WITHIN_DEV_ISSUE_WINDOW: ', cycleStartTimestamp >= DEV_DATA.DEV_WINDOWS.devProposalWindow[0] &&
-        cycleStartTimestamp <= DEV_DATA.DEV_WINDOWS.devProposalWindow[1]
-    )
+    // dapp.log(
+    //   'DEV_ISSUE_DEBUG ---------- ',
+    //   'DEV_ISSUE_GENERATED: ', tally,
+    //   'LUCKY_NODE: ', luckyNode,
+    //   'NODE_ID: ', nodeId,
+    //   'CYCLE_START_TIME: ', cycleStartTimestamp,
+    //   'DEV_ISSUE_WINDOW_START_TIME: ', DEV_DATA.DEV_WINDOWS.devProposalWindow[0],
+    //   'DEV_ISSUE_WINDOW_END_TIME: ', DEV_DATA.DEV_WINDOWS.devProposalWindow[1],
+    //   'WITHIN_DEV_ISSUE_WINDOW: ', cycleStartTimestamp >= DEV_DATA.DEV_WINDOWS.devProposalWindow[0] &&
+    //     cycleStartTimestamp <= DEV_DATA.DEV_WINDOWS.devProposalWindow[1]
+    // )
 
     // AUTOMATIC (DEV_ISSUE | DEV_TALLY | APPLY_DEV_PARAMETERS) TRANSACTION GENERATION
     // IS THE NETWORK READY TO GENERATE A NEW DEV_ISSUE?
@@ -3095,17 +3152,17 @@
       }
     }
 
-    dapp.log(
-      'DEV_TALLY_DEBUG ---------- ',
-      'DEV_TALLY_GENERATED: ', devTally,
-      'LUCKY_NODE: ', luckyNode,
-      'NODE_ID: ', nodeId,
-      'CYCLE_START_TIME: ', cycleStartTimestamp,
-      'DEV_TALLY_WINDOW_START_TIME: ', DEV_DATA.DEV_WINDOWS.devGraceWindow[0],
-      'DEV_TALLY_WINDOW_END_TIME: ', DEV_DATA.DEV_WINDOWS.devGraceWindow[1],
-      'WITHIN_DEV_TALLY_WINDOW: ', cycleStartTimestamp >= DEV_DATA.DEV_WINDOWS.devGraceWindow[0] &&
-        cycleStartTimestamp <= DEV_DATA.DEV_WINDOWS.devGraceWindow[1]
-    )
+    // dapp.log(
+    //   'DEV_TALLY_DEBUG ---------- ',
+    //   'DEV_TALLY_GENERATED: ', devTally,
+    //   'LUCKY_NODE: ', luckyNode,
+    //   'NODE_ID: ', nodeId,
+    //   'CYCLE_START_TIME: ', cycleStartTimestamp,
+    //   'DEV_TALLY_WINDOW_START_TIME: ', DEV_DATA.DEV_WINDOWS.devGraceWindow[0],
+    //   'DEV_TALLY_WINDOW_END_TIME: ', DEV_DATA.DEV_WINDOWS.devGraceWindow[1],
+    //   'WITHIN_DEV_TALLY_WINDOW: ', cycleStartTimestamp >= DEV_DATA.DEV_WINDOWS.devGraceWindow[0] &&
+    //     cycleStartTimestamp <= DEV_DATA.DEV_WINDOWS.devGraceWindow[1]
+    // )
 
     // IF THE WINNERS FOR THE DEV PROPOSALS HAVEN'T BEEN DETERMINED YET AND ITS PAST THE DEV_VOTING_WINDOW
     if (
@@ -3125,17 +3182,17 @@
       }
     }
 
-    dapp.log(
-      'DEV_APPLY_DEBUG ---------- ',
-      'DEV_APPLY_GENERATED: ', devApply,
-      'LUCKY_NODE: ', luckyNode,
-      'NODE_ID: ', nodeId,
-      'CYCLE_START_TIME: ', cycleStartTimestamp,
-      'DEV_APPLY_WINDOW_START_TIME: ', DEV_DATA.DEV_WINDOWS.devApplyWindow[0],
-      'DEV_APPLY_WINDOW_END_TIME: ', DEV_DATA.DEV_WINDOWS.devApplyWindow[1],
-      'WITHIN_DEV_APPLY_WINDOW: ', cycleStartTimestamp >= DEV_DATA.DEV_WINDOWS.devApplyWindow[0] &&
-        cycleStartTimestamp <= DEV_DATA.DEV_WINDOWS.devApplyWindow[1]
-    )
+    // dapp.log(
+    //   'DEV_APPLY_DEBUG ---------- ',
+    //   'DEV_APPLY_GENERATED: ', devApply,
+    //   'LUCKY_NODE: ', luckyNode,
+    //   'NODE_ID: ', nodeId,
+    //   'CYCLE_START_TIME: ', cycleStartTimestamp,
+    //   'DEV_APPLY_WINDOW_START_TIME: ', DEV_DATA.DEV_WINDOWS.devApplyWindow[0],
+    //   'DEV_APPLY_WINDOW_END_TIME: ', DEV_DATA.DEV_WINDOWS.devApplyWindow[1],
+    //   'WITHIN_DEV_APPLY_WINDOW: ', cycleStartTimestamp >= DEV_DATA.DEV_WINDOWS.devApplyWindow[0] &&
+    //     cycleStartTimestamp <= DEV_DATA.DEV_WINDOWS.devApplyWindow[1]
+    // )
 
     // IF THE WINNING DEV PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE DEV_GRACE_WINDOW
     if (
@@ -3145,10 +3202,10 @@
       if (!devApply) {
         if (nodeId === luckyNode) {
           await applyDevParameters(nodeAddress, nodeId)
-          heapdump.writeSnapshot((err, filename) => {
-            if (err) console.log(err)
-            console.log('dump written to', filename)
-          })
+          // heapdump.writeSnapshot((err, filename) => {
+          //   if (err) console.log(err)
+          //   console.log('dump written to', filename)
+          // })
         }
         DEV_DATA.DEV_WINDOWS = DEV_DATA.NEXT_DEV_WINDOWS
         DEV_DATA.NEXT_DEV_WINDOWS = {}
@@ -3158,6 +3215,7 @@
         devApply = true
         devIssue = false
         devTally = false
+        updateDevGlobal(DEV_DATA)
       }
     }
 
@@ -3179,8 +3237,9 @@
       console.log(`${key} ${Math.round(used[key] / 1024 / 1024 * 100) / 100} MB`)
     }
 
-    return setTimeout(() => {
-      networkMaintenance(
+    return setTimeout(async function () {
+      await networkMaintenance(
+        dapp,
         DATA,
         DEV_DATA,
         issue,
@@ -3192,7 +3251,7 @@
         synced,
         syncedDev
       )
-    }, expectedInterval)
+    }, expectedInterval - Date.now())
   }
 
   // CREATE A USER ACCOUNT
