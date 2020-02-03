@@ -10,7 +10,7 @@ crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
 let USER
 let HOST = process.argv[2] || 'localhost:9001'
-let ARCHIVESERVER = process.argv[3] || 'arc.liberdus.com:4000'
+let ARCHIVESERVER = process.argv[3] || 'localhost:4000'
 console.log(`Using ${HOST} as node for queries and transactions.`)
 
 // USEFUL CONSTANTS FOR TIME IN MILLISECONDS
@@ -316,6 +316,15 @@ async function injectTx (tx) {
     return res.data
   } catch (err) {
     return err.message
+  }
+}
+
+async function takeSnapshot (host) {
+  try {
+    const res = await axios.get(`http://${host || HOST}/debug/dump`)
+    return res.data
+  } catch (err) {
+    return err
   }
 }
 
@@ -1341,6 +1350,16 @@ vorpal.command('transactions', 'gets all the transactions for your account')
 vorpal.command('kill node <host>', 'Kicks node running on host <host>')
   .action(async function (args, callback) {
     await axios.post(`http://${args.host}/exit`)
+    callback()
+  })
+
+vorpal.command('debug snapshot [host]', 'takes a snapshot of the heap on node [host] or the host you are connected to (if not defined)')
+  .action(async function (args, callback) {
+    if (args.host) {
+      this.log(await takeSnapshot(args.host))
+    } else {
+      this.log(await takeSnapshot(HOST))
+    }
     callback()
   })
 
