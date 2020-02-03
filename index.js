@@ -46,6 +46,7 @@ let accounts = {}
     maxNodesToRotate: 1,
     maxPercentOfDelta: 40
   })
+
   set(config, 'server.loadDetection', {
     queueLimit: 1000,
     desiredTxTime: 15,
@@ -76,7 +77,7 @@ let accounts = {}
         errorFile: {
           type: 'file',
           maxLogSize: 10000000,
-          backups: 2
+          backups: 10
         },
         errors: {
           type: 'logLevelFilter',
@@ -86,37 +87,37 @@ let accounts = {}
         main: {
           type: 'file',
           maxLogSize: 10000000,
-          backups: 2
+          backups: 10
         },
         fatal: {
           type: 'file',
           maxLogSize: 10000000,
-          backups: 2
+          backups: 10
         },
         net: {
           type: 'file',
           maxLogSize: 10000000,
-          backups: 2
+          backups: 10
         },
         playback: {
           type: 'file',
           maxLogSize: 10000000,
-          backups: 2
+          backups: 10
         },
         shardDump: {
           type: 'file',
           maxLogSize: 10000000,
-          backups: 2
+          backups: 10
         }
       },
       categories: {
-        default: { appenders: ['out'], level: 'fatal' },
-        app: { appenders: ['app', 'errors'], level: 'trace' },
-        main: { appenders: ['main', 'errors'], level: 'trace' },
-        fatal: { appenders: ['fatal'], level: 'fatal' },
-        net: { appenders: ['net'], level: 'trace' },
-        playback: { appenders: ['playback'], level: 'trace' },
-        shardDump: { appenders: [ 'shardDump' ], level: 'trace' }
+        default: { appenders: ['out'], level: 'all' },
+        app: { appenders: ['app', 'errors'], level: 'all' },
+        main: { appenders: ['main', 'errors'], level: 'all' },
+        fatal: { appenders: ['fatal'], level: 'all' },
+        net: { appenders: ['net'], level: 'all' },
+        playback: { appenders: ['playback'], level: 'all' },
+        shardDump: { appenders: [ 'shardDump' ], level: 'all' }
       }
     }
   })

@@ -3,3 +3,5 @@ node_modules/
 .pm2/
 instances
 logs
+db
+wallet.json
