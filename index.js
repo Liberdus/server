@@ -344,7 +344,6 @@ let accounts = {}
 
   dapp.registerExternalGet('issues', async (req, res) => {
     try {
-      global.gc()
       const issues = []
       for (let i = 1; i <= DATA.ISSUE; i++) {
         let issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${i}`))
@@ -697,7 +696,10 @@ let accounts = {}
   })
 
   dapp.registerExternalGet('debug/dump', (req, res) => {
-    heapdump.writeSnapshot((error, filename) => {
+    let D = new Date()
+    let dateString = D.getDate() + '-' + (D.getMonth() + 1) + '-' + D.getFullYear() + '_' + D.getHours() + ':' + D.getMinutes()
+    // 16-5-2015 9:50
+    heapdump.writeSnapshot(`${config.server.baseDir}/logs/ ` + dateString + '.heapsnapshot', (error, filename) => {
       if (error) {
         console.log(error)
         res.json({ error })
