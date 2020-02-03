@@ -27,7 +27,7 @@ let accounts = {}
     }
     config.server.baseDir = process.env.BASE_DIR
   }
-  
+
   if (process.env.APP_IP) {
     set(config, 'server.ip', {
       externalIp: process.env.APP_IP,
@@ -251,7 +251,6 @@ let accounts = {}
 
   dapp.registerExternalGet('network/parameters/node', async (req, res) => {
     try {
-      dapp.log(DATA.ISSUE, DEV_DATA.DEV_ISSUE)
       res.json({
         parameters: {
           CURRENT: DATA.CURRENT,
@@ -263,8 +262,7 @@ let accounts = {}
           WINDOWS: DATA.WINDOWS,
           NEXT_WINDOWS: DATA.NEXT_WINDOWS,
           DEV_WINDOWS: DEV_DATA.DEV_WINDOWS,
-          NEXT_DEV_WINDOWS: DEV_DATA.NEXT_DEV_WINDOWS,
-          IN_SYNC
+          NEXT_DEV_WINDOWS: DEV_DATA.NEXT_DEV_WINDOWS
         }
       })
     } catch (error) {
@@ -716,7 +714,7 @@ let accounts = {}
       if (dapp.p2p.isFirstSeed) {
         if (!DATA) {
           await _sleep(ONE_SECOND * 20)
-          const nodeId = dapp.getNodeId() 
+          const nodeId = dapp.getNodeId()
           const address = dapp.getNode(nodeId).address
           const timestamp = Date.now()
           DATA = await syncParameters(timestamp)
@@ -1412,7 +1410,7 @@ let accounts = {}
         }
         case 'tally': {
           const issue = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
-          console.log("TALLY ISSUE ---- ", issue)
+          console.log('TALLY ISSUE ---- ', issue)
           const proposals = tx.proposals.map(id => wrappedStates[id].data)
 
           // let nodeInfo
@@ -1455,7 +1453,7 @@ let accounts = {}
           const devIssue =
             wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
           const devProposals = tx.devProposals.map(id => wrappedStates[id].data)
-          console.log("DEV_TALLY ISSUE ---- ", devIssue)
+          console.log('DEV_TALLY ISSUE ---- ', devIssue)
           // let nodeInfo
           // try {
           //   nodeInfo = dapp.getNode(tx.nodeId)
@@ -1494,7 +1492,7 @@ let accounts = {}
         }
         case 'apply_parameters': {
           const issue = wrappedStates[tx.issue].data
-          console.log("APPLY ISSUE ---- ", issue)
+          console.log('APPLY ISSUE ---- ', issue)
 
           // let nodeInfo
           // try {
@@ -1524,7 +1522,7 @@ let accounts = {}
         }
         case 'apply_dev_parameters': {
           const devIssue = wrappedStates[tx.devIssue].data
-          console.log("DEV_APPLY ISSUE ---- ", devIssue)
+          console.log('DEV_APPLY ISSUE ---- ', devIssue)
           // let nodeInfo
           // try {
           //   nodeInfo = dapp.getNode(tx.nodeId)
@@ -2929,7 +2927,7 @@ let accounts = {}
   })
 
   // THIS CODE IS CALLED ON EVERY NODE ON EVERY CYCLE
-  async function networkMaintenance(
+  async function networkMaintenance (
     dapp,
     DATA,
     DEV_DATA,
@@ -3015,27 +3013,27 @@ let accounts = {}
     }
 
     // dapp.log(
-    //   `CYCLE_DATA: 
+    //   `CYCLE_DATA:
     //   `, cycleData,
-    //   `luckyNode: 
-    //   `, luckyNode, 
-    //   `IN_SYNC: 
+    //   `luckyNode:
+    //   `, luckyNode,
+    //   `IN_SYNC:
     //   `, DATA.IN_SYNC,
-    //   `CURRENT: 
+    //   `CURRENT:
     //   `, DATA.CURRENT,
-    //   `NEXT: 
+    //   `NEXT:
     //   `, DATA.NEXT,
-    //   `WINDOWS: 
+    //   `WINDOWS:
     //   `, DATA.WINDOWS,
-    //   `DEV_WINDOWS: 
+    //   `DEV_WINDOWS:
     //   `, DEV_DATA.DEV_WINDOWS,
-    //   `DEVELOPER_FUND: 
+    //   `DEVELOPER_FUND:
     //   `, DEV_DATA.DEVELOPER_FUND,
-    //   `NEXT_DEVELOPER_FUND: 
+    //   `NEXT_DEVELOPER_FUND:
     //   `, DEV_DATA.NEXT_DEVELOPER_FUND,
-    //   `ISSUE: 
+    //   `ISSUE:
     //   `, DATA.ISSUE,
-    //   `DEV_ISSUE: 
+    //   `DEV_ISSUE:
     //   `, DEV_DATA.DEV_ISSUE,
     // ``)
 
