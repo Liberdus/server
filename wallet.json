@@ -118,5 +118,13 @@
       "secretKey": "5538937388671dcbd26695b1af1b3524ad2e3188ee568020137a1bdad432696dba281f4131b390c71bb550f3c14c86eabb2d52e4695afb24fcbd7303c4854726"
     },
     "id": "3057c2f8c48220ed2a3cfbe83a00ee348cda859e0387790adc8b89f124472af1"
+  },
+  "k": {
+    "address": "9a20e9b8694f9b23abdaf8c6e6b8d6fbb209a6c754b21a77e4ce8adcb85dfb44",
+    "keys": {
+      "publicKey": "9a20e9b8694f9b23abdaf8c6e6b8d6fbb209a6c754b21a77e4ce8adcb85dfb44",
+      "secretKey": "ac473c5f51ea2aea30c5e064c961f3290a2b0b57441b8ca64027b0e1c5505a039a20e9b8694f9b23abdaf8c6e6b8d6fbb209a6c754b21a77e4ce8adcb85dfb44"
+    },
+    "id": "1966605fbd829763c22e80d0e1b68915f54be893fdb0a4aa14db2ea55e476514"
   }
 }
