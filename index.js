@@ -2955,11 +2955,13 @@ let accounts = {}
     let cycleStartTimestamp
     let cycleData
     let luckyNode
-    let expectedInterval = Date.now() + 10000
+    let expectedInterval
 
     try {
       [cycleData] = dapp.getLatestCycles()
-      cycleStartTimestamp = cycleData.start * 1000 + (ONE_SECOND * 30)
+      cycleStartTimestamp = cycleData.start * 1000
+      expectedInterval = cycleStartTimestamp
+      cycleStartTimestamp += (ONE_SECOND * 30)
       ;[luckyNode] = dapp.getClosestNodes(cycleData.marker, 2)
       nodeId = dapp.getNodeId()
       nodeAddress = dapp.getNode(nodeId).address
