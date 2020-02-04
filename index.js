@@ -2917,6 +2917,7 @@ let accounts = {}
         dapp,
         DATA,
         DEV_DATA,
+        Date.now(),
         dapp.p2p.isFirstSeed ? true : false,
         false,
         false,
@@ -2934,6 +2935,7 @@ let accounts = {}
     dapp,
     DATA,
     DEV_DATA,
+    lastReward,
     issue,
     tally,
     apply,
@@ -2947,7 +2949,6 @@ let accounts = {}
     let nodeId
     let nodeAddress
     let cycleStartTimestamp
-    let lastReward
     let cycleData
     let luckyNode
     let expectedInterval = Date.now() + 10000
@@ -2965,6 +2966,7 @@ let accounts = {}
           dapp,
           DATA,
           DEV_DATA,
+          lastReward,
           issue,
           tally,
           apply,
@@ -2984,6 +2986,7 @@ let accounts = {}
           dapp,
           DATA,
           DEV_DATA,
+          lastReward,
           issue,
           tally,
           apply,
@@ -3003,6 +3006,7 @@ let accounts = {}
           dapp,
           DATA,
           DEV_DATA,
+          lastReward,
           issue,
           tally,
           apply,
@@ -3092,6 +3096,24 @@ let accounts = {}
     ) {
       if (!synced) {
         DATA = await syncParameters(cycleStartTimestamp)
+        if (!DATA.IN_SYNC) {
+          return setTimeout(async function () {
+            await networkMaintenance(
+              dapp,
+              DATA,
+              DEV_DATA,
+              lastReward,
+              issue,
+              tally,
+              apply,
+              devIssue,
+              devTally,
+              devApply,
+              synced,
+              syncedDev
+            )
+          }, 1000)
+        }
         synced = true
       }
       if (!tally) {
@@ -3182,6 +3204,24 @@ let accounts = {}
     ) {
       if (!syncedDev) {
         DEV_DATA = await syncDevParameters(cycleStartTimestamp)
+        if (!DEV_DATA.IN_SYNC) {
+          return setTimeout(async function () {
+            await networkMaintenance(
+              dapp,
+              DATA,
+              DEV_DATA,
+              lastReward,
+              issue,
+              tally,
+              apply,
+              devIssue,
+              devTally,
+              devApply,
+              synced,
+              syncedDev
+            )
+          }, 1000)
+        }
         syncedDev = true
       }
       if (!devTally) {
@@ -3249,6 +3289,7 @@ let accounts = {}
         dapp,
         DATA,
         DEV_DATA,
+        lastReward,
         issue,
         tally,
         apply,
