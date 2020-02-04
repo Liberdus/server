@@ -169,6 +169,8 @@ let accounts = {}
     }
     // IF THE NETWORK ACCOUNT HAS BEEN INITIALIZED
     if (account && account.data) {
+      console.log('NETWORK_ACCOUNT: ' + account.data)
+      dapp.log('NETWORK_ACCOUNT: ' + account.data)
       DATA = {}
       DATA.CURRENT = account.data.current
       DATA.NEXT = account.data.next
@@ -213,6 +215,8 @@ let accounts = {}
     }
     // IF THE NETWORK ACCOUNT HAS BEEN INITIALIZED
     if (account && account.data) {
+      console.log('NETWORK_ACCOUNT: ' + account.data)
+      dapp.log('NETWORK_ACCOUNT: ' + account.data)
       DEV_DATA = {}
       DEV_DATA.DEV_WINDOWS = account.data.devWindows
       DEV_DATA.NEXT_DEV_WINDOWS = account.data.nextDevWindows
@@ -3064,6 +3068,7 @@ let accounts = {}
     // )
 
     if (
+      DATA.WINDOWS.proposalWindow &&
       cycleStartTimestamp >= DATA.WINDOWS.proposalWindow[0] &&
       cycleStartTimestamp <= DATA.WINDOWS.proposalWindow[1]
     ) {
@@ -3091,6 +3096,7 @@ let accounts = {}
 
     // IF THE WINNER FOR THE PROPOSAL HASN'T BEEN DETERMINED YET AND ITS PAST THE VOTING_WINDOW
     if (
+      DATA.WINDOWS.graceWindow &&
       cycleStartTimestamp >= DATA.WINDOWS.graceWindow[0] &&
       cycleStartTimestamp <= DATA.WINDOWS.graceWindow[1]
     ) {
@@ -3139,6 +3145,7 @@ let accounts = {}
 
     // IF THE WINNING PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE GRACE_WINDOW
     if (
+      DATA.WINDOWS.applyWindow &&
       cycleStartTimestamp >= DATA.WINDOWS.applyWindow[0] &&
       cycleStartTimestamp <= DATA.WINDOWS.applyWindow[1]
     ) {
@@ -3173,6 +3180,7 @@ let accounts = {}
     // AUTOMATIC (DEV_ISSUE | DEV_TALLY | APPLY_DEV_PARAMETERS) TRANSACTION GENERATION
     // IS THE NETWORK READY TO GENERATE A NEW DEV_ISSUE?
     if (
+      DEV_DATA.DEV_WINDOWS.devProposalWindow &&
       cycleStartTimestamp >= DEV_DATA.DEV_WINDOWS.devProposalWindow[0] &&
       cycleStartTimestamp <= DEV_DATA.DEV_WINDOWS.devProposalWindow[1]
     ) {
@@ -3199,6 +3207,7 @@ let accounts = {}
 
     // IF THE WINNERS FOR THE DEV PROPOSALS HAVEN'T BEEN DETERMINED YET AND ITS PAST THE DEV_VOTING_WINDOW
     if (
+      DEV_DATA.DEV_WINDOWS.devGraceWindow &&
       cycleStartTimestamp >= DEV_DATA.DEV_WINDOWS.devGraceWindow[0] &&
       cycleStartTimestamp <= DEV_DATA.DEV_WINDOWS.devGraceWindow[1]
     ) {
@@ -3247,6 +3256,7 @@ let accounts = {}
 
     // IF THE WINNING DEV PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE DEV_GRACE_WINDOW
     if (
+      DEV_DATA.DEV_WINDOWS.devApplyWindow &&
       cycleStartTimestamp >= DEV_DATA.DEV_WINDOWS.devApplyWindow[0] &&
       cycleStartTimestamp <= DEV_DATA.DEV_WINDOWS.devApplyWindow[1]
     ) {
