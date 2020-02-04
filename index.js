@@ -191,7 +191,7 @@ let accounts = {}
         nodePenalty: 100,
         transactionFee: 0.001,
         stakeRequired: 500,
-        maintenanceInterval: ONE_MINUTE,
+        maintenanceInterval: ONE_MINUTE * 10,
         maintenanceFee: 0.01,
         proposalFee: 500,
         devProposalFee: 20
