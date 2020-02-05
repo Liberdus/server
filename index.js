@@ -73,8 +73,8 @@ set(config, 'server.p2p', {
   cycleDuration: cycleDuration,
   existingArchivers: JSON.parse(process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]'),
   maxNodesPerCycle: 10,
-  minNodes: 60,
-  maxNodes: 60,
+  minNodes: 10,
+  maxNodes: 10,
   minNodesToAllowTxs: 1,
   maxNodesToRotate: 1,
   maxPercentOfDelta: 40
