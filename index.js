@@ -6,7 +6,7 @@ const stringify = require('fast-stable-stringify')
 const axios = require('axios')
 const Decimal = require('decimal.js')
 const { set } = require('dot-prop')
-// const _ = require('lodash')
+const _ = require('lodash')
 const heapdump = require('heapdump')
 crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
@@ -3337,9 +3337,9 @@ function releaseDeveloperFunds (payment, address, nodeId) {
     `
     )
 
-    // if (_.isEmpty(CURRENT) || _.isEmpty(WINDOWS) || _.isEmpty(DEV_WINDOWS)) {
-    //   IN_SYNC = false
-    // }
+    if (_.isEmpty(CURRENT) || _.isEmpty(WINDOWS) || _.isEmpty(DEV_WINDOWS)) {
+      IN_SYNC = false
+    }
 
     if (!IN_SYNC) {
       await syncParameters(cycleStartTimestamp + cycleInterval)
