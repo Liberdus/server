@@ -850,6 +850,14 @@ dapp.registerExternalGet('debug/dump', (req, res) => {
   })
 })
 
+dapp.registerExternalPost('debug/exit', (req, _) => {
+  try {
+    process.exit(req.body.code)
+  } catch (err) {
+    console.log(err)
+  }
+})
+
 // SDK SETUP FUNCTIONS
 dapp.setup({
   async sync () {

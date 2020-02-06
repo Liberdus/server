@@ -1363,5 +1363,15 @@ vorpal.command('debug snapshot [host]', 'takes a snapshot of the heap on node [h
     callback()
   })
 
+vorpal.command('debug exit <code> [host]', 'kills node running on [host] with exit code <code>. Use current host if no [host] provided')
+  .action(async function (args, callback) {
+    if (args.code === undefined) {
+      this.log('Must provide an exit code')
+    } else {
+      await axios.post(`http://${args.host || HOST}/debug/exit`, { code: args.code })
+    }
+    callback()
+  })
+
 vorpal.delimiter('>').show()
 vorpal.exec('init').then(res => (USER = res))
