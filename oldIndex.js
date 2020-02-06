@@ -6,7 +6,7 @@ const stringify = require('fast-stable-stringify')
 const axios = require('axios')
 const Decimal = require('decimal.js')
 const { set } = require('dot-prop')
-const _ = require('lodash')
+// const _ = require('lodash')
 const heapdump = require('heapdump')
 crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
@@ -39,15 +39,15 @@ const ONE_DAY = 24 * ONE_HOUR
 const ONE_WEEK = 7 * ONE_DAY
 const ONE_YEAR = 365 * ONE_DAY
 
-const TIME_FOR_PROPOSALS = ONE_MINUTE + (ONE_SECOND * 30)
-const TIME_FOR_VOTING = ONE_MINUTE + (ONE_SECOND * 30)
-const TIME_FOR_GRACE = ONE_MINUTE + (ONE_SECOND * 30)
-const TIME_FOR_APPLY = ONE_MINUTE + (ONE_SECOND * 30)
+const TIME_FOR_PROPOSALS = ONE_MINUTE
+const TIME_FOR_VOTING = ONE_MINUTE
+const TIME_FOR_GRACE = ONE_MINUTE
+const TIME_FOR_APPLY = ONE_MINUTE
 
-const TIME_FOR_DEV_PROPOSALS = ONE_MINUTE + (ONE_SECOND * 30)
-const TIME_FOR_DEV_VOTING = ONE_MINUTE + (ONE_SECOND * 30)
-const TIME_FOR_DEV_GRACE = ONE_MINUTE + (ONE_SECOND * 30)
-const TIME_FOR_DEV_APPLY = ONE_MINUTE + (ONE_SECOND * 30)
+const TIME_FOR_DEV_PROPOSALS = ONE_MINUTE
+const TIME_FOR_DEV_VOTING = ONE_MINUTE
+const TIME_FOR_DEV_GRACE = ONE_MINUTE
+const TIME_FOR_DEV_APPLY = ONE_MINUTE
 
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
 const cycleDuration = 15
@@ -73,8 +73,8 @@ set(config, 'server.p2p', {
   cycleDuration: cycleDuration,
   existingArchivers: JSON.parse(process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]'),
   maxNodesPerCycle: 10,
-  minNodes: 10,
-  maxNodes: 10,
+  minNodes: 60,
+  maxNodes: 60,
   minNodesToAllowTxs: 1,
   maxNodesToRotate: 1,
   maxPercentOfDelta: 40
@@ -169,8 +169,6 @@ async function syncParameters (timestamp) {
   const account = await dapp.getLocalOrRemoteAccount(networkAccount)
   // IF THE NETWORK ACCOUNT HAS BEEN INITIALIZED
   if (account && account.data) {
-    console.log(`NETWORK ACCOUNT: ${stringify(account.data)}`)
-    dapp.log(`NETWORK ACCOUNT: ${stringify(account.data)}`)
     CURRENT = account.data.current
     NEXT = account.data.next
     WINDOWS = account.data.windows
@@ -206,7 +204,6 @@ async function syncParameters (timestamp) {
     }
     NEXT_WINDOWS = {}
     ISSUE = 1
-    IN_SYNC = false
   }
 }
 
@@ -214,8 +211,6 @@ async function syncDevParameters (timestamp) {
   const account = await dapp.getLocalOrRemoteAccount(networkAccount)
   // IF THE NETWORK ACCOUNT HAS BEEN INITIALIZED
   if (account && account.data) {
-    console.log(`NETWORK ACCOUNT: ${stringify(account.data)}`)
-    dapp.log(`NETWORK ACCOUNT: ${stringify(account.data)}`)
     DEV_WINDOWS = account.data.devWindows
     NEXT_DEV_WINDOWS = account.data.nextDevWindows
     DEVELOPER_FUND = account.data.developerFund
@@ -247,7 +242,6 @@ async function syncDevParameters (timestamp) {
     DEVELOPER_FUND = []
     NEXT_DEVELOPER_FUND = []
     DEV_ISSUE = 1
-    IN_SYNC = false
   }
 }
 
@@ -947,7 +941,7 @@ dapp.setup({
         DEV_ISSUE = account.data.devIssue
         IN_SYNC = true
       } else {
-        dapp.log('ERROR: Unable to sync network data')
+        dapp.log('ERROR: Unablee to sync network data')
       }
     }
   },
@@ -3261,8 +3255,8 @@ function releaseDeveloperFunds (payment, address, nodeId) {
   let devTallyGenerated = false
   let devApplyGenerated = false
 
-  let syncedNextParams = []
-  let syncedNextDevParams = []
+  let syncedNextParams = true
+  let syncedNextDevParams = true
 
   let nodeId
   let nodeAddress
@@ -3337,9 +3331,9 @@ function releaseDeveloperFunds (payment, address, nodeId) {
     `
     )
 
-    if (_.isEmpty(CURRENT) || _.isEmpty(WINDOWS) || _.isEmpty(DEV_WINDOWS)) {
-      IN_SYNC = false
-    }
+    // if (_.isEmpty(CURRENT) || _.isEmpty(WINDOWS) || _.isEmpty(DEV_WINDOWS)) {
+    //   IN_SYNC = false
+    // }
 
     if (!IN_SYNC) {
       await syncParameters(cycleStartTimestamp + cycleInterval)
@@ -3397,16 +3391,16 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       cycleStartTimestamp >= WINDOWS.graceWindow[0] &&
       cycleStartTimestamp <= WINDOWS.graceWindow[1]
     ) {
-      syncedNextParams.push(1)
-      if (syncedNextParams.length === 3) {
+      if (!syncedNextParams) {
         await syncParameters(cycleStartTimestamp)
-        syncedNextParams = []
+        syncedNextParams = true
       }
       if (!tallyGenerated) {
         if (nodeId === luckyNode) {
           await tallyVotes(nodeAddress, nodeId)
         }
         tallyGenerated = true
+        syncedNextParams = false
       }
     }
 
@@ -3486,16 +3480,16 @@ function releaseDeveloperFunds (payment, address, nodeId) {
       cycleStartTimestamp >= DEV_WINDOWS.devGraceWindow[0] &&
       cycleStartTimestamp <= DEV_WINDOWS.devGraceWindow[1]
     ) {
-      syncedNextDevParams.push(1)
-      if (syncedNextDevParams.length === 3) {
+      if (!syncedNextDevParams) {
         await syncDevParameters(cycleStartTimestamp)
-        syncedNextDevParams = []
+        syncedNextDevParams = true
       }
       if (!devTallyGenerated) {
         if (nodeId === luckyNode) {
           await tallyDevVotes(nodeAddress, nodeId)
         }
         devTallyGenerated = true
+        syncedNextDevParams = false
       }
     }
 
