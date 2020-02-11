@@ -1,4 +1,3 @@
-export {}
 import * as fs from 'fs'
 import * as path from 'path'
 import axios from 'axios'
@@ -6,7 +5,6 @@ import * as Prop from 'dot-prop'
 import * as _ from 'lodash'
 import * as heapdump from 'heapdump'
 const Decimal = require('decimal.js')
-//@ts-ignore
 const shardus = require('shardus-global-server')
 const stringify = require('fast-stable-stringify')
 const crypto = require('shardus-crypto-utils')
@@ -365,14 +363,16 @@ function createAlias (accountId: string): AliasAccount {
 }
 
 interface NetworkParameters {
-  nodeRewardInterval: number,
-  nodeRewardAmount: number,
-  nodePenalty: number,
-  transactionFee: number,
-  stakeRequired: number,
-  maintenanceInterval: number,
-  maintenanceFee: number,
-  proposalFee: number,
+  title?: string
+  description?: string
+  nodeRewardInterval: number
+  nodeRewardAmount: number
+  nodePenalty: number
+  transactionFee: number
+  stakeRequired: number
+  maintenanceInterval: number
+  maintenanceFee: number
+  proposalFee: number
   devProposalFee: number
 }
 
@@ -436,10 +436,11 @@ function createNetworkAccount (accountId: string): NetworkAccount {
 
 interface IssueAccount {
   id: string
-  proposals: Array<any>
+  active: boolean | null
+  proposals: Array<string>
   proposalCount: number
   number: number | null
-  winner: string
+  winner: string | null
   hash: string
   timestamp: number
 }
@@ -448,10 +449,11 @@ interface IssueAccount {
 function createIssue (accountId: string): IssueAccount {
   const issue: IssueAccount = {
     id: accountId,
+    active: null,
     proposals: [],
     proposalCount: 0,
     number: null,
-    winner: '',
+    winner: null,
     hash: '',
     timestamp: 0
   }
@@ -465,6 +467,7 @@ interface DevIssueAccount {
   devProposalCount: number
   winners: string[]
   active: boolean | null
+  number: number | null
   hash: string
   timestamp: number
 }
@@ -478,6 +481,7 @@ function createDevIssue (accountId: string): DevIssueAccount {
     winners: [],
     hash: '',
     active: null,
+    number: null,
     timestamp: 0
   }
   devIssue.hash = crypto.hashObj(devIssue)
@@ -490,6 +494,7 @@ interface ProposalAccount {
   totalVotes: number
   parameters: NetworkParameters | null
   winner: boolean
+  number: number | null
   hash: string
   timestamp: number
 }
@@ -502,6 +507,7 @@ function createProposal (accountId: string): ProposalAccount {
     totalVotes: 0,
     winner: false,
     parameters: null,
+    number: null,
     hash: '',
     timestamp: 0
   }
@@ -513,26 +519,32 @@ interface DevProposalAccount {
   id: string
   approve: number
   reject: number
+  title: string | null
+  description: string | null
   totalVotes: number
   totalAmount: number | null
   payAddress: string
   payments: DeveloperPayment[]
-  approved: boolean
+  approved: boolean | null
+  number: number | null
   hash: string
   timestamp: number
 }
 
 // CREATE A DEV_PROPOSAL ACCOUNT
 function createDevProposal (accountId: string): DevProposalAccount {
-  const devProposal = {
+  const devProposal: DevProposalAccount = {
     id: accountId,
+    title: null,
+    description: null,
     approve: 0,
     reject: 0,
     totalVotes: 0,
     totalAmount: null,
     payAddress: '',
     payments: [],
-    approved: false,
+    approved: null,
+    number: null,
     hash: '',
     timestamp: 0
   }
@@ -592,19 +604,20 @@ dapp.registerExternalGet('network/parameters/node/next', async (req: any, res: a
 
 dapp.registerExternalGet('network/parameters', async (req: any, res: any): Promise<void> => {
   try {
-    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
+    const account = await dapp.getLocalOrRemoteAccount(networkAccount)
+    const network: NetworkAccount = account.data
     res.json({
       parameters: {
-        CURRENT: network.data.current,
-        NEXT: network.data.next,
-        DEVELOPER_FUND: network.data.developerFund,
-        NEXT_DEVELOPER_FUND: network.data.nextDeveloperFund,
-        WINDOWS: network.data.windows,
-        DEV_WINDOWS: network.data.devWindows,
-        NEXT_WINDOWS: network.data.nextWindows,
-        NEXT_DEV_WINDOWS: network.data.nextDevWindows,
-        ISSUE: network.data.issue,
-        DEV_ISSUE: network.data.devIssue
+        CURRENT: network.current,
+        NEXT: network.next,
+        DEVELOPER_FUND: network.developerFund,
+        NEXT_DEVELOPER_FUND: network.nextDeveloperFund,
+        WINDOWS: network.windows,
+        DEV_WINDOWS: network.devWindows,
+        NEXT_WINDOWS: network.nextWindows,
+        NEXT_DEV_WINDOWS: network.nextDevWindows,
+        ISSUE: network.issue,
+        DEV_ISSUE: network.devIssue
       }
     })
   } catch (error) {
@@ -1502,8 +1515,7 @@ dapp.setup({
           return response
         }
         if (!to) {
-          response.reason =
-            'Snapshot account does not exist yet, OR wrong snapshot address provided in the "to" field'
+          response.reason = 'Snapshot account does not exist yet, OR wrong snapshot address provided in the "to" field'
           return response
         }
         if (!to.snapshot) {
@@ -1511,8 +1523,7 @@ dapp.setup({
           return response
         }
         if (!to.snapshot[tx.from]) {
-          response.reason =
-            'Your address did not hold any ULT on the Ethereum blockchain during the snapshot'
+          response.reason = 'Your address did not hold any ULT on the Ethereum blockchain during the snapshot'
           return response
         }
         response.result = 'pass'
@@ -1520,7 +1531,7 @@ dapp.setup({
         return response
       }
       case 'issue': {
-        const issue = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
+        const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
         // let nodeInfo
         // try {
         //   nodeInfo = dapp.getNode(tx.nodeId)
@@ -1531,18 +1542,18 @@ dapp.setup({
         //   response.reason = 'no nodeInfo'
         //   return response
         // }
-        if (issue.active) {
+        if (issue.active !== null) {
           response.reason = 'Issue is already active'
           return response
         }
-        let issueHash = crypto.hash(`issue-${to.issue}`)
-        if (issueHash !== tx.issue) {
-          response.reason = `issue id (${issueHash}) does not match current network issue (${tx.issue})`
+        let networkIssueHash = crypto.hash(`issue-${to.issue}`)
+        if (tx.issue !== networkIssueHash) {
+          response.reason = `issue hash (${tx.issue}) does not match current network issue hash (${networkIssueHash})`
           return response
         }
-        let proposalHash = crypto.hash(`issue-${to.issue}-proposal-1`)
-        if (proposalHash !== tx.proposal) {
-          response.reason = `The current default proposalHash (${proposalHash}) does not match the one in this issue tx (${tx.proposal})`
+        let networkProposalHash = crypto.hash(`issue-${to.issue}-proposal-1`)
+        if (tx.proposal !== networkProposalHash) {
+          response.reason = `proposalHash (${tx.proposal}) does not match the current default network proposal (${networkProposalHash})`
           return response
         }
         response.result = 'pass'
@@ -1550,8 +1561,7 @@ dapp.setup({
         return response
       }
       case 'dev_issue': {
-        const devIssue =
-          wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
+        const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
         // let nodeInfo
         // try {
         //   nodeInfo = dapp.getNode(tx.nodeId)
@@ -1562,13 +1572,13 @@ dapp.setup({
         //   response.reason = 'no nodeInfo'
         //   return response
         // }
-        if (devIssue.active) {
+        if (devIssue.active !== null) {
           response.reason = 'devIssue is already active'
           return response
         }
-        let devIssueHash = crypto.hash(`dev-issue-${to.devIssue}`)
-        if (devIssueHash !== tx.devIssue) {
-          response.reason = `devIssue id (${devIssueHash}) does not match current network devIssue (${tx.devIssue})`
+        let networkDevIssueHash = crypto.hash(`dev-issue-${to.devIssue}`)
+        if (tx.devIssue !== networkDevIssueHash) {
+          response.reason = `devIssue hash (${tx.devIssue}) does not match current network devIssue (${networkDevIssueHash})`
           return response
         }
         response.result = 'pass'
@@ -1576,7 +1586,7 @@ dapp.setup({
         return response
       }
       case 'proposal': {
-        const issue = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
+        const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
         const parameters = tx.parameters
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
@@ -1590,20 +1600,16 @@ dapp.setup({
           response.reason = "Issue doesn't exist"
           return response
         }
-        if (!issue.active) {
+        if (issue.active === false) {
           response.reason = 'This issue is no longer active'
           return response
         }
-        if (
-          tx.proposal !==
-          crypto.hash(`issue-${ISSUE}-proposal-${issue.proposalCount + 1}`)
-        ) {
+        if (tx.proposal !== crypto.hash(`issue-${ISSUE}-proposal-${issue.proposalCount + 1}`)) {
           response.reason = 'Must give the next issue proposalCount hash'
           return response
         }
         if (from.data.balance < CURRENT.proposalFee + CURRENT.transactionFee) {
-          response.reason =
-            'From account has insufficient balance to submit a proposal'
+          response.reason = 'From account has insufficient balance to submit a proposal'
           return response
         }
         if (parameters.transactionFee < 0) {
@@ -1667,8 +1673,7 @@ dapp.setup({
         return response
       }
       case 'dev_proposal': {
-        const devIssue =
-          wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
+        const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
 
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
@@ -1682,23 +1687,16 @@ dapp.setup({
           response.reason = "devIssue doesn't exist"
           return response
         }
-        if (!devIssue.active) {
+        if (devIssue.active === false) {
           response.reason = 'This devIssue is no longer active'
           return response
         }
-        if (
-          tx.devProposal !==
-          crypto.hash(
-            `dev-issue-${DEV_ISSUE}-dev-proposal-${devIssue.devProposalCount +
-              1}`
-          )
-        ) {
+        if (tx.devProposal !== crypto.hash(`dev-issue-${DEV_ISSUE}-dev-proposal-${devIssue.devProposalCount +1}`)) {
           response.reason = 'Must give the next devIssue devProposalCount hash'
           return response
         }
         if (from.data.balance < CURRENT.devProposalFee + CURRENT.transactionFee) {
-          response.reason =
-            'From account has insufficient balance to submit a devProposal'
+          response.reason = 'From account has insufficient balance to submit a devProposal'
           return response
         }
         if (tx.payments.reduce((acc: number, payment: DeveloperPayment) => Decimal(payment.amount).plus(acc), 0) > 1) {
@@ -1710,9 +1708,8 @@ dapp.setup({
         return response
       }
       case 'vote': {
-        const proposal =
-          wrappedStates[tx.proposal] && wrappedStates[tx.proposal].data
-        const issue = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
+        const proposal: ProposalAccount = wrappedStates[tx.proposal] && wrappedStates[tx.proposal].data
+        const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
 
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
@@ -1726,7 +1723,7 @@ dapp.setup({
           response.reason = "issue doesn't exist"
           return response
         }
-        if (!issue.active) {
+        if (issue.active === false) {
           response.reason = 'issue no longer active'
           return response
         }
@@ -1739,8 +1736,7 @@ dapp.setup({
           return response
         }
         if (from.data.balance < tx.amount + CURRENT.transactionFee) {
-          response.reason =
-            'From account has insufficient balance to cover the amount sent in the transaction'
+          response.reason = 'From account has insufficient balance to cover the amount sent in the transaction'
           return response
         }
         response.result = 'pass'
@@ -1748,10 +1744,8 @@ dapp.setup({
         return response
       }
       case 'dev_vote': {
-        const devProposal: DevProposalAccount =
-          wrappedStates[tx.devProposal] && wrappedStates[tx.devProposal].data
-        const devIssue: DevIssueAccount =
-          wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
+        const devProposal: DevProposalAccount = wrappedStates[tx.devProposal] && wrappedStates[tx.devProposal].data
+        const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
 
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
@@ -1769,7 +1763,7 @@ dapp.setup({
           response.reason = "devIssue doesn't exist"
           return response
         }
-        if (!devIssue.active) {
+        if (devIssue.active === false) {
           response.reason = 'devIssue no longer active'
           return response
         }
@@ -1787,7 +1781,7 @@ dapp.setup({
         return response
       }
       case 'tally': {
-        const issue = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
+        const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
         const proposals: ProposalAccount[] = tx.proposals.map((id: string) => wrappedStates[id].data)
 
         // let nodeInfo
@@ -1804,11 +1798,11 @@ dapp.setup({
           response.reason = "Issue doesn't exist"
           return response
         }
-        if (!issue.active) {
+        if (issue.active === false) {
           response.reason = 'This issue is no longer active'
           return response
         }
-        if (issue.winner) {
+        if (issue.winner !== null) {
           response.reason = 'The winner for this issue has already been determined'
           return response
         }
@@ -1842,13 +1836,12 @@ dapp.setup({
           response.reason = "devIssue doesn't exist"
           return response
         }
-        if (!devIssue.active) {
+        if (devIssue.active === false) {
           response.reason = 'This devIssue is no longer active'
           return response
         }
-        if (devIssue.winners !== undefined) {
-          response.reason =
-            'The winners for this devIssue has already been determined'
+        if (Array.isArray(devIssue.winners) && devIssue.winners.length > 0) {
+          response.reason = 'The winners for this devIssue has already been determined'
           return response
         }
         if (to.id !== networkAccount) {
@@ -1856,8 +1849,7 @@ dapp.setup({
           return response
         }
         if (devProposals.length !== devIssue.devProposalCount) {
-          response.reason =
-            'The number of devProposals sent in with the transaction dont match the devIssue proposalCount'
+          response.reason = 'The number of devProposals sent in with the transaction dont match the devIssue proposalCount'
           return response
         }
         response.result = 'pass'
@@ -1865,7 +1857,7 @@ dapp.setup({
         return response
       }
       case 'apply_parameters': {
-        const issue = wrappedStates[tx.issue].data
+        const issue: IssueAccount = wrappedStates[tx.issue].data
 
         // let nodeInfo
         // try {
@@ -1881,7 +1873,7 @@ dapp.setup({
           response.reason = "Issue doesn't exist"
           return response
         }
-        if (!issue.active) {
+        if (issue.active === false) {
           response.reason = 'This issue is no longer active'
           return response
         }
@@ -1894,7 +1886,7 @@ dapp.setup({
         return response
       }
       case 'apply_dev_parameters': {
-        const devIssue = wrappedStates[tx.devIssue].data
+        const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
 
         // let nodeInfo
         // try {
@@ -1910,7 +1902,7 @@ dapp.setup({
           response.reason = "devIssue doesn't exist"
           return response
         }
-        if (!devIssue.active) {
+        if (devIssue.active === false) {
           response.reason = 'This devIssue is no longer active'
           return response
         }
@@ -2656,8 +2648,8 @@ dapp.setup({
         break
       }
       case 'issue': {
-        const issue = wrappedStates[tx.issue].data
-        const proposal = wrappedStates[tx.proposal].data
+        const issue: IssueAccount = wrappedStates[tx.issue].data
+        const proposal: ProposalAccount = wrappedStates[tx.proposal].data
 
         proposal.parameters = to.current
         proposal.parameters.title = 'Default parameters'
@@ -2676,7 +2668,7 @@ dapp.setup({
         break
       }
       case 'dev_issue': {
-        const devIssue = wrappedStates[tx.devIssue].data
+        const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
 
         devIssue.number = to.devIssue
         devIssue.active = true
@@ -2687,8 +2679,8 @@ dapp.setup({
         break
       }
       case 'proposal': {
-        const proposal = wrappedStates[tx.proposal].data
-        const issue = wrappedStates[tx.issue].data
+        const proposal: ProposalAccount = wrappedStates[tx.proposal].data
+        const issue: IssueAccount = wrappedStates[tx.issue].data
 
         from.data.balance -= CURRENT.proposalFee
         from.data.balance -= CURRENT.transactionFee
@@ -2707,8 +2699,8 @@ dapp.setup({
         break
       }
       case 'dev_proposal': {
-        const devIssue = wrappedStates[tx.devIssue].data
-        const devProposal = wrappedStates[tx.devProposal].data
+        const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
+        const devProposal: DevProposalAccount = wrappedStates[tx.devProposal].data
 
         from.data.balance -= CURRENT.devProposalFee
         from.data.balance -= CURRENT.transactionFee
@@ -2736,7 +2728,7 @@ dapp.setup({
         break
       }
       case 'vote': {
-        const proposal = wrappedStates[tx.proposal].data
+        const proposal: ProposalAccount = wrappedStates[tx.proposal].data
         from.data.balance -= tx.amount
         from.data.balance -= CURRENT.transactionFee
         from.data.balance -= maintenanceAmount(tx.timestamp, from)
@@ -2750,7 +2742,7 @@ dapp.setup({
         break
       }
       case 'dev_vote': {
-        const devProposal = wrappedStates[tx.devProposal].data
+        const devProposal: DevProposalAccount = wrappedStates[tx.devProposal].data
 
         from.data.balance -= tx.amount
         from.data.balance -= CURRENT.transactionFee

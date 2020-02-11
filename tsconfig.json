@@ -5,6 +5,7 @@
     "outDir": "dist",
     "allowJs": true,
     "strict": false,
+    "noEmitOnError": false,
     "typeRoots": [
       "node_modules/@types"
     ]
