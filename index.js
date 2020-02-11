@@ -54,16 +54,16 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 exports.__esModule = true;
-var fs = require('fs');
-var path = require('path');
-var shardus = require('shardus-global-server');
-var crypto = require('shardus-crypto-utils');
-var stringify = require('fast-stable-stringify');
-var axios = require('axios');
+var fs = require("fs");
+var path = require("path");
+var axios_1 = require("axios");
+var Prop = require("dot-prop");
+var _ = require("lodash");
+var heapdump = require("heapdump");
 var Decimal = require('decimal.js');
-var set = require('dot-prop').set;
-var _ = require('lodash');
-var heapdump = require('heapdump');
+var shardus = require('shardus-global-server');
+var stringify = require('fast-stable-stringify');
+var crypto = require('shardus-crypto-utils');
 crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc');
 // THE ENTIRE APP STATE FOR THIS NODE
 var accounts = {};
@@ -100,12 +100,14 @@ var CYCLES_PER_YEAR = 365 * CYCLES_PER_DAY;
 var config = {};
 if (process.env.BASE_DIR) {
     if (fs.existsSync(path.join(process.env.BASE_DIR, 'config.json'))) {
-        config = JSON.parse(fs.readFileSync(path.join(process.env.BASE_DIR, 'config.json')));
+        config = JSON.parse(
+        //@ts-ignore
+        fs.readFileSync(path.join(process.env.BASE_DIR, 'config.json')));
     }
     config.server.baseDir = process.env.BASE_DIR;
 }
 // CONFIGURATION PARAMETERS PASSED INTO SHARDUS
-set(config, 'server.p2p', {
+Prop.set(config, 'server.p2p', {
     cycleDuration: cycleDuration,
     existingArchivers: JSON.parse(process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]'),
     maxNodesPerCycle: 10,
@@ -116,29 +118,29 @@ set(config, 'server.p2p', {
     maxPercentOfDelta: 40
 });
 if (process.env.APP_IP) {
-    set(config, 'server.ip', {
+    Prop.set(config, 'server.ip', {
         externalIp: process.env.APP_IP,
         internalIp: process.env.APP_IP
     });
 }
-set(config, 'server.loadDetection', {
+Prop.set(config, 'server.loadDetection', {
     queueLimit: 1000,
     desiredTxTime: 15,
     highThreshold: 0.8,
     lowThreshold: 0.2
 });
-set(config, 'server.reporting', {
+Prop.set(config, 'server.reporting', {
     recipient: "http://" + (process.env.APP_MONITOR || '0.0.0.0') + ":3000/api",
     interval: 1
 });
-set(config, 'server.rateLimiting', {
+Prop.set(config, 'server.rateLimiting', {
     limitRate: true,
     loadLimit: 0.5
 });
-set(config, 'server.sharding', {
+Prop.set(config, 'server.sharding', {
     nodesPerConsensusGroup: 5
 });
-set(config, 'logs', {
+Prop.set(config, 'logs', {
     dir: './logs',
     files: { main: '', fatal: '', net: '', app: '' },
     options: {
@@ -376,6 +378,8 @@ function createAlias(accountId) {
     var alias = {
         id: accountId,
         hash: '',
+        inbox: '',
+        address: '',
         timestamp: 0
     };
     alias.hash = crypto.hashObj(alias);
@@ -407,6 +411,8 @@ function createIssue(accountId) {
         id: accountId,
         proposals: [],
         proposalCount: 0,
+        number: null,
+        winner: '',
         hash: '',
         timestamp: 0
     };
@@ -419,7 +425,9 @@ function createDevIssue(accountId) {
         id: accountId,
         devProposals: [],
         devProposalCount: 0,
+        winners: [],
         hash: '',
+        active: null,
         timestamp: 0
     };
     devIssue.hash = crypto.hashObj(devIssue);
@@ -431,6 +439,8 @@ function createProposal(accountId) {
         id: accountId,
         power: 0,
         totalVotes: 0,
+        winner: false,
+        parameters: null,
         hash: '',
         timestamp: 0
     };
@@ -444,6 +454,10 @@ function createDevProposal(accountId) {
         approve: 0,
         reject: 0,
         totalVotes: 0,
+        totalAmount: null,
+        payAddress: '',
+        payments: [],
+        approved: false,
         hash: '',
         timestamp: 0
     };
@@ -1516,7 +1530,7 @@ dapp.setup({
                 return response;
             }
             case 'distribute': {
-                var recipients = tx.recipients.map(function (recipientId) { return wrappedStates[recipientId].data; });
+                var recipients = tx.recipients.map(function (id) { return wrappedStates[id].data; });
                 if (tx.sign.owner !== tx.from) {
                     response.reason = 'not signed by from account';
                     return response;
@@ -1529,16 +1543,15 @@ dapp.setup({
                     response.reason = "from account doesn't exist";
                     return response;
                 }
-                recipients.forEach(function (recipient) {
-                    if (!recipient) {
+                for (var _i = 0, recipients_1 = recipients; _i < recipients_1.length; _i++) {
+                    var user = recipients_1[_i];
+                    if (!user) {
                         response.reason = 'no account for one of the recipients';
                         return response;
                     }
-                });
-                if (from.data.balance <
-                    recipients.length * tx.amount + CURRENT.transactionFee) {
-                    response.reason =
-                        "from account doesn't have sufficient balance to cover the transaction";
+                }
+                if (from.data.balance < recipients.length * tx.amount + CURRENT.transactionFee) {
+                    response.reason = "from account doesn't have sufficient balance to cover the transaction";
                     return response;
                 }
                 response.result = 'pass';
@@ -2027,8 +2040,7 @@ dapp.setup({
                     return response;
                 }
                 if (issue.winner) {
-                    response.reason =
-                        'The winner for this issue has already been determined';
+                    response.reason = 'The winner for this issue has already been determined';
                     return response;
                 }
                 if (to.id !== networkAccount) {
@@ -2036,8 +2048,7 @@ dapp.setup({
                     return response;
                 }
                 if (proposals.length !== issue.proposalCount) {
-                    response.reason =
-                        'The number of proposals sent in with the transaction dont match the issues proposalCount';
+                    response.reason = 'The number of proposals sent in with the transaction dont match the issues proposalCount';
                     return response;
                 }
                 response.result = 'pass';
@@ -2690,7 +2701,6 @@ dapp.setup({
                 dapp.log('Applied snapshot tx', to);
                 break;
             }
-            // TODO: Have nodes determine who actually sends the email
             case 'email': {
                 var source = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data;
                 var nodeId = dapp.getNodeId();
@@ -2700,7 +2710,7 @@ dapp.setup({
                     var baseNumber = 99999;
                     var randomNumber = Math.floor((Math.random() * 899999)) + 1;
                     var verificationNumber = baseNumber + randomNumber;
-                    axios.post('http://arimaa.com/mailAPI/index.cgi', {
+                    axios_1["default"].post('http://arimaa.com/mailAPI/index.cgi', {
                         from: 'liberdus.verify',
                         to: "" + tx.email,
                         subject: 'Verify your email for liberdus',
@@ -2767,14 +2777,15 @@ dapp.setup({
                 break;
             }
             case 'distribute': {
-                var recipients = tx.recipients.map(function (recipientId) { return wrappedStates[recipientId].data; });
+                var recipients = tx.recipients.map(function (id) { return wrappedStates[id].data; });
                 from.data.balance -= CURRENT.transactionFee;
                 // from.data.transactions.push({ ...tx, txId })
-                recipients.forEach(function (recipient) {
+                for (var _i = 0, recipients_2 = recipients; _i < recipients_2.length; _i++) {
+                    var user = recipients_2[_i];
                     from.data.balance -= tx.amount;
-                    recipient.data.balance += tx.amount;
+                    user.data.balance += tx.amount;
                     // recipient.data.transactions.push({ ...tx, txId })
-                });
+                }
                 from.data.balance -= maintenanceAmount(tx.timestamp, from);
                 dapp.log('Applied distribute transaction', from, recipients);
                 break;
@@ -2787,7 +2798,6 @@ dapp.setup({
                     to.data.balance += to.data.toll;
                 }
                 from.data.balance -= maintenanceAmount(tx.timestamp, from);
-                // TODO: Chat data between two accounts should be stored in one place
                 if (!from.data.chats[tx.to])
                     from.data.chats[tx.to] = tx.chatId;
                 if (!to.data.chats[tx.from])
@@ -2952,12 +2962,10 @@ dapp.setup({
                 var issue = wrappedStates[tx.issue].data;
                 var margin = 100 / (2 * (issue.proposalCount + 1)) / 100;
                 var defaultProposal = wrappedStates[crypto.hash("issue-" + issue.number + "-proposal-1")].data;
-                var sortedProposals = tx.proposals
-                    .map(function (id) { return wrappedStates[id].data; })
-                    .sort(function (a, b) { return a.power < b.power; });
+                var sortedProposals = tx.proposals.map(function (id) { return wrappedStates[id].data; }).sort(function (a, b) { return a.power < b.power; });
                 var winner = defaultProposal;
-                for (var _i = 0, sortedProposals_1 = sortedProposals; _i < sortedProposals_1.length; _i++) {
-                    var proposal = sortedProposals_1[_i];
+                for (var _b = 0, sortedProposals_1 = sortedProposals; _b < sortedProposals_1.length; _b++) {
+                    var proposal = sortedProposals_1[_b];
                     proposal.winner = false;
                 }
                 if (sortedProposals.length >= 2) {
@@ -2998,16 +3006,17 @@ dapp.setup({
                 var devIssue = wrappedStates[tx.devIssue].data;
                 var devProposals = tx.devProposals.map(function (id) { return wrappedStates[id].data; });
                 devIssue.winners = [];
-                for (var _b = 0, devProposals_1 = devProposals; _b < devProposals_1.length; _b++) {
-                    var devProposal = devProposals_1[_b];
+                for (var _c = 0, devProposals_1 = devProposals; _c < devProposals_1.length; _c++) {
+                    var devProposal = devProposals_1[_c];
                     if (devProposal.approve >=
                         devProposal.reject + devProposal.reject * 0.15) {
                         devProposal.approved = true;
                         var payments = [];
-                        for (var _c = 0, _d = devProposal.payments; _c < _d.length; _c++) {
-                            var payment = _d[_c];
+                        for (var _d = 0, _e = devProposal.payments; _d < _e.length; _d++) {
+                            var payment = _e[_d];
                             payments.push({
                                 timestamp: tx.timestamp + TIME_FOR_DEV_GRACE + payment.delay,
+                                //@ts-ignore
                                 amount: payment.amount * devProposal.totalAmount,
                                 address: devProposal.payAddress,
                                 id: crypto.hashObj(payment)
@@ -3498,12 +3507,13 @@ function generateDevIssue(address, nodeId) {
 // TALLY TRANSACTION FUNCTION
 function tallyVotes(address, nodeId) {
     return __awaiter(this, void 0, void 0, function () {
-        var issue, tx, err_1;
+        var account, issue, tx, err_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0: return [4 /*yield*/, dapp.getLocalOrRemoteAccount(crypto.hash("issue-" + ISSUE))];
                 case 1:
-                    issue = _a.sent();
+                    account = _a.sent();
+                    issue = account.data;
                     _a.label = 2;
                 case 2:
                     _a.trys.push([2, 3, , 5]);
@@ -3512,8 +3522,8 @@ function tallyVotes(address, nodeId) {
                         nodeId: nodeId,
                         from: address,
                         to: networkAccount,
-                        issue: issue.data.id,
-                        proposals: issue.data.proposals,
+                        issue: issue.id,
+                        proposals: issue.proposals,
                         timestamp: Date.now()
                     };
                     dapp.put(tx);
@@ -3534,14 +3544,15 @@ function tallyVotes(address, nodeId) {
 // DEV_TALLY TRANSACTION FUNCTION
 function tallyDevVotes(address, nodeId) {
     return __awaiter(this, void 0, void 0, function () {
-        var devIssue, tx, err_2;
+        var account, devIssue, tx, err_2;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 2, , 4]);
-                    return [4 /*yield*/, dapp.getLocalOrRemoteAccount(crypto.hash("dev-issue-" + DEV_ISSUE)).data];
+                    return [4 /*yield*/, dapp.getLocalOrRemoteAccount(crypto.hash("dev-issue-" + DEV_ISSUE))];
                 case 1:
-                    devIssue = _a.sent();
+                    account = _a.sent();
+                    devIssue = account.data;
                     tx = {
                         type: 'dev_tally',
                         nodeId: nodeId,
