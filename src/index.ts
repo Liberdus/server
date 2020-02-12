@@ -4,6 +4,7 @@ import axios from 'axios'
 import * as Prop from 'dot-prop'
 import * as _ from 'lodash'
 import * as heapdump from 'heapdump'
+import './@types'
 const Decimal = require('decimal.js')
 const shardus = require('shardus-global-server')
 const stringify = require('fast-stable-stringify')
@@ -27,9 +28,9 @@ let DEVELOPER_FUND: Array<DeveloperPayment>, NEXT_DEVELOPER_FUND: Array<Develope
 const ONE_SECOND = 1000
 const ONE_MINUTE = 60 * ONE_SECOND
 const ONE_HOUR = 60 * ONE_MINUTE
-const ONE_DAY = 24 * ONE_HOUR
-const ONE_WEEK = 7 * ONE_DAY
-const ONE_YEAR = 365 * ONE_DAY
+// const ONE_DAY = 24 * ONE_HOUR
+// const ONE_WEEK = 7 * ONE_DAY
+// const ONE_YEAR = 365 * ONE_DAY
 
 const TIME_FOR_PROPOSALS = ONE_MINUTE + (ONE_SECOND * 30)
 const TIME_FOR_VOTING = ONE_MINUTE + (ONE_SECOND * 30)
@@ -43,11 +44,21 @@ const TIME_FOR_DEV_APPLY = ONE_MINUTE + (ONE_SECOND * 30)
 
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
 const cycleDuration = 15
-const CYCLES_PER_MINUTE = ONE_MINUTE / 1000 / cycleDuration
-const CYCLES_PER_HOUR = 60 * CYCLES_PER_MINUTE
-const CYCLES_PER_DAY = 24 * CYCLES_PER_HOUR
-const CYCLES_PER_WEEK = 7 * CYCLES_PER_DAY
-const CYCLES_PER_YEAR = 365 * CYCLES_PER_DAY
+
+// INITIAL NETWORK PARAMETERS FOR LIBERDUS
+const INITIAL_PARAMETERS: NetworkParameters = {
+  title: 'Initial parameters',
+  description: 'These are the initial network parameters liberdus started with',
+  nodeRewardInterval: ONE_MINUTE * 2,
+  nodeRewardAmount: 10,
+  nodePenalty: 100,
+  transactionFee: 0.001,
+  stakeRequired: 500,
+  maintenanceInterval: ONE_MINUTE * 10,
+  maintenanceFee: 0.01,
+  proposalFee: 500,
+  devProposalFee: 20
+}
 
 let config: any = {}
 
@@ -155,13 +166,6 @@ Prop.set(config, 'logs', {
   }
 })
 
-/**
- * @typedef {import('shardus-enterprise-server/src/shardus')} Shardus
- * @typedef {import('shardus-enterprise-server/src/shardus').App} App
- * @typedef {import('shardus-enterprise-server/src/shardus').IncomingTransaction} IncomingTransaction
- * @typedef {import('shardus-enterprise-server/src/shardus').IncomingTransactionResult} IncomingTransactionResult
- * @implements {App}
- */
 const dapp = shardus(config)
 
 // INITIAL PARAMETERS THE NODES SET WHEN THEY BECOME ACTIVE
@@ -186,28 +190,8 @@ async function syncParameters (timestamp: number): Promise<void> {
     const graceWindow = [votingWindow[1], votingWindow[1] + TIME_FOR_GRACE]
     const applyWindow = [graceWindow[1], graceWindow[1] + TIME_FOR_APPLY]
 
-    CURRENT = {
-      nodeRewardInterval: ONE_MINUTE * 2,
-      nodeRewardAmount: 10,
-      nodePenalty: 100,
-      transactionFee: 0.001,
-      stakeRequired: 500,
-      maintenanceInterval: ONE_MINUTE,
-      maintenanceFee: 0.01,
-      proposalFee: 500,
-      devProposalFee: 20
-    }
-    NEXT = {
-      nodeRewardInterval: ONE_MINUTE * 2,
-      nodeRewardAmount: 10,
-      nodePenalty: 100,
-      transactionFee: 0.001,
-      stakeRequired: 500,
-      maintenanceInterval: ONE_MINUTE,
-      maintenanceFee: 0.01,
-      proposalFee: 500,
-      devProposalFee: 20
-    }
+    CURRENT = INITIAL_PARAMETERS
+    NEXT = INITIAL_PARAMETERS
     WINDOWS = {
       proposalWindow,
       votingWindow,
@@ -271,20 +255,6 @@ async function syncDevParameters (timestamp: number): Promise<void> {
   }
 }
 
-interface UserAccount {
-  id: string
-  data: {
-    balance: number
-    toll: number
-    chats: any
-    friends: any
-    transactions: any
-  }
-  lastMaintenance: number
-  timestamp: number
-  hash: string
-}
-
 // CREATE A USER ACCOUNT
 function createAccount (accountId: string, timestamp: number): UserAccount {
   const account: UserAccount = {
@@ -296,19 +266,14 @@ function createAccount (accountId: string, timestamp: number): UserAccount {
       friends: {},
       transactions: []
     },
+    emailHash: null,
+    verified: false,
     hash: '',
     lastMaintenance: timestamp,
     timestamp: 0
   }
   account.hash = crypto.hashObj(account)
   return account
-}
-
-interface NodeAccount {
-  id: string
-  balance: number
-  hash: string
-  timestamp: number
 }
 
 // CREATE A NODE ACCOUNT FOR MINING
@@ -323,13 +288,6 @@ function createNode (accountId: string): NodeAccount {
   return account
 }
 
-interface ChatAccount {
-  id: string
-  messages: any
-  timestamp: number
-  hash: string
-}
-
 function createChat (accountId: string): ChatAccount {
   const chat: ChatAccount = {
     id: accountId,
@@ -339,14 +297,6 @@ function createChat (accountId: string): ChatAccount {
   }
   chat.hash = crypto.hashObj(chat)
   return chat
-}
-
-interface AliasAccount {
-  id: string
-  hash: string
-  inbox: string
-  address: string
-  timestamp: number
 }
 
 // CREATE AN ALIAS ACCOUNT
@@ -362,56 +312,6 @@ function createAlias (accountId: string): AliasAccount {
   return alias
 }
 
-interface NetworkParameters {
-  title?: string
-  description?: string
-  nodeRewardInterval: number
-  nodeRewardAmount: number
-  nodePenalty: number
-  transactionFee: number
-  stakeRequired: number
-  maintenanceInterval: number
-  maintenanceFee: number
-  proposalFee: number
-  devProposalFee: number
-}
-
-interface Windows {
-  proposalWindow: number[]
-  votingWindow: number[]
-  graceWindow: number[]
-  applyWindow: number[]
-}
-
-interface DevWindows {
-  devProposalWindow: number[]
-  devVotingWindow: number[]
-  devGraceWindow: number[]
-  devApplyWindow: number[]
-}
-
-interface DeveloperPayment {
-  id: string
-  amount: number
-  delay: number
-  timestamp: number
-}
-
-interface NetworkAccount {
-  id: string
-  current: NetworkParameters
-  next: {} | NetworkParameters
-  windows: Windows
-  nextWindows: {} | Windows
-  devWindows: DevWindows
-  nextDevWindows: {} | DevWindows
-  issue: number
-  devIssue: number
-  developerFund: Array<DeveloperPayment>
-  nextDeveloperFund: Array<DeveloperPayment>
-  hash: string
-  timestamp: number
-}
 
 // CREATE THE INITIAL NETWORK ACCOUNT
 function createNetworkAccount (accountId: string): NetworkAccount {
@@ -434,17 +334,6 @@ function createNetworkAccount (accountId: string): NetworkAccount {
   return account
 }
 
-interface IssueAccount {
-  id: string
-  active: boolean | null
-  proposals: Array<string>
-  proposalCount: number
-  number: number | null
-  winner: string | null
-  hash: string
-  timestamp: number
-}
-
 // CREATE AN ISSUE ACCOUNT
 function createIssue (accountId: string): IssueAccount {
   const issue: IssueAccount = {
@@ -459,17 +348,6 @@ function createIssue (accountId: string): IssueAccount {
   }
   issue.hash = crypto.hashObj(issue)
   return issue
-}
-
-interface DevIssueAccount {
-  id: string
-  devProposals: Array<any>
-  devProposalCount: number
-  winners: string[]
-  active: boolean | null
-  number: number | null
-  hash: string
-  timestamp: number
 }
 
 // CREATE A DEV_ISSUE ACCOUNT
@@ -488,47 +366,20 @@ function createDevIssue (accountId: string): DevIssueAccount {
   return devIssue
 }
 
-interface ProposalAccount {
-  id: string
-  power: number
-  totalVotes: number
-  parameters: NetworkParameters | null
-  winner: boolean
-  number: number | null
-  hash: string
-  timestamp: number
-}
-
 // CREATE A PROPOSAL ACCOUNT
-function createProposal (accountId: string): ProposalAccount {
+function createProposal (accountId: string, parameters: NetworkParameters): ProposalAccount {
   const proposal: ProposalAccount = {
     id: accountId,
     power: 0,
     totalVotes: 0,
     winner: false,
-    parameters: null,
+    parameters,
     number: null,
     hash: '',
     timestamp: 0
   }
   proposal.hash = crypto.hashObj(proposal)
   return proposal
-}
-
-interface DevProposalAccount {
-  id: string
-  approve: number
-  reject: number
-  title: string | null
-  description: string | null
-  totalVotes: number
-  totalAmount: number | null
-  payAddress: string
-  payments: DeveloperPayment[]
-  approved: boolean | null
-  number: number | null
-  hash: string
-  timestamp: number
 }
 
 // CREATE A DEV_PROPOSAL ACCOUNT
@@ -550,13 +401,6 @@ function createDevProposal (accountId: string): DevProposalAccount {
   }
   devProposal.hash = crypto.hashObj(devProposal)
   return devProposal
-}
-
-interface WrappedAccount {
-  accountId: string,
-  stateId: string,
-  data: any,
-  timestamp: number
 }
 
 // API
@@ -1035,12 +879,12 @@ dapp.registerExternalGet('debug/dump', (req: any, res: any): void => {
 
 // SDK SETUP FUNCTIONS
 dapp.setup({
-  async sync () {
+  async sync (): Promise<void> {
     if (dapp.p2p.isFirstSeed) {
       await _sleep(ONE_SECOND * 20)
       const timestamp = Date.now()
-      const nodeId = dapp.getNodeId()
-      const address = dapp.getNode(nodeId).address
+      const nodeId: string = dapp.getNodeId()
+      const address: string = dapp.getNode(nodeId).address
       const proposalWindow = [timestamp, timestamp + TIME_FOR_PROPOSALS]
       const votingWindow = [
         proposalWindow[1],
@@ -1062,28 +906,8 @@ dapp.setup({
         devGraceWindow[1],
         devGraceWindow[1] + TIME_FOR_DEV_APPLY
       ]
-      CURRENT = {
-        nodeRewardInterval: ONE_MINUTE * 2,
-        nodeRewardAmount: 10,
-        nodePenalty: 100,
-        transactionFee: 0.01,
-        stakeRequired: 500,
-        maintenanceInterval: 600000,
-        maintenanceFee: 0,
-        proposalFee: 500,
-        devProposalFee: 100
-      }
-      NEXT = {
-        nodeRewardInterval: ONE_MINUTE * 2,
-        nodeRewardAmount: 10,
-        nodePenalty: 100,
-        transactionFee: 0.01,
-        stakeRequired: 500,
-        maintenanceInterval: 600000,
-        maintenanceFee: 0,
-        proposalFee: 500,
-        devProposalFee: 100
-      }
+      CURRENT = INITIAL_PARAMETERS
+      NEXT = INITIAL_PARAMETERS
       WINDOWS = {
         proposalWindow,
         votingWindow,
@@ -1154,7 +978,7 @@ dapp.setup({
       }
     }
   },
-  validateTransaction (tx: any, wrappedStates: any) {
+  validateTransaction (tx: any, wrappedStates: any): ValidationResponse {
     const response = {
       result: 'fail',
       reason: 'Transaction is not valid.'
@@ -1165,10 +989,6 @@ dapp.setup({
 
     switch (tx.type) {
       case 'snapshot': {
-        // if (tx.sign.owner !== ADMIN_ADDRESS) {
-        //   response.reason = 'not signed by ADMIN account'
-        //   return response
-        // }
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
           return response
@@ -1182,7 +1002,7 @@ dapp.setup({
         return response
       }
       case 'email': {
-        const source = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data
+        const source: UserAccount = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data
         if (!source) {
           response.reason = 'no account associated with address in signed tx'
           return response
@@ -1234,7 +1054,7 @@ dapp.setup({
         return response
       }
       case 'register': {
-        const alias = wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
+        const alias: AliasAccount = wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
           return response
@@ -1587,7 +1407,7 @@ dapp.setup({
       }
       case 'proposal': {
         const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
-        const parameters = tx.parameters
+        const parameters: NetworkParameters = tx.parameters
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
           return response
@@ -1956,6 +1776,11 @@ dapp.setup({
         }
         response.result = 'pass'
         response.reason = 'This transaction is valid!'
+        return response
+      }
+      default: {
+        response.result = 'fail'
+        response.reason = 'Unknown transaction type'
         return response
       }
     }
@@ -2451,7 +2276,7 @@ dapp.setup({
       txnTimestamp
     }
   },
-  apply (tx: any, wrappedStates: any) {
+  apply (tx: any, wrappedStates: any): ApplyResponse {
     let from: any = wrappedStates[tx.from] && wrappedStates[tx.from].data
     let to: any = wrappedStates[tx.to] && wrappedStates[tx.to].data
     // Validate the tx
@@ -2464,13 +2289,13 @@ dapp.setup({
     }
 
     // Create an applyResponse which will be used to tell Shardus that the tx has been applied
-    let txId
+    let txId: string
     if (!tx.sign) {
       txId = crypto.hashObj(tx)
     } else {
       txId = crypto.hashObj(tx, true) // compute from tx
     }
-    const applyResponse = dapp.createApplyResponse(txId, tx.timestamp)
+    const applyResponse: ApplyResponse = dapp.createApplyResponse(txId, tx.timestamp)
 
     // Apply the tx
     switch (tx.type) {
@@ -2482,7 +2307,7 @@ dapp.setup({
         break
       }
       case 'email': {
-        const source = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data
+        const source: UserAccount = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data
         const nodeId = dapp.getNodeId()
         const { address } = dapp.getNode(nodeId)
         let [closest] = dapp.getClosestNodes(tx.signedTx.from, 5)
@@ -2514,7 +2339,7 @@ dapp.setup({
       }
       case 'gossip_email_hash': {
         // const targets = tx.targets.map(target => wrappedStates[target].data)
-        const account = wrappedStates[tx.account].data
+        const account: UserAccount = wrappedStates[tx.account].data
         account.emailHash = tx.emailHash
         account.verified = tx.verified
         account.timestamp = tx.timestamp
@@ -2916,13 +2741,8 @@ dapp.setup({
     }
     return applyResponse
   },
-  getKeyFromTransaction (tx: any) {
-    const result: {
-      sourceKeys: string[]
-      targetKeys: string[]
-      allKeys: string[]
-      timestamp: number
-    } = {
+  getKeyFromTransaction (tx: any): TransactionKeys {
+    const result: TransactionKeys = {
       sourceKeys: [],
       targetKeys: [],
       allKeys: [],
@@ -3034,7 +2854,7 @@ dapp.setup({
     result.allKeys = result.allKeys.concat(result.sourceKeys, result.targetKeys)
     return result
   },
-  getStateId (accountAddress: string, mustExist = true) {
+  getStateId (accountAddress: string, mustExist = true): string {
     const account = accounts[accountAddress]
     if (
       (typeof account === 'undefined' || account === null) &&
@@ -3045,16 +2865,16 @@ dapp.setup({
     const stateId = account.hash
     return stateId
   },
-  deleteLocalAccountData () {
+  deleteLocalAccountData (): void {
     accounts = {}
   },
-  setAccountData (accountRecords: any[]) {
+  setAccountData (accountRecords: any[]): void {
     for (let account of accountRecords) {
       // possibly need to clone this so others lose their ref
       accounts[account.id] = account
     }
   },
-  getRelevantData (accountId: string, tx: any) {
+  getRelevantData (accountId: string, tx: any): WrappedResponse {
     let account = accounts[accountId]
     let accountCreated = false
     // Create the account if it doesn't exist
@@ -3071,7 +2891,7 @@ dapp.setup({
           accountCreated = true
         }
         if (accountId === tx.proposal) {
-          account = createProposal(accountId)
+          account = createProposal(accountId, tx.parameters)
           accounts[accountId] = account
           accountCreated = true
         }
@@ -3092,7 +2912,7 @@ dapp.setup({
       }
       if (tx.type === 'proposal') {
         if (accountId === tx.proposal) {
-          account = createProposal(accountId)
+          account = createProposal(accountId, tx.parameters)
           accounts[accountId] = account
           accountCreated = true
         }
@@ -3140,7 +2960,7 @@ dapp.setup({
     )
     return wrapped
   },
-  updateAccountFull (wrappedData: any, localCache: any, applyResponse: any) {
+  updateAccountFull (wrappedData: WrappedResponse, localCache: any, applyResponse: any): void {
     const accountId = wrappedData.accountId
     const accountCreated = wrappedData.accountCreated
     const updatedAccount = wrappedData.data
@@ -3408,7 +3228,7 @@ async function applyDevParameters (address: string, nodeId: string): Promise<voi
 }
 
 // RELEASE DEVELOPER FUNDS FOR A PAYMENT
-function releaseDeveloperFunds (payment: any, address: string, nodeId: string): void {
+function releaseDeveloperFunds (payment: DeveloperPayment, address: string, nodeId: string): void {
   const tx = {
     type: 'developer_payment',
     nodeId: nodeId,
@@ -3447,7 +3267,7 @@ function releaseDeveloperFunds (payment: any, address: string, nodeId: string): 
 
   await dapp.start()
 
-  dapp.p2p.on('active', async () => {
+  dapp.p2p.on('active', async (): Promise<NodeJS.Timeout> => {
     if (dapp.p2p.isFirstSeed) {
       await _sleep(ONE_SECOND * 20)
     }
@@ -3461,7 +3281,7 @@ function releaseDeveloperFunds (payment: any, address: string, nodeId: string): 
   })
 
   // THIS CODE IS CALLED ON EVERY NODE ON EVERY CYCLE
-  async function networkMaintenance () {
+  async function networkMaintenance (): Promise<NodeJS.Timeout> {
     expectedInterval += cycleInterval
 
     try {

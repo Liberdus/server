@@ -6,8 +6,8 @@ const axios_1 = require("axios");
 const Prop = require("dot-prop");
 const _ = require("lodash");
 const heapdump = require("heapdump");
+require("./@types");
 const Decimal = require('decimal.js');
-//@ts-ignore
 const shardus = require('shardus-global-server');
 const stringify = require('fast-stable-stringify');
 const crypto = require('shardus-crypto-utils');
@@ -26,9 +26,9 @@ let DEVELOPER_FUND, NEXT_DEVELOPER_FUND;
 const ONE_SECOND = 1000;
 const ONE_MINUTE = 60 * ONE_SECOND;
 const ONE_HOUR = 60 * ONE_MINUTE;
-const ONE_DAY = 24 * ONE_HOUR;
-const ONE_WEEK = 7 * ONE_DAY;
-const ONE_YEAR = 365 * ONE_DAY;
+// const ONE_DAY = 24 * ONE_HOUR
+// const ONE_WEEK = 7 * ONE_DAY
+// const ONE_YEAR = 365 * ONE_DAY
 const TIME_FOR_PROPOSALS = ONE_MINUTE + (ONE_SECOND * 30);
 const TIME_FOR_VOTING = ONE_MINUTE + (ONE_SECOND * 30);
 const TIME_FOR_GRACE = ONE_MINUTE + (ONE_SECOND * 30);
@@ -39,11 +39,20 @@ const TIME_FOR_DEV_GRACE = ONE_MINUTE + (ONE_SECOND * 30);
 const TIME_FOR_DEV_APPLY = ONE_MINUTE + (ONE_SECOND * 30);
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
 const cycleDuration = 15;
-const CYCLES_PER_MINUTE = ONE_MINUTE / 1000 / cycleDuration;
-const CYCLES_PER_HOUR = 60 * CYCLES_PER_MINUTE;
-const CYCLES_PER_DAY = 24 * CYCLES_PER_HOUR;
-const CYCLES_PER_WEEK = 7 * CYCLES_PER_DAY;
-const CYCLES_PER_YEAR = 365 * CYCLES_PER_DAY;
+// INITIAL NETWORK PARAMETERS FOR LIBERDUS
+const INITIAL_PARAMETERS = {
+    title: 'Initial parameters',
+    description: 'These are the initial network parameters liberdus started with',
+    nodeRewardInterval: ONE_MINUTE * 2,
+    nodeRewardAmount: 10,
+    nodePenalty: 100,
+    transactionFee: 0.001,
+    stakeRequired: 500,
+    maintenanceInterval: ONE_MINUTE * 10,
+    maintenanceFee: 0.01,
+    proposalFee: 500,
+    devProposalFee: 20
+};
 let config = {};
 if (process.env.BASE_DIR) {
     if (fs.existsSync(path.join(process.env.BASE_DIR, 'config.json'))) {
@@ -144,13 +153,6 @@ Prop.set(config, 'logs', {
         }
     }
 });
-/**
- * @typedef {import('shardus-enterprise-server/src/shardus')} Shardus
- * @typedef {import('shardus-enterprise-server/src/shardus').App} App
- * @typedef {import('shardus-enterprise-server/src/shardus').IncomingTransaction} IncomingTransaction
- * @typedef {import('shardus-enterprise-server/src/shardus').IncomingTransactionResult} IncomingTransactionResult
- * @implements {App}
- */
 const dapp = shardus(config);
 // INITIAL PARAMETERS THE NODES SET WHEN THEY BECOME ACTIVE
 async function syncParameters(timestamp) {
@@ -174,28 +176,8 @@ async function syncParameters(timestamp) {
         ];
         const graceWindow = [votingWindow[1], votingWindow[1] + TIME_FOR_GRACE];
         const applyWindow = [graceWindow[1], graceWindow[1] + TIME_FOR_APPLY];
-        CURRENT = {
-            nodeRewardInterval: ONE_MINUTE * 2,
-            nodeRewardAmount: 10,
-            nodePenalty: 100,
-            transactionFee: 0.001,
-            stakeRequired: 500,
-            maintenanceInterval: ONE_MINUTE,
-            maintenanceFee: 0.01,
-            proposalFee: 500,
-            devProposalFee: 20
-        };
-        NEXT = {
-            nodeRewardInterval: ONE_MINUTE * 2,
-            nodeRewardAmount: 10,
-            nodePenalty: 100,
-            transactionFee: 0.001,
-            stakeRequired: 500,
-            maintenanceInterval: ONE_MINUTE,
-            maintenanceFee: 0.01,
-            proposalFee: 500,
-            devProposalFee: 20
-        };
+        CURRENT = INITIAL_PARAMETERS;
+        NEXT = INITIAL_PARAMETERS;
         WINDOWS = {
             proposalWindow,
             votingWindow,
@@ -268,6 +250,8 @@ function createAccount(accountId, timestamp) {
             friends: {},
             transactions: []
         },
+        emailHash: null,
+        verified: false,
         hash: '',
         lastMaintenance: timestamp,
         timestamp: 0
@@ -359,13 +343,13 @@ function createDevIssue(accountId) {
     return devIssue;
 }
 // CREATE A PROPOSAL ACCOUNT
-function createProposal(accountId) {
+function createProposal(accountId, parameters) {
     const proposal = {
         id: accountId,
         power: 0,
         totalVotes: 0,
         winner: false,
-        parameters: null,
+        parameters,
         number: null,
         hash: '',
         timestamp: 0
@@ -878,28 +862,8 @@ dapp.setup({
                 devGraceWindow[1],
                 devGraceWindow[1] + TIME_FOR_DEV_APPLY
             ];
-            CURRENT = {
-                nodeRewardInterval: ONE_MINUTE * 2,
-                nodeRewardAmount: 10,
-                nodePenalty: 100,
-                transactionFee: 0.01,
-                stakeRequired: 500,
-                maintenanceInterval: 600000,
-                maintenanceFee: 0,
-                proposalFee: 500,
-                devProposalFee: 100
-            };
-            NEXT = {
-                nodeRewardInterval: ONE_MINUTE * 2,
-                nodeRewardAmount: 10,
-                nodePenalty: 100,
-                transactionFee: 0.01,
-                stakeRequired: 500,
-                maintenanceInterval: 600000,
-                maintenanceFee: 0,
-                proposalFee: 500,
-                devProposalFee: 100
-            };
+            CURRENT = INITIAL_PARAMETERS;
+            NEXT = INITIAL_PARAMETERS;
             WINDOWS = {
                 proposalWindow,
                 votingWindow,
@@ -981,10 +945,6 @@ dapp.setup({
         const to = wrappedStates[tx.to] && wrappedStates[tx.to].data;
         switch (tx.type) {
             case 'snapshot': {
-                // if (tx.sign.owner !== ADMIN_ADDRESS) {
-                //   response.reason = 'not signed by ADMIN account'
-                //   return response
-                // }
                 if (tx.sign.owner !== tx.from) {
                     response.reason = 'not signed by from account';
                     return response;
@@ -1766,6 +1726,11 @@ dapp.setup({
                 }
                 response.result = 'pass';
                 response.reason = 'This transaction is valid!';
+                return response;
+            }
+            default: {
+                response.result = 'fail';
+                response.reason = 'Unknown transaction type';
                 return response;
             }
         }
@@ -2813,7 +2778,7 @@ dapp.setup({
                     accountCreated = true;
                 }
                 if (accountId === tx.proposal) {
-                    account = createProposal(accountId);
+                    account = createProposal(accountId, tx.parameters);
                     accounts[accountId] = account;
                     accountCreated = true;
                 }
@@ -2834,7 +2799,7 @@ dapp.setup({
             }
             if (tx.type === 'proposal') {
                 if (accountId === tx.proposal) {
-                    account = createProposal(accountId);
+                    account = createProposal(accountId, tx.parameters);
                     accounts[accountId] = account;
                     accountCreated = true;
                 }
