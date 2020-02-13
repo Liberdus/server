@@ -1,4 +1,12 @@
 {
-  "git.ignoreLimitWarning": true,
-  "standard.enable": false
+  "eslint.autoFixOnSave": true, // has been deprecated, use editor.codeActionsOnSave instead
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    { "language": "typescript", "autoFix": true },
+    { "language": "typescriptreact", "autoFix": true }
+  ],
 }

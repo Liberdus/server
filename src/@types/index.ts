@@ -1,5 +1,5 @@
 /**
- * ---------------------- ACCOUNT INTERFACES ---------------------- 
+ * ---------------------- ACCOUNT INTERFACES ----------------------
  */
 
 interface UserAccount {
@@ -7,13 +7,16 @@ interface UserAccount {
   data: {
     balance: number
     toll: number
-    chats: any
-    friends: any
-    transactions: any
+    chats: object
+    friends: object
+    stake?: number
+    transactions: object[]
   }
+  alias: string | null
   emailHash: string | null
   verified: string | boolean
   lastMaintenance: number
+  claimedSnapshot: boolean
   timestamp: number
   hash: string
 }
@@ -21,6 +24,7 @@ interface UserAccount {
 interface NodeAccount {
   id: string
   balance: number
+  nodeRewardTime: number
   hash: string
   timestamp: number
 }
@@ -43,23 +47,24 @@ interface AliasAccount {
 interface NetworkAccount {
   id: string
   current: NetworkParameters
-  next: {} | NetworkParameters
+  next: NetworkParameters
   windows: Windows
-  nextWindows: {} | Windows
+  nextWindows: Windows
   devWindows: DevWindows
-  nextDevWindows: {} | DevWindows
+  nextDevWindows: DevWindows
   issue: number
   devIssue: number
-  developerFund: Array<DeveloperPayment>
-  nextDeveloperFund: Array<DeveloperPayment>
+  developerFund: DeveloperPayment[]
+  nextDeveloperFund: DeveloperPayment[]
   hash: string
   timestamp: number
+  snapshot?: object
 }
 
 interface IssueAccount {
   id: string
   active: boolean | null
-  proposals: Array<string>
+  proposals: string[]
   proposalCount: number
   number: number | null
   winner: string | null
@@ -69,7 +74,7 @@ interface IssueAccount {
 
 interface DevIssueAccount {
   id: string
-  devProposals: Array<any>
+  devProposals: string[]
   devProposalCount: number
   winners: string[]
   active: boolean | null
@@ -105,8 +110,10 @@ interface DevProposalAccount {
   timestamp: number
 }
 
+type Account = NetworkAccount & IssueAccount & DevIssueAccount & UserAccount & AliasAccount & ProposalAccount & DevProposalAccount & NodeAccount & ChatAccount
+
 /**
- * ---------------------- NETWORK DATA INTERFACES ---------------------- 
+ * ---------------------- NETWORK DATA INTERFACES ----------------------
  */
 
 interface NetworkParameters {
@@ -146,7 +153,7 @@ interface DeveloperPayment {
 }
 
 /**
- * ---------------------- SDK DATA INTERFACES ---------------------- 
+ * ---------------------- SDK DATA INTERFACES ----------------------
  */
 
 interface TransactionKeys {
@@ -175,11 +182,13 @@ interface ApplyResponse {
 interface ValidationResponse {
   result: string
   reason: string
+  txnTimestamp?: number
 }
 
 interface WrappedAccount {
-  accountId: string,
-  stateId: string,
-  data: any,
+  accountId: string
+  stateId: string
+  data: Account
   timestamp: number
+  accountCreated?: boolean
 }
