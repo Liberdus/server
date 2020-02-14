@@ -1046,7 +1046,6 @@ vorpal.command('dev proposal', 'submits a development proposal').action(async fu
 
   const latestIssue = await getDevIssueCount()
   const count = await getDevProposalCount()
-  this.log(latestIssue, count)
   const tx = {
     type: 'dev_proposal',
     from: USER.address,
@@ -1348,6 +1347,17 @@ vorpal
       this.log(await takeSnapshot(args.host))
     } else {
       this.log(await takeSnapshot(HOST))
+    }
+    callback()
+  })
+
+vorpal
+  .command('debug exit <code> [host]', 'kills node running on [host] with exit code <code>. Use current host if no [host] provided')
+  .action(async function(args, callback) {
+    if (args.code === undefined) {
+      this.log('Must provide an exit code')
+    } else {
+      await axios.post(`http://${args.host || HOST}/debug/exit`, { code: args.code })
     }
     callback()
   })
