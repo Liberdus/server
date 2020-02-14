@@ -2,7 +2,7 @@
   "name": "liberdus",
   "version": "1.0.0",
   "description": "Liberdus is a payment network that allows users to govern their own money system in a democratic fashion",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "pm2": "cross-env PM2_HOME='./.pm2' pm2 --node-args='--experimental-modules'",
     "start": "node scripts/start.js && node dist/index.js",
