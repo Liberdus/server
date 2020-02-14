@@ -47,11 +47,11 @@ interface AliasAccount {
 interface NetworkAccount {
   id: string
   current: NetworkParameters
-  next: NetworkParameters
+  next: NetworkParameters | {}
   windows: Windows
-  nextWindows: Windows
+  nextWindows: Windows | {}
   devWindows: DevWindows
-  nextDevWindows: DevWindows
+  nextDevWindows: DevWindows | {}
   issue: number
   devIssue: number
   developerFund: DeveloperPayment[]

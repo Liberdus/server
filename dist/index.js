@@ -6,11 +6,11 @@ const axios_1 = require("axios");
 const Prop = require("dot-prop");
 const _ = require("lodash");
 const heapdump = require("heapdump");
-require("./@types");
 const decimal_js_1 = require("decimal.js");
 const shardus = require("shardus-global-server");
 const stringify = require("fast-stable-stringify");
 const crypto = require("shardus-crypto-utils");
+require("./@types");
 crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc');
 // THE ENTIRE APP STATE FOR THIS NODE
 let accounts = {};
@@ -25,11 +25,10 @@ let DEVELOPER_FUND, NEXT_DEVELOPER_FUND;
 // HELPFUL TIME CONSTANTS IN MILLISECONDS
 const ONE_SECOND = 1000;
 const ONE_MINUTE = 60 * ONE_SECOND;
-const ONE_HOUR = 60 * ONE_MINUTE;
+// const ONE_HOUR = 60 * ONE_MINUTE
 // const ONE_DAY = 24 * ONE_HOUR
 // const ONE_WEEK = 7 * ONE_DAY
 // const ONE_YEAR = 365 * ONE_DAY
-const a = 0;
 const TIME_FOR_PROPOSALS = ONE_MINUTE + ONE_SECOND * 30;
 const TIME_FOR_VOTING = ONE_MINUTE + ONE_SECOND * 30;
 const TIME_FOR_GRACE = ONE_MINUTE + ONE_SECOND * 30;
@@ -57,9 +56,7 @@ const INITIAL_PARAMETERS = {
 let config = {};
 if (process.env.BASE_DIR) {
     if (fs.existsSync(path.join(process.env.BASE_DIR, 'config.json'))) {
-        config = JSON.parse(
-        //@ts-ignore
-        fs.readFileSync(path.join(process.env.BASE_DIR, 'config.json')));
+        config = JSON.parse(fs.readFileSync(path.join(process.env.BASE_DIR, 'config.json')).toString());
     }
     config.server.baseDir = process.env.BASE_DIR;
 }
@@ -175,19 +172,14 @@ async function syncParameters(timestamp) {
         const graceWindow = [votingWindow[1], votingWindow[1] + TIME_FOR_GRACE];
         const applyWindow = [graceWindow[1], graceWindow[1] + TIME_FOR_APPLY];
         CURRENT = INITIAL_PARAMETERS;
-        NEXT = INITIAL_PARAMETERS;
+        NEXT = {};
         WINDOWS = {
             proposalWindow,
             votingWindow,
             graceWindow,
             applyWindow,
         };
-        NEXT_WINDOWS = {
-            proposalWindow,
-            votingWindow,
-            graceWindow,
-            applyWindow,
-        };
+        NEXT_WINDOWS = {};
         ISSUE = 1;
         IN_SYNC = false;
     }
@@ -216,12 +208,7 @@ async function syncDevParameters(timestamp) {
             devGraceWindow,
             devApplyWindow,
         };
-        NEXT_DEV_WINDOWS = {
-            devProposalWindow,
-            devVotingWindow,
-            devGraceWindow,
-            devApplyWindow,
-        };
+        NEXT_DEV_WINDOWS = {};
         DEVELOPER_FUND = [];
         NEXT_DEVELOPER_FUND = [];
         DEV_ISSUE = 1;
@@ -289,15 +276,15 @@ function createNetworkAccount(accountId) {
     const account = {
         id: accountId,
         current: CURRENT,
-        next: CURRENT,
+        next: NEXT,
         windows: WINDOWS,
-        nextWindows: WINDOWS,
+        nextWindows: NEXT_WINDOWS,
         devWindows: DEV_WINDOWS,
-        nextDevWindows: DEV_WINDOWS,
+        nextDevWindows: NEXT_DEV_WINDOWS,
         issue: ISSUE,
         devIssue: DEV_ISSUE,
-        developerFund: [],
-        nextDeveloperFund: [],
+        developerFund: DEVELOPER_FUND,
+        nextDeveloperFund: NEXT_DEVELOPER_FUND,
         hash: '',
         timestamp: 0,
     };
@@ -858,36 +845,35 @@ dapp.setup({
             const devGraceWindow = [devVotingWindow[1], devVotingWindow[1] + TIME_FOR_DEV_GRACE];
             const devApplyWindow = [devGraceWindow[1], devGraceWindow[1] + TIME_FOR_DEV_APPLY];
             CURRENT = INITIAL_PARAMETERS;
-            NEXT = INITIAL_PARAMETERS;
+            NEXT = {};
             WINDOWS = {
                 proposalWindow,
                 votingWindow,
                 graceWindow,
                 applyWindow,
             };
-            NEXT_WINDOWS = {
-                proposalWindow,
-                votingWindow,
-                graceWindow,
-                applyWindow,
-            };
+            NEXT_WINDOWS = {};
             DEV_WINDOWS = {
                 devProposalWindow,
                 devVotingWindow,
                 devGraceWindow,
                 devApplyWindow,
             };
-            NEXT_DEV_WINDOWS = {
-                devProposalWindow,
-                devVotingWindow,
-                devGraceWindow,
-                devApplyWindow,
-            };
+            NEXT_DEV_WINDOWS = {};
             DEVELOPER_FUND = [];
             NEXT_DEVELOPER_FUND = [];
             ISSUE = 1;
             DEV_ISSUE = 1;
             IN_SYNC = true;
+            const tx = {
+                type: 'init_network',
+                nodeId,
+                from: address,
+                network: networkAccount,
+                timestamp: Date.now(),
+            };
+            dapp.put(tx);
+            dapp.log('GENERATED_NETWORK: ', nodeId);
             dapp.set({
                 type: 'issue',
                 nodeId,
@@ -933,12 +919,17 @@ dapp.setup({
     },
     validateTransaction(tx, wrappedStates) {
         const response = {
-            result: 'fail',
+            success: false,
             reason: 'Transaction is not valid.',
         };
         const from = wrappedStates[tx.from] && wrappedStates[tx.from].data;
         const to = wrappedStates[tx.to] && wrappedStates[tx.to].data;
         switch (tx.type) {
+            case 'init_network': {
+                response.success = true;
+                response.reason = 'This transaction is valid';
+                return response;
+            }
             case 'snapshot': {
                 if (tx.sign.owner !== tx.from) {
                     response.reason = 'not signed by from account';
@@ -948,7 +939,7 @@ dapp.setup({
                     response.reason = 'incorrect signing';
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -970,12 +961,12 @@ dapp.setup({
                     response.reason = 'Hash of the email does not match the signed email hash';
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
             case 'gossip_email_hash': {
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1000,7 +991,7 @@ dapp.setup({
                     response.reason = 'Hash of code in tx does not match the hash of the verification code sent';
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1026,7 +1017,7 @@ dapp.setup({
                 //   response.reason = "From account doesn't have enough tokens to cover the transaction fee"
                 //   return response
                 // }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1039,7 +1030,7 @@ dapp.setup({
                     response.reason = 'create amount needs to be positive (1 or greater)';
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1064,7 +1055,7 @@ dapp.setup({
                     response.reason = "from account doesn't have sufficient balance to cover the transaction";
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1092,7 +1083,7 @@ dapp.setup({
                     response.reason = "from account doesn't have sufficient balance to cover the transaction";
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1125,7 +1116,7 @@ dapp.setup({
                         return response;
                     }
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1154,7 +1145,7 @@ dapp.setup({
                     response.reason = 'Toll must be greater than or equal to 1';
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1175,7 +1166,7 @@ dapp.setup({
                     response.reason = "From account doesn't have enough tokens to cover the transaction fee";
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1196,7 +1187,7 @@ dapp.setup({
                     response.reason = "From account doesn't have enough tokens to cover the transaction fee";
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1221,7 +1212,7 @@ dapp.setup({
                     response.reason = `Stake amount sent: ${tx.stake} is less than the cost required to operate a node: ${CURRENT.stakeRequired}`;
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1246,13 +1237,13 @@ dapp.setup({
                 //   return response
                 // }
                 if (!from) {
-                    response.result = 'pass';
+                    response.success = true;
                     response.reason = 'This transaction in valid';
                     return response;
                 }
                 if (from) {
                     if (!from.nodeRewardTime) {
-                        response.result = 'pass';
+                        response.success = true;
                         response.reason = 'This transaction in valid';
                         return response;
                     }
@@ -1261,7 +1252,7 @@ dapp.setup({
                         return response;
                     }
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1294,7 +1285,7 @@ dapp.setup({
                     response.reason = 'Your address did not hold any ULT on the Ethereum blockchain during the snapshot';
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1314,17 +1305,17 @@ dapp.setup({
                     response.reason = 'Issue is already active';
                     return response;
                 }
-                const networkIssueHash = crypto.hash(`issue-${to.issue}`);
+                const networkIssueHash = crypto.hash(`issue-${ISSUE}`);
                 if (tx.issue !== networkIssueHash) {
                     response.reason = `issue hash (${tx.issue}) does not match current network issue hash (${networkIssueHash})`;
                     return response;
                 }
-                const networkProposalHash = crypto.hash(`issue-${to.issue}-proposal-1`);
+                const networkProposalHash = crypto.hash(`issue-${ISSUE}-proposal-1`);
                 if (tx.proposal !== networkProposalHash) {
                     response.reason = `proposalHash (${tx.proposal}) does not match the current default network proposal (${networkProposalHash})`;
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1344,12 +1335,12 @@ dapp.setup({
                     response.reason = 'devIssue is already active';
                     return response;
                 }
-                const networkDevIssueHash = crypto.hash(`dev-issue-${to.devIssue}`);
+                const networkDevIssueHash = crypto.hash(`dev-issue-${DEV_ISSUE}`);
                 if (tx.devIssue !== networkDevIssueHash) {
                     response.reason = `devIssue hash (${tx.devIssue}) does not match current network devIssue (${networkDevIssueHash})`;
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1436,7 +1427,7 @@ dapp.setup({
                     response.reason = 'Max devProposalFee permitted is 1000000000 tokens';
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1466,11 +1457,11 @@ dapp.setup({
                     response.reason = 'From account has insufficient balance to submit a devProposal';
                     return response;
                 }
-                if (tx.payments.reduce((acc, payment) => (new decimal_js_1.default(payment.amount).plus(acc), 0)) > 1) {
+                if (tx.payments.reduce((acc, payment) => new decimal_js_1.default(payment.amount).plus(acc), 0) > 1) {
                     response.reason = 'tx payment amounts added up to more than 100%';
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1505,7 +1496,7 @@ dapp.setup({
                     response.reason = 'From account has insufficient balance to cover the amount sent in the transaction';
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1540,7 +1531,7 @@ dapp.setup({
                     response.reason = 'From account has insufficient balance to cover the amount sent in the transaction';
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1577,7 +1568,7 @@ dapp.setup({
                     response.reason = 'The number of proposals sent in with the transaction dont match the issues proposalCount';
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1614,7 +1605,7 @@ dapp.setup({
                     response.reason = 'The number of devProposals sent in with the transaction dont match the devIssue proposalCount';
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1642,7 +1633,7 @@ dapp.setup({
                     response.reason = 'To account must be the network account';
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1670,7 +1661,7 @@ dapp.setup({
                     response.reason = 'To account must be the network account';
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
@@ -1714,12 +1705,12 @@ dapp.setup({
                     response.reason = 'payment.amount is a string for some reason';
                     return response;
                 }
-                response.result = 'pass';
+                response.success = true;
                 response.reason = 'This transaction is valid!';
                 return response;
             }
             default: {
-                response.result = 'fail';
+                response.success = false;
                 response.reason = 'Unknown transaction type';
                 return response;
             }
@@ -1728,38 +1719,41 @@ dapp.setup({
     // THIS NEEDS TO BE FAST, BUT PROVIDES BETTER RESPONSE IF SOMETHING GOES WRONG
     validateTxnFields(tx) {
         // Validate tx fields here
-        let result = 'pass';
+        let success = true;
         let reason = 'This transaction is valid!';
         const txnTimestamp = tx.timestamp;
         if (typeof tx.type !== 'string') {
-            result = 'fail';
+            success = false;
             reason = '"type" must be a string.';
             throw new Error(reason);
         }
         if (typeof txnTimestamp !== 'number') {
-            result = 'fail';
+            success = false;
             reason = '"timestamp" must be a number.';
             throw new Error(reason);
         }
         switch (tx.type) {
+            case 'init_network': {
+                break;
+            }
             case 'snapshot': {
                 if (typeof tx.from !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"From" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.to !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"To" must be a string.';
                     throw new Error(reason);
                 }
                 if (tx.to !== networkAccount) {
-                    result = 'fail';
+                    success = false;
                     reason = '"To" must be ' + networkAccount;
                     throw new Error(reason);
                 }
                 if (typeof tx.snapshot !== 'object') {
-                    result = 'fail';
+                    success = false;
                     reason = '"Snapshot" must be an object.';
                     throw new Error(reason);
                 }
@@ -1767,40 +1761,40 @@ dapp.setup({
             }
             case 'email': {
                 if (typeof tx.signedTx !== 'object') {
-                    result = 'fail';
+                    success = false;
                     reason = '"signedTx" must be an object.';
                     throw new Error(reason);
                 }
                 const signedTx = tx.signedTx;
                 if (signedTx) {
                     if (typeof signedTx !== 'object') {
-                        result = 'fail';
+                        success = false;
                         reason = '"signedTx" must be a object.';
                         throw new Error(reason);
                     }
                     if (typeof signedTx.sign !== 'object') {
-                        result = 'fail';
+                        success = false;
                         reason = '"sign" property on signedTx must be an object.';
                         throw new Error(reason);
                     }
                     if (typeof signedTx.from !== 'string') {
-                        result = 'fail';
+                        success = false;
                         reason = '"From" must be a string.';
                         throw new Error(reason);
                     }
                     if (typeof signedTx.emailHash !== 'string') {
-                        result = 'fail';
+                        success = false;
                         reason = '"emailHash" must be a string.';
                         throw new Error(reason);
                     }
                 }
                 if (typeof tx.email !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"email" must be a string.';
                     throw new Error(reason);
                 }
                 if (tx.email.length > 30) {
-                    result = 'fail';
+                    success = false;
                     reason = '"Email" length must be less than 31 characters (30 max)';
                     throw new Error(reason);
                 }
@@ -1808,22 +1802,22 @@ dapp.setup({
             }
             case 'verify': {
                 if (typeof tx.from !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"From" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.code !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"Code" must be a string.';
                     throw new Error(reason);
                 }
                 if (tx.code.length !== 6) {
-                    result = 'fail';
+                    success = false;
                     reason = '"Code" length must be 6 digits.';
                     throw new Error(reason);
                 }
                 if (typeof parseInt(tx.code) !== 'number') {
-                    result = 'fail';
+                    success = false;
                     reason = '"Code" must be parseable to an integer.';
                     throw new Error(reason);
                 }
@@ -1831,22 +1825,22 @@ dapp.setup({
             }
             case 'register': {
                 if (typeof tx.aliasHash !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"aliasHash" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.from !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"From" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.alias !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"alias" must be a string.';
                     throw new Error(reason);
                 }
                 if (tx.alias.length >= 20) {
-                    result = 'fail';
+                    success = false;
                     reason = '"alias" must be less than 21 characters (20 max)';
                     throw new Error(reason);
                 }
@@ -1854,17 +1848,17 @@ dapp.setup({
             }
             case 'create': {
                 if (typeof tx.from !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"From" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.to !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"To" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.amount !== 'number') {
-                    result = 'fail';
+                    success = false;
                     reason = '"Amount" must be a number.';
                     throw new Error(reason);
                 }
@@ -1872,22 +1866,22 @@ dapp.setup({
             }
             case 'transfer': {
                 if (typeof tx.from !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"From" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.to !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"To" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.amount !== 'number') {
-                    result = 'fail';
+                    success = false;
                     reason = '"Amount" must be a number.';
                     throw new Error(reason);
                 }
                 if (tx.amount <= 0) {
-                    result = 'fail';
+                    success = false;
                     reason = '"Amount" must be a positive number.';
                     throw new Error(reason);
                 }
@@ -1895,22 +1889,22 @@ dapp.setup({
             }
             case 'distribute': {
                 if (typeof tx.from !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"From" must be a string.';
                     throw new Error(reason);
                 }
                 if (Array.isArray(tx.recipients) !== true) {
-                    result = 'fail';
+                    success = false;
                     reason = '"Recipients" must be an array.';
                     throw new Error(reason);
                 }
                 if (typeof tx.amount !== 'number') {
-                    result = 'fail';
+                    success = false;
                     reason = '"Amount" must be a number.';
                     throw new Error(reason);
                 }
                 if (tx.amount <= 0) {
-                    result = 'fail';
+                    success = false;
                     reason = '"Amount" must be a positive number.';
                     throw new Error(reason);
                 }
@@ -1918,22 +1912,22 @@ dapp.setup({
             }
             case 'message': {
                 if (typeof tx.from !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"From" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.to !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"To" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.message !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"Message" must be a string.';
                     throw new Error(reason);
                 }
                 if (tx.message.length > 5000) {
-                    result = 'fail';
+                    success = false;
                     reason = '"Message" length must be less than 5000 characters.';
                     throw new Error(reason);
                 }
@@ -1941,22 +1935,22 @@ dapp.setup({
             }
             case 'toll': {
                 if (typeof tx.from !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"From" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.toll !== 'number') {
-                    result = 'fail';
+                    success = false;
                     reason = '"Toll" must be a number.';
                     throw new Error(reason);
                 }
                 if (tx.toll < 1) {
-                    result = 'fail';
+                    success = false;
                     reason = 'Minimum "toll" allowed is 1 token';
                     throw new Error(reason);
                 }
                 if (tx.toll > 1000000) {
-                    result = 'fail';
+                    success = false;
                     reason = 'Maximum toll allowed is 1,000,000 tokens.';
                     throw new Error(reason);
                 }
@@ -1964,17 +1958,17 @@ dapp.setup({
             }
             case 'friend': {
                 if (typeof tx.from !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"From" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.to !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"To" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.alias !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"Message" must be a string.';
                     throw new Error(reason);
                 }
@@ -1982,12 +1976,12 @@ dapp.setup({
             }
             case 'remove_friend': {
                 if (typeof tx.from !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"From" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.to !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"To" must be a string.';
                     throw new Error(reason);
                 }
@@ -1995,12 +1989,12 @@ dapp.setup({
             }
             case 'stake': {
                 if (typeof tx.from !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"From" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.stake !== 'number') {
-                    result = 'fail';
+                    success = false;
                     reason = '"Stake" must be a number.';
                     throw new Error(reason);
                 }
@@ -2008,12 +2002,12 @@ dapp.setup({
             }
             case 'snapshot_claim': {
                 if (typeof tx.from !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"From" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.to !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"To" must be a string.';
                     throw new Error(reason);
                 }
@@ -2021,27 +2015,27 @@ dapp.setup({
             }
             case 'proposal': {
                 if (typeof tx.from !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"From" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.proposal !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"Proposal" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.issue !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"Issue" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.parameters !== 'object') {
-                    result = 'fail';
+                    success = false;
                     reason = '"Parameters" must be an object.';
                     throw new Error(reason);
                 }
                 if (tx.timestamp < WINDOWS.proposalWindow[0] || tx.timestamp > WINDOWS.proposalWindow[1]) {
-                    result = 'fail';
+                    success = false;
                     reason = '"Network is not currently accepting issues or proposals"';
                     throw new Error(reason);
                 }
@@ -2049,62 +2043,62 @@ dapp.setup({
             }
             case 'dev_proposal': {
                 if (typeof tx.devIssue !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"devIssue" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.devProposal !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"devProposal" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.totalAmount !== 'number') {
-                    result = 'fail';
+                    success = false;
                     reason = '"totalAmount" must be a number.';
                     throw new Error(reason);
                 }
                 if (tx.totalAmount < 1) {
-                    result = 'fail';
+                    success = false;
                     reason = 'Minimum "totalAmount" allowed is 1 token';
                     throw new Error(reason);
                 }
                 if (tx.totalAmount > 100000) {
-                    result = 'fail';
+                    success = false;
                     reason = 'Maximum "totalAmount" allowed is 100,000 tokens';
                     throw new Error(reason);
                 }
                 if (Array.isArray(tx.payments) !== true) {
-                    result = 'fail';
+                    success = false;
                     reason = '"payments" must be an array.';
                     throw new Error(reason);
                 }
                 if (typeof tx.description !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"description" must be a string.';
                     throw new Error(reason);
                 }
                 if (tx.description.length < 1) {
-                    result = 'fail';
+                    success = false;
                     reason = 'Minimum "description" character count is 1';
                     throw new Error(reason);
                 }
                 if (tx.description.length > 1000) {
-                    result = 'fail';
+                    success = false;
                     reason = 'Maximum "description" character count is 1000';
                     throw new Error(reason);
                 }
                 if (typeof tx.payAddress !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"payAddress" must be a string.';
                     throw new Error(reason);
                 }
                 if (tx.payAddress.length !== 64) {
-                    result = 'fail';
+                    success = false;
                     reason = '"payAddress" length must be 64 characters (A valid public address)';
                     throw new Error(reason);
                 }
                 if (tx.timestamp < DEV_WINDOWS.devProposalWindow[0] || tx.timestamp > DEV_WINDOWS.devProposalWindow[1]) {
-                    result = 'fail';
+                    success = false;
                     reason = 'Network is not accepting dev proposals';
                     throw new Error(reason);
                 }
@@ -2112,32 +2106,32 @@ dapp.setup({
             }
             case 'vote': {
                 if (typeof tx.from !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"From" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.amount !== 'number') {
-                    result = 'fail';
+                    success = false;
                     reason = '"amount" must be a number.';
                     throw new Error(reason);
                 }
                 if (tx.amount < 1) {
-                    result = 'fail';
+                    success = false;
                     reason = 'Minimum voting "amount" allowed is 1 token';
                     throw new Error(reason);
                 }
                 if (typeof tx.issue !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"issue" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.proposal !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"Proposal" must be a string.';
                     throw new Error(reason);
                 }
                 if (tx.timestamp < WINDOWS.votingWindow[0] || tx.timestamp > WINDOWS.votingWindow[1]) {
-                    result = 'fail';
+                    success = false;
                     reason = 'Network is not currently accepting votes';
                     throw new Error(reason);
                 }
@@ -2145,37 +2139,37 @@ dapp.setup({
             }
             case 'dev_vote': {
                 if (typeof tx.from !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"From" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.amount !== 'number') {
-                    result = 'fail';
+                    success = false;
                     reason = '"amount" must be a number.';
                     throw new Error(reason);
                 }
                 if (tx.amount < 1) {
-                    result = 'fail';
+                    success = false;
                     reason = 'Minimum voting "amount" allowed is 1 token';
                     throw new Error(reason);
                 }
                 if (typeof tx.approve !== 'boolean') {
-                    result = 'fail';
+                    success = false;
                     reason = '"approve" must be a boolean.';
                     throw new Error(reason);
                 }
                 if (typeof tx.devProposal !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"devProposal" must be a string.';
                     throw new Error(reason);
                 }
                 if (typeof tx.devIssue !== 'string') {
-                    result = 'fail';
+                    success = false;
                     reason = '"devIssue" must be a string.';
                     throw new Error(reason);
                 }
                 if (tx.timestamp < DEV_WINDOWS.devVotingWindow[0] || tx.timestamp > DEV_WINDOWS.devVotingWindow[1]) {
-                    result = 'fail';
+                    success = false;
                     reason = 'Network is not currently accepting dev votes';
                     throw new Error(reason);
                 }
@@ -2183,19 +2177,19 @@ dapp.setup({
             }
             case 'developer_payment': {
                 if (typeof tx.payment !== 'object') {
-                    result = 'fail';
+                    success = false;
                     reason = '"Payment" must be an object.';
                     throw new Error(reason);
                 }
                 if (typeof tx.payment.amount !== 'number') {
-                    result = 'fail';
+                    success = false;
                     reason = '"payment.amount" must be a number.';
                     throw new Error(reason);
                 }
             }
         }
         return {
-            result,
+            success,
             reason,
             txnTimestamp,
         };
@@ -2204,8 +2198,8 @@ dapp.setup({
         const from = wrappedStates[tx.from] && wrappedStates[tx.from].data;
         const to = wrappedStates[tx.to] && wrappedStates[tx.to].data;
         // Validate the tx
-        const { result, reason } = this.validateTransaction(tx, wrappedStates);
-        if (result !== 'pass') {
+        const { success, reason } = this.validateTransaction(tx, wrappedStates);
+        if (success !== true) {
             throw new Error(`invalid transaction, reason: ${reason}. tx: ${stringify(tx)}`);
         }
         // Create an applyResponse which will be used to tell Shardus that the tx has been applied
@@ -2219,6 +2213,13 @@ dapp.setup({
         const applyResponse = dapp.createApplyResponse(txId, tx.timestamp);
         // Apply the tx
         switch (tx.type) {
+            case 'init_network': {
+                const network = wrappedStates[tx.network] && wrappedStates[tx.network].data;
+                network.timestamp = tx.timestamp;
+                from.timestamp = tx.timestamp;
+                dapp.log('Applied init_network transaction', network);
+                break;
+            }
             case 'snapshot': {
                 to.snapshot = tx.snapshot;
                 from.timestamp = tx.timestamp;
@@ -2390,11 +2391,11 @@ dapp.setup({
             case 'issue': {
                 const issue = wrappedStates[tx.issue].data;
                 const proposal = wrappedStates[tx.proposal].data;
-                proposal.parameters = to.current;
+                proposal.parameters = Object.assign({}, CURRENT);
                 proposal.parameters.title = 'Default parameters';
                 proposal.parameters.description = 'Keep the current network parameters as they are';
                 proposal.number = 1;
-                issue.number = to.issue;
+                issue.number = ISSUE;
                 issue.active = true;
                 issue.proposals.push(proposal.id);
                 issue.proposalCount++;
@@ -2406,7 +2407,7 @@ dapp.setup({
             }
             case 'dev_issue': {
                 const devIssue = wrappedStates[tx.devIssue].data;
-                devIssue.number = to.devIssue;
+                devIssue.number = DEV_ISSUE;
                 devIssue.active = true;
                 devIssue.timestamp = tx.timestamp;
                 from.timestamp = tx.timestamp;
@@ -2503,10 +2504,18 @@ dapp.setup({
                 }
                 winner.winner = true; // CHICKEN DINNER
                 to.next = winner.parameters;
-                to.nextWindows.proposalWindow = [to.windows.applyWindow[1], to.windows.applyWindow[1] + TIME_FOR_PROPOSALS];
-                to.nextWindows.votingWindow = [to.nextWindows.proposalWindow[1], to.nextWindows.proposalWindow[1] + TIME_FOR_VOTING];
-                to.nextWindows.graceWindow = [to.nextWindows.votingWindow[1], to.nextWindows.votingWindow[1] + TIME_FOR_GRACE];
-                to.nextWindows.applyWindow = [to.nextWindows.graceWindow[1], to.nextWindows.graceWindow[1] + TIME_FOR_APPLY];
+                to.nextWindows = {
+                    proposalWindow: [to.windows.applyWindow[1], to.windows.applyWindow[1] + TIME_FOR_PROPOSALS],
+                    votingWindow: [to.windows.applyWindow[1] + TIME_FOR_PROPOSALS, to.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING],
+                    graceWindow: [
+                        to.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING,
+                        to.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE,
+                    ],
+                    applyWindow: [
+                        to.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE,
+                        to.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE + TIME_FOR_APPLY,
+                    ],
+                };
                 issue.winner = winner.id;
                 from.timestamp = tx.timestamp;
                 to.timestamp = tx.timestamp;
@@ -2540,10 +2549,21 @@ dapp.setup({
                         devProposal.timestamp = tx.timestamp;
                     }
                 }
-                to.nextDevWindows.devProposalWindow = [to.devWindows.devApplyWindow[1], to.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS];
-                to.nextDevWindows.devVotingWindow = [to.nextDevWindows.devProposalWindow[1], to.nextDevWindows.devProposalWindow[1] + TIME_FOR_DEV_VOTING];
-                to.nextDevWindows.devGraceWindow = [to.nextDevWindows.devVotingWindow[1], to.nextDevWindows.devVotingWindow[1] + TIME_FOR_DEV_GRACE];
-                to.nextDevWindows.devApplyWindow = [to.nextDevWindows.devGraceWindow[1], to.nextDevWindows.devGraceWindow[1] + TIME_FOR_DEV_APPLY];
+                to.nextDevWindows = {
+                    devProposalWindow: [to.devWindows.devApplyWindow[1], to.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS],
+                    devVotingWindow: [
+                        to.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS,
+                        to.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING,
+                    ],
+                    devGraceWindow: [
+                        to.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING,
+                        to.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING + TIME_FOR_DEV_GRACE,
+                    ],
+                    devApplyWindow: [
+                        to.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING + TIME_FOR_DEV_GRACE,
+                        to.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING + TIME_FOR_DEV_GRACE + TIME_FOR_DEV_APPLY,
+                    ],
+                };
                 from.timestamp = tx.timestamp;
                 to.timestamp = tx.timestamp;
                 devIssue.timestamp = tx.timestamp;
@@ -2554,6 +2574,8 @@ dapp.setup({
                 const issue = wrappedStates[tx.issue].data;
                 to.current = to.next;
                 to.windows = to.nextWindows;
+                to.next = {};
+                to.nextWindows = {};
                 to.issue++;
                 issue.active = false;
                 from.timestamp = tx.timestamp;
@@ -2565,6 +2587,7 @@ dapp.setup({
             case 'apply_dev_parameters': {
                 const devIssue = wrappedStates[tx.devIssue].data;
                 to.devWindows = to.nextDevWindows;
+                to.nextDevWindows = {};
                 to.developerFund = [...to.developerFund, ...to.nextDeveloperFund].sort((a, b) => a.timestamp - b.timestamp);
                 to.nextDeveloperFund = [];
                 to.devIssue++;
@@ -2597,6 +2620,10 @@ dapp.setup({
             timestamp: tx.timestamp,
         };
         switch (tx.type) {
+            case 'init_network':
+                result.sourceKeys = [tx.from];
+                result.targetKeys = [tx.network];
+                break;
             case 'snapshot':
                 result.sourceKeys = [tx.from];
                 result.targetKeys = [tx.to];
@@ -2656,11 +2683,11 @@ dapp.setup({
                 break;
             case 'issue':
                 result.sourceKeys = [tx.from];
-                result.targetKeys = [tx.to, tx.issue, tx.proposal];
+                result.targetKeys = [tx.issue, tx.proposal];
                 break;
             case 'dev_issue':
                 result.sourceKeys = [tx.from];
-                result.targetKeys = [tx.to, tx.devIssue];
+                result.targetKeys = [tx.devIssue];
                 break;
             case 'proposal':
                 result.sourceKeys = [tx.from];
@@ -2729,54 +2756,54 @@ dapp.setup({
                 accounts[accountId] = account;
                 accountCreated = true;
             }
-            if (tx.type === 'issue') {
+            else if (tx.type === 'issue') {
                 if (accountId === tx.issue) {
                     account = createIssue(accountId);
                     accounts[accountId] = account;
                     accountCreated = true;
                 }
-                if (accountId === tx.proposal) {
+                else if (accountId === tx.proposal) {
                     account = createProposal(accountId, tx.parameters);
                     accounts[accountId] = account;
                     accountCreated = true;
                 }
             }
-            if (tx.type === 'dev_issue') {
+            else if (tx.type === 'dev_issue') {
                 if (accountId === tx.devIssue) {
                     account = createDevIssue(accountId);
                     accounts[accountId] = account;
                     accountCreated = true;
                 }
             }
-            if (tx.type === 'dev_proposal') {
+            else if (tx.type === 'dev_proposal') {
                 if (accountId === tx.devProposal) {
                     account = createDevProposal(accountId);
                     accounts[accountId] = account;
                     accountCreated = true;
                 }
             }
-            if (tx.type === 'proposal') {
+            else if (tx.type === 'proposal') {
                 if (accountId === tx.proposal) {
                     account = createProposal(accountId, tx.parameters);
                     accounts[accountId] = account;
                     accountCreated = true;
                 }
             }
-            if (tx.type === 'register') {
+            else if (tx.type === 'register') {
                 if (accountId === tx.aliasHash) {
                     account = createAlias(accountId);
                     accounts[accountId] = account;
                     accountCreated = true;
                 }
             }
-            if (tx.type === 'message') {
+            else if (tx.type === 'message') {
                 if (accountId === tx.chatId) {
                     account = createChat(accountId);
                     accounts[accountId] = account;
                     accountCreated = true;
                 }
             }
-            if (tx.type === 'node_reward') {
+            else if (tx.type === 'node_reward') {
                 if (accountId === tx.from && accountId === tx.to) {
                     account = createNode(accountId);
                     accounts[accountId] = account;
@@ -2890,7 +2917,7 @@ dapp.setup({
                 results.push(wrapped);
             }
         }
-        results.sort((a, b) => parseInt(a.accountId, 16) - parseInt(b.accountId, 16));
+        results.sort((a, b) => a.accountId < b.accountId);
         return results;
     },
     calculateAccountHash(account) {
@@ -2937,7 +2964,6 @@ async function generateIssue(address, nodeId) {
         type: 'issue',
         nodeId,
         from: address,
-        to: networkAccount,
         issue: crypto.hash(`issue-${ISSUE}`),
         proposal: crypto.hash(`issue-${ISSUE}-proposal-1`),
         timestamp: Date.now(),
@@ -2951,7 +2977,6 @@ async function generateDevIssue(address, nodeId) {
         type: 'dev_issue',
         nodeId,
         from: address,
-        to: networkAccount,
         devIssue: crypto.hash(`dev-issue-${DEV_ISSUE}`),
         timestamp: Date.now(),
     };
@@ -2960,9 +2985,9 @@ async function generateDevIssue(address, nodeId) {
 }
 // TALLY TRANSACTION FUNCTION
 async function tallyVotes(address, nodeId) {
-    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${ISSUE}`));
-    const issue = account.data;
     try {
+        const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${ISSUE}`));
+        const issue = account.data;
         const tx = {
             type: 'tally',
             nodeId,
@@ -3054,8 +3079,8 @@ function releaseDeveloperFunds(payment, address, nodeId) {
     let devIssueGenerated = false;
     let devTallyGenerated = false;
     let devApplyGenerated = false;
-    let syncedNextParams = [];
-    let syncedNextDevParams = [];
+    let syncedNextParams = 0;
+    let syncedNextDevParams = 0;
     let nodeId;
     let nodeAddress;
     let cycleStartTimestamp;
@@ -3100,10 +3125,10 @@ function releaseDeveloperFunds(payment, address, nodeId) {
             return setTimeout(networkMaintenance, 1000);
         }
         // THIS IS FOR NODE_REWARD
-        if (cycleStartTimestamp - lastReward > CURRENT.nodeRewardInterval) {
-            nodeReward(nodeAddress, nodeId);
-            lastReward = cycleStartTimestamp;
-        }
+        // if (cycleStartTimestamp - lastReward > CURRENT.nodeRewardInterval) {
+        //   nodeReward(nodeAddress, nodeId)
+        //   lastReward = cycleStartTimestamp
+        // }
         // AUTOMATIC (ISSUE | TALLY | APPLY_PARAMETERS) TRANSACTION GENERATION
         // IS THE NETWORK READY TO GENERATE A NEW ISSUE?
         dapp.log('ISSUE_DEBUG ---------- ', 'ISSUE_GENERATED: ', issueGenerated, 'LUCKY_NODE: ', luckyNode, 'NODE_ID: ', nodeId, 'CYCLE_START_TIME: ', cycleStartTimestamp, 'ISSUE_WINDOW_START_TIME: ', WINDOWS.proposalWindow[0], 'ISSUE_WINDOW_END_TIME: ', WINDOWS.proposalWindow[1], 'WITHIN_ISSUE_WINDOW: ', cycleStartTimestamp >= WINDOWS.proposalWindow[0] && cycleStartTimestamp <= WINDOWS.proposalWindow[1]);
@@ -3119,16 +3144,16 @@ function releaseDeveloperFunds(payment, address, nodeId) {
         dapp.log('TALLY_DEBUG ---------- ', 'TALLY_GENERATED: ', tallyGenerated, 'LUCKY_NODE: ', luckyNode, 'NODE_ID: ', nodeId, 'CYCLE_START_TIME: ', cycleStartTimestamp, 'TALLY_WINDOW_START_TIME: ', WINDOWS.graceWindow[0], 'TALLY_WINDOW_END_TIME: ', WINDOWS.graceWindow[1], 'WITHIN_TALLY_WINDOW: ', cycleStartTimestamp >= WINDOWS.graceWindow[0] && cycleStartTimestamp <= WINDOWS.graceWindow[1]);
         // IF THE WINNER FOR THE PROPOSAL HASN'T BEEN DETERMINED YET AND ITS PAST THE VOTING_WINDOW
         if (cycleStartTimestamp >= WINDOWS.graceWindow[0] && cycleStartTimestamp <= WINDOWS.graceWindow[1]) {
-            syncedNextParams.push(1);
-            if (syncedNextParams.length === 3) {
+            if (syncedNextParams > 2) {
                 await syncParameters(cycleStartTimestamp);
-                syncedNextParams = [];
+                syncedNextParams = 0;
             }
             if (!tallyGenerated) {
                 if (nodeId === luckyNode) {
                     await tallyVotes(nodeAddress, nodeId);
                 }
                 tallyGenerated = true;
+                syncedNextParams++;
             }
         }
         dapp.log('APPLY_DEBUG ---------- ', 'APPLY_GENERATED: ', applyGenerated, 'LUCKY_NODE: ', luckyNode, 'NODE_ID: ', nodeId, 'CYCLE_START_TIME: ', cycleStartTimestamp, 'APPLY_WINDOW_START_TIME: ', WINDOWS.applyWindow[0], 'APPLY_WINDOW_END_TIME: ', WINDOWS.applyWindow[1], 'WITHIN_APPLY_WINDOW: ', cycleStartTimestamp >= WINDOWS.applyWindow[0] && cycleStartTimestamp <= WINDOWS.applyWindow[1]);
@@ -3139,9 +3164,9 @@ function releaseDeveloperFunds(payment, address, nodeId) {
                     await applyParameters(nodeAddress, nodeId);
                 }
                 WINDOWS = NEXT_WINDOWS;
-                // NEXT_WINDOWS = {}
                 CURRENT = NEXT;
-                // NEXT = {}
+                NEXT_WINDOWS = {};
+                NEXT = {};
                 ISSUE++;
                 applyGenerated = true;
                 issueGenerated = false;
@@ -3163,16 +3188,16 @@ function releaseDeveloperFunds(payment, address, nodeId) {
         dapp.log('DEV_TALLY_DEBUG ---------- ', 'DEV_TALLY_GENERATED: ', devTallyGenerated, 'LUCKY_NODE: ', luckyNode, 'NODE_ID: ', nodeId, 'CYCLE_START_TIME: ', cycleStartTimestamp, 'DEV_TALLY_WINDOW_START_TIME: ', DEV_WINDOWS.devGraceWindow[0], 'DEV_TALLY_WINDOW_END_TIME: ', DEV_WINDOWS.devGraceWindow[1], 'WITHIN_DEV_TALLY_WINDOW: ', cycleStartTimestamp >= DEV_WINDOWS.devGraceWindow[0] && cycleStartTimestamp <= DEV_WINDOWS.devGraceWindow[1]);
         // IF THE WINNERS FOR THE DEV PROPOSALS HAVEN'T BEEN DETERMINED YET AND ITS PAST THE DEV_VOTING_WINDOW
         if (cycleStartTimestamp >= DEV_WINDOWS.devGraceWindow[0] && cycleStartTimestamp <= DEV_WINDOWS.devGraceWindow[1]) {
-            syncedNextDevParams.push(1);
-            if (syncedNextDevParams.length === 3) {
+            if (syncedNextDevParams > 2) {
                 await syncDevParameters(cycleStartTimestamp);
-                syncedNextDevParams = [];
+                syncedNextDevParams = 0;
             }
             if (!devTallyGenerated) {
                 if (nodeId === luckyNode) {
                     await tallyDevVotes(nodeAddress, nodeId);
                 }
                 devTallyGenerated = true;
+                syncedNextDevParams++;
             }
         }
         dapp.log('DEV_APPLY_DEBUG ---------- ', 'DEV_APPLY_GENERATED: ', devApplyGenerated, 'LUCKY_NODE: ', luckyNode, 'NODE_ID: ', nodeId, 'CYCLE_START_TIME: ', cycleStartTimestamp, 'DEV_APPLY_WINDOW_START_TIME: ', DEV_WINDOWS.devApplyWindow[0], 'DEV_APPLY_WINDOW_END_TIME: ', DEV_WINDOWS.devApplyWindow[1], 'WITHIN_DEV_APPLY_WINDOW: ', cycleStartTimestamp >= DEV_WINDOWS.devApplyWindow[0] && cycleStartTimestamp <= DEV_WINDOWS.devApplyWindow[1]);
@@ -3183,8 +3208,8 @@ function releaseDeveloperFunds(payment, address, nodeId) {
                     await applyDevParameters(nodeAddress, nodeId);
                 }
                 DEV_WINDOWS = NEXT_DEV_WINDOWS;
-                // NEXT_DEV_WINDOWS = {}
                 DEVELOPER_FUND = [...DEVELOPER_FUND, ...NEXT_DEVELOPER_FUND];
+                NEXT_DEV_WINDOWS = {};
                 NEXT_DEVELOPER_FUND = [];
                 DEV_ISSUE++;
                 devApplyGenerated = true;

@@ -1046,6 +1046,7 @@ vorpal.command('dev proposal', 'submits a development proposal').action(async fu
 
   const latestIssue = await getDevIssueCount()
   const count = await getDevProposalCount()
+  this.log(latestIssue, count)
   const tx = {
     type: 'dev_proposal',
     from: USER.address,
