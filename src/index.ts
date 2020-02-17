@@ -926,6 +926,14 @@ dapp.registerExternalGet('debug/dump', (req, res): void => {
   })
 })
 
+dapp.registerExternalPost('debug/exit', req => {
+  try {
+    process.exit(req.body.code)
+  } catch (err) {
+    console.log(err)
+  }
+})
+
 // HELPER METHOD TO WAIT
 async function _sleep(ms = 0): Promise<NodeJS.Timeout> {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -3322,10 +3330,10 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     }
 
     // THIS IS FOR NODE_REWARD
-    // if (cycleStartTimestamp - lastReward > CURRENT.nodeRewardInterval) {
-    //   nodeReward(nodeAddress, nodeId)
-    //   lastReward = cycleStartTimestamp
-    // }
+    if (cycleStartTimestamp - lastReward > CURRENT.nodeRewardInterval) {
+      nodeReward(nodeAddress, nodeId)
+      lastReward = cycleStartTimestamp
+    }
 
     // AUTOMATIC (ISSUE | TALLY | APPLY_PARAMETERS) TRANSACTION GENERATION
     // IS THE NETWORK READY TO GENERATE A NEW ISSUE?
