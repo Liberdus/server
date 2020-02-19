@@ -115,13 +115,13 @@ Prop.set(config, 'logs', {
     appenders: {
       app: {
         type: 'file',
-        maxLogSize: 10000000,
+        maxLogSize: 100000000,
         backups: 10,
       },
       errorFile: {
         type: 'file',
-        maxLogSize: 10000000,
-        backups: 2,
+        maxLogSize: 100000000,
+        backups: 10,
       },
       errors: {
         type: 'logLevelFilter',
@@ -130,28 +130,28 @@ Prop.set(config, 'logs', {
       },
       main: {
         type: 'file',
-        maxLogSize: 10000000,
-        backups: 2,
+        maxLogSize: 100000000,
+        backups: 10,
       },
       fatal: {
         type: 'file',
-        maxLogSize: 10000000,
-        backups: 2,
+        maxLogSize: 100000000,
+        backups: 10,
       },
       net: {
         type: 'file',
-        maxLogSize: 10000000,
-        backups: 2,
+        maxLogSize: 100000000,
+        backups: 10,
       },
       playback: {
         type: 'file',
-        maxLogSize: 10000000,
-        backups: 2,
+        maxLogSize: 100000000,
+        backups: 10,
       },
       shardDump: {
         type: 'file',
-        maxLogSize: 10000000,
-        backups: 2,
+        maxLogSize: 100000000,
+        backups: 10,
       },
     },
     categories: {
@@ -947,7 +947,8 @@ function maintenanceAmount(timestamp: number, account: UserAccount): number {
     amount = account.data.balance * (CURRENT.maintenanceFee * Math.floor((timestamp - account.lastMaintenance) / CURRENT.maintenanceInterval))
     account.lastMaintenance = timestamp
   }
-  return amount
+  if (typeof amount === 'number') return amount
+  else return 0
 }
 
 // SDK SETUP FUNCTIONS
@@ -1375,6 +1376,10 @@ dapp.setup({
             response.reason = 'Too early for this node to get paid'
             return response
           }
+        }
+        if (tx.amount !== CURRENT.nodeRewardAmount) {
+          response.reason = "Amount sent in the transaction doesn't match the current network nodeRewardAmount parameter"
+          return response
         }
         response.success = true
         response.reason = 'This transaction is valid!'
@@ -2044,6 +2049,29 @@ dapp.setup({
         }
         break
       }
+      case 'node_reward': {
+        if (typeof tx.amount !== 'number') {
+          success = false
+          reason = '"amount" must be a number'
+          throw new Error(reason)
+        }
+        if (typeof tx.from !== 'string') {
+          success = false
+          reason = '"From" must be a string'
+          throw new Error(reason)
+        }
+        if (typeof tx.nodeId !== 'string') {
+          success = false
+          reason = '"nodeId" must be a string'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          success = false
+          reason = '"To" must be a string'
+          throw new Error(reason)
+        }
+        break
+      }
       case 'message': {
         if (typeof tx.from !== 'string') {
           success = false
@@ -2513,9 +2541,9 @@ dapp.setup({
         break
       }
       case 'node_reward': {
-        to.balance += CURRENT.nodeRewardAmount
+        to.balance += tx.amount
         from.nodeRewardTime = tx.timestamp
-        from.timestamp = tx.timestamp
+        // from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
         dapp.log('Applied node_reward tx', from, to)
         break
@@ -3084,7 +3112,7 @@ dapp.setup({
         results.push(wrapped)
       }
     }
-    results.sort((a, b) => a.accountId < b.accountId)
+    results.sort((a, b) => parseInt(a.accountId, 16) - parseInt(b.accountId, 16))
     return results
   },
   calculateAccountHash(account): string {
@@ -3121,6 +3149,7 @@ function nodeReward(address: string, nodeId: string): void {
   const tx = {
     type: 'node_reward',
     timestamp: Date.now(),
+    amount: CURRENT.nodeRewardAmount,
     nodeId: nodeId,
     from: address,
     to: payAddress,

@@ -1,12 +1,17 @@
-const crypto = require('shardus-crypto-utils')
-crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
+const fs = require('fs')
 
-for (let i = 1; i < 10; i++) {
-  for (let j = 1; j < 10; j++) {
-    if (crypto.hash(`dev-issue-${i}-dev-proposal-${j}`) === '151c92a43d584c267d10a86164f2189155c42af491d0c777281795d3977ec2d0') {
-      console.log(i, j)
-    }
-  }
+function parseLine(line) {
+  const [dateLevelType, timestamp, from, self, to, reqType, reqName, key, payload] = line.split('\t')
+  const [date, logLevel, logType] = dateLevelType.split(' ')
+  return { date, logLevel, logType, timestamp, from, self, to, reqType, reqName, key, payload }
 }
 
-// 151c92a43d584c267d10a86164f2189155c42af491d0c777281795d3977ec2d0
+function parseFile(filename) {
+  fs.readFileSync(filename, 'utf-8')
+    .split('\n')
+    .forEach(line => {
+      console.log(parseLine(line))
+    })
+}
+
+parseFile('instances/shardus-instance-9001/logs/playback.log')

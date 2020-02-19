@@ -329,9 +329,7 @@ async function getAccountData(id) {
 async function getToll(friendId, yourId) {
   try {
     const res = await axios.get(`http://${HOST}/account/${friendId}/${yourId}/toll`)
-    if (res.data.toll) {
-      return { toll: res.data.toll }
-    }
+    return { toll: res.data.toll }
   } catch (error) {
     return { error: error }
   }

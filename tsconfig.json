@@ -4,6 +4,7 @@
     "rootDir": "./src",
     "outDir": "dist",
     "allowJs": true,
+    "skipLibCheck": true,
     "strict": false,
     "noEmitOnError": false,
     "typeRoots": [

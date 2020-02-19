@@ -36,7 +36,7 @@
     "nodemailer": "^6.3.1",
     "nodemailer-smtp-transport": "^2.7.4",
     "shardus-crypto-utils": "git+https://gitlab.com/shardus/shardus-crypto-utils.git",
-    "shardus-global-server": "git+https://gitlab.com/shardus/global/shardus-global-server.git#ts-kyle",
+    "shardus-global-server": "git+https://gitlab.com/shardus/global/shardus-global-server.git#hardening-p2p-types",
     "sqlite3": "^4.1.1",
     "streamroller": "^2.2.3",
     "vorpal": "^1.12.0"
@@ -49,7 +49,7 @@
     "@types/node": "^10.0.3",
     "@typescript-eslint/eslint-plugin": "^2.19.2",
     "@typescript-eslint/parser": "^2.19.2",
-    "archive-server": "git+https://gitlab.com/shardus/archive/archive-server.git",
+    "archive-server": "git+https://gitlab.com/shardus/archive/archive-server.git#hardening-p2p-types",
     "cross-env": "^5.2.0",
     "eslint": "^6.8.0",
     "eslint-config-prettier": "^6.10.0",
