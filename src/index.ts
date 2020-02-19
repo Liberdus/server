@@ -130,7 +130,7 @@ Prop.set(config, 'logs', {
       },
       main: {
         type: 'file',
-        maxLogSize: 100000000,
+        maxLogSize: 1000000000,
         backups: 10,
       },
       fatal: {
@@ -145,7 +145,7 @@ Prop.set(config, 'logs', {
       },
       playback: {
         type: 'file',
-        maxLogSize: 100000000,
+        maxLogSize: 1000000000,
         backups: 10,
       },
       shardDump: {
