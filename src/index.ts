@@ -1361,6 +1361,11 @@ dapp.setup({
         //   response.reason = 'Too early for this node to get paid'
         //   return response
         // }
+        if (tx.amount !== CURRENT.nodeRewardAmount) {
+          console.log('CURRENT: ' + stringify(CURRENT))
+          response.reason = `${config.server.ip.externalPort}:  Amount sent in the transaction ${tx.amount} doesn't match the current network nodeRewardAmount parameter ${CURRENT.nodeRewardAmount}`
+          return response
+        }
         if (!from) {
           response.success = true
           response.reason = 'This transaction in valid'
@@ -1376,10 +1381,6 @@ dapp.setup({
             response.reason = 'Too early for this node to get paid'
             return response
           }
-        }
-        if (tx.amount !== CURRENT.nodeRewardAmount) {
-          response.reason = "Amount sent in the transaction doesn't match the current network nodeRewardAmount parameter"
-          return response
         }
         response.success = true
         response.reason = 'This transaction is valid!'
@@ -3121,11 +3122,13 @@ dapp.setup({
     return account.hash
   },
   resetAccountData(accountBackupCopies: Account[]): void {
+    console.log('RESET_ACCOUNT_DATA', stringify(accountBackupCopies))
     for (const recordData of accountBackupCopies) {
       accounts[recordData.id] = recordData
     }
   },
   deleteAccountData(addressList: string[]): void {
+    stringify('DELETE_ACCOUNT_DATA', stringify(addressList))
     for (const address of addressList) {
       delete accounts[address]
     }
@@ -3415,6 +3418,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     // IF THE WINNER FOR THE PROPOSAL HASN'T BEEN DETERMINED YET AND ITS PAST THE VOTING_WINDOW
     if (cycleStartTimestamp >= WINDOWS.graceWindow[0] && cycleStartTimestamp <= WINDOWS.graceWindow[1]) {
       if (syncedNextParams > 2) {
+        console.log('SYNCING_PARAMS')
         await syncParameters(cycleStartTimestamp)
         syncedNextParams = 0
       }
@@ -3423,8 +3427,8 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
           await tallyVotes(nodeAddress, nodeId)
         }
         tallyGenerated = true
-        syncedNextParams++
       }
+      syncedNextParams++
     }
 
     dapp.log(
@@ -3451,6 +3455,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
         if (nodeId === luckyNode) {
           await applyParameters(nodeAddress, nodeId)
         }
+        console.log('APPLYING_PARAMS')
         WINDOWS = NEXT_WINDOWS as Windows
         CURRENT = NEXT as NetworkParameters
         NEXT_WINDOWS = {}
@@ -3513,6 +3518,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     // IF THE WINNERS FOR THE DEV PROPOSALS HAVEN'T BEEN DETERMINED YET AND ITS PAST THE DEV_VOTING_WINDOW
     if (cycleStartTimestamp >= DEV_WINDOWS.devGraceWindow[0] && cycleStartTimestamp <= DEV_WINDOWS.devGraceWindow[1]) {
       if (syncedNextDevParams > 2) {
+        console.log('SYNCING_DEV_PARAMS')
         await syncDevParameters(cycleStartTimestamp)
         syncedNextDevParams = 0
       }
@@ -3521,8 +3527,8 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
           await tallyDevVotes(nodeAddress, nodeId)
         }
         devTallyGenerated = true
-        syncedNextDevParams++
       }
+      syncedNextDevParams++
     }
 
     dapp.log(
@@ -3549,6 +3555,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
         if (nodeId === luckyNode) {
           await applyDevParameters(nodeAddress, nodeId)
         }
+        console.log('APPLYING_DEV_PARAMS')
         DEV_WINDOWS = NEXT_DEV_WINDOWS as DevWindows
         DEVELOPER_FUND = [...DEVELOPER_FUND, ...NEXT_DEVELOPER_FUND]
         NEXT_DEV_WINDOWS = {}
