@@ -3388,8 +3388,8 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     )
 
     if (cycleStartTimestamp >= WINDOWS.proposalWindow[0] && cycleStartTimestamp <= WINDOWS.proposalWindow[1]) {
-      if (!issueGenerated) {
-        if (nodeId === luckyNode && ISSUE > 1) {
+      if (!issueGenerated && ISSUE > 1) {
+        if (nodeId === luckyNode && Date.now() < WINDOWS.proposalWindow[0] + ONE_SECOND * 20) {
           await generateIssue(nodeAddress, nodeId)
         }
         issueGenerated = true
@@ -3423,7 +3423,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
         syncedNextParams = 0
       }
       if (!tallyGenerated) {
-        if (nodeId === luckyNode) {
+        if (nodeId === luckyNode && Date.now() < WINDOWS.graceWindow[0] + ONE_SECOND * 20) {
           await tallyVotes(nodeAddress, nodeId)
         }
         tallyGenerated = true
@@ -3452,7 +3452,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     // IF THE WINNING PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE GRACE_WINDOW
     if (cycleStartTimestamp >= WINDOWS.applyWindow[0] && cycleStartTimestamp <= WINDOWS.applyWindow[1]) {
       if (!applyGenerated) {
-        if (nodeId === luckyNode) {
+        if (nodeId === luckyNode && Date.now() < WINDOWS.applyWindow[0] + ONE_SECOND * 20) {
           await applyParameters(nodeAddress, nodeId)
         }
         console.log('APPLYING_PARAMS')
@@ -3488,8 +3488,8 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     // AUTOMATIC (DEV_ISSUE | DEV_TALLY | APPLY_DEV_PARAMETERS) TRANSACTION GENERATION
     // IS THE NETWORK READY TO GENERATE A NEW DEV_ISSUE?
     if (cycleStartTimestamp >= DEV_WINDOWS.devProposalWindow[0] && cycleStartTimestamp <= DEV_WINDOWS.devProposalWindow[1]) {
-      if (!devIssueGenerated) {
-        if (nodeId === luckyNode && DEV_ISSUE >= 2) {
+      if (!devIssueGenerated && DEV_ISSUE > 1) {
+        if (nodeId === luckyNode && Date.now() < DEV_WINDOWS.devProposalWindow[0] + ONE_SECOND * 20) {
           await generateDevIssue(nodeAddress, nodeId)
         }
         devIssueGenerated = true
@@ -3523,7 +3523,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
         syncedNextDevParams = 0
       }
       if (!devTallyGenerated) {
-        if (nodeId === luckyNode) {
+        if (nodeId === luckyNode && Date.now() < DEV_WINDOWS.devGraceWindow[0] + ONE_SECOND * 20) {
           await tallyDevVotes(nodeAddress, nodeId)
         }
         devTallyGenerated = true
@@ -3552,7 +3552,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     // IF THE WINNING DEV PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE DEV_GRACE_WINDOW
     if (cycleStartTimestamp >= DEV_WINDOWS.devApplyWindow[0] && cycleStartTimestamp <= DEV_WINDOWS.devApplyWindow[1]) {
       if (!devApplyGenerated) {
-        if (nodeId === luckyNode) {
+        if (nodeId === luckyNode && Date.now() < DEV_WINDOWS.devApplyWindow[0] + ONE_SECOND * 20) {
           await applyDevParameters(nodeAddress, nodeId)
         }
         console.log('APPLYING_DEV_PARAMS')
