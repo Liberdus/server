@@ -159,6 +159,8 @@ interface DeveloperPayment {
 interface TransactionKeys {
   sourceKeys: string[]
   targetKeys: string[]
+  globalReadKeys: string[]
+  globalWriteKeys: string[]
   allKeys: string[]
   timestamp: number
 }

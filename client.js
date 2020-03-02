@@ -21,6 +21,8 @@ const ONE_DAY = 24 * ONE_HOUR
 const ONE_WEEK = 7 * ONE_DAY
 const ONE_YEAR = 365 * ONE_DAY
 
+const networkAccount = '0'.repeat(64)
+
 const walletFile = resolve('./wallet.json')
 let walletEntries = {}
 
@@ -648,6 +650,7 @@ vorpal.command('transfer', 'transfers tokens to another account').action(async f
   const to = await getAddress(answers.target)
   const tx = {
     type: 'transfer',
+    network: networkAccount,
     from: USER.address,
     to: to,
     amount: answers.amount,
@@ -678,6 +681,7 @@ vorpal.command('distribute', 'distributes tokens to multiple accounts').action(a
   ])
   const tx = {
     type: 'distribute',
+    network: networkAccount,
     from: USER.address,
     recipients: answers.targets,
     amount: answers.amount,
@@ -736,6 +740,7 @@ vorpal.command('message', 'sends a message to another user').action(async functi
       const encryptedMsg = crypto.encrypt(message, crypto.convertSkToCurve(USER.keys.secretKey), crypto.convertPkToCurve(to))
       const tx = {
         type: 'message',
+        network: networkAccount,
         from: USER.address,
         to: to,
         chatId: crypto.hash([USER.address, to].sort((a, b) => a < b).join``),
@@ -763,6 +768,7 @@ vorpal.command('toll', 'sets a toll people must you in order to send you message
   })
   const tx = {
     type: 'toll',
+    network: networkAccount,
     from: USER.address,
     toll: answer.toll,
     timestamp: Date.now(),
@@ -788,6 +794,7 @@ vorpal.command('add friend', 'adds a friend to your account').action(async funct
   }
   const tx = {
     type: 'friend',
+    network: networkAccount,
     alias: answer.friend,
     from: USER.address,
     to: to,
@@ -961,6 +968,7 @@ vorpal.command('proposal', 'submits a proposal to change network parameters').ac
     from: USER.address,
     proposal: crypto.hash(`issue-${issue}-proposal-${proposal + 1}`),
     issue: crypto.hash(`issue-${issue}`),
+    network: networkAccount,
     parameters: answers,
     timestamp: Date.now(),
   }
@@ -1047,6 +1055,7 @@ vorpal.command('dev proposal', 'submits a development proposal').action(async fu
   const tx = {
     type: 'dev_proposal',
     from: USER.address,
+    network: networkAccount,
     devIssue: crypto.hash(`dev-issue-${latestIssue}`),
     devProposal: crypto.hash(`dev-issue-${latestIssue}-dev-proposal-${count + 1}`),
     totalAmount: answers.totalAmount,
@@ -1102,6 +1111,7 @@ vorpal.command('vote', 'vote for a proposal').action(async function(args, callba
   const tx = {
     type: 'vote',
     from: USER.address,
+    network: networkAccount,
     issue: crypto.hash(`issue-${latest}`),
     proposal: crypto.hash(`issue-${latest}-proposal-${answers.proposal}`),
     amount: answers.amount,
@@ -1161,6 +1171,7 @@ vorpal.command('vote dev', 'vote for a development proposal').action(async funct
   const tx = {
     type: 'dev_vote',
     from: USER.address,
+    network: networkAccount,
     devIssue: crypto.hash(`dev-issue-${latest}`),
     devProposal: crypto.hash(`dev-issue-${latest}-dev-proposal-${answers.proposal}`),
     amount: answers.amount,
