@@ -35,7 +35,7 @@
     "moment": "^2.24.0",
     "nodemailer": "^6.3.1",
     "nodemailer-smtp-transport": "^2.7.4",
-    "shardus-crypto-utils": "git+https://gitlab.com/shardus/shardus-crypto-utils.git#typescript",
+    "shardus-crypto-utils": "git+https://gitlab.com/shardus/shardus-crypto-utils.git",
     "shardus-global-server": "git+https://gitlab.com/shardus/global/shardus-global-server.git",
     "sqlite3": "^4.1.1",
     "streamroller": "^2.2.3",
