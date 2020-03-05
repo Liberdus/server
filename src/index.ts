@@ -8,9 +8,9 @@ import Shardus = require('shardus-global-server/src/shardus/shardus-types')
 import Decimal from 'decimal.js'
 import shardus = require('shardus-global-server')
 import stringify = require('fast-stable-stringify')
-import crypto = require('shardus-crypto-utils')
+import * as crypto from 'shardus-crypto-utils'
 import './@types'
-crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
+crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 // THE ENTIRE APP STATE FOR THIS NODE
 let accounts: { [id: string]: Account } = {}
