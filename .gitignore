@@ -1,7 +1,8 @@
 node_modules/
-.eslintrc.js
 .pm2/
-instances
+instances/
 logs
 db
 wallet.json
+dist/
+notes/
