@@ -6,7 +6,7 @@ import * as _ from 'lodash'
 import * as heapdump from 'heapdump'
 import Shardus = require('shardus-global-server/src/shardus/shardus-types')
 import Decimal from 'decimal.js'
-import shardus = require('shardus-global-server')
+import shardus from 'shardus-global-server'
 import stringify = require('fast-stable-stringify')
 import * as crypto from 'shardus-crypto-utils'
 import './@types'
@@ -166,7 +166,7 @@ Prop.set(config, 'logs', {
   },
 })
 
-const dapp: Shardus = shardus(config)
+const dapp = shardus(config)
 
 // INITIAL PARAMETERS THE NODES SET WHEN THEY BECOME ACTIVE
 async function syncParameters(timestamp: number): Promise<void> {
