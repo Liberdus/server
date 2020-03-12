@@ -26,6 +26,9 @@ let walletEntries = {}
 
 const baseDir = '.'
 
+let globalAccountsByName = new Map()
+
+
 try {
   walletEntries = require(walletFile)
 } catch (e) {
@@ -63,6 +66,22 @@ function createAccount (keys = crypto.generateKeypair()) {
 function createAccounts (num) {
   const accounts = new Array(num).fill().map(account => createAccount())
   return accounts
+}
+
+
+function getOrCreateGlobalAccount (name) {
+  let account = null
+  if(globalAccountsByName.has(name)){
+    account = globalAccountsByName.get(name)
+    console.log(`getOrCreateGlobalAccount found account ${name}`)
+  }
+  if(account == null) {
+    let accounts = createAccounts(1)
+    account = accounts[0]
+    globalAccountsByName.set(name, account)
+    console.log(`getOrCreateGlobalAccount created account ${name}`)
+  }
+  return account
 }
 
 // Creates an account with a keypair and adds it to the clients walletFile
@@ -167,7 +186,7 @@ function makeTxGenerator (accounts, total = 0, type) {
   return generator
 }
 
-function buildTx ({ type, from = {}, to, handle, id, amount, message, toll }) {
+function buildTx ({ type, from = {}, to, handle, id, amount, message, toll, timestamp, idx, val }) {
   let actualTx
   switch (type) {
     case 'register': {
@@ -232,6 +251,31 @@ function buildTx ({ type, from = {}, to, handle, id, amount, message, toll }) {
       }
       break
     }
+    // id: string
+    // globalTestArray: string[]
+    // hash: string
+    // timestamp: number 
+    case 'globalTestCreate': {
+      actualTx = {
+        type,
+        to: to.address,
+
+        timestamp: timestamp
+      }
+      break
+    }
+    case 'globalTestUpdate': {
+      actualTx = {
+        type,
+        to: to.address,
+        idx,
+        val,
+        timestamp: timestamp
+      }
+      break
+    }
+    
+
     default: {
       console.log('Type must be `transfer`, `message`, or `toll`')
     }
@@ -260,6 +304,34 @@ async function sendTx (tx, node = null, verbose = false) {
       target = node
     }
     const { data } = await axios.post(`http://${target}/inject`, tx)
+    if (verbose) console.log('Got response:', data)
+    return data
+  } catch (err) {
+    if (logError) console.log('Stopped spamming due to error')
+  }
+}
+
+
+async function customEndpoint (tx, node = null, endpoint, verbose = false) {
+  if (!tx.sign) {
+    tx = buildTx(tx)
+
+
+    //crypto.signObj(tx, tx.to.keys.secretKey, tx.to.keys.publicKey)
+  }
+  // if (verbose) {
+  //   console.log(`Sending tx to ${node}...`)
+  //   console.log(tx)
+  // }
+
+  let req = {tx:tx}
+
+  try {
+    let target = HOST
+    if (node != null) {
+      target = node
+    }
+    const { data } = await axios.post(`http://${target}/${endpoint}`, req)
     if (verbose) console.log('Got response:', data)
     return data
   } catch (err) {
@@ -645,6 +717,90 @@ vorpal.command('create', 'creates tokens for an account')
       })
     }
   })
+
+
+
+// COMMAND TO create a global test accoutn
+vorpal.command('globalCreate', 'Test a global account')
+  .action(async function (args, callback) {
+    const answers = await this.prompt([{
+      type: 'input',
+      name: 'target',
+      message: 'Enter global name '
+    }])
+    
+    let account = getOrCreateGlobalAccount(answers.target)
+    const seedNodes = await getSeedNodes()
+    const nodes = seedNodes.map(url => `${url.ip}:${url.port}`)
+
+    const to = account
+    if (!to) {
+      this.log('Target account address does not exist')
+      callback()
+    } else {
+      const tx = {
+        type: 'globalTestCreate',
+        to: to,
+        timestamp: Date.now()
+      }
+
+      const promises = []
+      for (let node of nodes) {
+        promises.push(customEndpoint(tx, node, 'testGlobalAccountTX'))
+      }
+      await Promise.all(promises)
+      this.log('Global create sent to all nodes.')
+    }
+  })
+
+//globalTestUpdate
+vorpal.command('globalUpdate', 'Test a global account')
+  .action(async function (args, callback) {
+    const answers = await this.prompt([{
+      type: 'input',
+      name: 'target',
+      message: 'Enter global name '
+    },
+    {
+      type: 'input',
+      name: 'idx',
+      message: 'enter index 0-5 ',
+      default: 0,
+      filter: value => parseInt(value)
+    },
+    {
+      type: 'input',
+      name: 'val',
+      message: 'Enter value for the index '
+    }
+    ])
+    
+    let account = getOrCreateGlobalAccount(answers.target)
+    const seedNodes = await getSeedNodes()
+    const nodes = seedNodes.map(url => `${url.ip}:${url.port}`)
+
+    const to = account
+    if (!to) {
+      this.log('Target account address does not exist')
+      callback()
+    } else {
+      const tx = {
+        type: 'globalTestUpdate',
+        to: to,
+        timestamp: Date.now(),
+        idx: answers.idx,
+        val: answers.val
+      }
+
+      const promises = []
+      for (let node of nodes) {
+        promises.push(customEndpoint(tx, node, 'testGlobalAccountTX'))
+      }
+      await Promise.all(promises)
+      this.log('Global create sent to all nodes.')
+    }
+  })
+
 
 // COMMAND TO TRANSFER TOKENS FROM ONE ACCOUNT TO ANOTHER
 vorpal.command('transfer', 'transfers tokens to another account')

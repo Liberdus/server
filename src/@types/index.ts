@@ -78,6 +78,13 @@ interface DevIssueAccount {
   timestamp: number
 }
 
+interface GlobalTestAccount {
+  id: string
+  globalTestArray: string[]
+  hash: string
+  timestamp: number
+}
+
 interface ProposalAccount {
   id: string
   power: number

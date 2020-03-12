@@ -12,7 +12,7 @@ const crypto = require('shardus-crypto-utils')
 crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 // THE ENTIRE APP STATE FOR THIS NODE
-let accounts: { [id: string] : NetworkAccount | IssueAccount | DevIssueAccount | UserAccount | AliasAccount | ProposalAccount | DevProposalAccount | NodeAccount | ChatAccount } = {}
+let accounts: { [id: string] : NetworkAccount | IssueAccount | DevIssueAccount | UserAccount | AliasAccount | ProposalAccount | DevProposalAccount | NodeAccount | ChatAccount | GlobalTestAccount } = {}
 const networkAccount = '0'.repeat(64)
 
 // DYNAMIC LOCAL DATA HELD BY THE NODES
@@ -77,8 +77,8 @@ Prop.set(config, 'server.p2p', {
   cycleDuration: cycleDuration,
   existingArchivers: JSON.parse(process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]'),
   maxNodesPerCycle: 10,
-  minNodes: 10,
-  maxNodes: 10,
+  minNodes: 100,
+  maxNodes: 1000,
   minNodesToAllowTxs: 1,
   maxNodesToRotate: 1,
   maxPercentOfDelta: 40
@@ -364,6 +364,17 @@ function createDevIssue (accountId: string): DevIssueAccount {
   }
   devIssue.hash = crypto.hashObj(devIssue)
   return devIssue
+}
+
+function createGlobalDebug(accountId: string): GlobalTestAccount {
+  const issue = {
+      id: accountId,
+      globalTestArray:[],
+      hash: '',
+      timestamp: 0
+  };
+  issue.hash = crypto.hashObj(issue);
+  return issue;
 }
 
 // CREATE A PROPOSAL ACCOUNT
@@ -864,7 +875,7 @@ dapp.registerExternalGet('messages/:chatId', async (req: any, res: any): Promise
 
 dapp.registerExternalGet('debug/dump', (req: any, res: any): void => {
   let D = new Date()
-  let dateString = D.getDate() + '-' + (D.getMonth() + 1) + '-' + D.getFullYear() + '_' + D.getHours() + ':' + D.getMinutes()
+  let dateString = D.getDate() + '-' + (D.getMonth() + 1) + '-' + D.getFullYear() + '_' + D.getHours() + 'm' + D.getMinutes()
   // 16-5-2015 9:50
   heapdump.writeSnapshot(`${config.server.baseDir}/logs/ ` + dateString + '.heapsnapshot', (error, filename) => {
     if (error) {
@@ -881,7 +892,9 @@ dapp.registerExternalGet('debug/dump', (req: any, res: any): void => {
 dapp.setup({
   async sync (): Promise<void> {
     if (dapp.p2p.isFirstSeed) {
+      dapp.log('SYNC: start1')
       await _sleep(ONE_SECOND * 20)
+      dapp.log('SYNC: start2')
       const timestamp = Date.now()
       const nodeId: string = dapp.getNodeId()
       const address: string = dapp.getNode(nodeId).address
@@ -946,6 +959,7 @@ dapp.setup({
         proposal: crypto.hash(`issue-${ISSUE}-proposal-1`),
         timestamp: Date.now()
       })
+      dapp.log('SYNC: set  issue')
       dapp.set({
         type: 'dev_issue',
         nodeId,
@@ -954,12 +968,14 @@ dapp.setup({
         devIssue: crypto.hash(`dev-issue-${DEV_ISSUE}`),
         timestamp: Date.now()
       })
+      dapp.log('SYNC: set dev issue')
       await _sleep(ONE_SECOND * 10)
     } else {
       let account = await dapp.getRemoteAccount(networkAccount)
       while (!account) {
         await _sleep(1000)
         account = await dapp.getRemoteAccount(networkAccount)
+        dapp.log('SYNC: Waiting for network account')
       }
       if (account && account.data) {
         CURRENT = account.data.current
@@ -973,8 +989,10 @@ dapp.setup({
         ISSUE = account.data.issue
         DEV_ISSUE = account.data.devIssue
         IN_SYNC = true
+
+        dapp.log('SYNC: Finished Sync()')
       } else {
-        dapp.log('ERROR: Unable to sync network data')
+        dapp.log('SYNC: ERROR: Unable to sync network data')
       }
     }
   },
@@ -988,6 +1006,25 @@ dapp.setup({
     const to = wrappedStates[tx.to] && wrappedStates[tx.to].data
 
     switch (tx.type) {
+      
+      case 'globalTestCreate': {
+
+        response.result = 'pass';
+        response.reason = 'This transaction is valid!';
+        return response;
+      }
+      case 'globalTestUpdate': {
+
+        response.result = 'pass';
+        response.reason = 'This transaction is valid!';
+        return response;
+      }
+      case 'globalReadOnlyCoinAdd': {
+
+        response.result = 'pass';
+        response.reason = 'This transaction is valid!';
+        return response;
+      }
       case 'snapshot': {
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
@@ -1805,6 +1842,18 @@ dapp.setup({
     }
 
     switch (tx.type) {
+      case 'globalTestCreate': {
+
+        break;
+      }
+      case 'globalTestUpdate': {
+
+        break;
+      }
+      case 'globalReadOnlyCoinAdd': {
+
+        break;
+      }
       case 'snapshot': {
         if (typeof tx.from !== 'string') {
           result = 'fail'
@@ -2299,6 +2348,40 @@ dapp.setup({
 
     // Apply the tx
     switch (tx.type) {
+      case 'globalTestCreate': {
+        let globalAccount = to as GlobalTestAccount
+        //set initial values?
+        globalAccount.globalTestArray = Array(5)
+
+        dapp.log(`globalTestCreate applied: ${tx.to}`)
+        break;
+      }
+      case 'globalTestUpdate': {
+        let globalAccount = to as GlobalTestAccount
+        //update values?
+        globalAccount.globalTestArray[tx.idx] = tx.val
+
+        dapp.log(`globalTestUpdate applied: ${tx.to} idx:${tx.idx} val:${tx.val}  globalTestArray:${stringify(globalAccount.globalTestArray)}`)
+        break;
+      }
+      
+      case 'globalReadOnlyCoinAdd': {
+
+        let globalAccount = from as GlobalTestAccount
+        
+        let balanceBoost = globalAccount[0]
+        if(balanceBoost == null){
+          balanceBoost = 1
+        } else{
+          //boost by str len
+          balanceBoost = balanceBoost.length
+        }
+        to.data.balance += balanceBoost
+
+        dapp.log(`globalReadOnlyCoinAdd applied: ${tx.to}`)
+        break;
+      }
+
       case 'snapshot': {
         to.snapshot = tx.snapshot
         from.timestamp = tx.timestamp
@@ -2749,6 +2832,22 @@ dapp.setup({
       timestamp: tx.timestamp
     }
     switch (tx.type) {
+      case 'globalTestCreate': {
+            
+        //result.sourceKeys = [tx.from];
+        result.targetKeys = [tx.to];
+        break;
+      }
+      case 'globalTestUpdate': {
+        //result.sourceKeys = [tx.from];
+        result.targetKeys = [tx.to];
+        break;
+      }
+      case 'globalReadOnlyCoinAdd': {
+        result.sourceKeys = [tx.from];
+        result.targetKeys = [tx.to];
+        break;
+      }
       case 'snapshot':
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.to]
@@ -2883,6 +2982,26 @@ dapp.setup({
         account = createNetworkAccount(accountId)
         accounts[accountId] = account
         accountCreated = true
+      }
+      // how does create work
+      if (tx.type === 'globalTestCreate') {
+
+        account = createGlobalDebug(accountId)
+        accounts[accountId] = account
+        accountCreated = true
+      }
+      
+      if (tx.type === 'globalReadOnlyCoinAdd') {
+        // need to know if global key or not.
+        // how to know if it is to or fromm account..
+        //should use get keys from tx to be more generic.  also that could tell us if this is global.
+        if(tx.to == accountId){
+          account = createAccount(accountId, tx.timestamp)
+          accounts[accountId] = account
+          accountCreated = true          
+        } else{
+          //some error... do not create global on the fly thats not possible.
+        }
       }
       if (tx.type === 'issue') {
         if (accountId === tx.issue) {
