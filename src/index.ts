@@ -3254,7 +3254,7 @@ async function tallyVotes(address: string, nodeId: string): Promise<void> {
       proposals: issue.proposals,
       timestamp: Date.now(),
     }
-    dapp.put(tx)
+    dapp.put(tx, true)
     dapp.log('GENERATED_TALLY: ', nodeId)
   } catch (err) {
     dapp.log('ERR: ', err)
@@ -3278,7 +3278,7 @@ async function tallyDevVotes(address: string, nodeId: string): Promise<void> {
       devProposals: devIssue.devProposals,
       timestamp: Date.now(),
     }
-    dapp.put(tx)
+    dapp.put(tx, true)
     dapp.log('GENERATED_DEV_TALLY: ', nodeId)
   } catch (err) {
     dapp.log('ERR: ', err)
@@ -3301,7 +3301,7 @@ async function applyParameters(address: string, nodeId: string): Promise<void> {
       issue: issue.id,
       timestamp: Date.now(),
     }
-    dapp.put(tx)
+    dapp.put(tx, true)
     dapp.log('GENERATED_APPLY: ', nodeId)
   } catch (err) {
     console.log(err)
@@ -3321,7 +3321,7 @@ async function applyDevParameters(address: string, nodeId: string): Promise<void
       devIssue: crypto.hash(`dev-issue-${DEV_ISSUE}`),
       timestamp: Date.now(),
     }
-    dapp.put(tx)
+    dapp.put(tx, true)
     dapp.log('GENERATED_DEV_APPLY: ', nodeId)
   } catch (err) {
     console.log(err)
@@ -3341,7 +3341,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     payment: payment,
     timestamp: Date.now(),
   }
-  dapp.put(tx)
+  dapp.put(tx, true)
   dapp.log('GENERATED_DEV_FUND_RELEASE: ', nodeId)
 }
 
