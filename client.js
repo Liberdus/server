@@ -186,7 +186,7 @@ function makeTxGenerator (accounts, total = 0, type) {
   return generator
 }
 
-function buildTx ({ type, from = {}, to, handle, id, amount, message, toll, timestamp, idx, val }) {
+function buildTx ({ type, from = {}, to, handle, id, amount, message, toll, timestamp, idx, val, globalRef }) {
   let actualTx
   switch (type) {
     case 'register': {
@@ -275,7 +275,15 @@ function buildTx ({ type, from = {}, to, handle, id, amount, message, toll, time
       break
     }
     
-
+    case 'globalReadOnlyCoinAdd': {
+      actualTx = {
+        type,
+        from: globalRef.address,
+        to: to.address,
+        timestamp: Date.now()
+      }
+      break
+    }
     default: {
       console.log('Type must be `transfer`, `message`, or `toll`')
     }
@@ -801,6 +809,39 @@ vorpal.command('globalUpdate', 'Test a global account')
     }
   })
 
+// COMMAND TO CREATE TOKENS FOR A USER based on a global ref account
+vorpal.command('globalReadOnlyCoinAdd', 'creates tokens for an account using global account settings.')
+  .action(async function (args, callback) {
+    const answers = await this.prompt([{
+      type: 'input',
+      name: 'target',
+      message: 'Enter the target account: '
+    },
+    {
+      type: 'input',
+      name: 'targetGlobal',
+      message: 'Enter global name '
+    }])
+    const to = createAccount()//   await getAddress(answers.target)
+    let account = getOrCreateGlobalAccount(answers.targetGlobal)
+
+    this.log(`created account: ${to.address}`)
+    if (!to) {
+      this.log('Target account address does not exist')
+      callback()
+    } else {
+      const tx = {
+        type: 'globalReadOnlyCoinAdd',
+        from: account.address,
+        to: to.address,
+        timestamp: Date.now()
+      }
+      injectTx(tx).then(res => {
+        this.log(res)
+        callback()
+      })
+    }
+  })
 
 // COMMAND TO TRANSFER TOKENS FROM ONE ACCOUNT TO ANOTHER
 vorpal.command('transfer', 'transfers tokens to another account')

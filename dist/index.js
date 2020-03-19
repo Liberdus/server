@@ -67,8 +67,8 @@ Prop.set(config, 'server.p2p', {
     cycleDuration: cycleDuration,
     existingArchivers: JSON.parse(process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]'),
     maxNodesPerCycle: 10,
-    minNodes: 100,
-    maxNodes: 1000,
+    minNodes: 10,
+    maxNodes: 100,
     minNodesToAllowTxs: 1,
     maxNodesToRotate: 1,
     maxPercentOfDelta: 40
@@ -971,6 +971,11 @@ dapp.setup({
                 return response;
             }
             case 'globalReadOnlyCoinAdd': {
+                // todo needs a helper function. to check failed global...
+                if (from && from.failed && from.failed === true) {
+                    response.reason = `account failed: ${from.msg}`;
+                    return response;
+                }
                 response.result = 'pass';
                 response.reason = 'This transaction is valid!';
                 return response;
@@ -2289,16 +2294,17 @@ dapp.setup({
             }
             case 'globalReadOnlyCoinAdd': {
                 let globalAccount = from;
-                let balanceBoost = globalAccount[0];
-                if (balanceBoost == null) {
+                let balanceBoost = 0;
+                let balanceBoostStr = globalAccount.globalTestArray[0];
+                if (balanceBoostStr == null) {
                     balanceBoost = 1;
                 }
                 else {
                     //boost by str len
-                    balanceBoost = balanceBoost.length;
+                    balanceBoost = balanceBoostStr.length;
                 }
                 to.data.balance += balanceBoost;
-                dapp.log(`globalReadOnlyCoinAdd applied: ${tx.to}`);
+                dapp.log(`globalReadOnlyCoinAdd applied: ${tx.to} balance boost: ${balanceBoost} balance:${to.data.balance}`);
                 break;
             }
             case 'snapshot': {
@@ -2869,8 +2875,11 @@ dapp.setup({
                     accounts[accountId] = account;
                     accountCreated = true;
                 }
-                else {
+                else if (tx.from == accountId) {
                     //some error... do not create global on the fly thats not possible.
+                    // @ts-ignore
+                    account = { failed: true, msg: 'global account cant be created in this transaction' };
+                    accountCreated = true;
                 }
             }
             if (tx.type === 'issue') {

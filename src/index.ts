@@ -12,7 +12,7 @@ const crypto = require('shardus-crypto-utils')
 crypto('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 // THE ENTIRE APP STATE FOR THIS NODE
-let accounts: { [id: string] : NetworkAccount | IssueAccount | DevIssueAccount | UserAccount | AliasAccount | ProposalAccount | DevProposalAccount | NodeAccount | ChatAccount | GlobalTestAccount } = {}
+let accounts: { [id: string] : NetworkAccount | IssueAccount | DevIssueAccount | UserAccount | AliasAccount | ProposalAccount | DevProposalAccount | NodeAccount | ChatAccount | GlobalTestAccount | FailedAccount } = {}
 const networkAccount = '0'.repeat(64)
 
 // DYNAMIC LOCAL DATA HELD BY THE NODES
@@ -77,8 +77,8 @@ Prop.set(config, 'server.p2p', {
   cycleDuration: cycleDuration,
   existingArchivers: JSON.parse(process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]'),
   maxNodesPerCycle: 10,
-  minNodes: 100,
-  maxNodes: 1000,
+  minNodes: 10,
+  maxNodes: 100,
   minNodesToAllowTxs: 1,
   maxNodesToRotate: 1,
   maxPercentOfDelta: 40
@@ -1020,7 +1020,11 @@ dapp.setup({
         return response;
       }
       case 'globalReadOnlyCoinAdd': {
-
+        // todo needs a helper function. to check failed global...
+        if(from && from.failed && from.failed === true){
+          response.reason = `account failed: ${from.msg}`
+          return response
+        }
         response.result = 'pass';
         response.reason = 'This transaction is valid!';
         return response;
@@ -2352,7 +2356,7 @@ dapp.setup({
         let globalAccount = to as GlobalTestAccount
         //set initial values?
         globalAccount.globalTestArray = Array(5)
-
+        to.timestamp = tx.timestamp
         dapp.log(`globalTestCreate applied: ${tx.to}`)
         break;
       }
@@ -2360,7 +2364,7 @@ dapp.setup({
         let globalAccount = to as GlobalTestAccount
         //update values?
         globalAccount.globalTestArray[tx.idx] = tx.val
-
+        to.timestamp = tx.timestamp
         dapp.log(`globalTestUpdate applied: ${tx.to} idx:${tx.idx} val:${tx.val}  globalTestArray:${stringify(globalAccount.globalTestArray)}`)
         break;
       }
@@ -2369,16 +2373,17 @@ dapp.setup({
 
         let globalAccount = from as GlobalTestAccount
         
-        let balanceBoost = globalAccount[0]
-        if(balanceBoost == null){
+        let balanceBoost = 0
+        let balanceBoostStr = globalAccount.globalTestArray[0]
+        if(balanceBoostStr == null){
           balanceBoost = 1
         } else{
           //boost by str len
-          balanceBoost = balanceBoost.length
+          balanceBoost = balanceBoostStr.length
         }
         to.data.balance += balanceBoost
 
-        dapp.log(`globalReadOnlyCoinAdd applied: ${tx.to}`)
+        dapp.log(`globalReadOnlyCoinAdd applied: ${tx.to} balance boost: ${balanceBoost} balance:${to.data.balance}`)
         break;
       }
 
@@ -2999,9 +3004,12 @@ dapp.setup({
           account = createAccount(accountId, tx.timestamp)
           accounts[accountId] = account
           accountCreated = true          
-        } else{
+        } else if(tx.from == accountId) {
           //some error... do not create global on the fly thats not possible.
-        }
+          // @ts-ignore
+          account = { failed:true, msg:'global account cant be created in this transaction'}
+          accountCreated = true 
+        } 
       }
       if (tx.type === 'issue') {
         if (accountId === tx.issue) {

@@ -85,6 +85,14 @@ interface GlobalTestAccount {
   timestamp: number
 }
 
+interface FailedAccount {
+  id: string
+  failed:boolean
+  msg:string
+  hash: string
+  timestamp: number
+}
+
 interface ProposalAccount {
   id: string
   power: number
