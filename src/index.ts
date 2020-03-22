@@ -77,8 +77,8 @@ Prop.set(config, 'server.p2p', {
     process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]',
   ),
   maxNodesPerCycle: 10,
-  minNodes: 10,
-  maxNodes: 10,
+  minNodes: 30,
+  maxNodes: 30,
   minNodesToAllowTxs: 1,
   maxNodesToRotate: 1,
   maxPercentOfDelta: 40,
@@ -1181,6 +1181,11 @@ dapp.setup({
           response.reason = "from account doesn't have sufficient balance to cover the transaction"
           return response
         }
+        response.success = true
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'setTxFee': {
         response.success = true
         response.reason = 'This transaction is valid!'
         return response
@@ -2461,14 +2466,21 @@ dapp.setup({
         break
       }
       case 'transfer': {
-        from.data.balance -= tx.amount + CURRENT.transactionFee
-        from.data.balance -= maintenanceAmount(tx.timestamp, from)
+        const globalTxFee = wrappedStates['1'.repeat(64)].data.data.balance
+        from.data.balance -= tx.amount + globalTxFee
         to.data.balance += tx.amount
         from.data.transactions.push({ ...tx, txId })
         to.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
         dapp.log('Applied transfer tx', from, to)
+        break
+      }
+      case 'setTxFee': {
+        console.log('=== SET GLOBAL_TX_FEE_ACCT', tx.fee, '===')
+        to.data.balance = tx.fee
+        // dapp.setGlobal(addr, val, when, src)
+        // dapp.setGlobal('1'.repeat(64), tx.fee, (now + 10 sec), '1'.repeat(64))
         break
       }
       case 'distribute': {
@@ -2845,6 +2857,9 @@ dapp.setup({
         break
       case 'transfer':
         result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.to, '1'.repeat(64)]
+        break
+      case 'setTxFee':
         result.targetKeys = [tx.to]
         break
       case 'distribute':
@@ -3300,6 +3315,8 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
   let luckyNode: string
 
   await dapp.start()
+
+  console.log('=== SERVER VERSION: setTxFee ===')
 
   // THIS CODE IS CALLED ON EVERY NODE ON EVERY CYCLE
   async function networkMaintenance(): Promise<NodeJS.Timeout> {
