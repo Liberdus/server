@@ -77,8 +77,8 @@ Prop.set(config, 'server.p2p', {
     process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]',
   ),
   maxNodesPerCycle: 10,
-  minNodes: 30,
-  maxNodes: 30,
+  minNodes: 3,
+  maxNodes: 3,
   minNodesToAllowTxs: 1,
   maxNodesToRotate: 1,
   maxPercentOfDelta: 40,
@@ -2478,9 +2478,11 @@ dapp.setup({
       }
       case 'setTxFee': {
         console.log('=== SET GLOBAL_TX_FEE_ACCT', tx.fee, '===')
+
         to.data.balance = tx.fee
+
         // dapp.setGlobal(addr, val, when, src)
-        // dapp.setGlobal('1'.repeat(64), tx.fee, (now + 10 sec), '1'.repeat(64))
+        dapp.setGlobal('1'.repeat(64), { balance: tx.fee }, tx.timestamp + 10000, '1'.repeat(64))
         break
       }
       case 'distribute': {
