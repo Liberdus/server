@@ -96,11 +96,17 @@ function createEntry (name, id) {
   return account
 }
 
-function makeTxGenerator (accounts, total = 0, type) {
-  function * buildGenerator (txBuilder, accounts, total, type) {
+function makeTxGenerator (accounts, total = 0, type, globalAccounts = []) {
+  function * buildGenerator (txBuilder, accounts, total, type, globalAccounts = []) {
     let account1, offset, account2
     // let username
     // let users = {}
+    let globalAccountIdx = 0
+
+    if(type === 'globalReadOnlyCoinAdd' && globalAccounts.length === 0){
+      globalAccounts = Array.from(globalAccountsByName.values())
+    }
+
     while (total > 0) {
       // Keep looping through all available accounts as the srcAcct
       account1 = accounts[total % accounts.length]
@@ -120,9 +126,13 @@ function makeTxGenerator (accounts, total = 0, type) {
       //   users[account1.address] = true
       // }
 
-      // Return a create tx to add funds to the srcAcct
-      yield txBuilder({ type: 'create', to: account1, amount: 1 })
-      total--
+      //Don't create sender accounts if spamming globalReadOnlyCoinAdd
+      if(type != 'globalReadOnlyCoinAdd'){
+        // Return a create tx to add funds to the srcAcct
+        yield txBuilder({ type: 'create', to: account1, amount: 1 })
+        total--        
+      }
+
       if (!(total > 0)) break
 
       // Return a transfer tx to transfer funds from srcAcct to tgtAcct
@@ -173,12 +183,23 @@ function makeTxGenerator (accounts, total = 0, type) {
           })
           break
         }
+        case 'globalReadOnlyCoinAdd': {
+
+          yield txBuilder({ type: 'globalReadOnlyCoinAdd', to: account1, globalRef: globalAccounts[globalAccountIdx] })
+          break
+        }
         default: {
           console.log('Type must be `transfer`, `message`, or `toll`')
         }
       }
       total--
       if (!(total > 0)) break
+      
+      globalAccountIdx++
+      if(globalAccountIdx >= globalAccounts.length){
+        globalAccountIdx = 0
+      }
+      
     }
   }
   const generator = buildGenerator(buildTx, accounts, total, type)

@@ -108,6 +108,12 @@ Prop.set(config, 'server.rateLimiting', {
 Prop.set(config, 'server.sharding', {
   nodesPerConsensusGroup: 5
 })
+  // debug server settings
+Prop.set(config, 'server.debug', {
+    loseReceiptChance: 0.000,
+    loseTxChance: 0.1,
+    canDataRepair: true
+  })
 Prop.set(config, 'logs', {
   dir: './logs',
   files: { main: '', fatal: '', net: '', app: '' },
@@ -3205,6 +3211,15 @@ dapp.setup({
   },
   getAccountDebugValue (wrappedAccount: any) {
     return `${stringify(wrappedAccount)}`
+  },
+  canDebugDropTx (tx: any) {
+    if (tx.type === 'globalReadOnlyCoinAdd'){
+      return true
+    }
+    if (tx.type === 'create'){
+      return true
+    }
+    return false
   },
   close () {
     dapp.log('Shutting down server...')
