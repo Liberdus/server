@@ -61,6 +61,9 @@ const INITIAL_PARAMETERS: NetworkParameters = {
   devProposalFee: 20,
 }
 
+// GLOBAL ACCOUNT TO HOLD TX FEE
+const GLOBAL_TX_FEE_ACCT = '1'.repeat(64)
+
 let config: any = {}
 
 if (process.env.BASE_DIR) {
@@ -1186,6 +1189,11 @@ dapp.setup({
         return response
       }
       case 'setTxFee': {
+        response.success = true
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'setTxFeeApply': {
         response.success = true
         response.reason = 'This transaction is valid!'
         return response
@@ -2466,7 +2474,7 @@ dapp.setup({
         break
       }
       case 'transfer': {
-        const globalTxFee = wrappedStates['1'.repeat(64)].data.data.balance
+        const globalTxFee = wrappedStates[GLOBAL_TX_FEE_ACCT].data.data.balance
         from.data.balance -= tx.amount + globalTxFee
         to.data.balance += tx.amount
         from.data.transactions.push({ ...tx, txId })
@@ -2478,11 +2486,12 @@ dapp.setup({
       }
       case 'setTxFee': {
         console.log('=== SET GLOBAL_TX_FEE_ACCT', tx.fee, '===')
-
+        dapp.setGlobal(GLOBAL_TX_FEE_ACCT, { type: 'setTxFeeApply', to: tx.to, fee: tx.fee }, tx.timestamp + 10000, GLOBAL_TX_FEE_ACCT)
+        break
+      }
+      case 'setTxFeeApply': {
+        console.log('=== APPLY SET GLOBAL_TX_FEE_ACCT', tx.fee, '===')
         to.data.balance = tx.fee
-
-        // dapp.setGlobal(addr, val, when, src)
-        dapp.setGlobal('1'.repeat(64), { balance: tx.fee }, tx.timestamp + 10000, '1'.repeat(64))
         break
       }
       case 'distribute': {
@@ -2859,9 +2868,12 @@ dapp.setup({
         break
       case 'transfer':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.to, '1'.repeat(64)]
+        result.targetKeys = [tx.to, GLOBAL_TX_FEE_ACCT]
         break
       case 'setTxFee':
+        result.targetKeys = [tx.to]
+        break
+      case 'setTxFeeApply':
         result.targetKeys = [tx.to]
         break
       case 'distribute':

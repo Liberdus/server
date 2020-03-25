@@ -3,7 +3,7 @@ const { promisify } = require('util')
 const sleep = promisify(setTimeout)
 
 async function main () {
-  const client = spawn('node', ['./client-setTxFee.js'], { stdio: ['pipe', 'inherit', 'inherit'] })
+  const client = spawn('node', ['/home/aamir/Dev/liberdus/server/client-setTxFee.js'], { stdio: ['pipe', 'inherit', 'inherit'] })
 
   await sleep(1000)
 
