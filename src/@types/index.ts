@@ -31,7 +31,7 @@ interface NodeAccount {
 
 interface ChatAccount {
   id: string
-  messages: any
+  messages: unknown[]
   timestamp: number
   hash: string
 }
@@ -130,6 +130,24 @@ interface NetworkParameters {
   devProposalFee: number
 }
 
+interface EconParameters {
+  CURRENT: NetworkParameters
+  NEXT: NetworkParameters | {}
+  WINDOWS: Windows
+  NEXT_WINDOWS: Windows | {}
+  ISSUE: number
+  IN_SYNC: boolean
+}
+
+interface DevParameters {
+  DEV_WINDOWS: DevWindows
+  NEXT_DEV_WINDOWS: DevWindows | {}
+  DEV_ISSUE: number
+  DEVELOPER_FUND: DeveloperPayment[]
+  NEXT_DEVELOPER_FUND: DeveloperPayment[]
+  IN_SYNC: boolean
+}
+
 interface Windows {
   proposalWindow: number[]
   votingWindow: number[]
@@ -169,14 +187,14 @@ interface WrappedResponse {
   isPartial: boolean
   stateId: string
   timestamp: number
-  data: any
+  data: unknown
 }
 
 interface ApplyResponse {
-  stateTableResults: any[]
+  stateTableResults: unknown[]
   txId: string
   txTimestamp: number
-  accountData: any[]
+  accountData: unknown[]
 }
 
 interface ValidationResponse {
