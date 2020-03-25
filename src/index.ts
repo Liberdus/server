@@ -1,15 +1,15 @@
-import * as fs from 'fs'
-import * as path from 'path'
 import axios from 'axios'
-import * as Prop from 'dot-prop'
-import * as _ from 'lodash'
-import * as heapdump from 'heapdump'
-import Shardus = require('shardus-global-server/src/shardus/shardus-types')
 import Decimal from 'decimal.js'
-import shardus from 'shardus-global-server'
-import stringify = require('fast-stable-stringify')
+import * as Prop from 'dot-prop'
+import * as fs from 'fs'
+import * as heapdump from 'heapdump'
+import * as _ from 'lodash'
+import * as path from 'path'
 import * as crypto from 'shardus-crypto-utils'
+import shardus from 'shardus-global-server'
 import './@types'
+import Shardus = require('shardus-global-server/src/shardus/shardus-types')
+import stringify = require('fast-stable-stringify')
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 // THE ENTIRE APP STATE FOR THIS NODE
@@ -2486,12 +2486,25 @@ dapp.setup({
       }
       case 'setTxFee': {
         console.log('=== SET GLOBAL_TX_FEE_ACCT', tx.fee, '===')
-        dapp.setGlobal(GLOBAL_TX_FEE_ACCT, { type: 'setTxFeeApply', to: tx.to, fee: tx.fee }, tx.timestamp + 10000, GLOBAL_TX_FEE_ACCT)
+        const when = tx.timestamp + 10000
+        dapp.setGlobal(
+          GLOBAL_TX_FEE_ACCT,
+          {
+            type: 'setTxFeeApply',
+            timestamp: when,
+            to: tx.to,
+            fee: tx.fee,
+          },
+          when,
+          GLOBAL_TX_FEE_ACCT,
+        )
         break
       }
       case 'setTxFeeApply': {
         console.log('=== APPLY SET GLOBAL_TX_FEE_ACCT', tx.fee, '===')
+        console.log('TO:', JSON.stringify(to))
         to.data.balance = tx.fee
+        console.log('TO DATA:', JSON.stringify(to.data))
         break
       }
       case 'distribute': {
