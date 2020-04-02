@@ -1706,6 +1706,11 @@ dapp.setup({
         response.reason = 'This transaction is valid!'
         return response
       }
+      case 'tally_apply': {
+        response.success = true
+        response.reason = 'This transaction is valid!'
+        return response
+      }
       case 'dev_tally': {
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
         const devProposals: DevProposalAccount[] = tx.devProposals.map((id: string) => wrappedStates[id].data)
@@ -2669,6 +2674,7 @@ dapp.setup({
         break
       }
       case 'tally': {
+        const network: NetworkAccount = wrappedStates[tx.to].data
         const issue: IssueAccount = wrappedStates[tx.issue].data
         const margin = 100 / (2 * (issue.proposalCount + 1)) / 100
 
@@ -2692,19 +2698,35 @@ dapp.setup({
         }
 
         winner.winner = true // CHICKEN DINNER
-        to.next = winner.parameters
-        to.nextWindows = {
-          proposalWindow: [to.windows.applyWindow[1], to.windows.applyWindow[1] + TIME_FOR_PROPOSALS],
-          votingWindow: [to.windows.applyWindow[1] + TIME_FOR_PROPOSALS, to.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING],
+        const next = winner.parameters
+        const nextWindows = {
+          proposalWindow: [network.windows.applyWindow[1], network.windows.applyWindow[1] + TIME_FOR_PROPOSALS],
+          votingWindow: [network.windows.applyWindow[1] + TIME_FOR_PROPOSALS, network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING],
           graceWindow: [
-            to.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING,
-            to.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE,
+            network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING,
+            network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE,
           ],
           applyWindow: [
-            to.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE,
-            to.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE + TIME_FOR_APPLY,
+            network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE,
+            network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE + TIME_FOR_APPLY,
           ],
         }
+
+        const when = tx.timestamp + ONE_SECOND * 10
+
+        dapp.setGlobal(
+          networkAccount,
+          {
+            type: 'tally_apply',
+            timestamp: when,
+            network: networkAccount,
+            next,
+            nextWindows,
+          },
+          when,
+          networkAccount,
+        )
+
         issue.winner = winner.id
 
         from.timestamp = tx.timestamp
@@ -2712,6 +2734,15 @@ dapp.setup({
         issue.timestamp = tx.timestamp
         winner.timestamp = tx.timestamp
         dapp.log('Applied tally tx', from, to, issue, winner)
+        break
+      }
+      case 'tally_apply': {
+        dapp.log(`=== SET TALLY GLOBAL ${tx} ===`)
+        const network = wrappedStates[tx.network].data
+        network.next = tx.next
+        network.nextWindows = tx.nextWindows
+        network.timestamp = tx.timestamp
+        dapp.log(`=== APPLIED TALLY GLOBAL ${network} ===`)
         break
       }
       case 'dev_tally': {
@@ -2905,6 +2936,9 @@ dapp.setup({
       case 'tally':
         result.sourceKeys = [tx.from]
         result.targetKeys = [...tx.proposals, tx.issue, tx.to]
+        break
+      case 'tally_apply':
+        result.targetKeys = [tx.network]
         break
       case 'dev_tally':
         result.sourceKeys = [tx.from]
