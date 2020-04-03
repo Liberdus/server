@@ -974,6 +974,7 @@ dapp.setup({
 
       dapp.set({
         type: 'issue',
+        network: networkAccount,
         nodeId,
         from: address,
         to: networkAccount,
@@ -983,6 +984,7 @@ dapp.setup({
       })
       dapp.set({
         type: 'dev_issue',
+        network: networkAccount,
         nodeId,
         from: address,
         to: networkAccount,
@@ -990,6 +992,11 @@ dapp.setup({
         timestamp: Date.now(),
       })
       await _sleep(ONE_SECOND * 10)
+    } else {
+      while (!dapp.getLocalOrRemoteAccount(networkAccount)) {
+        console.log('waiting..')
+        await _sleep(1000)
+      }
     }
   },
   validateTransaction(tx: any, wrappedStates: { [id: string]: WrappedAccount }): Shardus.IncomingTransactionResult {
@@ -1394,7 +1401,7 @@ dapp.setup({
           response.reason = 'Issue is already active'
           return response
         }
-        const networkIssueHash = crypto.hash(`${network.issue}`)
+        const networkIssueHash = crypto.hash(`issue-${network.issue}`)
         if (tx.issue !== networkIssueHash) {
           response.reason = `issue hash (${tx.issue}) does not match current network issue hash (${networkIssueHash})`
           return response
@@ -1408,10 +1415,11 @@ dapp.setup({
         response.reason = 'This transaction is valid!'
         return response
       }
-      case 'apply_issue':
-        response.success = true
-        response.reason = 'This transaction is valid!'
-        return response
+      // case 'apply_issue': {
+      //   response.success = true
+      //   response.reason = 'This transaction is valid!'
+      //   return response
+      // }
       case 'dev_issue': {
         const network: NetworkAccount = wrappedStates[tx.network].data
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
@@ -1438,11 +1446,11 @@ dapp.setup({
         response.reason = 'This transaction is valid!'
         return response
       }
-      case 'apply_dev_issue': {
-        response.success = true
-        response.reason = 'This transaction is valid!'
-        return response
-      }
+      // case 'apply_dev_issue': {
+      //   response.success = true
+      //   response.reason = 'This transaction is valid!'
+      //   return response
+      // }
       case 'proposal': {
         const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
@@ -1593,7 +1601,7 @@ dapp.setup({
           return response
         }
         if (issue.number !== network.issue) {
-          response.reason = 'This issue number ${issue.number} does not match the current network issue ${network.issue}'
+          response.reason = `This issue number ${issue.number} does not match the current network issue ${network.issue}`
           return response
         }
         if (issue.active === false) {
@@ -1637,8 +1645,8 @@ dapp.setup({
           response.reason = "devIssue doesn't exist"
           return response
         }
-        if (devIssue.number !== network.issue) {
-          response.reason = 'This issue number ${issue.number} does not match the current network issue ${network.issue}'
+        if (devIssue.number !== network.devIssue) {
+          response.reason = `This devIssue number ${devIssue.number} does not match the current network devIssue ${network.issue}`
           return response
         }
         if (devIssue.active === false) {
@@ -1681,7 +1689,7 @@ dapp.setup({
           return response
         }
         if (issue.number !== network.issue) {
-          response.reason = 'This issue number ${issue.number} does not match the current network issue ${network.issue}'
+          response.reason = `This issue number ${issue.number} does not match the current network issue ${network.issue}`
           return response
         }
         if (issue.active === false) {
@@ -1867,7 +1875,7 @@ dapp.setup({
       case 'apply_developer_payment': {
         response.success = true
         response.reason = 'This transaction is valid!'
-        break
+        return response
       }
       default: {
         response.success = false
@@ -2074,11 +2082,6 @@ dapp.setup({
         break
       }
       case 'node_reward': {
-        if (typeof tx.amount !== 'number') {
-          success = false
-          reason = '"amount" must be a number'
-          throw new Error(reason)
-        }
         if (typeof tx.from !== 'string') {
           success = false
           reason = '"From" must be a string'
@@ -2729,7 +2732,7 @@ dapp.setup({
 
         winner.winner = true // CHICKEN DINNER
         const next = winner.parameters
-        const nextWindows = {
+        const nextWindows: Windows = {
           proposalWindow: [network.windows.applyWindow[1], network.windows.applyWindow[1] + TIME_FOR_PROPOSALS],
           votingWindow: [network.windows.applyWindow[1] + TIME_FOR_PROPOSALS, network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING],
           graceWindow: [
@@ -2760,15 +2763,14 @@ dapp.setup({
         issue.winner = winner.id
 
         from.timestamp = tx.timestamp
-        to.timestamp = tx.timestamp
         issue.timestamp = tx.timestamp
         winner.timestamp = tx.timestamp
-        dapp.log('Applied tally tx', from, to, issue, winner)
+        dapp.log('Applied tally tx', from, issue, winner)
         break
       }
       case 'apply_tally': {
         dapp.log(`=== SET TALLY GLOBAL ${tx} ===`)
-        const network = wrappedStates[tx.network].data
+        const network: NetworkAccount = wrappedStates[tx.network].data
         network.next = tx.next
         network.nextWindows = tx.nextWindows
         network.timestamp = tx.timestamp
@@ -2780,7 +2782,7 @@ dapp.setup({
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
         const devProposals: DevProposalAccount[] = tx.devProposals.map((id: string) => wrappedStates[id].data)
         let nextDeveloperFund: DeveloperPayment[]
-        devIssue.winners = []
+
         for (const devProposal of devProposals) {
           if (devProposal.approve >= devProposal.reject + devProposal.reject * 0.15) {
             devProposal.approved = true
@@ -2818,7 +2820,7 @@ dapp.setup({
           ],
         }
 
-        const when = tx.timestamp
+        const when = tx.timestamp + ONE_SECOND * 10
 
         dapp.setGlobal(
           networkAccount,
@@ -2835,52 +2837,130 @@ dapp.setup({
 
         from.timestamp = tx.timestamp
         devIssue.timestamp = tx.timestamp
-        dapp.log('Applied dev_tally tx', from, to, devIssue, devProposals)
+        dapp.log('Applied dev_tally tx', from, devIssue, devProposals)
         break
       }
-      case 'apply_parameters': {
+      case 'apply_dev_tally': {
+        dapp.log(`=== SET DEV_TALLY GLOBAL ${tx} ===`)
+        const network: NetworkAccount = wrappedStates[tx.network].data
+        network.nextDeveloperFund = tx.nextDeveloperFund
+        network.nextDevWindows = tx.nextDevWindows
+        network.timestamp = tx.timestamp
+        dapp.log(`=== APPLIED DEV_TALLY GLOBAL ${network} ===`)
+        break
+      }
+      case 'parameters': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue].data
+        const when = tx.timestamp + ONE_SECOND * 10
 
-        to.current = to.next as NetworkParameters
-        to.windows = to.nextWindows as Windows
-        to.next = {}
-        to.nextWindows = {}
-        to.issue++
+        dapp.setGlobal(
+          networkAccount,
+          {
+            type: 'apply_parameters',
+            timestamp: when,
+            network: networkAccount,
+            current: network.next,
+            windows: network.nextWindows,
+          },
+          when,
+          networkAccount,
+        )
+
+        // to.current = to.next as NetworkParameters
+        // to.windows = to.nextWindows as Windows
+        // to.next = {}
+        // to.nextWindows = {}
+        // to.issue++
 
         issue.active = false
 
         from.timestamp = tx.timestamp
-        to.timestamp = tx.timestamp
         issue.timestamp = tx.timestamp
-        dapp.log('Applied apply_parameters tx', from, issue, to)
+        dapp.log('Applied parameters tx', from, issue)
         break
       }
-      case 'apply_dev_parameters': {
+      case 'apply_parameters': {
+        dapp.log(`=== SET PARAMETERS GLOBAL ${tx} ===`)
+        const network: NetworkAccount = wrappedStates[tx.network].data
+        network.current = tx.current
+        network.windows = tx.windows
+        network.next = {}
+        network.nextWindows = {}
+        network.timestamp = tx.timestamp
+        dapp.log(`=== APPLIED PARAMETERS GLOBAL ${network} ===`)
+        break
+      }
+      case 'dev_parameters': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
-
-        to.devWindows = to.nextDevWindows as DevWindows
-        to.nextDevWindows = {}
-        to.developerFund = [...to.developerFund, ...to.nextDeveloperFund].sort((a, b) => a.timestamp - b.timestamp)
-        to.nextDeveloperFund = []
-        to.devIssue++
+        const when = tx.timestamp + ONE_SECOND * 10
+        dapp.setGlobal(
+          networkAccount,
+          {
+            type: 'apply_dev_parameters',
+            timestamp: when,
+            network: networkAccount,
+            devWindows: network.nextDevWindows,
+            developerFund: [...network.developerFund, ...network.nextDeveloperFund].sort((a, b) => a.timestamp - b.timestamp),
+          },
+          when,
+          networkAccount,
+        )
+        // network.devWindows = network.nextDevWindows as DevWindows
+        // network.nextDevWindows = {}
+        // network.developerFund = [...network.developerFund, ...network.nextDeveloperFund].sort((a, b) => a.timestamp - b.timestamp)
+        // network.nextDeveloperFund = []
+        // network.devIssue++
 
         devIssue.active = false
 
         from.timestamp = tx.timestamp
-        to.timestamp = tx.timestamp
         devIssue.timestamp = tx.timestamp
-        dapp.log('Applied apply_dev_parameters tx', from, devIssue, to)
+        dapp.log('Applied dev_parameters tx', from, devIssue)
+        break
+      }
+      case 'apply_dev_parameters': {
+        dapp.log(`=== SET DEV_PARAMETERS GLOBAL ${tx} ===`)
+        const network: NetworkAccount = wrappedStates[tx.network].data
+        network.devWindows = tx.DevWindows
+        network.developerFund = tx.developerFund
+        network.timestamp = tx.timestamp
+        network.issue++
+        network.devIssue++
         break
       }
       case 'developer_payment': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const developer: UserAccount = wrappedStates[tx.developer].data
         developer.data.balance += tx.payment.amount
-        to.developerFund = to.developerFund.filter((payment: DeveloperPayment) => payment.id !== tx.payment.id)
-        // developer.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         developer.timestamp = tx.timestamp
-        to.timestamp = tx.timestamp
-        dapp.log('Applied developer_payment tx', from, to, developer)
+
+        const when = tx.timestamp + ONE_SECOND * 10
+
+        dapp.setGlobal(
+          networkAccount,
+          {
+            type: 'apply_developer_payment',
+            timestamp: when,
+            network: networkAccount,
+            developerFund: network.developerFund.filter((payment: DeveloperPayment) => payment.id !== tx.payment.id),
+          },
+          when,
+          networkAccount,
+        )
+
+        // network.developerFund = network.developerFund.filter((payment: DeveloperPayment) => payment.id !== tx.payment.id)
+        dapp.log('Applied developer_payment tx', from, developer)
+        break
+      }
+      case 'apply_developer_payment': {
+        dapp.log(`=== SET APPLY_DEV_PAYMENT GLOBAL ${tx} ===`)
+        const network: NetworkAccount = wrappedStates[tx.network].data
+        network.developerFund = tx.developerFund
+        network.timestamp = tx.timestamp
+        dapp.log(`=== APPLIED DEV_PAYMENT GLOBAL ${network} ===`)
         break
       }
     }
@@ -2943,7 +3023,7 @@ dapp.setup({
         break
       case 'node_reward':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.to]
+        result.targetKeys = [tx.to, tx.network]
         break
       case 'bond':
         result.sourceKeys = [tx.from]
@@ -2959,42 +3039,42 @@ dapp.setup({
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.issue, tx.proposal, tx.network]
         break
-      case 'apply_issue':
-        result.targetKeys = [tx.network]
-        break
+      // case 'apply_issue':
+      //   result.targetKeys = [tx.network]
+      //   break
       case 'dev_issue':
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.devIssue, tx.network]
         break
-      case 'apply_dev_issue':
-        result.targetKeys = [tx.network]
-        break
+      // case 'apply_dev_issue':
+      //   result.targetKeys = [tx.network]
+      //   break
       case 'proposal':
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.issue, tx.proposal, tx.network]
         break
       case 'dev_proposal':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.devIssue, tx.devProposal]
+        result.targetKeys = [tx.devIssue, tx.devProposal, tx.network]
         break
       case 'vote':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.issue, tx.proposal]
+        result.targetKeys = [tx.issue, tx.proposal, tx.network]
         break
       case 'dev_vote':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.devIssue, tx.devProposal]
+        result.targetKeys = [tx.devIssue, tx.devProposal, tx.network]
         break
       case 'tally':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [...tx.proposals, tx.issue, tx.to]
+        result.targetKeys = [...tx.proposals, tx.issue, tx.network]
         break
       case 'apply_tally':
         result.targetKeys = [tx.network]
         break
       case 'dev_tally':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [...tx.devProposals, tx.devIssue, tx.to]
+        result.targetKeys = [...tx.devProposals, tx.devIssue, tx.network]
         break
       case 'apply_dev_tally':
         result.targetKeys = [tx.network]
@@ -3008,19 +3088,17 @@ dapp.setup({
         break
       case 'dev_parameters':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.to, tx.devIssue]
+        result.targetKeys = [tx.to, tx.devIssue, tx.network]
         break
       case 'apply_dev_parameters':
-        result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.to, tx.devIssue]
+        result.targetKeys = [tx.network]
         break
       case 'developer_payment':
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.developer, tx.network]
         break
       case 'apply_developer_payment':
-        result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.developer, tx.network]
+        result.targetKeys = [tx.network]
         break
     }
     result.allKeys = result.allKeys.concat(result.sourceKeys, result.targetKeys)
@@ -3268,7 +3346,7 @@ async function generateIssue(address: string, nodeId: string): Promise<void> {
     type: 'issue',
     nodeId,
     from: address,
-    issue: network.issue,
+    issue: crypto.hash(`issue-${network.issue}`),
     proposal: crypto.hash(`issue-${network.issue}-proposal-1`),
     timestamp: Date.now(),
   }
@@ -3285,7 +3363,7 @@ async function generateDevIssue(address: string, nodeId: string): Promise<void> 
     network: networkAccount,
     nodeId,
     from: address,
-    devIssue: network.devIssue,
+    devIssue: crypto.hash(`dev-issue-${network.devIssue}`),
     timestamp: Date.now(),
   }
   dapp.put(tx)
@@ -3345,11 +3423,11 @@ async function applyParameters(address: string, nodeId: string): Promise<void> {
   const account = await dapp.getLocalOrRemoteAccount(networkAccount)
   const network: NetworkAccount = account.data
   const tx = {
-    type: 'apply_parameters',
+    type: 'parameters',
     nodeId,
     from: address,
     network: networkAccount,
-    issue: network.issue,
+    issue: crypto.hash(`issue-${network.issue}`),
     timestamp: Date.now(),
   }
   dapp.put(tx)
@@ -3361,11 +3439,11 @@ async function applyDevParameters(address: string, nodeId: string): Promise<void
   const account = await dapp.getLocalOrRemoteAccount(networkAccount)
   const network: NetworkAccount = account.data
   const tx = {
-    type: 'apply_dev_parameters',
+    type: 'dev_parameters',
     nodeId,
     from: address,
     network: networkAccount,
-    devIssue: network.issue,
+    devIssue: crypto.hash(`dev-issue-${network.devIssue}`),
     timestamp: Date.now(),
   }
   dapp.put(tx)
@@ -3420,7 +3498,11 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
 
     try {
       const account = await dapp.getLocalOrRemoteAccount(networkAccount)
-      network = account.data
+      if (account) {
+        network = account.data
+      } else {
+        network = accounts[networkAccount]
+      }
       ;[cycleData] = dapp.getLatestCycles()
       cycleStartTimestamp = cycleData.start * 1000 + ONE_SECOND * 30
       ;[luckyNode] = dapp.getClosestNodes(cycleData.marker, 2)
@@ -3439,16 +3521,16 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       luckyNode: `,
       luckyNode,
       `
-      network.current: `,
+      current: `,
       network.current,
       `
-      network.next: `,
+      next: `,
       network.next,
       `
       DEVELOPER_FUND: `,
       network.developerFund,
       `
-      network.next_DEVELOPER_FUND: `,
+      nextDeveloperFund: `,
       network.nextDeveloperFund,
       `
       ISSUE: `,
