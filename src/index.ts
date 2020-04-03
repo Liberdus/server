@@ -1,11 +1,11 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import axios from 'axios'
 import * as Prop from 'dot-prop'
 import _ from 'lodash'
 import * as heapdump from 'heapdump'
-import Shardus = require('shardus-global-server/src/shardus/shardus-types')
+import axios from 'axios'
 import Decimal from 'decimal.js'
+import Shardus = require('shardus-global-server/src/shardus/shardus-types')
 import shardus from 'shardus-global-server'
 import stringify = require('fast-stable-stringify')
 import * as crypto from 'shardus-crypto-utils'
