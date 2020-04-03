@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import axios from 'axios'
 import * as Prop from 'dot-prop'
-import * as _ from 'lodash'
+import _ from 'lodash'
 import * as heapdump from 'heapdump'
 import Shardus = require('shardus-global-server/src/shardus/shardus-types')
 import Decimal from 'decimal.js'
@@ -17,13 +17,12 @@ let accounts: { [id: string]: Account } = {}
 const networkAccount = '0'.repeat(64)
 
 // DYNAMIC LOCAL DATA HELD BY THE NODES
-let IN_SYNC = false
-let CURRENT: NetworkParameters, NEXT: NetworkParameters | {}
-let WINDOWS: Windows, NEXT_WINDOWS: Windows | {}, DEV_WINDOWS: DevWindows, NEXT_DEV_WINDOWS: DevWindows | {}
-let ISSUE: number, DEV_ISSUE: number
+let current: NetworkParameters, next: NetworkParameters | {}
+let windows: Windows, nextWindows: Windows | {}, devWindows: DevWindows, nextDevWindows: DevWindows | {}
+let issue: number, devIssue: number
 
 // VARIABLE FOR HELPING NODES DETERMINE WHEN TO RELEASE DEVELOPER FUNDS
-let DEVELOPER_FUND: DeveloperPayment[], NEXT_DEVELOPER_FUND: DeveloperPayment[]
+let developerFund: DeveloperPayment[], nextDeveloperFund: DeveloperPayment[]
 
 // HELPFUL TIME CONSTANTS IN MILLISECONDS
 const ONE_SECOND = 1000
@@ -169,69 +168,68 @@ Prop.set(config, 'logs', {
 const dapp = shardus(config)
 
 // INITIAL PARAMETERS THE NODES SET WHEN THEY BECOME ACTIVE
-async function syncParameters(timestamp: number): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(networkAccount)
-  // IF THE NETWORK ACCOUNT HAS BEEN INITIALIZED
-  if (account && account.data) {
-    console.log(`NETWORK ACCOUNT: ${stringify(account.data)}`)
-    dapp.log(`NETWORK ACCOUNT: ${stringify(account.data)}`)
-    CURRENT = account.data.current
-    NEXT = account.data.next
-    WINDOWS = account.data.windows
-    NEXT_WINDOWS = account.data.nextWindows
-    ISSUE = account.data.issue
-    IN_SYNC = true
-  } else {
-    const proposalWindow = [timestamp, timestamp + TIME_FOR_PROPOSALS]
-    const votingWindow = [proposalWindow[1], proposalWindow[1] + TIME_FOR_VOTING]
-    const graceWindow = [votingWindow[1], votingWindow[1] + TIME_FOR_GRACE]
-    const applyWindow = [graceWindow[1], graceWindow[1] + TIME_FOR_APPLY]
+// async function syncParameters(timestamp: number): Promise<void> {
+//   const account = await dapp.getLocalOrRemoteAccount(networkAccount)
+//   const network: NetworkAccount = account.data
+//   // IF THE NETWORK ACCOUNT HAS BEEN INITIALIZED
+//   if (account && network) {
+//     console.log(`NETWORK ACCOUNT: ${stringify(network)}`)
+//     dapp.log(`NETWORK ACCOUNT: ${stringify(network)}`)
+//     current = network.current
+//     next = network.next
+//     windows = network.windows
+//     nextWindows = network.nextWindows
+//     issue = network.issue
+//   } else {
+//     const proposalWindow = [timestamp, timestamp + TIME_FOR_PROPOSALS]
+//     const votingWindow = [proposalWindow[1], proposalWindow[1] + TIME_FOR_VOTING]
+//     const graceWindow = [votingWindow[1], votingWindow[1] + TIME_FOR_GRACE]
+//     const applyWindow = [graceWindow[1], graceWindow[1] + TIME_FOR_APPLY]
 
-    CURRENT = INITIAL_PARAMETERS
-    NEXT = {}
-    WINDOWS = {
-      proposalWindow,
-      votingWindow,
-      graceWindow,
-      applyWindow,
-    }
-    NEXT_WINDOWS = {}
-    ISSUE = 1
-    IN_SYNC = false
-  }
-}
+//     network.current = INITIAL_PARAMETERS
+//     network.next = {}
+//     network.windows = {
+//       proposalWindow,
+//       votingWindow,
+//       graceWindow,
+//       applyWindow,
+//     }
+//     network.nextWindows = {}
+//     issue = 1
+//   }
+// }
 
-async function syncDevParameters(timestamp: number): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(networkAccount)
-  // IF THE NETWORK ACCOUNT HAS BEEN INITIALIZED
-  if (account && account.data) {
-    console.log(`NETWORK ACCOUNT: ${stringify(account.data)}`)
-    dapp.log(`NETWORK ACCOUNT: ${stringify(account.data)}`)
-    DEV_WINDOWS = account.data.devWindows
-    NEXT_DEV_WINDOWS = account.data.nextDevWindows
-    DEVELOPER_FUND = account.data.developerFund
-    NEXT_DEVELOPER_FUND = account.data.nextDeveloperFund
-    DEV_ISSUE = account.data.devIssue
-    IN_SYNC = true
-  } else {
-    const devProposalWindow = [timestamp, timestamp + TIME_FOR_DEV_PROPOSALS]
-    const devVotingWindow = [devProposalWindow[1], devProposalWindow[1] + TIME_FOR_DEV_VOTING]
-    const devGraceWindow = [devVotingWindow[1], devVotingWindow[1] + TIME_FOR_DEV_GRACE]
-    const devApplyWindow = [devGraceWindow[1], devGraceWindow[1] + TIME_FOR_DEV_APPLY]
+// async function syncDevParameters(timestamp: number): Promise<void> {
+//   const account = await dapp.getLocalOrRemoteAccount(networkAccount)
+//   // IF THE NETWORK ACCOUNT HAS BEEN INITIALIZED
+//   if (account && account.data) {
+//     console.log(`NETWORK ACCOUNT: ${stringify(account.data)}`)
+//     dapp.log(`NETWORK ACCOUNT: ${stringify(account.data)}`)
+//     network.devWindows = account.data.devWindows
+//     network.next_network.devWindows = account.data.nextDevWindows
+//     DEVELOPER_FUND = account.data.developerFund
+//     network.next_DEVELOPER_FUND = account.data.nextDeveloperFund
+//     DEV_ISSUE = account.data.devIssue
+//     IN_SYNC = true
+//   } else {
+//     const devProposalWindow = [timestamp, timestamp + TIME_FOR_DEV_PROPOSALS]
+//     const devVotingWindow = [devProposalWindow[1], devProposalWindow[1] + TIME_FOR_DEV_VOTING]
+//     const devGraceWindow = [devVotingWindow[1], devVotingWindow[1] + TIME_FOR_DEV_GRACE]
+//     const devApplyWindow = [devGraceWindow[1], devGraceWindow[1] + TIME_FOR_DEV_APPLY]
 
-    DEV_WINDOWS = {
-      devProposalWindow,
-      devVotingWindow,
-      devGraceWindow,
-      devApplyWindow,
-    }
-    NEXT_DEV_WINDOWS = {}
-    DEVELOPER_FUND = []
-    NEXT_DEVELOPER_FUND = []
-    DEV_ISSUE = 1
-    IN_SYNC = false
-  }
-}
+//     network.devWindows = {
+//       devProposalWindow,
+//       devVotingWindow,
+//       devGraceWindow,
+//       devApplyWindow,
+//     }
+//     network.next_network.devWindows = {}
+//     DEVELOPER_FUND = []
+//     network.next_DEVELOPER_FUND = []
+//     DEV_ISSUE = 1
+//     IN_SYNC = false
+//   }
+// }
 
 // CREATE A USER ACCOUNT
 function createAccount(accountId: string, timestamp: number): UserAccount {
@@ -297,16 +295,16 @@ function createAlias(accountId: string): AliasAccount {
 function createNetworkAccount(accountId: string): NetworkAccount {
   const account: NetworkAccount = {
     id: accountId,
-    current: CURRENT,
-    next: NEXT,
-    windows: WINDOWS,
-    nextWindows: NEXT_WINDOWS,
-    devWindows: DEV_WINDOWS,
-    nextDevWindows: NEXT_DEV_WINDOWS,
-    issue: ISSUE,
-    devIssue: DEV_ISSUE,
-    developerFund: DEVELOPER_FUND,
-    nextDeveloperFund: NEXT_DEVELOPER_FUND,
+    current,
+    next,
+    windows,
+    nextWindows,
+    devWindows,
+    nextDevWindows,
+    issue,
+    devIssue,
+    developerFund,
+    nextDeveloperFund,
     hash: '',
     timestamp: 0,
   }
@@ -398,44 +396,6 @@ dapp.registerExternalPost(
 )
 
 dapp.registerExternalGet(
-  'network/parameters/node',
-  async (req, res): Promise<void> => {
-    try {
-      res.json({
-        parameters: {
-          CURRENT,
-          NEXT,
-          ISSUE,
-          DEV_ISSUE,
-          DEVELOPER_FUND,
-          NEXT_DEVELOPER_FUND,
-          WINDOWS,
-          NEXT_WINDOWS,
-          DEV_WINDOWS,
-          NEXT_DEV_WINDOWS,
-          IN_SYNC,
-        },
-      })
-    } catch (error) {
-      dapp.log(error)
-      res.json({ error })
-    }
-  },
-)
-
-dapp.registerExternalGet(
-  'network/parameters/node/next',
-  async (req, res): Promise<void> => {
-    try {
-      res.json({ parameters: NEXT })
-    } catch (error) {
-      dapp.log(error)
-      res.json({ error })
-    }
-  },
-)
-
-dapp.registerExternalGet(
   'network/parameters',
   async (req, res): Promise<void> => {
     try {
@@ -443,16 +403,16 @@ dapp.registerExternalGet(
       const network: NetworkAccount = account.data
       res.json({
         parameters: {
-          CURRENT: network.current,
-          NEXT: network.next,
-          DEVELOPER_FUND: network.developerFund,
-          NEXT_DEVELOPER_FUND: network.nextDeveloperFund,
-          WINDOWS: network.windows,
-          DEV_WINDOWS: network.devWindows,
-          NEXT_WINDOWS: network.nextWindows,
-          NEXT_DEV_WINDOWS: network.nextDevWindows,
-          ISSUE: network.issue,
-          DEV_ISSUE: network.devIssue,
+          current: network.current,
+          next: network.next,
+          developerFund: network.developerFund,
+          nextDeveloperFund: network.nextDeveloperFund,
+          windows: network.windows,
+          devWindows: network.devWindows,
+          nextWindows: network.nextWindows,
+          nextDevWindows: network.nextDevWindows,
+          issue: network.issue,
+          devIssue: network.devIssue,
         },
       })
     } catch (error) {
@@ -478,10 +438,11 @@ dapp.registerExternalGet(
 dapp.registerExternalGet(
   'network/windows/all',
   async (req, res): Promise<void> => {
+    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     try {
       res.json({
-        windows: WINDOWS,
-        devWindows: DEV_WINDOWS,
+        windows: network.data.windows,
+        devWindows: network.data.devWindows,
       })
     } catch (error) {
       res.json({ error })
@@ -516,9 +477,10 @@ dapp.registerExternalGet(
 dapp.registerExternalGet(
   'issues',
   async (req, res): Promise<void> => {
+    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     try {
       const issues = []
-      for (let i = 1; i <= ISSUE; i++) {
+      for (let i = 1; i <= network.data.issue; i++) {
         const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${i}`))
         if (issue && issue.data) {
           issues.push(issue.data)
@@ -536,7 +498,8 @@ dapp.registerExternalGet(
   'issues/latest',
   async (req, res): Promise<void> => {
     try {
-      const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${ISSUE}`))
+      const network = await dapp.getLocalOrRemoteAccount(networkAccount)
+      const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${network.data.issue}`))
       res.json({ issue: issue && issue.data })
     } catch (error) {
       dapp.log(error)
@@ -548,8 +511,9 @@ dapp.registerExternalGet(
 dapp.registerExternalGet(
   'issues/count',
   async (req, res): Promise<void> => {
+    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     try {
-      res.json({ count: ISSUE })
+      res.json({ count: network.data.issue })
     } catch (error) {
       dapp.log(error)
       res.json({ error })
@@ -560,9 +524,10 @@ dapp.registerExternalGet(
 dapp.registerExternalGet(
   'issues/dev',
   async (req, res): Promise<void> => {
+    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     try {
       const devIssues = []
-      for (let i = 1; i <= DEV_ISSUE; i++) {
+      for (let i = 1; i <= network.data.devIssue; i++) {
         const devIssue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${i}`))
         if (devIssue && devIssue.data) {
           devIssues.push(devIssue.data)
@@ -579,8 +544,9 @@ dapp.registerExternalGet(
 dapp.registerExternalGet(
   'issues/dev/latest',
   async (req, res): Promise<void> => {
+    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     try {
-      const devIssue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${DEV_ISSUE}`))
+      const devIssue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${network.data.devIssue}`))
       res.json({ devIssue: devIssue && devIssue.data })
     } catch (error) {
       dapp.log(error)
@@ -592,8 +558,9 @@ dapp.registerExternalGet(
 dapp.registerExternalGet(
   'issues/dev/count',
   async (req, res): Promise<void> => {
+    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     try {
-      res.json({ count: DEV_ISSUE })
+      res.json({ count: network.data.devIssue })
     } catch (error) {
       dapp.log(error)
       res.json({ error })
@@ -604,9 +571,10 @@ dapp.registerExternalGet(
 dapp.registerExternalGet(
   'proposals',
   async (req, res): Promise<void> => {
+    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     try {
       const proposals = []
-      for (let i = 1; i <= ISSUE; i++) {
+      for (let i = 1; i <= network.data.issue; i++) {
         const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${i}`))
         const proposalCount = issue && issue.data.proposalCount
         for (let j = 1; j <= proposalCount; j++) {
@@ -627,12 +595,13 @@ dapp.registerExternalGet(
 dapp.registerExternalGet(
   'proposals/latest',
   async (req, res): Promise<void> => {
+    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     try {
-      const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${ISSUE}`))
+      const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${network.data.issue}`))
       const proposalCount = issue && issue.data.proposalCount
       const proposals = []
       for (let i = 1; i <= proposalCount; i++) {
-        const proposal = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${ISSUE}-proposal-${i}`))
+        const proposal = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${network.data.issue}-proposal-${i}`))
         if (proposal && proposal.data) {
           proposals.push(proposal.data)
         }
@@ -648,8 +617,9 @@ dapp.registerExternalGet(
 dapp.registerExternalGet(
   'proposals/count',
   async (req, res): Promise<void> => {
+    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     try {
-      const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${ISSUE}`))
+      const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${network.data.issue}`))
       res.json({ count: issue && issue.data.proposalCount })
     } catch (error) {
       dapp.log(error)
@@ -661,9 +631,10 @@ dapp.registerExternalGet(
 dapp.registerExternalGet(
   'proposals/dev',
   async (req, res): Promise<void> => {
+    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     try {
       const devProposals = []
-      for (let i = 1; i <= DEV_ISSUE; i++) {
+      for (let i = 1; i <= network.data.devIssue; i++) {
         const devIssue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${i}`))
         const devProposalCount = devIssue && devIssue.data.devProposalCount
         for (let j = 1; j <= devProposalCount; j++) {
@@ -684,12 +655,13 @@ dapp.registerExternalGet(
 dapp.registerExternalGet(
   'proposals/dev/latest',
   async (req, res): Promise<void> => {
+    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     try {
-      const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${DEV_ISSUE}`))
+      const issue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${network.data.devIssue}`))
       const devProposalCount = issue && issue.data.devProposalCount
       const devProposals = []
       for (let i = 1; i <= devProposalCount; i++) {
-        const devProposal = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${DEV_ISSUE}-dev-proposal-${i}`))
+        const devProposal = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${network.data.devIssue}-dev-proposal-${i}`))
         if (devProposal && devProposal.data) {
           devProposals.push(devProposal.data)
         }
@@ -705,8 +677,9 @@ dapp.registerExternalGet(
 dapp.registerExternalGet(
   'proposals/dev/count',
   async (req, res): Promise<void> => {
+    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     try {
-      const devIssue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${DEV_ISSUE}`))
+      const devIssue = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${network.data.devIssue}`))
       res.json({ count: devIssue && devIssue.data.devProposalCount })
     } catch (error) {
       dapp.log(error)
@@ -939,12 +912,12 @@ async function _sleep(ms = 0): Promise<NodeJS.Timeout> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-function maintenanceAmount(timestamp: number, account: UserAccount): number {
+function maintenanceAmount(timestamp: number, account: UserAccount, network: NetworkAccount): number {
   let amount: number
-  if (timestamp - account.lastMaintenance < CURRENT.maintenanceInterval) {
+  if (timestamp - account.lastMaintenance < network.current.maintenanceInterval) {
     amount = 0
   } else {
-    amount = account.data.balance * (CURRENT.maintenanceFee * Math.floor((timestamp - account.lastMaintenance) / CURRENT.maintenanceInterval))
+    amount = account.data.balance * (network.current.maintenanceFee * Math.floor((timestamp - account.lastMaintenance) / network.current.maintenanceInterval))
     account.lastMaintenance = timestamp
   }
   if (typeof amount === 'number') return amount
@@ -968,27 +941,26 @@ dapp.setup({
       const devVotingWindow = [devProposalWindow[1], devProposalWindow[1] + TIME_FOR_DEV_VOTING]
       const devGraceWindow = [devVotingWindow[1], devVotingWindow[1] + TIME_FOR_DEV_GRACE]
       const devApplyWindow = [devGraceWindow[1], devGraceWindow[1] + TIME_FOR_DEV_APPLY]
-      CURRENT = INITIAL_PARAMETERS
-      NEXT = {}
-      WINDOWS = {
+      current = INITIAL_PARAMETERS
+      next = {}
+      windows = {
         proposalWindow,
         votingWindow,
         graceWindow,
         applyWindow,
       }
-      NEXT_WINDOWS = {}
-      DEV_WINDOWS = {
+      nextWindows = {}
+      devWindows = {
         devProposalWindow,
         devVotingWindow,
         devGraceWindow,
         devApplyWindow,
       }
-      NEXT_DEV_WINDOWS = {}
-      DEVELOPER_FUND = []
-      NEXT_DEVELOPER_FUND = []
-      ISSUE = 1
-      DEV_ISSUE = 1
-      IN_SYNC = true
+      nextDevWindows = {}
+      developerFund = []
+      nextDeveloperFund = []
+      issue = 1
+      devIssue = 1
 
       const tx = {
         type: 'init_network',
@@ -1005,8 +977,8 @@ dapp.setup({
         nodeId,
         from: address,
         to: networkAccount,
-        issue: crypto.hash(`issue-${ISSUE}`),
-        proposal: crypto.hash(`issue-${ISSUE}-proposal-1`),
+        issue: crypto.hash(`issue-${1}`),
+        proposal: crypto.hash(`issue-${1}-proposal-1`),
         timestamp: Date.now(),
       })
       dapp.set({
@@ -1014,37 +986,17 @@ dapp.setup({
         nodeId,
         from: address,
         to: networkAccount,
-        devIssue: crypto.hash(`dev-issue-${DEV_ISSUE}`),
+        devIssue: crypto.hash(`dev-issue-${1}`),
         timestamp: Date.now(),
       })
       await _sleep(ONE_SECOND * 10)
-    } else {
-      let account = await dapp.getRemoteAccount(networkAccount)
-      while (!account) {
-        await _sleep(1000)
-        account = await dapp.getRemoteAccount(networkAccount)
-      }
-      if (account && account.data) {
-        CURRENT = account.data.current
-        NEXT = account.data.next
-        WINDOWS = account.data.windows
-        DEV_WINDOWS = account.data.devWindows
-        NEXT_WINDOWS = account.data.nextWindows
-        NEXT_DEV_WINDOWS = account.data.nextDevWindows
-        DEVELOPER_FUND = account.data.developerFund
-        NEXT_DEVELOPER_FUND = account.data.nextDeveloperFund
-        ISSUE = account.data.issue
-        DEV_ISSUE = account.data.devIssue
-        IN_SYNC = true
-      } else {
-        dapp.log('ERROR: Unable to sync network data')
-      }
     }
   },
   validateTransaction(tx: any, wrappedStates: { [id: string]: WrappedAccount }): Shardus.IncomingTransactionResult {
     const response: Shardus.IncomingTransactionResult = {
       success: false,
       reason: 'Transaction is not valid.',
+      txnTimestamp: tx.timestamp,
     }
 
     const from = wrappedStates[tx.from] && wrappedStates[tx.from].data
@@ -1139,7 +1091,7 @@ dapp.setup({
           response.reason = 'This alias is already taken'
           return response
         }
-        // if (from.data.balance < CURRENT.transactionFee) {
+        // if (from.data.balance < network.current.transactionFee) {
         //   response.reason = "From account doesn't have enough tokens to cover the transaction fee"
         //   return response
         // }
@@ -1161,6 +1113,7 @@ dapp.setup({
         return response
       }
       case 'transfer': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
           return response
@@ -1177,7 +1130,7 @@ dapp.setup({
           response.reason = "To account doesn't exist"
           return response
         }
-        if (from.data.balance < tx.amount + CURRENT.transactionFee) {
+        if (from.data.balance < tx.amount + network.current.transactionFee) {
           response.reason = "from account doesn't have sufficient balance to cover the transaction"
           return response
         }
@@ -1186,6 +1139,7 @@ dapp.setup({
         return response
       }
       case 'distribute': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const recipients: UserAccount[] = tx.recipients.map((id: string) => wrappedStates[id].data)
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
@@ -1205,7 +1159,7 @@ dapp.setup({
             return response
           }
         }
-        if (from.data.balance < recipients.length * tx.amount + CURRENT.transactionFee) {
+        if (from.data.balance < recipients.length * tx.amount + network.current.transactionFee) {
           response.reason = "from account doesn't have sufficient balance to cover the transaction"
           return response
         }
@@ -1214,6 +1168,7 @@ dapp.setup({
         return response
       }
       case 'message': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
           return response
@@ -1236,8 +1191,12 @@ dapp.setup({
             return response
           }
         } else {
-          if (from.data.balance < to.data.toll + CURRENT.transactionFee) {
+          if (from.data.balance < to.data.toll + network.current.transactionFee) {
             response.reason = 'from account does not have sufficient funds.'
+            return response
+          } else {
+            response.success = true
+            response.reason = 'This transaction is valid!'
             return response
           }
         }
@@ -1246,6 +1205,7 @@ dapp.setup({
         return response
       }
       case 'toll': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         if (tx.sign.owner !== tx.from) {
           response.reason = 'not signed by from account'
           return response
@@ -1258,7 +1218,7 @@ dapp.setup({
           response.reason = 'from account does not exist'
           return response
         }
-        if (from.data.balance < CURRENT.transactionFee) {
+        if (from.data.balance < network.current.transactionFee) {
           response.reason = 'from account does not have sufficient funds to complete toll transaction'
           return response
         }
@@ -1275,6 +1235,7 @@ dapp.setup({
         return response
       }
       case 'friend': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         if (typeof from === 'undefined' || from === null) {
           response.reason = 'from account does not exist'
           return response
@@ -1287,7 +1248,7 @@ dapp.setup({
           response.reason = 'incorrect signing'
           return response
         }
-        if (from.data.balance < CURRENT.transactionFee) {
+        if (from.data.balance < network.current.transactionFee) {
           response.reason = "From account doesn't have enough tokens to cover the transaction fee"
           return response
         }
@@ -1296,6 +1257,7 @@ dapp.setup({
         return response
       }
       case 'remove_friend': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         if (typeof from === 'undefined' || from === null) {
           response.reason = 'from account does not exist'
           return response
@@ -1308,7 +1270,7 @@ dapp.setup({
           response.reason = 'incorrect signing'
           return response
         }
-        if (from.data.balance < CURRENT.transactionFee) {
+        if (from.data.balance < network.current.transactionFee) {
           response.reason = "From account doesn't have enough tokens to cover the transaction fee"
           return response
         }
@@ -1317,6 +1279,7 @@ dapp.setup({
         return response
       }
       case 'stake': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         if (typeof from === 'undefined' || from === null) {
           response.reason = 'from account does not exist'
           return response
@@ -1329,12 +1292,12 @@ dapp.setup({
           response.reason = 'incorrect signing'
           return response
         }
-        if (from.data.balance < CURRENT.stakeRequired) {
-          response.reason = `From account has insufficient balance, the cost required to operate a node is ${CURRENT.stakeRequired}`
+        if (from.data.balance < network.current.stakeRequired) {
+          response.reason = `From account has insufficient balance, the cost required to operate a node is ${network.current.stakeRequired}`
           return response
         }
-        if (tx.stake < CURRENT.stakeRequired) {
-          response.reason = `Stake amount sent: ${tx.stake} is less than the cost required to operate a node: ${CURRENT.stakeRequired}`
+        if (tx.stake < network.current.stakeRequired) {
+          response.reason = `Stake amount sent: ${tx.stake} is less than the cost required to operate a node: ${network.current.stakeRequired}`
           return response
         }
         response.success = true
@@ -1342,7 +1305,7 @@ dapp.setup({
         return response
       }
       case 'node_reward': {
-        // const network = wrappedStates[tx.network] && wrappedStates[tx.network].data
+        const network = wrappedStates[tx.network].data
         // dapp.log(network.current.nodeRewardInterval)
         // let nodeInfo
         // try {
@@ -1356,16 +1319,11 @@ dapp.setup({
         // }
         // if (
         //   tx.timestamp - nodeInfo.activeTimestamp <
-        //   CURRENT.nodeRewardInterval
+        //   network.current.nodeRewardInterval
         // ) {
         //   response.reason = 'Too early for this node to get paid'
         //   return response
         // }
-        if (tx.amount !== CURRENT.nodeRewardAmount) {
-          console.log('CURRENT: ' + stringify(CURRENT))
-          response.reason = `${config.server.ip.externalPort}:  Amount sent in the transaction ${tx.amount} doesn't match the current network nodeRewardAmount parameter ${CURRENT.nodeRewardAmount}`
-          return response
-        }
         if (!from) {
           response.success = true
           response.reason = 'This transaction in valid'
@@ -1377,7 +1335,7 @@ dapp.setup({
             response.reason = 'This transaction in valid'
             return response
           }
-          if (tx.timestamp - from.nodeRewardTime < CURRENT.nodeRewardInterval) {
+          if (tx.timestamp - from.nodeRewardTime < network.current.nodeRewardInterval) {
             response.reason = 'Too early for this node to get paid'
             return response
           }
@@ -1420,6 +1378,7 @@ dapp.setup({
         return response
       }
       case 'issue': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
         // let nodeInfo
         // try {
@@ -1435,12 +1394,12 @@ dapp.setup({
           response.reason = 'Issue is already active'
           return response
         }
-        const networkIssueHash = crypto.hash(`issue-${ISSUE}`)
+        const networkIssueHash = crypto.hash(`${network.issue}`)
         if (tx.issue !== networkIssueHash) {
           response.reason = `issue hash (${tx.issue}) does not match current network issue hash (${networkIssueHash})`
           return response
         }
-        const networkProposalHash = crypto.hash(`issue-${ISSUE}-proposal-1`)
+        const networkProposalHash = crypto.hash(`issue-${network.issue}-proposal-1`)
         if (tx.proposal !== networkProposalHash) {
           response.reason = `proposalHash (${tx.proposal}) does not match the current default network proposal (${networkProposalHash})`
           return response
@@ -1449,7 +1408,12 @@ dapp.setup({
         response.reason = 'This transaction is valid!'
         return response
       }
+      case 'apply_issue':
+        response.success = true
+        response.reason = 'This transaction is valid!'
+        return response
       case 'dev_issue': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
         // let nodeInfo
         // try {
@@ -1465,7 +1429,7 @@ dapp.setup({
           response.reason = 'devIssue is already active'
           return response
         }
-        const networkDevIssueHash = crypto.hash(`dev-issue-${DEV_ISSUE}`)
+        const networkDevIssueHash = crypto.hash(`dev-issue-${network.devIssue}`)
         if (tx.devIssue !== networkDevIssueHash) {
           response.reason = `devIssue hash (${tx.devIssue}) does not match current network devIssue (${networkDevIssueHash})`
           return response
@@ -1474,7 +1438,13 @@ dapp.setup({
         response.reason = 'This transaction is valid!'
         return response
       }
+      case 'apply_dev_issue': {
+        response.success = true
+        response.reason = 'This transaction is valid!'
+        return response
+      }
       case 'proposal': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
         const parameters: NetworkParameters = tx.parameters
         if (tx.sign.owner !== tx.from) {
@@ -1489,15 +1459,19 @@ dapp.setup({
           response.reason = "Issue doesn't exist"
           return response
         }
+        if (issue.number !== network.issue) {
+          response.reason = 'This issue number ${issue.number} does not match the current network issue ${network.issue}'
+          return response
+        }
         if (issue.active === false) {
           response.reason = 'This issue is no longer active'
           return response
         }
-        if (tx.proposal !== crypto.hash(`issue-${ISSUE}-proposal-${issue.proposalCount + 1}`)) {
+        if (tx.proposal !== crypto.hash(`issue-${network.issue}-proposal-${issue.proposalCount + 1}`)) {
           response.reason = 'Must give the next issue proposalCount hash'
           return response
         }
-        if (from.data.balance < CURRENT.proposalFee + CURRENT.transactionFee) {
+        if (from.data.balance < network.current.proposalFee + network.current.transactionFee) {
           response.reason = 'From account has insufficient balance to submit a proposal'
           return response
         }
@@ -1562,6 +1536,7 @@ dapp.setup({
         return response
       }
       case 'dev_proposal': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
 
         if (tx.sign.owner !== tx.from) {
@@ -1576,15 +1551,19 @@ dapp.setup({
           response.reason = "devIssue doesn't exist"
           return response
         }
+        if (devIssue.number !== network.issue) {
+          response.reason = 'This issue number ${issue.number} does not match the current network issue ${network.issue}'
+          return response
+        }
         if (devIssue.active === false) {
           response.reason = 'This devIssue is no longer active'
           return response
         }
-        if (tx.devProposal !== crypto.hash(`dev-issue-${DEV_ISSUE}-dev-proposal-${devIssue.devProposalCount + 1}`)) {
+        if (tx.devProposal !== crypto.hash(`dev-issue-${network.devIssue}-dev-proposal-${devIssue.devProposalCount + 1}`)) {
           response.reason = 'Must give the next devIssue devProposalCount hash'
           return response
         }
-        if (from.data.balance < CURRENT.devProposalFee + CURRENT.transactionFee) {
+        if (from.data.balance < network.current.devProposalFee + network.current.transactionFee) {
           response.reason = 'From account has insufficient balance to submit a devProposal'
           return response
         }
@@ -1597,6 +1576,7 @@ dapp.setup({
         return response
       }
       case 'vote': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const proposal: ProposalAccount = wrappedStates[tx.proposal] && wrappedStates[tx.proposal].data
         const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
 
@@ -1612,6 +1592,10 @@ dapp.setup({
           response.reason = "issue doesn't exist"
           return response
         }
+        if (issue.number !== network.issue) {
+          response.reason = 'This issue number ${issue.number} does not match the current network issue ${network.issue}'
+          return response
+        }
         if (issue.active === false) {
           response.reason = 'issue no longer active'
           return response
@@ -1624,7 +1608,7 @@ dapp.setup({
           response.reason = 'Must send tokens to vote'
           return response
         }
-        if (from.data.balance < tx.amount + CURRENT.transactionFee) {
+        if (from.data.balance < tx.amount + network.current.transactionFee) {
           response.reason = 'From account has insufficient balance to cover the amount sent in the transaction'
           return response
         }
@@ -1633,6 +1617,7 @@ dapp.setup({
         return response
       }
       case 'dev_vote': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const devProposal: DevProposalAccount = wrappedStates[tx.devProposal] && wrappedStates[tx.devProposal].data
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
 
@@ -1652,6 +1637,10 @@ dapp.setup({
           response.reason = "devIssue doesn't exist"
           return response
         }
+        if (devIssue.number !== network.issue) {
+          response.reason = 'This issue number ${issue.number} does not match the current network issue ${network.issue}'
+          return response
+        }
         if (devIssue.active === false) {
           response.reason = 'devIssue no longer active'
           return response
@@ -1660,7 +1649,7 @@ dapp.setup({
           response.reason = 'Must send tokens in order to vote'
           return response
         }
-        if (from.data.balance < tx.amount + CURRENT.transactionFee) {
+        if (from.data.balance < tx.amount + network.current.transactionFee) {
           response.reason = 'From account has insufficient balance to cover the amount sent in the transaction'
           return response
         }
@@ -1669,6 +1658,7 @@ dapp.setup({
         return response
       }
       case 'tally': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
         const proposals: ProposalAccount[] = tx.proposals.map((id: string) => wrappedStates[id].data)
 
@@ -1682,8 +1672,16 @@ dapp.setup({
         //   response.reason = 'no nodeInfo'
         //   return response
         // }
+        if (network.id !== networkAccount) {
+          response.reason = 'To account must be the network account'
+          return response
+        }
         if (!issue) {
           response.reason = "Issue doesn't exist"
+          return response
+        }
+        if (issue.number !== network.issue) {
+          response.reason = 'This issue number ${issue.number} does not match the current network issue ${network.issue}'
           return response
         }
         if (issue.active === false) {
@@ -1694,10 +1692,6 @@ dapp.setup({
           response.reason = 'The winner for this issue has already been determined'
           return response
         }
-        if (to.id !== networkAccount) {
-          response.reason = 'To account must be the network account'
-          return response
-        }
         if (proposals.length !== issue.proposalCount) {
           response.reason = 'The number of proposals sent in with the transaction dont match the issues proposalCount'
           return response
@@ -1706,12 +1700,13 @@ dapp.setup({
         response.reason = 'This transaction is valid!'
         return response
       }
-      case 'tally_apply': {
+      case 'apply_tally': {
         response.success = true
         response.reason = 'This transaction is valid!'
         return response
       }
       case 'dev_tally': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
         const devProposals: DevProposalAccount[] = tx.devProposals.map((id: string) => wrappedStates[id].data)
 
@@ -1729,6 +1724,10 @@ dapp.setup({
           response.reason = "devIssue doesn't exist"
           return response
         }
+        if (devIssue.number !== network.issue) {
+          response.reason = 'This issue number ${issue.number} does not match the current network issue ${network.issue}'
+          return response
+        }
         if (devIssue.active === false) {
           response.reason = 'This devIssue is no longer active'
           return response
@@ -1737,7 +1736,7 @@ dapp.setup({
           response.reason = 'The winners for this devIssue has already been determined'
           return response
         }
-        if (to.id !== networkAccount) {
+        if (network.id !== networkAccount) {
           response.reason = 'To account must be the network account'
           return response
         }
@@ -1749,7 +1748,13 @@ dapp.setup({
         response.reason = 'This transaction is valid!'
         return response
       }
-      case 'apply_parameters': {
+      case 'apply_dev_tally': {
+        response.success = true
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'parameters': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue].data
 
         // let nodeInfo
@@ -1762,6 +1767,10 @@ dapp.setup({
         //   response.reason = 'no nodeInfo'
         //   return response
         // }
+        if (network.id !== networkAccount) {
+          response.reason = 'To account must be the network account'
+          return response
+        }
         if (!issue) {
           response.reason = "Issue doesn't exist"
           return response
@@ -1770,15 +1779,17 @@ dapp.setup({
           response.reason = 'This issue is no longer active'
           return response
         }
-        if (to.id !== networkAccount) {
-          response.reason = 'To account must be the network account'
-          return response
-        }
         response.success = true
         response.reason = 'This transaction is valid!'
         return response
       }
-      case 'apply_dev_parameters': {
+      case 'apply_parameters': {
+        response.success = true
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'dev_parameters': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
 
         // let nodeInfo
@@ -1791,23 +1802,33 @@ dapp.setup({
         //   response.reason = 'no nodeInfo'
         //   return response
         // }
+        if (network.id !== networkAccount) {
+          response.reason = 'To account must be the network account'
+          return response
+        }
         if (!devIssue) {
           response.reason = "devIssue doesn't exist"
+          return response
+        }
+        if (devIssue.number !== network.issue) {
+          response.reason = 'This issue number ${issue.number} does not match the current network issue ${network.issue}'
           return response
         }
         if (devIssue.active === false) {
           response.reason = 'This devIssue is no longer active'
           return response
         }
-        if (to.id !== networkAccount) {
-          response.reason = 'To account must be the network account'
-          return response
-        }
+        response.success = true
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'apply_dev_parameters': {
         response.success = true
         response.reason = 'This transaction is valid!'
         return response
       }
       case 'developer_payment': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const developer: UserAccount = wrappedStates[tx.developer] && wrappedStates[tx.developer].data
         // let nodeInfo
         // try {
@@ -1819,37 +1840,34 @@ dapp.setup({
         //   response.reason = 'no nodeInfo'
         //   return response
         // }
-        if (to.id !== networkAccount) {
+        if (tx.timestamp < tx.payment.timestamp) {
+          response.reason = 'This payment is not ready to be released'
+          return response
+        }
+        if (network.id !== networkAccount) {
           response.reason = 'To account must be the network account'
           return response
         }
-        if (!to.developerFund.some((payment: DeveloperPayment) => payment.id === tx.payment.id)) {
+        if (!network.developerFund.some((payment: DeveloperPayment) => payment.id === tx.payment.id)) {
           response.reason = 'This payment doesnt exist'
-          return response
-        }
-        if (tx.developer !== tx.payment.address) {
-          response.reason = 'tx developer does not match address in payment'
-          return response
-        }
-        if (tx.timestamp < tx.payment.timestamp) {
-          response.reason = 'This payment is not ready to be released'
           return response
         }
         if (!developer || !developer.data) {
           response.reason = 'No account exists for the passed in tx.developer'
           return response
         }
-        if (typeof developer.data.balance === 'string') {
-          response.reason = 'developer.data.balance is a string for some reason'
-          return response
-        }
-        if (typeof tx.payment.amount === 'string') {
-          response.reason = 'payment.amount is a string for some reason'
+        if (tx.developer !== tx.payment.address) {
+          response.reason = 'tx developer does not match address in payment'
           return response
         }
         response.success = true
         response.reason = 'This transaction is valid!'
         return response
+      }
+      case 'apply_developer_payment': {
+        response.success = true
+        response.reason = 'This transaction is valid!'
+        break
       }
       default: {
         response.success = false
@@ -2202,11 +2220,11 @@ dapp.setup({
           reason = '"Parameters" must be an object.'
           throw new Error(reason)
         }
-        if (tx.timestamp < WINDOWS.proposalWindow[0] || tx.timestamp > WINDOWS.proposalWindow[1]) {
-          success = false
-          reason = '"Network is not currently accepting issues or proposals"'
-          throw new Error(reason)
-        }
+        // if (tx.timestamp < network.windows.proposalWindow[0] || tx.timestamp > network.windows.proposalWindow[1]) {
+        //   success = false
+        //   reason = '"Network is not currently accepting issues or proposals"'
+        //   throw new Error(reason)
+        // }
         break
       }
       case 'dev_proposal': {
@@ -2265,11 +2283,11 @@ dapp.setup({
           reason = '"payAddress" length must be 64 characters (A valid public address)'
           throw new Error(reason)
         }
-        if (tx.timestamp < DEV_WINDOWS.devProposalWindow[0] || tx.timestamp > DEV_WINDOWS.devProposalWindow[1]) {
-          success = false
-          reason = 'Network is not accepting dev proposals'
-          throw new Error(reason)
-        }
+        // if (tx.timestamp < network.devWindows.devProposalWindow[0] || tx.timestamp > network.devWindows.devProposalWindow[1]) {
+        //   success = false
+        //   reason = 'Network is not accepting dev proposals'
+        //   throw new Error(reason)
+        // }
         break
       }
       case 'vote': {
@@ -2298,11 +2316,11 @@ dapp.setup({
           reason = '"Proposal" must be a string.'
           throw new Error(reason)
         }
-        if (tx.timestamp < WINDOWS.votingWindow[0] || tx.timestamp > WINDOWS.votingWindow[1]) {
-          success = false
-          reason = 'Network is not currently accepting votes'
-          throw new Error(reason)
-        }
+        // if (tx.timestamp < network.windows.votingWindow[0] || tx.timestamp > network.windows.votingWindow[1]) {
+        //   success = false
+        //   reason = 'Network is not currently accepting votes'
+        //   throw new Error(reason)
+        // }
         break
       }
       case 'dev_vote': {
@@ -2336,11 +2354,11 @@ dapp.setup({
           reason = '"devIssue" must be a string.'
           throw new Error(reason)
         }
-        if (tx.timestamp < DEV_WINDOWS.devVotingWindow[0] || tx.timestamp > DEV_WINDOWS.devVotingWindow[1]) {
-          success = false
-          reason = 'Network is not currently accepting dev votes'
-          throw new Error(reason)
-        }
+        // if (tx.timestamp < network.devWindows.devVotingWindow[0] || tx.timestamp > network.devWindows.devVotingWindow[1]) {
+        //   success = false
+        //   reason = 'Network is not currently accepting dev votes'
+        //   throw new Error(reason)
+        // }
         break
       }
       case 'developer_payment': {
@@ -2385,7 +2403,7 @@ dapp.setup({
     // Apply the tx
     switch (tx.type) {
       case 'init_network': {
-        const network: NetworkAccount = wrappedStates[tx.network] && wrappedStates[tx.network].data
+        const network: NetworkAccount = wrappedStates[tx.network].data
         network.timestamp = tx.timestamp
         from.timestamp = tx.timestamp
         dapp.log('Applied init_network transaction', network)
@@ -2399,7 +2417,7 @@ dapp.setup({
         break
       }
       case 'email': {
-        const source: UserAccount = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data
+        const source: UserAccount = wrappedStates[tx.signedTx.from].data
         const nodeId = dapp.getNodeId()
         const { address } = dapp.getNode(nodeId)
         const [closest] = dapp.getClosestNodes(tx.signedTx.from, 5)
@@ -2445,8 +2463,8 @@ dapp.setup({
         break
       }
       case 'register': {
-        const alias: AliasAccount = wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
-        // from.data.balance -= CURRENT.transactionFee
+        const alias: AliasAccount = wrappedStates[tx.aliasHash].data
+        // from.data.balance -= network.current.transactionFee
         // from.data.balance -= maintenanceAmount(tx.timestamp, from)
         alias.inbox = tx.alias
         from.alias = tx.alias
@@ -2466,8 +2484,9 @@ dapp.setup({
         break
       }
       case 'transfer': {
-        from.data.balance -= tx.amount + CURRENT.transactionFee
-        from.data.balance -= maintenanceAmount(tx.timestamp, from)
+        const network: NetworkAccount = wrappedStates[tx.network].data
+        from.data.balance -= tx.amount + network.current.transactionFee
+        from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
         to.data.balance += tx.amount
         from.data.transactions.push({ ...tx, txId })
         to.data.transactions.push({ ...tx, txId })
@@ -2477,26 +2496,28 @@ dapp.setup({
         break
       }
       case 'distribute': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const recipients: UserAccount[] = tx.recipients.map((id: string) => wrappedStates[id].data)
-        from.data.balance -= CURRENT.transactionFee
+        from.data.balance -= network.current.transactionFee
         // from.data.transactions.push({ ...tx, txId })
         for (const user of recipients) {
           from.data.balance -= tx.amount
           user.data.balance += tx.amount
           // recipient.data.transactions.push({ ...tx, txId })
         }
-        from.data.balance -= maintenanceAmount(tx.timestamp, from)
+        from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
         dapp.log('Applied distribute transaction', from, recipients)
         break
       }
       case 'message': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const chat = wrappedStates[tx.chatId].data
-        from.data.balance -= CURRENT.transactionFee
+        from.data.balance -= network.current.transactionFee
         if (!to.data.friends[from.id]) {
           from.data.balance -= to.data.toll
           to.data.balance += to.data.toll
         }
-        from.data.balance -= maintenanceAmount(tx.timestamp, from)
+        from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
 
         if (!from.data.chats[tx.to]) from.data.chats[tx.to] = tx.chatId
         if (!to.data.chats[tx.from]) to.data.chats[tx.from] = tx.chatId
@@ -2513,8 +2534,9 @@ dapp.setup({
         break
       }
       case 'toll': {
-        from.data.balance -= CURRENT.transactionFee
-        from.data.balance -= maintenanceAmount(tx.timestamp, from)
+        const network: NetworkAccount = wrappedStates[tx.network].data
+        from.data.balance -= network.current.transactionFee
+        from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
         from.data.toll = tx.toll
         // from.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
@@ -2522,8 +2544,9 @@ dapp.setup({
         break
       }
       case 'friend': {
-        from.data.balance -= CURRENT.transactionFee
-        from.data.balance -= maintenanceAmount(tx.timestamp, from)
+        const network: NetworkAccount = wrappedStates[tx.network].data
+        from.data.balance -= network.current.transactionFee
+        from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
         from.data.friends[tx.to] = tx.alias
         // from.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
@@ -2538,8 +2561,9 @@ dapp.setup({
         break
       }
       case 'stake': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         from.data.balance -= tx.stake
-        from.data.balance -= maintenanceAmount(tx.timestamp, from)
+        from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
         from.data.stake = tx.stake
         from.timestamp = tx.timestamp
         // from.data.transactions.push({ ...tx, txId })
@@ -2547,7 +2571,8 @@ dapp.setup({
         break
       }
       case 'node_reward': {
-        to.balance += tx.amount
+        const network: NetworkAccount = wrappedStates[tx.network].data
+        to.balance += network.current.nodeRewardAmount
         from.nodeRewardTime = tx.timestamp
         // from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
@@ -2565,15 +2590,16 @@ dapp.setup({
         break
       }
       case 'issue': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue].data
         const proposal: ProposalAccount = wrappedStates[tx.proposal].data
 
-        proposal.parameters = Object.assign({}, CURRENT)
+        proposal.parameters = network.current
         proposal.parameters.title = 'Default parameters'
         proposal.parameters.description = 'Keep the current network parameters as they are'
         proposal.number = 1
 
-        issue.number = ISSUE
+        issue.number = network.issue
         issue.active = true
         issue.proposals.push(proposal.id)
         issue.proposalCount++
@@ -2585,23 +2611,24 @@ dapp.setup({
         break
       }
       case 'dev_issue': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
 
-        devIssue.number = DEV_ISSUE
+        devIssue.number = network.devIssue
         devIssue.active = true
 
         devIssue.timestamp = tx.timestamp
-        from.timestamp = tx.timestamp
-        dapp.log('Applied dev_issue tx', from, devIssue)
+        dapp.log('Applied dev_issue tx', devIssue)
         break
       }
       case 'proposal': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const proposal: ProposalAccount = wrappedStates[tx.proposal].data
         const issue: IssueAccount = wrappedStates[tx.issue].data
 
-        from.data.balance -= CURRENT.proposalFee
-        from.data.balance -= CURRENT.transactionFee
-        from.data.balance -= maintenanceAmount(tx.timestamp, from)
+        from.data.balance -= network.current.proposalFee
+        from.data.balance -= network.current.transactionFee
+        from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
 
         proposal.parameters = tx.parameters
         issue.proposalCount++
@@ -2616,12 +2643,13 @@ dapp.setup({
         break
       }
       case 'dev_proposal': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
         const devProposal: DevProposalAccount = wrappedStates[tx.devProposal].data
 
-        from.data.balance -= CURRENT.devProposalFee
-        from.data.balance -= CURRENT.transactionFee
-        from.data.balance -= maintenanceAmount(tx.timestamp, from)
+        from.data.balance -= network.current.devProposalFee
+        from.data.balance -= network.current.transactionFee
+        from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
 
         devProposal.totalAmount = tx.totalAmount
         devProposal.payAddress = tx.payAddress
@@ -2640,10 +2668,11 @@ dapp.setup({
         break
       }
       case 'vote': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const proposal: ProposalAccount = wrappedStates[tx.proposal].data
         from.data.balance -= tx.amount
-        from.data.balance -= CURRENT.transactionFee
-        from.data.balance -= maintenanceAmount(tx.timestamp, from)
+        from.data.balance -= network.current.transactionFee
+        from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
         proposal.power += tx.amount
         proposal.totalVotes++
 
@@ -2654,11 +2683,12 @@ dapp.setup({
         break
       }
       case 'dev_vote': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const devProposal: DevProposalAccount = wrappedStates[tx.devProposal].data
 
         from.data.balance -= tx.amount
-        from.data.balance -= CURRENT.transactionFee
-        from.data.balance -= maintenanceAmount(tx.timestamp, from)
+        from.data.balance -= network.current.transactionFee
+        from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
 
         if (tx.approve) {
           devProposal.approve += tx.amount
@@ -2717,7 +2747,7 @@ dapp.setup({
         dapp.setGlobal(
           networkAccount,
           {
-            type: 'tally_apply',
+            type: 'apply_tally',
             timestamp: when,
             network: networkAccount,
             next,
@@ -2736,7 +2766,7 @@ dapp.setup({
         dapp.log('Applied tally tx', from, to, issue, winner)
         break
       }
-      case 'tally_apply': {
+      case 'apply_tally': {
         dapp.log(`=== SET TALLY GLOBAL ${tx} ===`)
         const network = wrappedStates[tx.network].data
         network.next = tx.next
@@ -2746,8 +2776,10 @@ dapp.setup({
         break
       }
       case 'dev_tally': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
         const devProposals: DevProposalAccount[] = tx.devProposals.map((id: string) => wrappedStates[id].data)
+        let nextDeveloperFund: DeveloperPayment[]
         devIssue.winners = []
         for (const devProposal of devProposals) {
           if (devProposal.approve >= devProposal.reject + devProposal.reject * 0.15) {
@@ -2761,7 +2793,7 @@ dapp.setup({
                 id: crypto.hashObj(payment),
               })
             }
-            to.nextDeveloperFund = [...to.nextDeveloperFund, ...payments]
+            nextDeveloperFund = [...network.nextDeveloperFund, ...payments]
             devProposal.timestamp = tx.timestamp
             devIssue.winners.push(devProposal.id)
           } else {
@@ -2770,24 +2802,38 @@ dapp.setup({
           }
         }
 
-        to.nextDevWindows = {
-          devProposalWindow: [to.devWindows.devApplyWindow[1], to.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS],
+        const nextDevWindows: DevWindows = {
+          devProposalWindow: [network.devWindows.devApplyWindow[1], network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS],
           devVotingWindow: [
-            to.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS,
-            to.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING,
+            network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS,
+            network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING,
           ],
           devGraceWindow: [
-            to.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING,
-            to.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING + TIME_FOR_DEV_GRACE,
+            network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING,
+            network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING + TIME_FOR_DEV_GRACE,
           ],
           devApplyWindow: [
-            to.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING + TIME_FOR_DEV_GRACE,
-            to.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING + TIME_FOR_DEV_GRACE + TIME_FOR_DEV_APPLY,
+            network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING + TIME_FOR_DEV_GRACE,
+            network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING + TIME_FOR_DEV_GRACE + TIME_FOR_DEV_APPLY,
           ],
         }
 
+        const when = tx.timestamp
+
+        dapp.setGlobal(
+          networkAccount,
+          {
+            type: 'apply_dev_tally',
+            timestamp: when,
+            network: networkAccount,
+            nextDeveloperFund,
+            nextDevWindows,
+          },
+          when,
+          networkAccount,
+        )
+
         from.timestamp = tx.timestamp
-        to.timestamp = tx.timestamp
         devIssue.timestamp = tx.timestamp
         dapp.log('Applied dev_tally tx', from, to, devIssue, devProposals)
         break
@@ -2911,15 +2957,21 @@ dapp.setup({
         break
       case 'issue':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.issue, tx.proposal]
+        result.targetKeys = [tx.issue, tx.proposal, tx.network]
+        break
+      case 'apply_issue':
+        result.targetKeys = [tx.network]
         break
       case 'dev_issue':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.devIssue]
+        result.targetKeys = [tx.devIssue, tx.network]
+        break
+      case 'apply_dev_issue':
+        result.targetKeys = [tx.network]
         break
       case 'proposal':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.issue, tx.proposal]
+        result.targetKeys = [tx.issue, tx.proposal, tx.network]
         break
       case 'dev_proposal':
         result.sourceKeys = [tx.from]
@@ -2937,16 +2989,26 @@ dapp.setup({
         result.sourceKeys = [tx.from]
         result.targetKeys = [...tx.proposals, tx.issue, tx.to]
         break
-      case 'tally_apply':
+      case 'apply_tally':
         result.targetKeys = [tx.network]
         break
       case 'dev_tally':
         result.sourceKeys = [tx.from]
         result.targetKeys = [...tx.devProposals, tx.devIssue, tx.to]
         break
-      case 'apply_parameters':
+      case 'apply_dev_tally':
+        result.targetKeys = [tx.network]
+        break
+      case 'parameters':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.to, tx.issue]
+        result.targetKeys = [tx.network, tx.issue]
+        break
+      case 'apply_parameters':
+        result.targetKeys = [tx.network]
+        break
+      case 'dev_parameters':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.to, tx.devIssue]
         break
       case 'apply_dev_parameters':
         result.sourceKeys = [tx.from]
@@ -2954,7 +3016,11 @@ dapp.setup({
         break
       case 'developer_payment':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.developer, tx.to]
+        result.targetKeys = [tx.developer, tx.network]
+        break
+      case 'apply_developer_payment':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.developer, tx.network]
         break
     }
     result.allKeys = result.allKeys.concat(result.sourceKeys, result.targetKeys)
@@ -3185,23 +3251,25 @@ function nodeReward(address: string, nodeId: string): void {
   const payAddress = address
   const tx = {
     type: 'node_reward',
-    timestamp: Date.now(),
-    amount: CURRENT.nodeRewardAmount,
+    network: networkAccount,
     nodeId: nodeId,
     from: address,
     to: payAddress,
+    timestamp: Date.now(),
   }
   dapp.put(tx)
 }
 
 // ISSUE TRANSACTION FUNCTION
 async function generateIssue(address: string, nodeId: string): Promise<void> {
+  const account = await dapp.getLocalOrRemoteAccount(networkAccount)
+  const network: NetworkAccount = account.data
   const tx = {
     type: 'issue',
     nodeId,
     from: address,
-    issue: crypto.hash(`issue-${ISSUE}`),
-    proposal: crypto.hash(`issue-${ISSUE}-proposal-1`),
+    issue: network.issue,
+    proposal: crypto.hash(`issue-${network.issue}-proposal-1`),
     timestamp: Date.now(),
   }
   dapp.put(tx)
@@ -3210,11 +3278,14 @@ async function generateIssue(address: string, nodeId: string): Promise<void> {
 
 // DEV_ISSUE TRANSACTION FUNCTION
 async function generateDevIssue(address: string, nodeId: string): Promise<void> {
+  const account = await dapp.getLocalOrRemoteAccount(networkAccount)
+  const network: NetworkAccount = account.data
   const tx = {
     type: 'dev_issue',
+    network: networkAccount,
     nodeId,
     from: address,
-    devIssue: crypto.hash(`dev-issue-${DEV_ISSUE}`),
+    devIssue: network.devIssue,
     timestamp: Date.now(),
   }
   dapp.put(tx)
@@ -3224,13 +3295,14 @@ async function generateDevIssue(address: string, nodeId: string): Promise<void> 
 // TALLY TRANSACTION FUNCTION
 async function tallyVotes(address: string, nodeId: string): Promise<void> {
   try {
-    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${ISSUE}`))
+    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
+    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${network.data.issue}`))
     const issue: IssueAccount = account.data
     const tx = {
       type: 'tally',
       nodeId,
       from: address,
-      to: networkAccount,
+      network: networkAccount,
       issue: issue.id,
       proposals: issue.proposals,
       timestamp: Date.now(),
@@ -3247,13 +3319,14 @@ async function tallyVotes(address: string, nodeId: string): Promise<void> {
 // DEV_TALLY TRANSACTION FUNCTION
 async function tallyDevVotes(address: string, nodeId: string): Promise<void> {
   try {
-    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${DEV_ISSUE}`))
+    const network = await dapp.getLocalOrRemoteAccount(networkAccount)
+    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${network.data.devIssue}`))
     const devIssue: DevIssueAccount = account.data
     const tx = {
       type: 'dev_tally',
-      nodeId: nodeId,
+      nodeId,
       from: address,
-      to: networkAccount,
+      network: networkAccount,
       devIssue: devIssue.id,
       devProposals: devIssue.devProposals,
       timestamp: Date.now(),
@@ -3269,12 +3342,14 @@ async function tallyDevVotes(address: string, nodeId: string): Promise<void> {
 
 // APPLY_PARAMETERS TRANSACTION FUNCTION
 async function applyParameters(address: string, nodeId: string): Promise<void> {
+  const account = await dapp.getLocalOrRemoteAccount(networkAccount)
+  const network: NetworkAccount = account.data
   const tx = {
     type: 'apply_parameters',
     nodeId,
     from: address,
-    to: networkAccount,
-    issue: crypto.hash(`issue-${ISSUE}`),
+    network: networkAccount,
+    issue: network.issue,
     timestamp: Date.now(),
   }
   dapp.put(tx)
@@ -3283,12 +3358,14 @@ async function applyParameters(address: string, nodeId: string): Promise<void> {
 
 // APPLY_DEV_PARAMETERS TRANSACTION FUNCTION
 async function applyDevParameters(address: string, nodeId: string): Promise<void> {
+  const account = await dapp.getLocalOrRemoteAccount(networkAccount)
+  const network: NetworkAccount = account.data
   const tx = {
     type: 'apply_dev_parameters',
-    nodeId: nodeId,
+    nodeId,
     from: address,
-    to: networkAccount,
-    devIssue: crypto.hash(`dev-issue-${DEV_ISSUE}`),
+    network: networkAccount,
+    devIssue: network.issue,
     timestamp: Date.now(),
   }
   dapp.put(tx)
@@ -3299,9 +3376,9 @@ async function applyDevParameters(address: string, nodeId: string): Promise<void
 function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeId: string): void {
   const tx = {
     type: 'developer_payment',
-    nodeId: nodeId,
+    nodeId,
     from: address,
-    to: networkAccount,
+    network: networkAccount,
     developer: payment.address,
     payment: payment,
     timestamp: Date.now(),
@@ -3314,6 +3391,8 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
 ;(async (): Promise<void> => {
   const cycleInterval = cycleDuration * ONE_SECOND
 
+  let network: NetworkAccount
+
   let issueGenerated = false
   let tallyGenerated = false
   let applyGenerated = false
@@ -3322,8 +3401,8 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
   let devTallyGenerated = false
   let devApplyGenerated = false
 
-  let syncedNextParams = 0
-  let syncedNextDevParams = 0
+  // let syncedNextParams = 0
+  // const syncedNextDevParams = 0
 
   let nodeId: string
   let nodeAddress: string
@@ -3340,6 +3419,8 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     expectedInterval += cycleInterval
 
     try {
+      const account = await dapp.getLocalOrRemoteAccount(networkAccount)
+      network = account.data
       ;[cycleData] = dapp.getLatestCycles()
       cycleStartTimestamp = cycleData.start * 1000 + ONE_SECOND * 30
       ;[luckyNode] = dapp.getClosestNodes(cycleData.marker, 2)
@@ -3358,26 +3439,23 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       luckyNode: `,
       luckyNode,
       `
-      IN_SYNC: `,
-      IN_SYNC,
+      network.current: `,
+      network.current,
       `
-      CURRENT: `,
-      CURRENT,
-      `
-      NEXT: `,
-      NEXT,
+      network.next: `,
+      network.next,
       `
       DEVELOPER_FUND: `,
-      DEVELOPER_FUND,
+      network.developerFund,
       `
-      NEXT_DEVELOPER_FUND: `,
-      NEXT_DEVELOPER_FUND,
+      network.next_DEVELOPER_FUND: `,
+      network.nextDeveloperFund,
       `
       ISSUE: `,
-      ISSUE,
+      network.issue,
       `
       DEV_ISSUE: `,
-      DEV_ISSUE,
+      network.devIssue,
       `
       nodeId: `,
       nodeId,
@@ -3385,18 +3463,8 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     `,
     )
 
-    if (_.isEmpty(CURRENT) || _.isEmpty(WINDOWS) || _.isEmpty(DEV_WINDOWS)) {
-      IN_SYNC = false
-    }
-
-    if (!IN_SYNC) {
-      await syncParameters(cycleStartTimestamp + cycleInterval)
-      await syncDevParameters(cycleStartTimestamp + cycleInterval)
-      return setTimeout(networkMaintenance, 1000)
-    }
-
     // THIS IS FOR NODE_REWARD
-    if (cycleStartTimestamp - lastReward > CURRENT.nodeRewardInterval) {
+    if (cycleStartTimestamp - lastReward > network.current.nodeRewardInterval) {
       nodeReward(nodeAddress, nodeId)
       lastReward = cycleStartTimestamp
     }
@@ -3414,16 +3482,16 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       'CYCLE_START_TIME: ',
       cycleStartTimestamp,
       'ISSUE_WINDOW_START_TIME: ',
-      WINDOWS.proposalWindow[0],
+      network.windows.proposalWindow[0],
       'ISSUE_WINDOW_END_TIME: ',
-      WINDOWS.proposalWindow[1],
+      network.windows.proposalWindow[1],
       'WITHIN_ISSUE_WINDOW: ',
-      cycleStartTimestamp >= WINDOWS.proposalWindow[0] && cycleStartTimestamp <= WINDOWS.proposalWindow[1],
+      cycleStartTimestamp >= network.windows.proposalWindow[0] && cycleStartTimestamp <= network.windows.proposalWindow[1],
     )
 
-    if (cycleStartTimestamp >= WINDOWS.proposalWindow[0] && cycleStartTimestamp <= WINDOWS.proposalWindow[1]) {
-      if (!issueGenerated && ISSUE > 1) {
-        if (nodeId === luckyNode && Date.now() < WINDOWS.proposalWindow[0] + ONE_SECOND * 20) {
+    if (cycleStartTimestamp >= network.windows.proposalWindow[0] && cycleStartTimestamp <= network.windows.proposalWindow[1]) {
+      if (!issueGenerated && network.issue > 1) {
+        if (nodeId === luckyNode && Date.now() < network.windows.proposalWindow[0] + ONE_SECOND * 20) {
           await generateIssue(nodeAddress, nodeId)
         }
         issueGenerated = true
@@ -3442,27 +3510,26 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       'CYCLE_START_TIME: ',
       cycleStartTimestamp,
       'TALLY_WINDOW_START_TIME: ',
-      WINDOWS.graceWindow[0],
+      network.windows.graceWindow[0],
       'TALLY_WINDOW_END_TIME: ',
-      WINDOWS.graceWindow[1],
+      network.windows.graceWindow[1],
       'WITHIN_TALLY_WINDOW: ',
-      cycleStartTimestamp >= WINDOWS.graceWindow[0] && cycleStartTimestamp <= WINDOWS.graceWindow[1],
+      cycleStartTimestamp >= network.windows.graceWindow[0] && cycleStartTimestamp <= network.windows.graceWindow[1],
     )
 
     // IF THE WINNER FOR THE PROPOSAL HASN'T BEEN DETERMINED YET AND ITS PAST THE VOTING_WINDOW
-    if (cycleStartTimestamp >= WINDOWS.graceWindow[0] && cycleStartTimestamp <= WINDOWS.graceWindow[1]) {
-      if (syncedNextParams > 2) {
-        console.log('SYNCING_PARAMS')
-        await syncParameters(cycleStartTimestamp)
-        syncedNextParams = 0
-      }
+    if (cycleStartTimestamp >= network.windows.graceWindow[0] && cycleStartTimestamp <= network.windows.graceWindow[1]) {
+      // if (syncedNextParams > 2) {
+      //   console.log('SYNCING_PARAMS')
+      //   await syncParameters(cycleStartTimestamp)
+      //   syncedNextParams = 0
+      // }
       if (!tallyGenerated) {
-        if (nodeId === luckyNode && Date.now() < WINDOWS.graceWindow[0] + ONE_SECOND * 20) {
+        if (nodeId === luckyNode && Date.now() < network.windows.graceWindow[0] + ONE_SECOND * 20) {
           await tallyVotes(nodeAddress, nodeId)
         }
         tallyGenerated = true
       }
-      syncedNextParams++
     }
 
     dapp.log(
@@ -3476,25 +3543,19 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       'CYCLE_START_TIME: ',
       cycleStartTimestamp,
       'APPLY_WINDOW_START_TIME: ',
-      WINDOWS.applyWindow[0],
+      network.windows.applyWindow[0],
       'APPLY_WINDOW_END_TIME: ',
-      WINDOWS.applyWindow[1],
+      network.windows.applyWindow[1],
       'WITHIN_APPLY_WINDOW: ',
-      cycleStartTimestamp >= WINDOWS.applyWindow[0] && cycleStartTimestamp <= WINDOWS.applyWindow[1],
+      cycleStartTimestamp >= network.windows.applyWindow[0] && cycleStartTimestamp <= network.windows.applyWindow[1],
     )
 
     // IF THE WINNING PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE GRACE_WINDOW
-    if (cycleStartTimestamp >= WINDOWS.applyWindow[0] && cycleStartTimestamp <= WINDOWS.applyWindow[1]) {
+    if (cycleStartTimestamp >= network.windows.applyWindow[0] && cycleStartTimestamp <= network.windows.applyWindow[1]) {
       if (!applyGenerated) {
-        if (nodeId === luckyNode && Date.now() < WINDOWS.applyWindow[0] + ONE_SECOND * 20) {
+        if (nodeId === luckyNode && Date.now() < network.windows.applyWindow[0] + ONE_SECOND * 20) {
           await applyParameters(nodeAddress, nodeId)
         }
-        console.log('APPLYING_PARAMS')
-        WINDOWS = NEXT_WINDOWS as Windows
-        CURRENT = NEXT as NetworkParameters
-        NEXT_WINDOWS = {}
-        NEXT = {}
-        ISSUE++
         applyGenerated = true
         issueGenerated = false
         tallyGenerated = false
@@ -3512,18 +3573,18 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       'CYCLE_START_TIME: ',
       cycleStartTimestamp,
       'DEV_ISSUE_WINDOW_START_TIME: ',
-      DEV_WINDOWS.devProposalWindow[0],
+      network.devWindows.devProposalWindow[0],
       'DEV_ISSUE_WINDOW_END_TIME: ',
-      DEV_WINDOWS.devProposalWindow[1],
+      network.devWindows.devProposalWindow[1],
       'WITHIN_DEV_ISSUE_WINDOW: ',
-      cycleStartTimestamp >= DEV_WINDOWS.devProposalWindow[0] && cycleStartTimestamp <= DEV_WINDOWS.devProposalWindow[1],
+      cycleStartTimestamp >= network.devWindows.devProposalWindow[0] && cycleStartTimestamp <= network.devWindows.devProposalWindow[1],
     )
 
     // AUTOMATIC (DEV_ISSUE | DEV_TALLY | APPLY_DEV_PARAMETERS) TRANSACTION GENERATION
     // IS THE NETWORK READY TO GENERATE A NEW DEV_ISSUE?
-    if (cycleStartTimestamp >= DEV_WINDOWS.devProposalWindow[0] && cycleStartTimestamp <= DEV_WINDOWS.devProposalWindow[1]) {
-      if (!devIssueGenerated && DEV_ISSUE > 1) {
-        if (nodeId === luckyNode && Date.now() < DEV_WINDOWS.devProposalWindow[0] + ONE_SECOND * 20) {
+    if (cycleStartTimestamp >= network.devWindows.devProposalWindow[0] && cycleStartTimestamp <= network.devWindows.devProposalWindow[1]) {
+      if (!devIssueGenerated && network.devIssue > 1) {
+        if (nodeId === luckyNode && Date.now() < network.devWindows.devProposalWindow[0] + ONE_SECOND * 20) {
           await generateDevIssue(nodeAddress, nodeId)
         }
         devIssueGenerated = true
@@ -3542,27 +3603,27 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       'CYCLE_START_TIME: ',
       cycleStartTimestamp,
       'DEV_TALLY_WINDOW_START_TIME: ',
-      DEV_WINDOWS.devGraceWindow[0],
+      network.devWindows.devGraceWindow[0],
       'DEV_TALLY_WINDOW_END_TIME: ',
-      DEV_WINDOWS.devGraceWindow[1],
+      network.devWindows.devGraceWindow[1],
       'WITHIN_DEV_TALLY_WINDOW: ',
-      cycleStartTimestamp >= DEV_WINDOWS.devGraceWindow[0] && cycleStartTimestamp <= DEV_WINDOWS.devGraceWindow[1],
+      cycleStartTimestamp >= network.devWindows.devGraceWindow[0] && cycleStartTimestamp <= network.devWindows.devGraceWindow[1],
     )
 
     // IF THE WINNERS FOR THE DEV PROPOSALS HAVEN'T BEEN DETERMINED YET AND ITS PAST THE DEV_VOTING_WINDOW
-    if (cycleStartTimestamp >= DEV_WINDOWS.devGraceWindow[0] && cycleStartTimestamp <= DEV_WINDOWS.devGraceWindow[1]) {
-      if (syncedNextDevParams > 2) {
-        console.log('SYNCING_DEV_PARAMS')
-        await syncDevParameters(cycleStartTimestamp)
-        syncedNextDevParams = 0
-      }
+    if (cycleStartTimestamp >= network.devWindows.devGraceWindow[0] && cycleStartTimestamp <= network.devWindows.devGraceWindow[1]) {
+      // if (syncedNextDevParams > 2) {
+      //   console.log('SYNCING_DEV_PARAMS')
+      //   await syncDevParameters(cycleStartTimestamp)
+      //   syncedNextDevParams = 0
+      // }
       if (!devTallyGenerated) {
-        if (nodeId === luckyNode && Date.now() < DEV_WINDOWS.devGraceWindow[0] + ONE_SECOND * 20) {
+        if (nodeId === luckyNode && Date.now() < network.devWindows.devGraceWindow[0] + ONE_SECOND * 20) {
           await tallyDevVotes(nodeAddress, nodeId)
         }
         devTallyGenerated = true
       }
-      syncedNextDevParams++
+      // syncedNextDevParams++
     }
 
     dapp.log(
@@ -3576,25 +3637,19 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       'CYCLE_START_TIME: ',
       cycleStartTimestamp,
       'DEV_APPLY_WINDOW_START_TIME: ',
-      DEV_WINDOWS.devApplyWindow[0],
+      network.devWindows.devApplyWindow[0],
       'DEV_APPLY_WINDOW_END_TIME: ',
-      DEV_WINDOWS.devApplyWindow[1],
+      network.devWindows.devApplyWindow[1],
       'WITHIN_DEV_APPLY_WINDOW: ',
-      cycleStartTimestamp >= DEV_WINDOWS.devApplyWindow[0] && cycleStartTimestamp <= DEV_WINDOWS.devApplyWindow[1],
+      cycleStartTimestamp >= network.devWindows.devApplyWindow[0] && cycleStartTimestamp <= network.devWindows.devApplyWindow[1],
     )
 
     // IF THE WINNING DEV PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE DEV_GRACE_WINDOW
-    if (cycleStartTimestamp >= DEV_WINDOWS.devApplyWindow[0] && cycleStartTimestamp <= DEV_WINDOWS.devApplyWindow[1]) {
+    if (cycleStartTimestamp >= network.devWindows.devApplyWindow[0] && cycleStartTimestamp <= network.devWindows.devApplyWindow[1]) {
       if (!devApplyGenerated) {
-        if (nodeId === luckyNode && Date.now() < DEV_WINDOWS.devApplyWindow[0] + ONE_SECOND * 20) {
+        if (nodeId === luckyNode && Date.now() < network.devWindows.devApplyWindow[0] + ONE_SECOND * 20) {
           await applyDevParameters(nodeAddress, nodeId)
         }
-        console.log('APPLYING_DEV_PARAMS')
-        DEV_WINDOWS = NEXT_DEV_WINDOWS as DevWindows
-        DEVELOPER_FUND = [...DEVELOPER_FUND, ...NEXT_DEVELOPER_FUND]
-        NEXT_DEV_WINDOWS = {}
-        NEXT_DEVELOPER_FUND = []
-        DEV_ISSUE++
         devApplyGenerated = true
         devIssueGenerated = false
         devTallyGenerated = false
@@ -3602,13 +3657,13 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     }
 
     // LOOP THROUGH IN-MEMORY DEVELOPER_FUND
-    for (const payment of DEVELOPER_FUND) {
-      // PAY DEVELOPER IF THE CURRENT TIME IS GREATER THAN THE PAYMENT TIME
+    for (const payment of network.developerFund) {
+      // PAY DEVELOPER IF THE network.current TIME IS GREATER THAN THE PAYMENT TIME
       if (cycleStartTimestamp >= payment.timestamp) {
         if (nodeId === luckyNode) {
           releaseDeveloperFunds(payment, nodeAddress, nodeId)
         }
-        DEVELOPER_FUND = DEVELOPER_FUND.filter(p => p.id !== payment.id)
+        // DEVELOPER_FUND = DEVELOPER_FUND.filter(p => p.id !== payment.id)
       } else {
         break
       }
