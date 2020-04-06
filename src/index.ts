@@ -111,7 +111,7 @@ Prop.set(config, 'server.sharding', {
   // debug server settings
 Prop.set(config, 'server.debug', {
     loseReceiptChance: 0.000,
-    loseTxChance: 0.1,
+    loseTxChance: 0.02,
     canDataRepair: true
   })
 Prop.set(config, 'logs', {
@@ -2388,7 +2388,7 @@ dapp.setup({
           balanceBoost = balanceBoostStr.length
         }
         to.data.balance += balanceBoost
-
+        to.timestamp = tx.timestamp
         dapp.log(`globalReadOnlyCoinAdd applied: ${tx.to} balance boost: ${balanceBoost} balance:${to.data.balance}`)
         break;
       }

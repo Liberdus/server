@@ -96,6 +96,12 @@ Prop.set(config, 'server.rateLimiting', {
 Prop.set(config, 'server.sharding', {
     nodesPerConsensusGroup: 5
 });
+// debug server settings
+Prop.set(config, 'server.debug', {
+    loseReceiptChance: 0.000,
+    loseTxChance: 0.02,
+    canDataRepair: true
+});
 Prop.set(config, 'logs', {
     dir: './logs',
     files: { main: '', fatal: '', net: '', app: '' },
@@ -2282,6 +2288,7 @@ dapp.setup({
                 let globalAccount = to;
                 //set initial values?
                 globalAccount.globalTestArray = Array(5);
+                to.timestamp = tx.timestamp;
                 dapp.log(`globalTestCreate applied: ${tx.to}`);
                 break;
             }
@@ -2289,6 +2296,7 @@ dapp.setup({
                 let globalAccount = to;
                 //update values?
                 globalAccount.globalTestArray[tx.idx] = tx.val;
+                to.timestamp = tx.timestamp;
                 dapp.log(`globalTestUpdate applied: ${tx.to} idx:${tx.idx} val:${tx.val}  globalTestArray:${stringify(globalAccount.globalTestArray)}`);
                 break;
             }
@@ -2304,6 +2312,7 @@ dapp.setup({
                     balanceBoost = balanceBoostStr.length;
                 }
                 to.data.balance += balanceBoost;
+                to.timestamp = tx.timestamp;
                 dapp.log(`globalReadOnlyCoinAdd applied: ${tx.to} balance boost: ${balanceBoost} balance:${to.data.balance}`);
                 break;
             }
@@ -3063,6 +3072,15 @@ dapp.setup({
     },
     getAccountDebugValue(wrappedAccount) {
         return `${stringify(wrappedAccount)}`;
+    },
+    canDebugDropTx(tx) {
+        if (tx.type === 'globalReadOnlyCoinAdd') {
+            return true;
+        }
+        if (tx.type === 'create') {
+            return true;
+        }
+        return false;
     },
     close() {
         dapp.log('Shutting down server...');
