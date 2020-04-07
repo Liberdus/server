@@ -13,11 +13,11 @@ The network should be hardwired to initiate phases of the parameter proposal sys
   - The challenge with this is that as the network scales, there would be hundreds or thousands of nodes all attempting to do these tasks...
   - These updates need to be applied by every node, but only one transaction should ideally be generated
 
-The current way of doing node-induced transactions involves using some kind of interval cycle, checking to see if the conditions unique to each 
+The current way of doing node-induced transactions involves using some kind of interval cycle, checking to see if the conditions unique to each
 node handled transaction are met on each iteration. When the conditions are met, generate the transaction. The transactions that are handled by
 nodes include (node_reward, maintenance, issue, devIssue, tally, dev_tally, apply_parameters, apply_dev_parameters, developer_payment)
 The first thing that gets run on the node startup is the initParameters function. This function will query the network account and copy a set of
-in memory variables to the result of the query. This is so the nodes don't have to query for the network parameters on every cycle, and can 
+in memory variables to the result of the query. This is so the nodes don't have to query for the network parameters on every cycle, and can
 optimally submit transactions only when they should. The current way to check readiness for all transactions are as follows:
 
 node_reward :
@@ -26,7 +26,7 @@ node_reward :
     LAST_REWARD = TIME_ACTIVE
   }
 
-maintenance : 
+maintenance :
   if (TIME_ACTIVE - LAST_MAINTENANCE >= MAINTENANCE_INTERVAL) {
     maintenance()
     LAST_MAINTENANCE = TIME_ACTIVE
@@ -94,7 +94,7 @@ OPTIMIZED SOLUTION 1:
 Keep two local datastructures:
   - One for the current network parameters
   - One for the future (winning) network parameters
-  
+
 When a proposal passes, initiate another data structure with the values of the winning proposal on each of the nodes in the network.
 Since the nodes know roughly when the winner will be determined, they can requery the network parameters during that time So that they
 know what to overwrite their in memory variables with at the beginning of the next APPLY_WINDOW. This allows all the active nodes to stay
@@ -108,7 +108,7 @@ Problems: Doesn't solve the insecure DEVELOPER_FUND, that could possibly get upd
   - OR maybe when we apply the developer funds, the nodes in the shard that handle the developer account will be the only ones updating
     those funds, so different shards actually end up balancing the load?
 
-TODO LIST: 
+TODO LIST:
   1. Fix any bugs in the automated proposal / voting / dev fund / network parameter system
   *2. Change the way maintenance works, so that accounts performing a transaction get deducted the maintenace fee if it's been
      long enough since the last one (according to the maintenace interval)

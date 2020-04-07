@@ -31,7 +31,7 @@ interface NodeAccount {
 
 interface ChatAccount {
   id: string
-  messages: any
+  messages: unknown[]
   timestamp: number
   hash: string
 }
@@ -169,14 +169,7 @@ interface WrappedResponse {
   isPartial: boolean
   stateId: string
   timestamp: number
-  data: any
-}
-
-interface ApplyResponse {
-  stateTableResults: any[]
-  txId: string
-  txTimestamp: number
-  accountData: any[]
+  data: never
 }
 
 interface ValidationResponse {

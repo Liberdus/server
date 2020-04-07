@@ -1,16 +1,16 @@
-import * as fs from 'fs'
-import * as path from 'path'
-import * as Prop from 'dot-prop'
-import _ from 'lodash'
-import * as heapdump from 'heapdump'
+import fs from 'fs'
+import path from 'path'
+import Prop from 'dot-prop'
+import heapdump from 'heapdump'
 import axios from 'axios'
 import Decimal from 'decimal.js'
-import Shardus = require('shardus-global-server/src/shardus/shardus-types')
 import shardus from 'shardus-global-server'
-import stringify = require('fast-stable-stringify')
 import * as crypto from 'shardus-crypto-utils'
+import Shardus = require('shardus-global-server/src/shardus/shardus-types')
+import stringify = require('fast-stable-stringify')
 import './@types'
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
+// import _ from 'lodash'
 
 // THE ENTIRE APP STATE FOR THIS NODE
 let accounts: { [id: string]: Account } = {}
@@ -172,8 +172,8 @@ async function syncParameters(timestamp: number): Promise<void> {
   const network: NetworkAccount = account.data
   // IF THE NETWORK ACCOUNT HAS BEEN INITIALIZED
   if (account && network) {
-    console.log(`NETWORK ACCOUNT: ${stringify(network)}`)
-    dapp.log(`NETWORK ACCOUNT: ${stringify(network)}`)
+    console.log(`NETWORK ACCOUNT: ${network}`)
+    dapp.log(`NETWORK ACCOUNT: ${network}`)
     current = network.current
     next = network.next
     windows = network.windows
@@ -986,11 +986,10 @@ dapp.setup({
         devIssue: crypto.hash(`dev-issue-${1}`),
         timestamp: Date.now(),
       })
-      await _sleep(ONE_SECOND * 10)
+      await _sleep(ONE_SECOND * 20)
     } else {
-      while (!dapp.getLocalOrRemoteAccount(networkAccount)) {
+      while (!(await dapp.getLocalOrRemoteAccount(networkAccount))) {
         console.log('waiting..')
-        await _sleep(1000)
       }
     }
   },
@@ -1661,6 +1660,7 @@ dapp.setup({
         return response
       }
       case 'tally': {
+        console.log(`GOT HERE ------------- ${tx}--------${wrappedStates}`)
         const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
         const proposals: ProposalAccount[] = tx.proposals.map((id: string) => wrappedStates[id].data)
@@ -2370,6 +2370,14 @@ dapp.setup({
           reason = '"payment.amount" must be a number.'
           throw new Error(reason)
         }
+        break
+      }
+      default: {
+        return {
+          success,
+          reason,
+          txnTimestamp,
+        }
       }
     }
 
@@ -2379,7 +2387,7 @@ dapp.setup({
       txnTimestamp,
     }
   },
-  apply(tx: any, wrappedStates: { [id: string]: WrappedAccount }): Shardus.ApplyResponse {
+  apply(tx: any, wrappedStates: { [id: string]: WrappedAccount }) {
     const from = wrappedStates[tx.from] && wrappedStates[tx.from].data
     const to = wrappedStates[tx.to] && wrappedStates[tx.to].data
     // Validate the tx
@@ -2396,20 +2404,18 @@ dapp.setup({
     } else {
       txId = crypto.hashObj(tx, true) // compute from tx
     }
-    const applyResponse: ApplyResponse = dapp.createApplyResponse(txId, tx.timestamp)
+    const applyResponse: Shardus.ApplyResponse = dapp.createApplyResponse(txId, tx.timestamp)
 
     // Apply the tx
     switch (tx.type) {
       case 'init_network': {
         const network: NetworkAccount = wrappedStates[tx.network].data
         network.timestamp = tx.timestamp
-        from.timestamp = tx.timestamp
         dapp.log('Applied init_network transaction', network)
         break
       }
       case 'snapshot': {
         to.snapshot = tx.snapshot
-        from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
         dapp.log('Applied snapshot tx', to)
         break
@@ -2470,7 +2476,7 @@ dapp.setup({
         // from.data.transactions.push({ ...tx, txId })
         alias.timestamp = tx.timestamp
         from.timestamp = tx.timestamp
-        dapp.log('Applied register tx', from)
+        dapp.log('Applied register tx', from, alias)
         break
       }
       case 'create': {
@@ -2745,7 +2751,7 @@ dapp.setup({
         dapp.setGlobal(
           networkAccount,
           {
-            type: 'apply_tally',
+            type: 'tally_apply',
             timestamp: when,
             network: networkAccount,
             next,
@@ -2757,13 +2763,12 @@ dapp.setup({
 
         issue.winner = winner.id
 
-        from.timestamp = tx.timestamp
         issue.timestamp = tx.timestamp
         winner.timestamp = tx.timestamp
-        dapp.log('Applied tally tx', from, issue, winner)
+        dapp.log('Applied tally tx', issue, winner)
         break
       }
-      case 'apply_tally': {
+      case 'tally_apply': {
         dapp.log(`=== SET TALLY GLOBAL ${tx} ===`)
         const network: NetworkAccount = wrappedStates[tx.network].data
         network.next = tx.next
@@ -2830,9 +2835,8 @@ dapp.setup({
           networkAccount,
         )
 
-        from.timestamp = tx.timestamp
         devIssue.timestamp = tx.timestamp
-        dapp.log('Applied dev_tally tx', from, devIssue, devProposals)
+        dapp.log('Applied dev_tally tx', devIssue, devProposals)
         break
       }
       case 'apply_dev_tally': {
@@ -3064,7 +3068,7 @@ dapp.setup({
         result.sourceKeys = [tx.from]
         result.targetKeys = [...tx.proposals, tx.issue, tx.network]
         break
-      case 'apply_tally':
+      case 'tally_apply':
         result.targetKeys = [tx.network]
         break
       case 'dev_tally':
@@ -3474,38 +3478,35 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
   let devTallyGenerated = false
   let devApplyGenerated = false
 
-  let syncedNextParams = 0
+  const syncedNextParams = 0
   let syncedNextDevParams = 0
 
   let nodeId: string
   let nodeAddress: string
-  let cycleStartTimestamp: number
   let lastReward: number
-  let expectedInterval: number
   let cycleData: Shardus.Cycle
+  let cycleStartTimestamp: number
   let luckyNode: string
+  let expected = Date.now() + cycleInterval
+  let drift: number
 
   await dapp.start()
 
   // THIS CODE IS CALLED ON EVERY NODE ON EVERY CYCLE
   async function networkMaintenance(): Promise<NodeJS.Timeout> {
-    expectedInterval += cycleInterval
+    drift = Date.now() - expected
 
     try {
       const account = await dapp.getLocalOrRemoteAccount(networkAccount)
-      if (account) {
-        network = account.data
-      } else {
-        network = accounts[networkAccount]
-      }
+      network = account.data
       ;[cycleData] = dapp.getLatestCycles()
-      cycleStartTimestamp = cycleData.start * 1000 + ONE_SECOND * 30
-      ;[luckyNode] = dapp.getClosestNodes(cycleData.marker, 2)
+      cycleStartTimestamp = cycleData.start * 1000
+      ;[luckyNode] = dapp.getClosestNodes(cycleData.marker, 3)
       nodeId = dapp.getNodeId()
       nodeAddress = dapp.getNode(nodeId).address
     } catch (err) {
       dapp.log('ERR: ', err)
-      return setTimeout(networkMaintenance, 1000)
+      return setTimeout(networkMaintenance, 100)
     }
 
     dapp.log(
@@ -3516,32 +3517,33 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       luckyNode: `,
       luckyNode,
       `
+      windows: `,
+      network.windows,
+      `
       current: `,
-      current,
+      network.current,
       `
       next: `,
-      next,
+      network.next,
       `
       DEVELOPER_FUND: `,
-      developerFund,
+      network.developerFund,
       `
       nextDeveloperFund: `,
-      nextDeveloperFund,
+      network.nextDeveloperFund,
       `
       ISSUE: `,
-      issue,
+      network.issue,
       `
       DEV_ISSUE: `,
-      devIssue,
+      network.devIssue,
       `
       nodeId: `,
       nodeId,
-      `
-    `,
     )
 
     // THIS IS FOR NODE_REWARD
-    if (cycleStartTimestamp - lastReward > current.nodeRewardInterval) {
+    if (cycleStartTimestamp - lastReward > network.current.nodeRewardInterval) {
       nodeReward(nodeAddress, nodeId)
       lastReward = cycleStartTimestamp
     }
@@ -3559,16 +3561,16 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       'CYCLE_START_TIME: ',
       cycleStartTimestamp,
       'ISSUE_WINDOW_START_TIME: ',
-      windows.proposalWindow[0],
+      network.windows.proposalWindow[0],
       'ISSUE_WINDOW_END_TIME: ',
-      windows.proposalWindow[1],
+      network.windows.proposalWindow[1],
       'WITHIN_ISSUE_WINDOW: ',
-      cycleStartTimestamp >= windows.proposalWindow[0] && cycleStartTimestamp <= windows.proposalWindow[1],
+      cycleStartTimestamp >= network.windows.proposalWindow[0] && cycleStartTimestamp <= network.windows.proposalWindow[1],
     )
 
-    if (cycleStartTimestamp >= windows.proposalWindow[0] && cycleStartTimestamp <= windows.proposalWindow[1]) {
+    if (cycleStartTimestamp >= network.windows.proposalWindow[0] && cycleStartTimestamp <= network.windows.proposalWindow[1]) {
       if (!issueGenerated && issue > 1) {
-        if (nodeId === luckyNode && Date.now() < windows.proposalWindow[0] + ONE_SECOND * 20) {
+        if (nodeId === luckyNode) {
           await generateIssue(nodeAddress, nodeId)
         }
         issueGenerated = true
@@ -3587,26 +3589,26 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       'CYCLE_START_TIME: ',
       cycleStartTimestamp,
       'TALLY_WINDOW_START_TIME: ',
-      windows.graceWindow[0],
+      network.windows.graceWindow[0],
       'TALLY_WINDOW_END_TIME: ',
-      windows.graceWindow[1],
+      network.windows.graceWindow[1],
       'WITHIN_TALLY_WINDOW: ',
-      cycleStartTimestamp >= windows.graceWindow[0] && cycleStartTimestamp <= windows.graceWindow[1],
+      cycleStartTimestamp >= network.windows.graceWindow[0] && cycleStartTimestamp <= network.windows.graceWindow[1],
     )
 
     // IF THE WINNER FOR THE PROPOSAL HASN'T BEEN DETERMINED YET AND ITS PAST THE VOTING_WINDOW
-    if (cycleStartTimestamp >= windows.graceWindow[0] && cycleStartTimestamp <= windows.graceWindow[1]) {
-      if (syncedNextParams > 2) {
-        console.log('SYNCING_PARAMS')
-        await syncParameters(cycleStartTimestamp)
-        syncedNextParams = 0
-      }
-      if (!tallyGenerated) {
-        if (nodeId === luckyNode && Date.now() < windows.graceWindow[0] + ONE_SECOND * 20) {
-          await tallyVotes(nodeAddress, nodeId)
-        }
-        tallyGenerated = true
-      }
+    if (cycleStartTimestamp >= network.windows.graceWindow[0] && cycleStartTimestamp <= network.windows.graceWindow[1]) {
+      // if (syncedNextParams > 2) {
+      //   console.log('SYNCING_PARAMS')
+      //   await syncParameters(cycleStartTimestamp)
+      //   syncedNextParams = 0
+      // }
+      // if (!tallyGenerated) {
+      // if (nodeId === luckyNode) {
+      await tallyVotes(nodeAddress, nodeId)
+      //   }
+      //   tallyGenerated = true
+      // }
     }
 
     dapp.log(
@@ -3620,17 +3622,17 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       'CYCLE_START_TIME: ',
       cycleStartTimestamp,
       'APPLY_WINDOW_START_TIME: ',
-      windows.applyWindow[0],
+      network.windows.applyWindow[0],
       'APPLY_WINDOW_END_TIME: ',
-      windows.applyWindow[1],
+      network.windows.applyWindow[1],
       'WITHIN_APPLY_WINDOW: ',
-      cycleStartTimestamp >= windows.applyWindow[0] && cycleStartTimestamp <= windows.applyWindow[1],
+      cycleStartTimestamp >= network.windows.applyWindow[0] && cycleStartTimestamp <= network.windows.applyWindow[1],
     )
 
     // IF THE WINNING PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE GRACE_WINDOW
-    if (cycleStartTimestamp >= windows.applyWindow[0] && cycleStartTimestamp <= windows.applyWindow[1]) {
+    if (cycleStartTimestamp >= network.windows.applyWindow[0] && cycleStartTimestamp <= network.windows.applyWindow[1]) {
       if (!applyGenerated) {
-        if (nodeId === luckyNode && Date.now() < windows.applyWindow[0] + ONE_SECOND * 20) {
+        if (nodeId === luckyNode) {
           await applyParameters(nodeAddress, nodeId)
         }
         applyGenerated = true
@@ -3650,18 +3652,18 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       'CYCLE_START_TIME: ',
       cycleStartTimestamp,
       'DEV_ISSUE_WINDOW_START_TIME: ',
-      devWindows.devProposalWindow[0],
+      network.devWindows.devProposalWindow[0],
       'DEV_ISSUE_WINDOW_END_TIME: ',
-      devWindows.devProposalWindow[1],
+      network.devWindows.devProposalWindow[1],
       'WITHIN_DEV_ISSUE_WINDOW: ',
-      cycleStartTimestamp >= devWindows.devProposalWindow[0] && cycleStartTimestamp <= devWindows.devProposalWindow[1],
+      cycleStartTimestamp >= network.devWindows.devProposalWindow[0] && cycleStartTimestamp <= network.devWindows.devProposalWindow[1],
     )
 
     // AUTOMATIC (DEV_ISSUE | DEV_TALLY | APPLY_DEV_PARAMETERS) TRANSACTION GENERATION
     // IS THE NETWORK READY TO GENERATE A NEW DEV_ISSUE?
-    if (cycleStartTimestamp >= devWindows.devProposalWindow[0] && cycleStartTimestamp <= devWindows.devProposalWindow[1]) {
-      if (!devIssueGenerated && devIssue > 1) {
-        if (nodeId === luckyNode && Date.now() < devWindows.devProposalWindow[0] + ONE_SECOND * 20) {
+    if (cycleStartTimestamp >= network.devWindows.devProposalWindow[0] && cycleStartTimestamp <= network.devWindows.devProposalWindow[1]) {
+      if (!devIssueGenerated && network.devIssue > 1) {
+        if (nodeId === luckyNode) {
           await generateDevIssue(nodeAddress, nodeId)
         }
         devIssueGenerated = true
@@ -3680,22 +3682,22 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       'CYCLE_START_TIME: ',
       cycleStartTimestamp,
       'DEV_TALLY_WINDOW_START_TIME: ',
-      devWindows.devGraceWindow[0],
+      network.devWindows.devGraceWindow[0],
       'DEV_TALLY_WINDOW_END_TIME: ',
-      devWindows.devGraceWindow[1],
+      network.devWindows.devGraceWindow[1],
       'WITHIN_DEV_TALLY_WINDOW: ',
-      cycleStartTimestamp >= devWindows.devGraceWindow[0] && cycleStartTimestamp <= devWindows.devGraceWindow[1],
+      cycleStartTimestamp >= network.devWindows.devGraceWindow[0] && cycleStartTimestamp <= network.devWindows.devGraceWindow[1],
     )
 
     // IF THE WINNERS FOR THE DEV PROPOSALS HAVEN'T BEEN DETERMINED YET AND ITS PAST THE DEV_VOTING_WINDOW
-    if (cycleStartTimestamp >= devWindows.devGraceWindow[0] && cycleStartTimestamp <= devWindows.devGraceWindow[1]) {
+    if (cycleStartTimestamp >= network.devWindows.devGraceWindow[0] && cycleStartTimestamp <= network.devWindows.devGraceWindow[1]) {
       if (syncedNextDevParams > 2) {
         console.log('SYNCING_DEV_PARAMS')
         await syncDevParameters(cycleStartTimestamp)
         syncedNextDevParams = 0
       }
       if (!devTallyGenerated) {
-        if (nodeId === luckyNode && Date.now() < devWindows.devGraceWindow[0] + ONE_SECOND * 20) {
+        if (nodeId === luckyNode) {
           await tallyDevVotes(nodeAddress, nodeId)
         }
         devTallyGenerated = true
@@ -3714,17 +3716,17 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       'CYCLE_START_TIME: ',
       cycleStartTimestamp,
       'DEV_APPLY_WINDOW_START_TIME: ',
-      devWindows.devApplyWindow[0],
+      network.devWindows.devApplyWindow[0],
       'DEV_APPLY_WINDOW_END_TIME: ',
-      devWindows.devApplyWindow[1],
+      network.devWindows.devApplyWindow[1],
       'WITHIN_DEV_APPLY_WINDOW: ',
-      cycleStartTimestamp >= devWindows.devApplyWindow[0] && cycleStartTimestamp <= devWindows.devApplyWindow[1],
+      cycleStartTimestamp >= network.devWindows.devApplyWindow[0] && cycleStartTimestamp <= network.devWindows.devApplyWindow[1],
     )
 
     // IF THE WINNING DEV PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE DEV_GRACE_WINDOW
-    if (cycleStartTimestamp >= devWindows.devApplyWindow[0] && cycleStartTimestamp <= devWindows.devApplyWindow[1]) {
+    if (cycleStartTimestamp >= network.devWindows.devApplyWindow[0] && cycleStartTimestamp <= network.devWindows.devApplyWindow[1]) {
       if (!devApplyGenerated) {
-        if (nodeId === luckyNode && Date.now() < devWindows.devApplyWindow[0] + ONE_SECOND * 20) {
+        if (nodeId === luckyNode) {
           await applyDevParameters(nodeAddress, nodeId)
         }
         devApplyGenerated = true
@@ -3734,20 +3736,17 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     }
 
     // LOOP THROUGH IN-MEMORY DEVELOPER_FUND
-    for (const payment of developerFund) {
+    for (const payment of network.developerFund) {
       // PAY DEVELOPER IF THE network.current TIME IS GREATER THAN THE PAYMENT TIME
       if (cycleStartTimestamp >= payment.timestamp) {
         if (nodeId === luckyNode) {
           releaseDeveloperFunds(payment, nodeAddress, nodeId)
         }
-        developerFund = developerFund.filter(p => p.id !== payment.id)
-      } else {
-        break
       }
     }
 
-    // return setTimeout(networkMaintenance, expectedInterval - cycleStartTimestamp) NO GOOD
-    return setTimeout(networkMaintenance, expectedInterval - Date.now())
+    expected += cycleInterval
+    return setTimeout(networkMaintenance, Math.max(0, cycleInterval - drift))
   }
 
   dapp.p2p.on(
@@ -3756,13 +3755,10 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       if (dapp.p2p.isFirstSeed) {
         await _sleep(ONE_SECOND * 20)
       }
-      const [cycleData] = dapp.getLatestCycles()
       nodeId = dapp.getNodeId()
       nodeAddress = dapp.getNode(nodeId).address
-      cycleStartTimestamp = cycleData.start * 1000
-      lastReward = cycleStartTimestamp
-      expectedInterval = cycleStartTimestamp + cycleInterval
-      return setTimeout(networkMaintenance, expectedInterval - Date.now())
+      lastReward = Date.now()
+      return setTimeout(networkMaintenance, cycleInterval)
     },
   )
 })()
