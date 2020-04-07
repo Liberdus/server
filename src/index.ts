@@ -49,7 +49,7 @@ const cycleDuration = 15
 const INITIAL_PARAMETERS: NetworkParameters = {
   title: 'Initial parameters',
   description: 'These are the initial network parameters liberdus started with',
-  nodeRewardInterval: ONE_MINUTE * 2,
+  nodeRewardInterval: ONE_MINUTE,
   nodeRewardAmount: 10,
   nodePenalty: 100,
   transactionFee: 0.001,
@@ -100,7 +100,7 @@ Prop.set(config, 'server.reporting', {
   interval: 1,
 })
 Prop.set(config, 'server.rateLimiting', {
-  limitRate: true,
+  limitRate: false,
   loadLimit: 0.5,
 })
 Prop.set(config, 'server.sharding', {
@@ -172,8 +172,12 @@ async function syncParameters(timestamp: number): Promise<void> {
   const network: NetworkAccount = account.data
   // IF THE NETWORK ACCOUNT HAS BEEN INITIALIZED
   if (account && network) {
-    console.log(`NETWORK ACCOUNT: ${network}`)
-    dapp.log(`NETWORK ACCOUNT: ${network}`)
+    console.log(`
+      NETWORK ACCOUNT: ${network}
+    `)
+    dapp.log(`
+      NETWORK ACCOUNT: ${network}
+    `)
     current = network.current
     next = network.next
     windows = network.windows
@@ -896,7 +900,7 @@ dapp.registerExternalGet('debug/dump', (req, res): void => {
   })
 })
 
-dapp.registerExternalPost('debug/exit', req => {
+dapp.registerExternalPost('debug/exit', (req: { body: { code: number } }) => {
   try {
     process.exit(req.body.code)
   } catch (err) {
@@ -1409,11 +1413,6 @@ dapp.setup({
         response.reason = 'This transaction is valid!'
         return response
       }
-      // case 'apply_issue': {
-      //   response.success = true
-      //   response.reason = 'This transaction is valid!'
-      //   return response
-      // }
       case 'dev_issue': {
         const network: NetworkAccount = wrappedStates[tx.network].data
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
@@ -1440,11 +1439,6 @@ dapp.setup({
         response.reason = 'This transaction is valid!'
         return response
       }
-      // case 'apply_dev_issue': {
-      //   response.success = true
-      //   response.reason = 'This transaction is valid!'
-      //   return response
-      // }
       case 'proposal': {
         const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
@@ -1703,7 +1697,7 @@ dapp.setup({
         response.reason = 'This transaction is valid!'
         return response
       }
-      case 'apply_tally': {
+      case 'tally_apply': {
         response.success = true
         response.reason = 'This transaction is valid!'
         return response
@@ -2708,6 +2702,7 @@ dapp.setup({
         break
       }
       case 'tally': {
+        console.log(`GOT TO TALLY IN APPLY ${tx} ${wrappedStates}`)
         const network: NetworkAccount = wrappedStates[tx.to].data
         const issue: IssueAccount = wrappedStates[tx.issue].data
         const margin = 100 / (2 * (issue.proposalCount + 1)) / 100
@@ -3038,16 +3033,10 @@ dapp.setup({
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.issue, tx.proposal, tx.network]
         break
-      // case 'apply_issue':
-      //   result.targetKeys = [tx.network]
-      //   break
       case 'dev_issue':
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.devIssue, tx.network]
         break
-      // case 'apply_dev_issue':
-      //   result.targetKeys = [tx.network]
-      //   break
       case 'proposal':
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.issue, tx.proposal, tx.network]
@@ -3371,6 +3360,7 @@ async function generateDevIssue(address: string, nodeId: string): Promise<void> 
 
 // TALLY TRANSACTION FUNCTION
 async function tallyVotes(address: string, nodeId: string): Promise<void> {
+  console.log(`GOT TO TALLY_VOTES FN ${address} ${nodeId}`)
   try {
     const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${network.data.issue}`))
@@ -3478,7 +3468,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
   let devTallyGenerated = false
   let devApplyGenerated = false
 
-  const syncedNextParams = 0
+  let syncedNextParams = 0
   let syncedNextDevParams = 0
 
   let nodeId: string
@@ -3506,39 +3496,30 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       nodeAddress = dapp.getNode(nodeId).address
     } catch (err) {
       dapp.log('ERR: ', err)
+      console.log('ERR: ', err)
       return setTimeout(networkMaintenance, 100)
     }
 
     dapp.log(
-      `
-      CYCLE_DATA: `,
+      'CYCLE_DATA:\n',
       cycleData,
-      `
-      luckyNode: `,
+      'luckyNode\n',
       luckyNode,
-      `
-      windows: `,
+      'windows:\n',
       network.windows,
-      `
-      current: `,
+      'current:\n',
       network.current,
-      `
-      next: `,
+      'next:\n',
       network.next,
-      `
-      DEVELOPER_FUND: `,
+      'DEVELOPER_FUND:\n',
       network.developerFund,
-      `
-      nextDeveloperFund: `,
+      'nextDeveloperFund:\n',
       network.nextDeveloperFund,
-      `
-      ISSUE: `,
+      'ISSUE:\n',
       network.issue,
-      `
-      DEV_ISSUE: `,
+      'DEV_ISSUE:\n',
       network.devIssue,
-      `
-      nodeId: `,
+      'nodeId:\n',
       nodeId,
     )
 
@@ -3598,17 +3579,18 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
 
     // IF THE WINNER FOR THE PROPOSAL HASN'T BEEN DETERMINED YET AND ITS PAST THE VOTING_WINDOW
     if (cycleStartTimestamp >= network.windows.graceWindow[0] && cycleStartTimestamp <= network.windows.graceWindow[1]) {
-      // if (syncedNextParams > 2) {
-      //   console.log('SYNCING_PARAMS')
-      //   await syncParameters(cycleStartTimestamp)
-      //   syncedNextParams = 0
-      // }
-      // if (!tallyGenerated) {
-      // if (nodeId === luckyNode) {
-      await tallyVotes(nodeAddress, nodeId)
-      //   }
-      //   tallyGenerated = true
-      // }
+      if (syncedNextParams > 2) {
+        console.log('SYNCING_PARAMS')
+        await syncParameters(cycleStartTimestamp)
+        syncedNextParams = 0
+      }
+      if (!tallyGenerated) {
+        if (nodeId === luckyNode) {
+          await tallyVotes(nodeAddress, nodeId)
+        }
+        tallyGenerated = true
+      }
+      syncedNextParams++
     }
 
     dapp.log(
