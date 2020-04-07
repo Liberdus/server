@@ -173,10 +173,10 @@ async function syncParameters(timestamp: number): Promise<void> {
   // IF THE NETWORK ACCOUNT HAS BEEN INITIALIZED
   if (account && network) {
     console.log(`
-      NETWORK ACCOUNT: ${network}
+      NETWORK ACCOUNT: ${stringify(network)}
     `)
     dapp.log(`
-      NETWORK ACCOUNT: ${network}
+      NETWORK ACCOUNT: ${stringify(network)}
     `)
     current = network.current
     next = network.next
@@ -3054,8 +3054,12 @@ dapp.setup({
         result.targetKeys = [tx.devIssue, tx.devProposal, tx.network]
         break
       case 'tally':
-        result.sourceKeys = [tx.from]
-        result.targetKeys = [...tx.proposals, tx.issue, tx.network]
+        {
+          dapp.log([...tx.proposals, tx.issue, tx.network], [tx.from])
+          console.log([...tx.proposals, tx.issue, tx.network], [tx.from])
+          result.sourceKeys = [tx.from]
+          result.targetKeys = [...tx.proposals, tx.issue, tx.network]
+        }
         break
       case 'tally_apply':
         result.targetKeys = [tx.network]
@@ -3501,25 +3505,25 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     }
 
     dapp.log(
-      'CYCLE_DATA:\n',
+      'CYCLE_DATA: \n',
       cycleData,
-      'luckyNode\n',
+      'luckyNode \n',
       luckyNode,
-      'windows:\n',
+      'windows: \n',
       network.windows,
-      'current:\n',
+      'current: \n',
       network.current,
-      'next:\n',
+      'next: \n',
       network.next,
-      'DEVELOPER_FUND:\n',
+      'DEVELOPER_FUND: \n',
       network.developerFund,
-      'nextDeveloperFund:\n',
+      'nextDeveloperFund: \n',
       network.nextDeveloperFund,
-      'ISSUE:\n',
+      'ISSUE: \n',
       network.issue,
-      'DEV_ISSUE:\n',
+      'DEV_ISSUE: \n',
       network.devIssue,
-      'nodeId:\n',
+      'nodeId: \n',
       nodeId,
     )
 
