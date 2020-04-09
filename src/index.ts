@@ -226,7 +226,15 @@ async function syncDevParameters(timestamp: number): Promise<void> {
       devApplyWindow,
     }
     nextDevWindows = {}
-    developerFund = []
+    developerFund = [
+      {
+        id: crypto.randomBytes(),
+        address: crypto.hash('kyle'),
+        amount: 100,
+        delay: 30 * ONE_SECOND,
+        timestamp: Date.now() + ONE_MINUTE * 2,
+      },
+    ]
     nextDeveloperFund = []
     devIssue = 1
   }
@@ -293,19 +301,39 @@ function createAlias(accountId: string): AliasAccount {
 }
 
 // CREATE THE INITIAL NETWORK ACCOUNT
-function createNetworkAccount(accountId: string): NetworkAccount {
+function createNetworkAccount(accountId: string, timestamp: number): NetworkAccount {
+  const proposalWindow = [timestamp, timestamp + TIME_FOR_PROPOSALS]
+  const votingWindow = [proposalWindow[1], proposalWindow[1] + TIME_FOR_VOTING]
+  const graceWindow = [votingWindow[1], votingWindow[1] + TIME_FOR_GRACE]
+  const applyWindow = [graceWindow[1], graceWindow[1] + TIME_FOR_APPLY]
+
+  const devProposalWindow = [timestamp, timestamp + TIME_FOR_DEV_PROPOSALS]
+  const devVotingWindow = [devProposalWindow[1], devProposalWindow[1] + TIME_FOR_DEV_VOTING]
+  const devGraceWindow = [devVotingWindow[1], devVotingWindow[1] + TIME_FOR_DEV_GRACE]
+  const devApplyWindow = [devGraceWindow[1], devGraceWindow[1] + TIME_FOR_DEV_APPLY]
+
   const account: NetworkAccount = {
     id: accountId,
-    current,
-    next,
-    windows,
-    nextWindows,
-    devWindows,
-    nextDevWindows,
-    issue,
-    devIssue,
-    developerFund,
-    nextDeveloperFund,
+    current: INITIAL_PARAMETERS,
+    next: {},
+    windows: {
+      proposalWindow,
+      votingWindow,
+      graceWindow,
+      applyWindow,
+    },
+    nextWindows: {},
+    devWindows: {
+      devProposalWindow,
+      devVotingWindow,
+      devGraceWindow,
+      devApplyWindow,
+    },
+    nextDevWindows: {},
+    developerFund: [],
+    nextDeveloperFund: [],
+    issue: 1,
+    devIssue: 1,
     hash: '',
     timestamp: 0,
   }
@@ -933,6 +961,7 @@ dapp.setup({
       const timestamp = Date.now()
       const nodeId = dapp.getNodeId()
       const address = dapp.getNode(nodeId).address
+
       const proposalWindow = [timestamp, timestamp + TIME_FOR_PROPOSALS]
       const votingWindow = [proposalWindow[1], proposalWindow[1] + TIME_FOR_VOTING]
       const graceWindow = [votingWindow[1], votingWindow[1] + TIME_FOR_GRACE]
@@ -942,6 +971,7 @@ dapp.setup({
       const devVotingWindow = [devProposalWindow[1], devProposalWindow[1] + TIME_FOR_DEV_VOTING]
       const devGraceWindow = [devVotingWindow[1], devVotingWindow[1] + TIME_FOR_DEV_GRACE]
       const devApplyWindow = [devGraceWindow[1], devGraceWindow[1] + TIME_FOR_DEV_APPLY]
+
       current = INITIAL_PARAMETERS
       next = {}
       windows = {
@@ -970,7 +1000,7 @@ dapp.setup({
         network: networkAccount,
         timestamp: Date.now(),
       }
-      dapp.put(tx)
+      dapp.set(tx)
       dapp.log('GENERATED_NETWORK: ', nodeId)
 
       dapp.set({
@@ -1654,7 +1684,8 @@ dapp.setup({
         return response
       }
       case 'tally': {
-        console.log(`GOT HERE ------------- ${tx}--------${wrappedStates}`)
+        console.log(`tally --- GOT HERE ------------- ${tx} -------- ${wrappedStates}`)
+        dapp.log(`tally --- GOT HERE ------------- ${tx} -------- ${wrappedStates}`)
         const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
         const proposals: ProposalAccount[] = tx.proposals.map((id: string) => wrappedStates[id].data)
@@ -1698,6 +1729,8 @@ dapp.setup({
         return response
       }
       case 'tally_apply': {
+        console.log(`tally_apply --- GOT HERE ------------- ${tx} -------- ${wrappedStates}`)
+        dapp.log(`tally_apply --- GOT HERE ------------- ${tx} -------- ${wrappedStates}`)
         response.success = true
         response.reason = 'This transaction is valid!'
         return response
@@ -2702,8 +2735,9 @@ dapp.setup({
         break
       }
       case 'tally': {
-        console.log(`GOT TO TALLY IN APPLY ${tx} ${wrappedStates}`)
-        const network: NetworkAccount = wrappedStates[tx.to].data
+        console.log(`GOT TO TALLY IN APPLY FN ${tx} ${stringify(wrappedStates)}`)
+        dapp.log(`GOT TO TALLY IN APPLY FN ${stringify(tx)} ${stringify(wrappedStates)}`)
+        const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue].data
         const margin = 100 / (2 * (issue.proposalCount + 1)) / 100
 
@@ -2764,19 +2798,19 @@ dapp.setup({
         break
       }
       case 'tally_apply': {
-        dapp.log(`=== SET TALLY GLOBAL ${tx} ===`)
+        dapp.log(`GOT TO === SET TALLY GLOBAL ${stringify(tx)} ===`)
         const network: NetworkAccount = wrappedStates[tx.network].data
         network.next = tx.next
         network.nextWindows = tx.nextWindows
         network.timestamp = tx.timestamp
-        dapp.log(`=== APPLIED TALLY GLOBAL ${network} ===`)
+        dapp.log(`APPLIED TALLY GLOBAL ${stringify(network)} ===`)
         break
       }
       case 'dev_tally': {
         const network: NetworkAccount = wrappedStates[tx.network].data
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
         const devProposals: DevProposalAccount[] = tx.devProposals.map((id: string) => wrappedStates[id].data)
-        let nextDeveloperFund: DeveloperPayment[]
+        let nextDeveloperFund: DeveloperPayment[] = []
 
         for (const devProposal of devProposals) {
           if (devProposal.approve >= devProposal.reject + devProposal.reject * 0.15) {
@@ -2815,6 +2849,8 @@ dapp.setup({
           ],
         }
 
+        console.log(`NEXT_DEVELOPER_FUND: ${nextDeveloperFund}`)
+
         const when = tx.timestamp + ONE_SECOND * 10
 
         dapp.setGlobal(
@@ -2835,12 +2871,12 @@ dapp.setup({
         break
       }
       case 'apply_dev_tally': {
-        dapp.log(`=== SET DEV_TALLY GLOBAL ${tx} ===`)
+        dapp.log(`=== SET DEV_TALLY GLOBAL ${stringify(tx)} ===`)
         const network: NetworkAccount = wrappedStates[tx.network].data
         network.nextDeveloperFund = tx.nextDeveloperFund
         network.nextDevWindows = tx.nextDevWindows
         network.timestamp = tx.timestamp
-        dapp.log(`=== APPLIED DEV_TALLY GLOBAL ${network} ===`)
+        dapp.log(`=== APPLIED DEV_TALLY GLOBAL ${stringify(network)} ===`)
         break
       }
       case 'parameters': {
@@ -2875,20 +2911,21 @@ dapp.setup({
         break
       }
       case 'apply_parameters': {
-        dapp.log(`=== SET PARAMETERS GLOBAL ${tx} ===`)
+        dapp.log(`=== SET PARAMETERS GLOBAL ${stringify(tx)} ===`)
         const network: NetworkAccount = wrappedStates[tx.network].data
         network.current = tx.current
         network.windows = tx.windows
         network.next = {}
         network.nextWindows = {}
         network.timestamp = tx.timestamp
-        dapp.log(`=== APPLIED PARAMETERS GLOBAL ${network} ===`)
+        dapp.log(`=== APPLIED PARAMETERS GLOBAL ${stringify(network)} ===`)
         break
       }
       case 'dev_parameters': {
         const network: NetworkAccount = wrappedStates[tx.network].data
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
         const when = tx.timestamp + ONE_SECOND * 10
+        dapp.log(`DEV_PARAMETERS NETWORK --- ${stringify(network)}`)
         dapp.setGlobal(
           networkAccount,
           {
@@ -2897,6 +2934,7 @@ dapp.setup({
             network: networkAccount,
             devWindows: network.nextDevWindows,
             developerFund: [...network.developerFund, ...network.nextDeveloperFund].sort((a, b) => a.timestamp - b.timestamp),
+            nextDeveloperFund: [],
           },
           when,
           networkAccount,
@@ -2915,10 +2953,11 @@ dapp.setup({
         break
       }
       case 'apply_dev_parameters': {
-        dapp.log(`=== SET DEV_PARAMETERS GLOBAL ${tx} ===`)
+        dapp.log(`=== SET DEV_PARAMETERS GLOBAL ${stringify(tx)} ===`)
         const network: NetworkAccount = wrappedStates[tx.network].data
-        network.devWindows = tx.DevWindows
+        network.devWindows = tx.devWindows
         network.developerFund = tx.developerFund
+        network.nextDeveloperFund = tx.nextDeveloperFund
         network.timestamp = tx.timestamp
         network.issue++
         network.devIssue++
@@ -2950,11 +2989,11 @@ dapp.setup({
         break
       }
       case 'apply_developer_payment': {
-        dapp.log(`=== SET APPLY_DEV_PAYMENT GLOBAL ${tx} ===`)
+        dapp.log(`=== SET APPLY_DEV_PAYMENT GLOBAL ${stringify(tx)} ===`)
         const network: NetworkAccount = wrappedStates[tx.network].data
         network.developerFund = tx.developerFund
         network.timestamp = tx.timestamp
-        dapp.log(`=== APPLIED DEV_PAYMENT GLOBAL ${network} ===`)
+        dapp.log(`=== APPLIED DEV_PAYMENT GLOBAL ${stringify(network)} ===`)
         break
       }
     }
@@ -3080,7 +3119,7 @@ dapp.setup({
         break
       case 'dev_parameters':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.to, tx.devIssue, tx.network]
+        result.targetKeys = [tx.devIssue, tx.network]
         break
       case 'apply_dev_parameters':
         result.targetKeys = [tx.network]
@@ -3119,7 +3158,7 @@ dapp.setup({
     // Create the account if it doesn't exist
     if (typeof account === 'undefined' || account === null) {
       if (accountId === networkAccount) {
-        account = createNetworkAccount(accountId)
+        account = createNetworkAccount(accountId, tx.timestamp)
         accounts[accountId] = account
         accountCreated = true
       } else if (tx.type === 'issue') {
@@ -3311,6 +3350,7 @@ dapp.setup({
   },
   close(): void {
     dapp.log('Shutting down server...')
+    console.log('Shutting down server...')
   },
 })
 
@@ -3472,8 +3512,8 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
   let devTallyGenerated = false
   let devApplyGenerated = false
 
-  let syncedNextParams = 0
-  let syncedNextDevParams = 0
+  // let syncedNextParams = 0
+  // let syncedNextDevParams = 0
 
   let nodeId: string
   let nodeAddress: string
@@ -3505,8 +3545,8 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     }
 
     dapp.log(
-      'CYCLE_DATA: \n',
-      cycleData,
+      // 'CYCLE_DATA: \n',
+      // cycleData,
       'luckyNode \n',
       luckyNode,
       'windows: \n',
@@ -3535,23 +3575,23 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
 
     // AUTOMATIC (ISSUE | TALLY | APPLY_PARAMETERS) TRANSACTION GENERATION
     // IS THE NETWORK READY TO GENERATE A NEW ISSUE?
-    dapp.log(
-      'ISSUE_DEBUG ---------- ',
-      'ISSUE_GENERATED: ',
-      issueGenerated,
-      'LUCKY_NODE: ',
-      luckyNode,
-      'NODE_ID: ',
-      nodeId,
-      'CYCLE_START_TIME: ',
-      cycleStartTimestamp,
-      'ISSUE_WINDOW_START_TIME: ',
-      network.windows.proposalWindow[0],
-      'ISSUE_WINDOW_END_TIME: ',
-      network.windows.proposalWindow[1],
-      'WITHIN_ISSUE_WINDOW: ',
-      cycleStartTimestamp >= network.windows.proposalWindow[0] && cycleStartTimestamp <= network.windows.proposalWindow[1],
-    )
+    // dapp.log(
+    //   'ISSUE_DEBUG ---------- ',
+    //   'ISSUE_GENERATED: ',
+    //   issueGenerated,
+    //   'LUCKY_NODE: ',
+    //   luckyNode,
+    //   'NODE_ID: ',
+    //   nodeId,
+    //   'CYCLE_START_TIME: ',
+    //   cycleStartTimestamp,
+    //   'ISSUE_WINDOW_START_TIME: ',
+    //   network.windows.proposalWindow[0],
+    //   'ISSUE_WINDOW_END_TIME: ',
+    //   network.windows.proposalWindow[1],
+    //   'WITHIN_ISSUE_WINDOW: ',
+    //   cycleStartTimestamp >= network.windows.proposalWindow[0] && cycleStartTimestamp <= network.windows.proposalWindow[1],
+    // )
 
     if (cycleStartTimestamp >= network.windows.proposalWindow[0] && cycleStartTimestamp <= network.windows.proposalWindow[1]) {
       if (!issueGenerated && issue > 1) {
@@ -3583,37 +3623,37 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
 
     // IF THE WINNER FOR THE PROPOSAL HASN'T BEEN DETERMINED YET AND ITS PAST THE VOTING_WINDOW
     if (cycleStartTimestamp >= network.windows.graceWindow[0] && cycleStartTimestamp <= network.windows.graceWindow[1]) {
-      if (syncedNextParams > 2) {
-        console.log('SYNCING_PARAMS')
-        await syncParameters(cycleStartTimestamp)
-        syncedNextParams = 0
-      }
+      // if (syncedNextParams > 2) {
+      //   console.log('SYNCING_PARAMS')
+      //   await syncParameters(cycleStartTimestamp)
+      //   syncedNextParams = 0
+      // }
       if (!tallyGenerated) {
         if (nodeId === luckyNode) {
           await tallyVotes(nodeAddress, nodeId)
         }
         tallyGenerated = true
       }
-      syncedNextParams++
+      // syncedNextParams++
     }
 
-    dapp.log(
-      'APPLY_DEBUG ---------- ',
-      'APPLY_GENERATED: ',
-      applyGenerated,
-      'LUCKY_NODE: ',
-      luckyNode,
-      'NODE_ID: ',
-      nodeId,
-      'CYCLE_START_TIME: ',
-      cycleStartTimestamp,
-      'APPLY_WINDOW_START_TIME: ',
-      network.windows.applyWindow[0],
-      'APPLY_WINDOW_END_TIME: ',
-      network.windows.applyWindow[1],
-      'WITHIN_APPLY_WINDOW: ',
-      cycleStartTimestamp >= network.windows.applyWindow[0] && cycleStartTimestamp <= network.windows.applyWindow[1],
-    )
+    // dapp.log(
+    //   'APPLY_DEBUG ---------- ',
+    //   'APPLY_GENERATED: ',
+    //   applyGenerated,
+    //   'LUCKY_NODE: ',
+    //   luckyNode,
+    //   'NODE_ID: ',
+    //   nodeId,
+    //   'CYCLE_START_TIME: ',
+    //   cycleStartTimestamp,
+    //   'APPLY_WINDOW_START_TIME: ',
+    //   network.windows.applyWindow[0],
+    //   'APPLY_WINDOW_END_TIME: ',
+    //   network.windows.applyWindow[1],
+    //   'WITHIN_APPLY_WINDOW: ',
+    //   cycleStartTimestamp >= network.windows.applyWindow[0] && cycleStartTimestamp <= network.windows.applyWindow[1],
+    // )
 
     // IF THE WINNING PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE GRACE_WINDOW
     if (cycleStartTimestamp >= network.windows.applyWindow[0] && cycleStartTimestamp <= network.windows.applyWindow[1]) {
@@ -3627,23 +3667,23 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       }
     }
 
-    dapp.log(
-      'DEV_ISSUE_DEBUG ---------- ',
-      'DEV_ISSUE_GENERATED: ',
-      tallyGenerated,
-      'LUCKY_NODE: ',
-      luckyNode,
-      'NODE_ID: ',
-      nodeId,
-      'CYCLE_START_TIME: ',
-      cycleStartTimestamp,
-      'DEV_ISSUE_WINDOW_START_TIME: ',
-      network.devWindows.devProposalWindow[0],
-      'DEV_ISSUE_WINDOW_END_TIME: ',
-      network.devWindows.devProposalWindow[1],
-      'WITHIN_DEV_ISSUE_WINDOW: ',
-      cycleStartTimestamp >= network.devWindows.devProposalWindow[0] && cycleStartTimestamp <= network.devWindows.devProposalWindow[1],
-    )
+    // dapp.log(
+    //   'DEV_ISSUE_DEBUG ---------- ',
+    //   'DEV_ISSUE_GENERATED: ',
+    //   tallyGenerated,
+    //   'LUCKY_NODE: ',
+    //   luckyNode,
+    //   'NODE_ID: ',
+    //   nodeId,
+    //   'CYCLE_START_TIME: ',
+    //   cycleStartTimestamp,
+    //   'DEV_ISSUE_WINDOW_START_TIME: ',
+    //   network.devWindows.devProposalWindow[0],
+    //   'DEV_ISSUE_WINDOW_END_TIME: ',
+    //   network.devWindows.devProposalWindow[1],
+    //   'WITHIN_DEV_ISSUE_WINDOW: ',
+    //   cycleStartTimestamp >= network.devWindows.devProposalWindow[0] && cycleStartTimestamp <= network.devWindows.devProposalWindow[1],
+    // )
 
     // AUTOMATIC (DEV_ISSUE | DEV_TALLY | APPLY_DEV_PARAMETERS) TRANSACTION GENERATION
     // IS THE NETWORK READY TO GENERATE A NEW DEV_ISSUE?
@@ -3657,57 +3697,57 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       }
     }
 
-    dapp.log(
-      'DEV_TALLY_DEBUG ---------- ',
-      'DEV_TALLY_GENERATED: ',
-      devTallyGenerated,
-      'LUCKY_NODE: ',
-      luckyNode,
-      'NODE_ID: ',
-      nodeId,
-      'CYCLE_START_TIME: ',
-      cycleStartTimestamp,
-      'DEV_TALLY_WINDOW_START_TIME: ',
-      network.devWindows.devGraceWindow[0],
-      'DEV_TALLY_WINDOW_END_TIME: ',
-      network.devWindows.devGraceWindow[1],
-      'WITHIN_DEV_TALLY_WINDOW: ',
-      cycleStartTimestamp >= network.devWindows.devGraceWindow[0] && cycleStartTimestamp <= network.devWindows.devGraceWindow[1],
-    )
+    // dapp.log(
+    //   'DEV_TALLY_DEBUG ---------- ',
+    //   'DEV_TALLY_GENERATED: ',
+    //   devTallyGenerated,
+    //   'LUCKY_NODE: ',
+    //   luckyNode,
+    //   'NODE_ID: ',
+    //   nodeId,
+    //   'CYCLE_START_TIME: ',
+    //   cycleStartTimestamp,
+    //   'DEV_TALLY_WINDOW_START_TIME: ',
+    //   network.devWindows.devGraceWindow[0],
+    //   'DEV_TALLY_WINDOW_END_TIME: ',
+    //   network.devWindows.devGraceWindow[1],
+    //   'WITHIN_DEV_TALLY_WINDOW: ',
+    //   cycleStartTimestamp >= network.devWindows.devGraceWindow[0] && cycleStartTimestamp <= network.devWindows.devGraceWindow[1],
+    // )
 
     // IF THE WINNERS FOR THE DEV PROPOSALS HAVEN'T BEEN DETERMINED YET AND ITS PAST THE DEV_VOTING_WINDOW
     if (cycleStartTimestamp >= network.devWindows.devGraceWindow[0] && cycleStartTimestamp <= network.devWindows.devGraceWindow[1]) {
-      if (syncedNextDevParams > 2) {
-        console.log('SYNCING_DEV_PARAMS')
-        await syncDevParameters(cycleStartTimestamp)
-        syncedNextDevParams = 0
-      }
+      // if (syncedNextDevParams > 2) {
+      //   console.log('SYNCING_DEV_PARAMS')
+      //   await syncDevParameters(cycleStartTimestamp)
+      //   syncedNextDevParams = 0
+      // }
       if (!devTallyGenerated) {
         if (nodeId === luckyNode) {
           await tallyDevVotes(nodeAddress, nodeId)
         }
         devTallyGenerated = true
       }
-      syncedNextDevParams++
+      // syncedNextDevParams++
     }
 
-    dapp.log(
-      'DEV_APPLY_DEBUG ---------- ',
-      'DEV_APPLY_GENERATED: ',
-      devApplyGenerated,
-      'LUCKY_NODE: ',
-      luckyNode,
-      'NODE_ID: ',
-      nodeId,
-      'CYCLE_START_TIME: ',
-      cycleStartTimestamp,
-      'DEV_APPLY_WINDOW_START_TIME: ',
-      network.devWindows.devApplyWindow[0],
-      'DEV_APPLY_WINDOW_END_TIME: ',
-      network.devWindows.devApplyWindow[1],
-      'WITHIN_DEV_APPLY_WINDOW: ',
-      cycleStartTimestamp >= network.devWindows.devApplyWindow[0] && cycleStartTimestamp <= network.devWindows.devApplyWindow[1],
-    )
+    // dapp.log(
+    //   'DEV_APPLY_DEBUG ---------- ',
+    //   'DEV_APPLY_GENERATED: ',
+    //   devApplyGenerated,
+    //   'LUCKY_NODE: ',
+    //   luckyNode,
+    //   'NODE_ID: ',
+    //   nodeId,
+    //   'CYCLE_START_TIME: ',
+    //   cycleStartTimestamp,
+    //   'DEV_APPLY_WINDOW_START_TIME: ',
+    //   network.devWindows.devApplyWindow[0],
+    //   'DEV_APPLY_WINDOW_END_TIME: ',
+    //   network.devWindows.devApplyWindow[1],
+    //   'WITHIN_DEV_APPLY_WINDOW: ',
+    //   cycleStartTimestamp >= network.devWindows.devApplyWindow[0] && cycleStartTimestamp <= network.devWindows.devApplyWindow[1],
+    // )
 
     // IF THE WINNING DEV PARAMETERS HAVENT BEEN APPLIED YET AND IT'S PAST THE DEV_GRACE_WINDOW
     if (cycleStartTimestamp >= network.devWindows.devApplyWindow[0] && cycleStartTimestamp <= network.devWindows.devApplyWindow[1]) {
