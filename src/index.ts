@@ -1016,10 +1016,6 @@ dapp.setup({
           response.reason = 'This alias is already taken'
           return response
         }
-        // if (from.data.balance < network.current.transactionFee) {
-        //   response.reason = "From account doesn't have enough tokens to cover the transaction fee"
-        //   return response
-        // }
         response.success = true
         response.reason = 'This transaction is valid!'
         return response
@@ -1231,24 +1227,20 @@ dapp.setup({
       }
       case 'node_reward': {
         const network = wrappedStates[tx.network].data
-        // dapp.log(network.current.nodeRewardInterval)
-        // let nodeInfo
-        // try {
-        //   nodeInfo = dapp.getNode(tx.nodeId)
-        // } catch (err) {
-        //   dapp.log(err)
-        // }
-        // if (!nodeInfo) {
-        //   response.reason = 'no nodeInfo'
-        //   return response
-        // }
-        // if (
-        //   tx.timestamp - nodeInfo.activeTimestamp <
-        //   network.current.nodeRewardInterval
-        // ) {
-        //   response.reason = 'Too early for this node to get paid'
-        //   return response
-        // }
+        let nodeInfo
+        try {
+          nodeInfo = dapp.getNode(tx.nodeId)
+        } catch (err) {
+          dapp.log(err)
+        }
+        if (!nodeInfo) {
+          response.reason = 'no nodeInfo'
+          return response
+        }
+        if (tx.timestamp - nodeInfo.activeTimestamp < network.current.nodeRewardInterval) {
+          response.reason = 'Too early for this node to get paid'
+          return response
+        }
         if (!from) {
           response.success = true
           response.reason = 'This transaction in valid'
@@ -1574,8 +1566,6 @@ dapp.setup({
         return response
       }
       case 'tally': {
-        console.log(`tally --- GOT HERE ------------- ${tx} -------- ${wrappedStates}`)
-        dapp.log(`tally --- GOT HERE ------------- ${tx} -------- ${wrappedStates}`)
         const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
         const proposals: ProposalAccount[] = tx.proposals.map((id: string) => wrappedStates[id].data)
@@ -1619,8 +1609,6 @@ dapp.setup({
         return response
       }
       case 'apply_tally': {
-        console.log(`apply_tally --- GOT HERE ------------- ${tx} -------- ${wrappedStates}`)
-        dapp.log(`apply_tally --- GOT HERE ------------- ${tx} -------- ${wrappedStates}`)
         response.success = true
         response.reason = 'This transaction is valid!'
         return response
@@ -2328,6 +2316,7 @@ dapp.setup({
       case 'init_network': {
         const network: NetworkAccount = wrappedStates[tx.network].data
         network.timestamp = tx.timestamp
+        from.timestamp = tx.timestamp
         dapp.log('Applied init_network transaction', network)
         break
       }
@@ -2495,7 +2484,7 @@ dapp.setup({
         const network: NetworkAccount = wrappedStates[tx.network].data
         to.balance += network.current.nodeRewardAmount
         from.nodeRewardTime = tx.timestamp
-        // from.timestamp = tx.timestamp
+        from.timestamp = tx.timestamp
         to.timestamp = tx.timestamp
         dapp.log('Applied node_reward tx', from, to)
         break
@@ -2525,6 +2514,7 @@ dapp.setup({
         issue.proposals.push(proposal.id)
         issue.proposalCount++
 
+        from.timestamp = tx.timestamp
         issue.timestamp = tx.timestamp
         proposal.timestamp = tx.timestamp
         dapp.log('Applied issue tx', issue, proposal)
@@ -2537,6 +2527,7 @@ dapp.setup({
         devIssue.number = network.devIssue
         devIssue.active = true
 
+        from.timestamp = tx.timestamp
         devIssue.timestamp = tx.timestamp
         dapp.log('Applied dev_issue tx', devIssue)
         break
@@ -2624,8 +2615,6 @@ dapp.setup({
         break
       }
       case 'tally': {
-        console.log(`GOT TO TALLY IN APPLY FN ${tx} ${stringify(wrappedStates)}`)
-        dapp.log(`GOT TO TALLY IN APPLY FN ${stringify(tx)} ${stringify(wrappedStates)}`)
         const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue].data
         const margin = 100 / (2 * (issue.proposalCount + 1)) / 100
@@ -2681,13 +2670,13 @@ dapp.setup({
 
         issue.winner = winner.id
 
+        from.timestamp = tx.timestamp
         issue.timestamp = tx.timestamp
         winner.timestamp = tx.timestamp
         dapp.log('Applied tally tx', issue, winner)
         break
       }
       case 'apply_tally': {
-        dapp.log(`GOT TO === SET TALLY GLOBAL ${stringify(tx)} ===`)
         const network: NetworkAccount = wrappedStates[tx.network].data
         network.next = tx.next
         network.nextWindows = tx.nextWindows
@@ -2738,8 +2727,6 @@ dapp.setup({
           ],
         }
 
-        console.log(`NEXT_DEVELOPER_FUND: ${nextDeveloperFund}`)
-
         const when = tx.timestamp + ONE_SECOND * 10
 
         dapp.setGlobal(
@@ -2755,12 +2742,12 @@ dapp.setup({
           networkAccount,
         )
 
+        from.timestamp = tx.timestamp
         devIssue.timestamp = tx.timestamp
         dapp.log('Applied dev_tally tx', devIssue, devProposals)
         break
       }
       case 'apply_dev_tally': {
-        dapp.log(`=== SET DEV_TALLY GLOBAL ${stringify(tx)} ===`)
         const network: NetworkAccount = wrappedStates[tx.network].data
         network.nextDeveloperFund = tx.nextDeveloperFund
         network.nextDevWindows = tx.nextDevWindows
@@ -2791,12 +2778,13 @@ dapp.setup({
         )
 
         issue.active = false
+
+        from.timestamp = tx.timestamp
         issue.timestamp = tx.timestamp
         dapp.log('Applied parameters tx', issue)
         break
       }
       case 'apply_parameters': {
-        dapp.log(`=== SET PARAMETERS GLOBAL ${stringify(tx)} ===`)
         const network: NetworkAccount = wrappedStates[tx.network].data
         network.current = tx.current
         network.next = tx.next
@@ -2811,7 +2799,7 @@ dapp.setup({
         const network: NetworkAccount = wrappedStates[tx.network].data
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
         const when = tx.timestamp + ONE_SECOND * 10
-        dapp.log(`DEV_PARAMETERS NETWORK --- ${stringify(network)}`)
+
         dapp.setGlobal(
           networkAccount,
           {
@@ -2836,7 +2824,6 @@ dapp.setup({
         break
       }
       case 'apply_dev_parameters': {
-        dapp.log(`=== SET DEV_PARAMETERS GLOBAL ${stringify(tx)} ===`)
         const network: NetworkAccount = wrappedStates[tx.network].data
         network.devWindows = tx.devWindows
         network.nextDevWindows = tx.nextDevWindows
@@ -2850,8 +2837,6 @@ dapp.setup({
         const network: NetworkAccount = wrappedStates[tx.network].data
         const developer: UserAccount = wrappedStates[tx.developer].data
         developer.data.balance += tx.payment.amount
-        from.timestamp = tx.timestamp
-        developer.timestamp = tx.timestamp
 
         const when = tx.timestamp + ONE_SECOND * 10
 
@@ -2867,12 +2852,12 @@ dapp.setup({
           networkAccount,
         )
 
-        // network.developerFund = network.developerFund.filter((payment: DeveloperPayment) => payment.id !== tx.payment.id)
+        developer.timestamp = tx.timestamp
+        from.timestamp = tx.timestamp
         dapp.log('Applied developer_payment tx', from, developer)
         break
       }
       case 'apply_developer_payment': {
-        dapp.log(`=== SET APPLY_DEV_PAYMENT GLOBAL ${stringify(tx)} ===`)
         const network: NetworkAccount = wrappedStates[tx.network].data
         network.developerFund = tx.developerFund
         network.timestamp = tx.timestamp
@@ -2896,7 +2881,7 @@ dapp.setup({
         break
       case 'snapshot':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.to]
+        result.targetKeys = [tx.network]
         break
       case 'email':
         result.sourceKeys = [tx.signedTx.from]
@@ -2918,21 +2903,23 @@ dapp.setup({
         break
       case 'transfer':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.to]
+        result.targetKeys = [tx.to, tx.network]
         break
       case 'distribute':
-        result.targetKeys = tx.recipients
         result.sourceKeys = [tx.from]
+        result.targetKeys = [...tx.recipients, tx.network]
         break
       case 'message':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.to, tx.chatId]
+        result.targetKeys = [tx.to, tx.chatId, tx.network]
         break
       case 'toll':
         result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.network]
         break
       case 'friend':
         result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.network]
         break
       case 'remove_friend':
         result.sourceKeys = [tx.from]
@@ -2941,15 +2928,17 @@ dapp.setup({
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.to, tx.network]
         break
-      case 'bond':
+      case 'stake':
         result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.network]
         break
       case 'claim_reward':
         result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.network]
         break
       case 'snapshot_claim':
         result.sourceKeys = [tx.from]
-        result.targetKeys = [tx.to]
+        result.targetKeys = [tx.network]
         break
       case 'issue':
         result.sourceKeys = [tx.from]
@@ -2976,12 +2965,8 @@ dapp.setup({
         result.targetKeys = [tx.devIssue, tx.devProposal, tx.network]
         break
       case 'tally':
-        {
-          dapp.log([...tx.proposals, tx.issue, tx.network], [tx.from])
-          console.log([...tx.proposals, tx.issue, tx.network], [tx.from])
-          result.sourceKeys = [tx.from]
-          result.targetKeys = [...tx.proposals, tx.issue, tx.network]
-        }
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [...tx.proposals, tx.issue, tx.network]
         break
       case 'apply_tally':
         result.targetKeys = [tx.network]
@@ -3396,9 +3381,6 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
   let devTallyGenerated = false
   let devApplyGenerated = false
 
-  // let syncedNextParams = 0
-  // let syncedNextDevParams = 0
-
   let nodeId: string
   let nodeAddress: string
   let lastReward: number
@@ -3503,7 +3485,9 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
         if (nodeId === luckyNode) {
           await tallyDevVotes(nodeAddress, nodeId)
         }
+        devIssueGenerated = false
         devTallyGenerated = true
+        devApplyGenerated = false
       }
     }
 
@@ -3513,9 +3497,9 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
         if (nodeId === luckyNode) {
           await applyDevParameters(nodeAddress, nodeId)
         }
-        devApplyGenerated = true
         devIssueGenerated = false
         devTallyGenerated = false
+        devApplyGenerated = true
       }
     }
 

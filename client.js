@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-use-before-define */
+/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 const fs = require('fs')
 const { resolve } = require('path')
 const path = require('path')
@@ -12,6 +15,8 @@ let USER
 let HOST = process.argv[2] || 'localhost:9001'
 const ARCHIVESERVER = process.argv[3] || 'localhost:4000'
 console.log(`Using ${HOST} as node for queries and transactions.`)
+
+const network = '0'.repeat(64)
 
 // USEFUL CONSTANTS FOR TIME IN MILLISECONDS
 const ONE_SECOND = 1000
@@ -648,6 +653,7 @@ vorpal.command('transfer', 'transfers tokens to another account').action(async f
   const to = await getAddress(answers.target)
   const tx = {
     type: 'transfer',
+    network,
     from: USER.address,
     to: to,
     amount: answers.amount,
@@ -678,6 +684,7 @@ vorpal.command('distribute', 'distributes tokens to multiple accounts').action(a
   ])
   const tx = {
     type: 'distribute',
+    network,
     from: USER.address,
     recipients: answers.targets,
     amount: answers.amount,
@@ -736,6 +743,7 @@ vorpal.command('message', 'sends a message to another user').action(async functi
       const encryptedMsg = crypto.encrypt(message, crypto.convertSkToCurve(USER.keys.secretKey), crypto.convertPkToCurve(to))
       const tx = {
         type: 'message',
+        network,
         from: USER.address,
         to: to,
         chatId: crypto.hash([USER.address, to].sort((a, b) => a < b).join``),
@@ -763,6 +771,7 @@ vorpal.command('toll', 'sets a toll people must you in order to send you message
   })
   const tx = {
     type: 'toll',
+    network,
     from: USER.address,
     toll: answer.toll,
     timestamp: Date.now(),
@@ -788,6 +797,7 @@ vorpal.command('add friend', 'adds a friend to your account').action(async funct
   }
   const tx = {
     type: 'friend',
+    network,
     alias: answer.friend,
     from: USER.address,
     to: to,
@@ -841,6 +851,7 @@ vorpal.command('stake', 'stakes tokens in order to operate a node').action(async
   if (answer.confirm) {
     const tx = {
       type: 'stake',
+      network,
       from: USER.address,
       stake: parameters.stakeRequired,
       timestamp: Date.now(),
@@ -861,8 +872,8 @@ vorpal.command('stake', 'stakes tokens in order to operate a node').action(async
 vorpal.command('claim', 'submits a claim transaction for the snapshot').action(function(_, callback) {
   const tx = {
     type: 'snapshot_claim',
+    network,
     from: USER.address,
-    to: '0'.repeat(64),
     timestamp: Date.now(),
   }
   crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
@@ -874,8 +885,9 @@ vorpal.command('claim', 'submits a claim transaction for the snapshot').action(f
 
 // COMMAND TO SUBMIT A PROPOSAL
 vorpal.command('proposal', 'submits a proposal to change network parameters').action(async function(args, callback) {
-  const network = await queryParameters()
-  const defaults = network.CURRENT
+  const networkParams = await queryParameters()
+  const defaults = networkParams.current
+  this.log(defaults)
   this.log('Choose the network parameters (Using default value keeps the current parameter value)')
   const answers = await this.prompt([
     {
@@ -958,6 +970,7 @@ vorpal.command('proposal', 'submits a proposal to change network parameters').ac
   const proposal = await getProposalCount()
   const tx = {
     type: 'proposal',
+    network,
     from: USER.address,
     proposal: crypto.hash(`issue-${issue}-proposal-${proposal + 1}`),
     issue: crypto.hash(`issue-${issue}`),
@@ -1046,6 +1059,7 @@ vorpal.command('dev proposal', 'submits a development proposal').action(async fu
   const count = await getDevProposalCount()
   const tx = {
     type: 'dev_proposal',
+    network,
     from: USER.address,
     devIssue: crypto.hash(`dev-issue-${latestIssue}`),
     devProposal: crypto.hash(`dev-issue-${latestIssue}-dev-proposal-${count + 1}`),
@@ -1101,6 +1115,7 @@ vorpal.command('vote', 'vote for a proposal').action(async function(args, callba
 
   const tx = {
     type: 'vote',
+    network,
     from: USER.address,
     issue: crypto.hash(`issue-${latest}`),
     proposal: crypto.hash(`issue-${latest}-proposal-${answers.proposal}`),
@@ -1160,6 +1175,7 @@ vorpal.command('vote dev', 'vote for a development proposal').action(async funct
 
   const tx = {
     type: 'dev_vote',
+    network,
     from: USER.address,
     devIssue: crypto.hash(`dev-issue-${latest}`),
     devProposal: crypto.hash(`dev-issue-${latest}-dev-proposal-${answers.proposal}`),
