@@ -256,6 +256,7 @@ function createNetworkAccount(accountId: string, timestamp: number): NetworkAcco
     timestamp: 0,
   }
   account.hash = crypto.hashObj(account)
+  console.log('INITIAL_HASH: ', account.hash)
   return account
 }
 
@@ -879,14 +880,14 @@ dapp.setup({
 
       const nodeId = dapp.getNodeId()
       const address = dapp.getNode(nodeId).address
-      const when = Date.now() + ONE_SECOND
+      const when = Date.now() + ONE_SECOND * 10
 
       dapp.setGlobal(
         networkAccount,
         {
           type: 'init_network',
-          nodeId,
-          from: address,
+          // nodeId,
+          // from: address,
           timestamp: when,
           network: networkAccount,
         },
@@ -896,7 +897,7 @@ dapp.setup({
 
       dapp.log('GENERATED_NETWORK: ', nodeId)
 
-      await _sleep(ONE_SECOND * 10)
+      await _sleep(ONE_SECOND * 20)
 
       dapp.set({
         type: 'issue',
@@ -2323,7 +2324,7 @@ dapp.setup({
       case 'init_network': {
         const network: NetworkAccount = wrappedStates[tx.network].data
         network.timestamp = tx.timestamp
-        from.timestamp = tx.timestamp
+        // from.timestamp = tx.timestamp
         dapp.log('Applied init_network transaction', network)
         break
       }
@@ -2883,7 +2884,7 @@ dapp.setup({
     }
     switch (tx.type) {
       case 'init_network':
-        result.sourceKeys = [tx.from]
+        // result.sourceKeys = [tx.from]
         result.targetKeys = [tx.network]
         break
       case 'snapshot':
@@ -3536,7 +3537,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     'active',
     async (): Promise<NodeJS.Timeout> => {
       if (dapp.p2p.isFirstSeed) {
-        await _sleep(ONE_SECOND * cycleDuration)
+        await _sleep(ONE_SECOND * cycleDuration * 2)
       }
       lastReward = Date.now()
       return setTimeout(networkMaintenance, cycleInterval)
