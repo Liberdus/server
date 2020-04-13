@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-var-requires */
 // const fs = require('fs')
 
@@ -20,41 +21,7 @@
 const crypto = require('shardus-crypto-utils')
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 console.log(
-  crypto.hashObj({
-    current: {
-      description: 'Keep the current network parameters as they are',
-      devProposalFee: 20,
-      maintenanceFee: 0.01,
-      maintenanceInterval: 600000,
-      nodePenalty: 100,
-      nodeRewardAmount: 10,
-      nodeRewardInterval: 60000,
-      proposalFee: 500,
-      stakeRequired: 500,
-      title: 'Default parameters',
-      transactionFee: 0.001,
-    },
-    devIssue: 1,
-    devWindows: {
-      devApplyWindow: [1586802938496, 1586803028496],
-      devGraceWindow: [1586802848496, 1586802938496],
-      devProposalWindow: [1586802668496, 1586802758496],
-      devVotingWindow: [1586802758496, 1586802848496],
-    },
-    developerFund: [],
-    hash: 'e83be273cba6abf7e0bd712928d8e7fdbf40b02e0982a51c94c8495e533b16c4',
-    id: '0000000000000000000000000000000000000000000000000000000000000000',
-    issue: 1,
-    next: {},
-    nextDevWindows: {},
-    nextDeveloperFund: [],
-    nextWindows: {},
-    timestamp: 1586802668496,
-    windows: {
-      applyWindow: [1586802938496, 1586803028496],
-      graceWindow: [1586802848496, 1586802938496],
-      proposalWindow: [1586802668496, 1586802758496],
-      votingWindow: [1586802758496, 1586802848496],
-    },
-  }),
+  crypto.hashObj({current:{"description":"These are the initial network parameters liberdus started with","devProposalFee":20,"maintenanceFee":0.01,"maintenanceInterval":600000,"nodePenalty":100,"nodeRewardAmount":10,"nodeRewardInterval":60000,"proposalFee":500,"stakeRequired":500,"title":"Initial parameters","transactionFee":0.001},"devIssue":1,"devWindows":{"devApplyWindow":[1586806302357,1586806392357],"devGraceWindow":[1586806212357,1586806302357],"devProposalWindow":[1586806032357,1586806122357],"devVotingWindow":[1586806122357,1586806212357]},"developerFund":[],"hash":"3f92ea083a6aed7c0c9260f12026e78bbe933710bc727c5ec28230f377c7fada","id":"0000000000000000000000000000000000000000000000000000000000000000","issue":1,"next":{},"nextDevWindows":{},"nextDeveloperFund":[],"nextWindows":{},"timestamp":1586806032357,"windows":{"applyWindow":[1586806302357,1586806392357],"graceWindow":[1586806212357,1586806302357],"proposalWindow":[1586806032357,1586806122357],"votingWindow":[1586806122357,1586806212357]}}),
 )
+
+{"current":{"description":"These are the initial network parameters liberdus started with","devProposalFee":20,"maintenanceFee":0.01,"maintenanceInterval":600000,"nodePenalty":100,"nodeRewardAmount":10,"nodeRewardInterval":60000,"proposalFee":500,"stakeRequired":500,"title":"Initial parameters","transactionFee":0.001},"devIssue":1,"devWindows":{"devApplyWindow":[1586806302357,1586806392357],"devGraceWindow":[1586806212357,1586806302357],"devProposalWindow":[1586806032357,1586806122357],"devVotingWindow":[1586806122357,1586806212357]},"developerFund":[],"hash":"3f92ea083a6aed7c0c9260f12026e78bbe933710bc727c5ec28230f377c7fada","id":"0000000000000000000000000000000000000000000000000000000000000000","issue":1,"next":{},"nextDevWindows":{},"nextDeveloperFund":[],"nextWindows":{},"timestamp":1586806032357,"windows":{"applyWindow":[1586806302357,1586806392357],"graceWindow":[1586806212357,1586806302357],"proposalWindow":[1586806032357,1586806122357],"votingWindow":[1586806122357,1586806212357]}}

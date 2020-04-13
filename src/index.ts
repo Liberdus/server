@@ -9,6 +9,7 @@ import * as crypto from 'shardus-crypto-utils'
 import Shardus = require('shardus-global-server/src/shardus/shardus-types')
 import stringify = require('fast-stable-stringify')
 import './@types'
+import _ from 'lodash'
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 // import _ from 'lodash'
 
@@ -2513,7 +2514,7 @@ dapp.setup({
         const issue: IssueAccount = wrappedStates[tx.issue].data
         const proposal: ProposalAccount = wrappedStates[tx.proposal].data
 
-        proposal.parameters = network.current
+        proposal.parameters = _.cloneDeep(network.current)
         proposal.parameters.title = 'Default parameters'
         proposal.parameters.description = 'Keep the current network parameters as they are'
         proposal.number = 1
