@@ -2324,6 +2324,7 @@ dapp.setup({
       case 'init_network': {
         const network: NetworkAccount = wrappedStates[tx.network].data
         network.timestamp = tx.timestamp
+        console.log(`init_network NETWORK_ACCOUNT: ${stringify(network)}`)
         // from.timestamp = tx.timestamp
         dapp.log('Applied init_network transaction', network)
         break
@@ -3202,8 +3203,10 @@ dapp.setup({
     return results
   },
   calculateAccountHash(account): string {
+    console.log(`calculateAccountHash NETWORK_ACCOUNT before: ${stringify(account)}`)
     account.hash = '' // Not sure this is really necessary
     account.hash = crypto.hashObj(account)
+    console.log(`calculateAccountHash NETWORK_ACCOUNT after: ${stringify(account)}`)
     return account.hash
   },
   resetAccountData(accountBackupCopies: Account[]): void {
