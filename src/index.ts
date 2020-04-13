@@ -879,17 +879,24 @@ dapp.setup({
 
       const nodeId = dapp.getNodeId()
       const address = dapp.getNode(nodeId).address
+      const when = Date.now() + ONE_SECOND
 
-      const tx = {
-        type: 'init_network',
-        nodeId,
-        from: address,
-        network: networkAccount,
-        timestamp: Date.now(),
-      }
-      dapp.set(tx)
+      dapp.setGlobal(
+        networkAccount,
+        {
+          type: 'init_network',
+          nodeId,
+          from: address,
+          timestamp: when,
+          network: networkAccount,
+        },
+        when,
+        networkAccount,
+      )
 
       dapp.log('GENERATED_NETWORK: ', nodeId)
+
+      await _sleep(ONE_SECOND * 10)
 
       dapp.set({
         type: 'issue',
@@ -910,7 +917,7 @@ dapp.setup({
         timestamp: Date.now(),
       })
 
-      await _sleep(ONE_SECOND * 20)
+      await _sleep(ONE_SECOND * 10)
     } else {
       while (!(await dapp.getLocalOrRemoteAccount(networkAccount))) {
         console.log('waiting..')
