@@ -835,7 +835,7 @@ dapp.registerExternalGet(
 
 dapp.registerExternalGet('debug/dump', (req, res): void => {
   const D = new Date()
-  const dateString = D.getDate() + '-' + (D.getMonth() + 1) + '-' + D.getFullYear() + '_' + D.getHours() + ':' + D.getMinutes()
+  const dateString = D.getDate() + '_' + (D.getMonth() + 1) + '_' + D.getFullYear() + '_' + D.getHours() + '_' + D.getMinutes()
   // 16-5-2015 9:50
   heapdump.writeSnapshot(`${config.server.baseDir}/logs/ ` + dateString + '.heapsnapshot', (error, filename) => {
     if (error) {
