@@ -49,7 +49,7 @@
     "@types/node": "^10.0.3",
     "@typescript-eslint/eslint-plugin": "^2.19.2",
     "@typescript-eslint/parser": "^2.19.2",
-    "archive-server": "git+https://gitlab.com/shardus/archive/archive-server.git",
+    "archive-server": "git+https://gitlab.com/shardus/archive/archive-server.git#p2p-rework",
     "cross-env": "^5.2.0",
     "eslint": "^6.8.0",
     "eslint-config-prettier": "^6.10.0",

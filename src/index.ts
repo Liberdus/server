@@ -887,8 +887,6 @@ dapp.setup({
         networkAccount,
         {
           type: 'init_network',
-          // nodeId,
-          // from: address,
           timestamp: when,
           network: networkAccount,
         },
@@ -923,6 +921,7 @@ dapp.setup({
     } else {
       while (!(await dapp.getLocalOrRemoteAccount(networkAccount))) {
         console.log('waiting..')
+        await _sleep(1000)
       }
     }
   },
@@ -1642,7 +1641,7 @@ dapp.setup({
           return response
         }
         if (devIssue.number !== network.issue) {
-          response.reason = 'This issue number ${issue.number} does not match the current network issue ${network.issue}'
+          response.reason = `This devIssue number ${devIssue.number} does not match the current network issue ${network.issue}`
           return response
         }
         if (devIssue.active === false) {
@@ -1650,7 +1649,7 @@ dapp.setup({
           return response
         }
         if (Array.isArray(devIssue.winners) && devIssue.winners.length > 0) {
-          response.reason = 'The winners for this devIssue has already been determined'
+          response.reason = `The winners for this devIssue has already been determined ${stringify(devIssue.winners)}`
           return response
         }
         if (network.id !== networkAccount) {
@@ -1658,7 +1657,7 @@ dapp.setup({
           return response
         }
         if (devProposals.length !== devIssue.devProposalCount) {
-          response.reason = 'The number of devProposals sent in with the transaction dont match the devIssue proposalCount'
+          response.reason = `The number of devProposals sent in with the transaction ${devProposals.length} doesn't match the devIssue proposalCount ${devIssue.devProposalCount}`
           return response
         }
         response.success = true
@@ -1728,7 +1727,7 @@ dapp.setup({
           return response
         }
         if (devIssue.number !== network.issue) {
-          response.reason = 'This issue number ${issue.number} does not match the current network issue ${network.issue}'
+          response.reason = `This devIssue number ${devIssue.number} does not match the current network issue ${network.issue}`
           return response
         }
         if (devIssue.active === false) {
@@ -1770,11 +1769,11 @@ dapp.setup({
           return response
         }
         if (!developer || !developer.data) {
-          response.reason = 'No account exists for the passed in tx.developer'
+          response.reason = `No account exists for the passed in tx.developer ${tx.developer}`
           return response
         }
         if (tx.developer !== tx.payment.address) {
-          response.reason = 'tx developer does not match address in payment'
+          response.reason = `tx developer ${tx.developer} does not match address in payment ${tx.payment.address}`
           return response
         }
         response.success = true
@@ -3406,14 +3405,19 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
 
   // THIS CODE IS CALLED ON EVERY NODE ON EVERY CYCLE
   async function networkMaintenance(): Promise<NodeJS.Timeout> {
+    console.log('GOT TO NETWORK MAINTENANCE')
     drift = Date.now() - expected
 
     try {
+      console.log('BEFORE getLocalOrRemoteAccount')
       const account = await dapp.getLocalOrRemoteAccount(networkAccount)
+      console.log('AFTER getLocalOrRemoteAccount')
       network = account.data
       ;[cycleData] = dapp.getLatestCycles()
+      console.log(`cycleData: ${stringify(cycleData)}`)
       cycleStartTimestamp = cycleData.start * 1000
-      ;[luckyNode] = dapp.getClosestNodes(cycleData.marker, 3)
+      console.log(cycleData.marker)
+      ;[luckyNode] = dapp.getClosestNodes(cycleData.previous, 3)
       nodeId = dapp.getNodeId()
       nodeAddress = dapp.getNode(nodeId).address
     } catch (err) {
@@ -3537,9 +3541,10 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     return setTimeout(networkMaintenance, Math.max(0, cycleInterval - drift))
   }
 
-  dapp.p2p.on(
+  dapp.on(
     'active',
     async (): Promise<NodeJS.Timeout> => {
+      console.log('GOT TO "ON"')
       if (dapp.p2p.isFirstSeed) {
         await _sleep(ONE_SECOND * cycleDuration * 2)
       }
