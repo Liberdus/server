@@ -76,10 +76,10 @@ Prop.set(config, 'server.p2p', {
     process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]',
   ),
   minNodesToAllowTxs: 1,
-  minNodes: 15,
-  maxNodes: 15,
-  maxJoinedPerCycle: 1,
-  maxSyncingPerCycle: 5,
+  minNodes: 20,
+  maxNodes: 20,
+  maxJoinedPerCycle: 8,
+  maxSyncingPerCycle: 8,
   maxRotatedPerCycle: 1,
 })
 Prop.set(config, 'server.loadDetection', {
