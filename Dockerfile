@@ -1,22 +1,21 @@
 # Node.js LTS 10.x.x from Docker Hub
-FROM node:10
+FROM node:10-alpine
 
 # Create app directory
 WORKDIR /usr/src/app
 
-# Install app dependencies
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
-# where available (npm@5+)
-COPY package*.json ./
-# RUN npm install
+# Install deps for native module building
+RUN apk add --no-cache --virtual .gyp git python make g++ libtool autoconf automake
 
 # Bundle app source
 COPY . .
 
-# Expose ports for app to bind to
-# Note: ports can be exposed at runtime too with --expose or -p <port>:<port>
-EXPOSE 9001
-EXPOSE 9005
+# Install node_modules
+RUN npm set unsafe-perm true
+RUN npm install
+
+# Remove module building packages
+RUN apk del .gyp
 
 # Define run command
-CMD [ "node", "index.js" ]
+CMD [ "node", "dist/index.js" ]
