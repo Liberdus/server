@@ -6,3 +6,4 @@ db
 wallet.json
 dist/
 notes/
+statistics.tsv
