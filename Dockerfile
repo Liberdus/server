@@ -7,8 +7,8 @@
 #
 # Ship this one, but don't use it for development. Use 'Dockerfile-dev' instead.
 
-# Node.js LTS 10.x.x from Docker Hub
-FROM node:10-alpine
+# Node.js LTS 12.x.x from Docker Hub
+FROM node:12-alpine
 
 # Create app directory
 WORKDIR /usr/src/app
