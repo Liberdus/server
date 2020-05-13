@@ -12,8 +12,9 @@ crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
 let USER
-let HOST = process.argv[2] || 'localhost:9001'
-const ARCHIVESERVER = process.argv[3] || 'localhost:4000'
+let HOST = process.argv[2] || '173.255.195.137:9001'
+const HOST_IP = '173.255.195.137'
+const ARCHIVESERVER = process.argv[3] || '173.255.195.137:4000'
 console.log(`Using ${HOST} as node for queries and transactions.`)
 
 const network = '0'.repeat(64)
@@ -251,7 +252,7 @@ function buildTx({ type, from = {}, to, handle, id, amount, message, toll }) {
 
 const logError = false
 
-async function sendTx(tx, node = null, verbose = false) {
+async function sendTx(tx, node = null, verbose = true) {
   if (!tx.sign) {
     tx = buildTx(tx)
   }
@@ -264,11 +265,12 @@ async function sendTx(tx, node = null, verbose = false) {
     if (node != null) {
       target = node
     }
+    console.log(target, node)
     const { data } = await axios.post(`http://${target}/inject`, tx)
-    if (verbose) console.log('Got response:', data)
+    console.log('Got response:', data)
     return data
   } catch (err) {
-    if (logError) console.log('Stopped spamming due to error')
+    console.log('Stopped spamming due to error', err)
   }
 }
 
@@ -1231,7 +1233,7 @@ vorpal
     const seedNodes = await getSeedNodes()
     this.log('SEED_NODES:', seedNodes)
     // const ports = seedNodes.map(url => url.port)
-    const nodes = seedNodes.map(url => `${url.ip}:${url.port}`)
+    const nodes = seedNodes.map(url => `${HOST_IP}:${url.port}`)
     await spamTxs({ txs, rate: args.tps, nodes, saveFile: 'spam-test.json' })
     this.log('Done spamming...')
     callback()

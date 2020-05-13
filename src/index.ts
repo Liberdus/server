@@ -76,10 +76,10 @@ Prop.set(config, 'server.p2p', {
     process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]',
   ),
   minNodesToAllowTxs: 1,
-  minNodes: 20,
-  maxNodes: 20,
-  maxJoinedPerCycle: 8,
-  maxSyncingPerCycle: 8,
+  minNodes: 15,
+  maxNodes: 15,
+  maxJoinedPerCycle: 1,
+  maxSyncingPerCycle: 5,
   maxRotatedPerCycle: 1,
 })
 Prop.set(config, 'server.loadDetection', {
@@ -881,6 +881,7 @@ dapp.setup({
 
       const nodeId = dapp.getNodeId()
       const address = dapp.getNode(nodeId).address
+      console.log('GET_NODE', dapp.getNode(nodeId))
       const when = Date.now() + ONE_SECOND * 10
 
       dapp.setGlobal(
@@ -3247,6 +3248,8 @@ function nodeReward(address: string, nodeId: string): void {
     timestamp: Date.now(),
   }
   dapp.put(tx)
+  console.log('TX_DATA: ', tx)
+  dapp.log('GENERATED_NODE_REWARD: ', nodeId)
 }
 
 // ISSUE TRANSACTION FUNCTION
