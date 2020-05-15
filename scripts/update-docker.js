@@ -70,7 +70,5 @@ if (distPackageJson.name !== 'shardus-global-server-dist') {
 }
 
 // Build the docker image and push it to the gitlab registry
-/*
 execa.commandSync(`docker build -t registry.gitlab.com/liberdus/server:${tag} -f ${dockerfile} .`, { stdio: [0, 1, 2] })
 execa.commandSync(`docker push registry.gitlab.com/liberdus/server:${tag}`, { stdio: [0, 1, 2] })
-*/
