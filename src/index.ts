@@ -4,9 +4,9 @@ import Prop from 'dot-prop'
 import heapdump from 'heapdump'
 import axios from 'axios'
 import Decimal from 'decimal.js'
-import shardus from 'shardus-global-server-dist'
+import shardus from 'shardus-global-server'
 import * as crypto from 'shardus-crypto-utils'
-import Shardus = require('shardus-global-server-dist/src/shardus/shardus-types')
+import Shardus = require('shardus-global-server/src/shardus/shardus-types')
 import stringify = require('fast-stable-stringify')
 import './@types'
 import _ from 'lodash'
