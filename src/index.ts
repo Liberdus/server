@@ -47,7 +47,7 @@ const INITIAL_PARAMETERS: NetworkParameters = {
   nodePenalty: 100,
   transactionFee: 0.001,
   stakeRequired: 500,
-  maintenanceInterval: ONE_MINUTE * 10,
+  maintenanceInterval: ONE_MINUTE,
   maintenanceFee: 0.01,
   proposalFee: 500,
   devProposalFee: 20,
@@ -76,8 +76,8 @@ Prop.set(config, 'server.p2p', {
     process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]',
   ),
   minNodesToAllowTxs: 1,
-  minNodes: 15,
-  maxNodes: 15,
+  minNodes: 20,
+  maxNodes: 20,
   maxJoinedPerCycle: 1,
   maxSyncingPerCycle: 5,
   maxRotatedPerCycle: 1,
@@ -866,7 +866,7 @@ function maintenanceAmount(timestamp: number, account: UserAccount, network: Net
   if (timestamp - account.lastMaintenance < network.current.maintenanceInterval) {
     amount = 0
   } else {
-    amount = account.data.balance * (network.current.maintenanceFee * Math.floor((timestamp - account.lastMaintenance) / network.current.maintenanceInterval))
+    amount = account.data.balance * (1 - Math.pow((1 - network.current.maintenanceFee), ((timestamp - account.lastMaintenance) / network.current.maintenanceInterval)))
     account.lastMaintenance = timestamp
   }
   if (typeof amount === 'number') return amount
@@ -1187,9 +1187,12 @@ dapp.setup({
         return response
       }
       case 'remove_friend': {
-        const network: NetworkAccount = wrappedStates[tx.network].data
         if (typeof from === 'undefined' || from === null) {
           response.reason = 'from account does not exist'
+          return response
+        }
+        if (typeof to === 'undefined' || to === null) {
+          response.reason = 'To account does not exist'
           return response
         }
         if (tx.sign.owner !== tx.from) {
@@ -1198,10 +1201,6 @@ dapp.setup({
         }
         if (crypto.verifyObj(tx) === false) {
           response.reason = 'incorrect signing'
-          return response
-        }
-        if (from.data.balance < network.current.transactionFee) {
-          response.reason = "From account doesn't have enough tokens to cover the transaction fee"
           return response
         }
         response.success = true
@@ -1674,14 +1673,15 @@ dapp.setup({
         const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue].data
 
+
         // let nodeInfo
         // try {
-        //   nodeInfo = dapp.getNode(tx.nodeId)
-        // } catch (err) {
-        //   dapp.log(err)
+          //   nodeInfo = dapp.getNode(tx.nodeId)
+          // } catch (err) {
+            //   dapp.log(err)
         // }
         // if (!nodeInfo) {
-        //   response.reason = 'no nodeInfo'
+          //   response.reason = 'no nodeInfo'
         //   return response
         // }
         if (network.id !== networkAccount) {
@@ -1693,6 +1693,8 @@ dapp.setup({
           return response
         }
         if (issue.active === false) {
+          dapp.log('network', network, stringify(network))
+          dapp.log('issue', issue, stringify(issue))
           response.reason = 'This issue is no longer active'
           return response
         }
@@ -2474,7 +2476,7 @@ dapp.setup({
         break
       }
       case 'remove_friend': {
-        from.data.friends[tx.to] = null
+        delete from.data.friends[tx.to]
         from.timestamp = tx.timestamp
         // from.data.transactions.push({ ...tx, txId })
         dapp.log('Applied remove_friend tx', from)
@@ -2933,6 +2935,7 @@ dapp.setup({
         break
       case 'remove_friend':
         result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.to, tx.network]
         break
       case 'node_reward':
         result.sourceKeys = [tx.from]

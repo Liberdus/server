@@ -12,9 +12,9 @@ crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
 let USER
-let HOST = process.argv[2] || '173.255.195.137:9001'
+let HOST = process.argv[2] || 'localhost:9001'
 const HOST_IP = '173.255.195.137'
-const ARCHIVESERVER = process.argv[3] || '173.255.195.137:4000'
+const ARCHIVESERVER = process.argv[3] || 'localhost:4000'
 console.log(`Using ${HOST} as node for queries and transactions.`)
 
 const network = '0'.repeat(64)
@@ -826,6 +826,7 @@ vorpal.command('remove friend', 'removes a friend from your account').action(asy
   }
   const tx = {
     type: 'remove_friend',
+    network,
     from: USER.address,
     to: to,
     timestamp: Date.now(),
@@ -1239,12 +1240,28 @@ vorpal
     callback()
   })
 
-// COMMAND TO LOG OUT QUERYS FOR NETWORK DATA (ISSUES - PROPOSALS - DEV_PROPOSALS)
-// TODO ADD MORE QUERYS HERE
+// COMMAND TO LOG OUT QUERY'S FOR NETWORK DATA (ISSUES - PROPOSALS - DEV_PROPOSALS)
+// TODO ADD MORE query's HERE
 vorpal.command('get <type>', 'query the network for <type> account').action(async function(args, callback) {
   switch (args.type) {
     case 'params': {
       this.log(await queryParameters())
+      break
+    }
+    case 'issueCount': {
+      this.log(await getIssueCount())
+      break
+    }
+    case 'devIssueCount': {
+      this.log(await getDevIssueCount())
+      break
+    }
+    case 'proposalCount': {
+      this.log(await getProposalCount())
+      break
+    }
+    case 'devProposalCount': {
+      this.log(await getDevProposalCount())
       break
     }
     case 'windows': {
