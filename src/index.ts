@@ -48,7 +48,7 @@ const INITIAL_PARAMETERS: NetworkParameters = {
   transactionFee: 0.001,
   stakeRequired: 500,
   maintenanceInterval: ONE_MINUTE,
-  maintenanceFee: 0.01,
+  maintenanceFee: 0,
   proposalFee: 500,
   devProposalFee: 20,
 }
@@ -3294,6 +3294,10 @@ async function tallyVotes(address: string, nodeId: string): Promise<void> {
   try {
     const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${network.data.issue}`))
+    if (!account) {
+      await _sleep(500)
+      return tallyVotes(address, nodeId)
+    }
     const issue: IssueAccount = account.data
     const tx = {
       type: 'tally',
@@ -3318,6 +3322,10 @@ async function tallyDevVotes(address: string, nodeId: string): Promise<void> {
   try {
     const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${network.data.devIssue}`))
+    if (!account) {
+      await _sleep(500)
+      return tallyDevVotes(address, nodeId)
+    }
     const devIssue: DevIssueAccount = account.data
     const tx = {
       type: 'dev_tally',
@@ -3398,6 +3406,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
   let devTallyGenerated = false
   let devApplyGenerated = false
 
+  let node: any
   let nodeId: string
   let nodeAddress: string
   let lastReward: number
@@ -3425,7 +3434,8 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       console.log(cycleData.marker)
       ;[luckyNode] = dapp.getClosestNodes(cycleData.previous, 3)
       nodeId = dapp.getNodeId()
-      nodeAddress = dapp.getNode(nodeId).address
+      node = dapp.getNode(nodeId)
+      nodeAddress = node.address
     } catch (err) {
       dapp.log('ERR: ', err)
       console.log('ERR: ', err)
