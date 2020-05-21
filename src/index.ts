@@ -47,7 +47,7 @@ const INITIAL_PARAMETERS: NetworkParameters = {
   nodePenalty: 100,
   transactionFee: 0.001,
   stakeRequired: 500,
-  maintenanceInterval: ONE_MINUTE,
+  maintenanceInterval: ONE_MINUTE * 10,
   maintenanceFee: 0,
   proposalFee: 500,
   devProposalFee: 20,
@@ -2703,7 +2703,7 @@ dapp.setup({
         let nextDeveloperFund: DeveloperPayment[] = []
 
         for (const devProposal of devProposals) {
-          if (devProposal.approve >= devProposal.reject + devProposal.reject * 0.15) {
+          if (devProposal.approve > devProposal.reject + devProposal.reject * 0.15) {
             devProposal.approved = true
             const payments = []
             for (const payment of devProposal.payments) {
@@ -2714,7 +2714,7 @@ dapp.setup({
                 id: crypto.hashObj(payment),
               })
             }
-            nextDeveloperFund = [...network.nextDeveloperFund, ...payments]
+            nextDeveloperFund = [...nextDeveloperFund, ...payments]
             devProposal.timestamp = tx.timestamp
             devIssue.winners.push(devProposal.id)
           } else {
