@@ -27,6 +27,7 @@
     "decimal.js": "^10.2.0",
     "deepmerge": "^4.2.2",
     "dot-prop": "^5.1.1",
+    "dotenv": "^8.2.0",
     "esm": "^3.2.25",
     "fast-stable-stringify": "^1.0.0",
     "heapdump": "^0.3.15",

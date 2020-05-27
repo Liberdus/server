@@ -10,30 +10,32 @@ import Shardus = require('shardus-global-server/src/shardus/shardus-types')
 import stringify = require('fast-stable-stringify')
 import './@types'
 import _ from 'lodash'
+import dotenv from 'dotenv'
+dotenv.config()
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
-// import _ from 'lodash'
 
 // THE ENTIRE APP STATE FOR THIS NODE
 let accounts: { [id: string]: Account } = {}
+
 const networkAccount = '0'.repeat(64)
 
 // HELPFUL TIME CONSTANTS IN MILLISECONDS
 const ONE_SECOND = 1000
 const ONE_MINUTE = 60 * ONE_SECOND
-// const ONE_HOUR = 60 * ONE_MINUTE
-// const ONE_DAY = 24 * ONE_HOUR
+const ONE_HOUR = 60 * ONE_MINUTE
+const ONE_DAY = 24 * ONE_HOUR
 // const ONE_WEEK = 7 * ONE_DAY
 // const ONE_YEAR = 365 * ONE_DAY
 
-const TIME_FOR_PROPOSALS = ONE_MINUTE + ONE_SECOND * 30
-const TIME_FOR_VOTING = ONE_MINUTE + ONE_SECOND * 30
-const TIME_FOR_GRACE = ONE_MINUTE + ONE_SECOND * 30
-const TIME_FOR_APPLY = ONE_MINUTE + ONE_SECOND * 30
+const TIME_FOR_PROPOSALS = ONE_MINUTE + ONE_SECOND * 30 // ONE_DAY
+const TIME_FOR_VOTING = ONE_MINUTE + ONE_SECOND * 30 // ONE_DAY * 3
+const TIME_FOR_GRACE = ONE_MINUTE + ONE_SECOND * 30 // ONE_DAY
+const TIME_FOR_APPLY = ONE_MINUTE + ONE_SECOND * 30 // ONE_DAY * 2
 
-const TIME_FOR_DEV_PROPOSALS = ONE_MINUTE + ONE_SECOND * 30
-const TIME_FOR_DEV_VOTING = ONE_MINUTE + ONE_SECOND * 30
-const TIME_FOR_DEV_GRACE = ONE_MINUTE + ONE_SECOND * 30
-const TIME_FOR_DEV_APPLY = ONE_MINUTE + ONE_SECOND * 30
+const TIME_FOR_DEV_PROPOSALS = ONE_MINUTE + ONE_SECOND * 30 // ONE_DAY
+const TIME_FOR_DEV_VOTING = ONE_MINUTE + ONE_SECOND * 30 // ONE_DAY * 3
+const TIME_FOR_DEV_GRACE = ONE_MINUTE + ONE_SECOND * 30 // ONE_DAY
+const TIME_FOR_DEV_APPLY = ONE_MINUTE + ONE_SECOND * 30 // ONE_DAY * 2
 
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
 const cycleDuration = 15
@@ -42,15 +44,17 @@ const cycleDuration = 15
 const INITIAL_PARAMETERS: NetworkParameters = {
   title: 'Initial parameters',
   description: 'These are the initial network parameters liberdus started with',
-  nodeRewardInterval: ONE_MINUTE,
+  nodeRewardInterval: ONE_MINUTE, //ONE_HOUR,
   nodeRewardAmount: 10,
   nodePenalty: 100,
   transactionFee: 0.001,
   stakeRequired: 500,
-  maintenanceInterval: ONE_MINUTE * 10,
+  maintenanceInterval: ONE_DAY,
   maintenanceFee: 0,
   proposalFee: 500,
-  devProposalFee: 20,
+  devProposalFee: 500,
+  faucetAmount: 5000,
+  defaultToll: 1
 }
 
 let config: any = {}
@@ -164,8 +168,9 @@ function createAccount(accountId: string, timestamp: number): UserAccount {
   const account: UserAccount = {
     id: accountId,
     data: {
-      balance: 5000,
-      toll: 1,
+      balance: 0,
+      stake: 0,
+      toll: null,
       chats: {},
       friends: {},
       transactions: [],
@@ -704,7 +709,12 @@ dapp.registerExternalGet(
       const id = req.params['id']
       const account = await dapp.getLocalOrRemoteAccount(id)
       if (account) {
-        res.json({ toll: account.data.data.toll })
+        if (account.data.data.toll === null) {
+          const network = await dapp.getLocalOrRemoteAccount(networkAccount)
+          res.json({ toll: network.data.current.defaultToll })
+        } else {
+          res.json({ toll: account.data.data.toll })
+        }
       } else {
         res.json({ error: 'No account with the given id' })
       }
@@ -750,12 +760,19 @@ dapp.registerExternalGet(
     }
     try {
       const account = await dapp.getLocalOrRemoteAccount(id)
-      if (account && account.data.data.friends[friendId]) {
-        res.json({ toll: 0 })
-      } else if (account) {
-        res.json({ toll: account.data.data.toll })
+      if (account) {
+        if (account.data.data.friends[friendId]) {
+          res.json({ toll: 0 })
+        } else {
+          if (account.data.data.toll === null) {
+            const network = await dapp.getLocalOrRemoteAccount(networkAccount)
+            res.json({ toll: network.data.current.defaultToll })
+          } else {
+            res.json({ toll: account.data.data.toll })
+          }
+        }
       } else {
-        res.json({ error: 'No account found with the given id' })
+        res.json({ error: 'No account with the given id' })
       }
     } catch (error) {
       dapp.log(error)
@@ -1116,18 +1133,21 @@ dapp.setup({
           return response
         }
         if (to.data.friends[tx.from]) {
-          if (from.data.balance < 1) {
-            response.reason = 'from account does not have sufficient funds.'
+          if (from.data.balance < network.current.transactionFee) {
+            response.reason = `from account does not have sufficient funds: ${from.data.balance} to cover transaction fee: ${network.current.transactionFee}.`
             return response
           }
         } else {
-          if (from.data.balance < to.data.toll + network.current.transactionFee) {
-            response.reason = 'from account does not have sufficient funds.'
-            return response
+          if (to.data.toll === null) {
+            if (from.data.balance < network.current.defaultToll + network.current.transactionFee) {
+              response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the default toll + transaction fee ${network.current.defaultToll + network.current.transactionFee}.`
+              return response
+            }
           } else {
-            response.success = true
-            response.reason = 'This transaction is valid!'
-            return response
+            if (from.data.balance < to.data.toll + network.current.transactionFee) {
+              response.reason = 'from account does not have sufficient funds.'
+              return response
+            }
           }
         }
         response.success = true
@@ -1222,7 +1242,7 @@ dapp.setup({
           return response
         }
         if (from.data.balance < network.current.stakeRequired) {
-          response.reason = `From account has insufficient balance, the cost required to operate a node is ${network.current.stakeRequired}`
+          response.reason = `From account has insufficient balance, the cost required to receive node rewards is ${network.current.stakeRequired}`
           return response
         }
         if (tx.stake < network.current.stakeRequired) {
@@ -1234,7 +1254,7 @@ dapp.setup({
         return response
       }
       case 'node_reward': {
-        const network = wrappedStates[tx.network].data
+        const network: NetworkAccount= wrappedStates[tx.network].data
         let nodeInfo
         try {
           nodeInfo = dapp.getNode(tx.nodeId)
@@ -1246,7 +1266,7 @@ dapp.setup({
           return response
         }
         if (tx.timestamp - nodeInfo.activeTimestamp < network.current.nodeRewardInterval) {
-          response.reason = 'Too early for this node to get paid'
+          response.reason = 'Too early for this node to get a reward'
           return response
         }
         if (!from) {
@@ -2379,7 +2399,9 @@ dapp.setup({
         break
       }
       case 'verify': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
         from.verified = true
+        from.data.balance += network.current.faucetAmount
         from.timestamp = tx.timestamp
         dapp.log('Applied verify tx', from)
         break
@@ -2400,7 +2422,6 @@ dapp.setup({
       case 'create': {
         to.data.balance += tx.amount
         to.timestamp = tx.timestamp
-
         // to.data.transactions.push({ ...tx, txId })
         dapp.log('Applied create tx', to)
         break
@@ -2436,8 +2457,13 @@ dapp.setup({
         const chat = wrappedStates[tx.chatId].data
         from.data.balance -= network.current.transactionFee
         if (!to.data.friends[from.id]) {
-          from.data.balance -= to.data.toll
-          to.data.balance += to.data.toll
+          if (to.data.toll === null) {
+            from.data.balance -= network.current.defaultToll
+            to.data.balance += network.current.defaultToll
+          } else {
+            from.data.balance -= to.data.toll
+            to.data.balance += to.data.toll
+          }
         }
         from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
 
@@ -2484,9 +2510,9 @@ dapp.setup({
       }
       case 'stake': {
         const network: NetworkAccount = wrappedStates[tx.network].data
-        from.data.balance -= tx.stake
+        from.data.balance -= network.current.stakeRequired
         from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
-        from.data.stake = tx.stake
+        from.data.stake = network.current.stakeRequired
         from.timestamp = tx.timestamp
         // from.data.transactions.push({ ...tx, txId })
         dapp.log('Applied stake tx', from)
@@ -2494,10 +2520,16 @@ dapp.setup({
       }
       case 'node_reward': {
         const network: NetworkAccount = wrappedStates[tx.network].data
-        to.balance += network.current.nodeRewardAmount
+        from.balance += network.current.nodeRewardAmount
+        if (tx.from !== tx.to) {
+          if (to.data.stake >= network.current.stakeRequired) {
+            to.data.balance += from.balance
+            from.balance = 0
+            to.timestamp = tx.timestamp
+          }
+        }
         from.nodeRewardTime = tx.timestamp
         from.timestamp = tx.timestamp
-        to.timestamp = tx.timestamp
         dapp.log('Applied node_reward tx', from, to)
         break
       }
@@ -2904,6 +2936,7 @@ dapp.setup({
         break
       case 'verify':
         result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.network]
         break
       case 'register':
         result.sourceKeys = [tx.from]
@@ -3087,6 +3120,16 @@ dapp.setup({
           account = createNode(accountId)
           accounts[accountId] = account
           accountCreated = true
+        } else {
+          if (accountId === tx.to) {
+            account = createAccount(accountId, tx.timestamp)
+            accounts[accountId] = account
+            accountCreated = true
+          } else {
+            account = createNode(accountId)
+            accounts[accountId] = account
+            accountCreated = true
+          }
         }
       }
     }
@@ -3241,13 +3284,12 @@ dapp.registerExceptionHandler()
 
 // NODE_REWARD TRANSACTION FUNCTION
 function nodeReward(address: string, nodeId: string): void {
-  const payAddress = address
   const tx = {
     type: 'node_reward',
     network: networkAccount,
     nodeId: nodeId,
     from: address,
-    to: payAddress,
+    to: process.env.PAY_ADDRESS || address,
     timestamp: Date.now(),
   }
   dapp.put(tx)
@@ -3442,6 +3484,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       return setTimeout(networkMaintenance, 100)
     }
 
+    dapp.log('payAddress: ', process.env.PAY_ADDRESS)
     dapp.log('cycleData: ', cycleData)
     dapp.log('luckyNode: ', luckyNode)
     dapp.log('nodeId: ', nodeId)

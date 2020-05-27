@@ -570,6 +570,7 @@ vorpal.command('verify', 'verifies your email address').action(async function(_,
   const tx = {
     type: 'verify',
     from: USER.address,
+    network,
     code: answer.code,
     timestamp: Date.now(),
   }
@@ -845,7 +846,7 @@ vorpal.command('stake', 'stakes tokens in order to operate a node').action(async
   const answer = await this.prompt({
     type: 'list',
     name: 'confirm',
-    message: `The required staking amount is ${parameters.stakeRequired}, continue? `,
+    message: `The required staking amount is ${parameters.current.stakeRequired}, continue? `,
     choices: [
       { name: 'yes', value: true, short: true },
       { name: 'no', value: false, short: false },
@@ -856,7 +857,7 @@ vorpal.command('stake', 'stakes tokens in order to operate a node').action(async
       type: 'stake',
       network,
       from: USER.address,
-      stake: parameters.stakeRequired,
+      stake: parameters.current.stakeRequired,
       timestamp: Date.now(),
     }
     crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
@@ -966,6 +967,20 @@ vorpal.command('proposal', 'submits a proposal to change network parameters').ac
       name: 'devProposalFee',
       message: 'Specify dev proposal fee: ',
       default: defaults.devProposalFee,
+      filter: value => parseInt(value),
+    },
+    {
+      type: 'number',
+      name: 'faucetAmount',
+      message: 'Specify faucet amount for new accounts: ',
+      default: defaults.faucetAmount,
+      filter: value => parseInt(value),
+    },
+    {
+      type: 'number',
+      name: 'defaultToll',
+      message: 'Specify the default message toll: ',
+      default: defaults.defaultToll,
       filter: value => parseInt(value),
     },
   ])

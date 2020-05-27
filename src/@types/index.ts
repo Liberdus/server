@@ -6,7 +6,7 @@ interface UserAccount {
   id: string
   data: {
     balance: number
-    toll: number
+    toll: number | null
     chats: object
     friends: object
     stake?: number
@@ -128,6 +128,8 @@ interface NetworkParameters {
   maintenanceFee: number
   proposalFee: number
   devProposalFee: number
+  faucetAmount: number
+  defaultToll: number
 }
 
 interface Windows {

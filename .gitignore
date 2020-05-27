@@ -1,5 +1,6 @@
 node_modules/
 .pm2/
+.env
 instances/
 logs
 db
