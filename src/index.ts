@@ -80,8 +80,8 @@ Prop.set(config, 'server.p2p', {
     process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]',
   ),
   minNodesToAllowTxs: 1,
-  minNodes: 20,
-  maxNodes: 20,
+  minNodes: 5,
+  maxNodes: 10,
   maxJoinedPerCycle: 1,
   maxSyncingPerCycle: 5,
   maxRotatedPerCycle: 1,
@@ -101,7 +101,7 @@ Prop.set(config, 'server.rateLimiting', {
   loadLimit: 0.5,
 })
 Prop.set(config, 'server.sharding', {
-  nodesPerConsensusGroup: 5,
+  nodesPerConsensusGroup: 50,
 })
 Prop.set(config, 'logs', {
   dir: './logs',
@@ -3454,7 +3454,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
   let lastReward: number
   let cycleData: Shardus.Cycle
   let cycleStartTimestamp: number
-  let luckyNode: string
+  let luckyNodes: string[]
   let expected = Date.now() + cycleInterval
   let drift: number
 
@@ -3474,7 +3474,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       console.log(`cycleData: ${stringify(cycleData)}`)
       cycleStartTimestamp = cycleData.start * 1000
       console.log(cycleData.marker)
-      ;[luckyNode] = dapp.getClosestNodes(cycleData.previous, 3)
+      luckyNodes = dapp.getClosestNodes(cycleData.previous, 3)
       nodeId = dapp.getNodeId()
       node = dapp.getNode(nodeId)
       nodeAddress = node.address
@@ -3486,7 +3486,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
 
     dapp.log('payAddress: ', process.env.PAY_ADDRESS)
     dapp.log('cycleData: ', cycleData)
-    dapp.log('luckyNode: ', luckyNode)
+    dapp.log('luckyNode: ', luckyNodes)
     dapp.log('nodeId: ', nodeId)
     dapp.log('nodeAddress: ', nodeAddress)
     dapp.log('windows: ', network.windows)
@@ -3509,7 +3509,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     // ISSUE
     if (cycleStartTimestamp >= network.windows.proposalWindow[0] && cycleStartTimestamp <= network.windows.proposalWindow[1]) {
       if (!issueGenerated && network.issue > 1) {
-        if (nodeId === luckyNode) {
+        if (luckyNodes.includes(nodeId)) {
           await generateIssue(nodeAddress, nodeId)
         }
         issueGenerated = true
@@ -3521,7 +3521,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     // TALLY
     if (cycleStartTimestamp >= network.windows.graceWindow[0] && cycleStartTimestamp <= network.windows.graceWindow[1]) {
       if (!tallyGenerated) {
-        if (nodeId === luckyNode) {
+        if (luckyNodes.includes(nodeId)) {
           await tallyVotes(nodeAddress, nodeId)
         }
         issueGenerated = false
@@ -3533,7 +3533,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     // APPLY
     if (cycleStartTimestamp >= network.windows.applyWindow[0] && cycleStartTimestamp <= network.windows.applyWindow[1]) {
       if (!applyGenerated) {
-        if (nodeId === luckyNode) {
+        if (luckyNodes.includes(nodeId)) {
           await applyParameters(nodeAddress, nodeId)
         }
         issueGenerated = false
@@ -3545,7 +3545,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     // DEV_ISSUE
     if (cycleStartTimestamp >= network.devWindows.devProposalWindow[0] && cycleStartTimestamp <= network.devWindows.devProposalWindow[1]) {
       if (!devIssueGenerated && network.devIssue > 1) {
-        if (nodeId === luckyNode) {
+        if (luckyNodes.includes(nodeId)) {
           await generateDevIssue(nodeAddress, nodeId)
         }
         devIssueGenerated = true
@@ -3557,7 +3557,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     // DEV_TALLY
     if (cycleStartTimestamp >= network.devWindows.devGraceWindow[0] && cycleStartTimestamp <= network.devWindows.devGraceWindow[1]) {
       if (!devTallyGenerated) {
-        if (nodeId === luckyNode) {
+        if (luckyNodes.includes(nodeId)) {
           await tallyDevVotes(nodeAddress, nodeId)
         }
         devIssueGenerated = false
@@ -3569,7 +3569,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     // DEV_APPLY
     if (cycleStartTimestamp >= network.devWindows.devApplyWindow[0] && cycleStartTimestamp <= network.devWindows.devApplyWindow[1]) {
       if (!devApplyGenerated) {
-        if (nodeId === luckyNode) {
+        if (luckyNodes.includes(nodeId)) {
           await applyDevParameters(nodeAddress, nodeId)
         }
         devIssueGenerated = false
@@ -3582,7 +3582,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     for (const payment of network.developerFund) {
       // PAY DEVELOPER IF THE network.current TIME IS GREATER THAN THE PAYMENT TIME
       if (cycleStartTimestamp >= payment.timestamp) {
-        if (nodeId === luckyNode) {
+        if (luckyNodes.includes(nodeId)) {
           releaseDeveloperFunds(payment, nodeAddress, nodeId)
         }
       }
@@ -3603,7 +3603,6 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
   dapp.on(
     'active',
     async (): Promise<NodeJS.Timeout> => {
-      console.log('GOT TO "ON"')
       if (dapp.p2p.isFirstSeed) {
         await _sleep(ONE_SECOND * cycleDuration * 2)
       }
