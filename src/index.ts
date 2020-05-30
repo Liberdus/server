@@ -27,6 +27,7 @@ const ONE_DAY = 24 * ONE_HOUR
 // const ONE_WEEK = 7 * ONE_DAY
 // const ONE_YEAR = 365 * ONE_DAY
 
+/*
 const TIME_FOR_PROPOSALS = ONE_MINUTE + ONE_SECOND * 30 // ONE_DAY
 const TIME_FOR_VOTING = ONE_MINUTE + ONE_SECOND * 30 // ONE_DAY * 3
 const TIME_FOR_GRACE = ONE_MINUTE + ONE_SECOND * 30 // ONE_DAY
@@ -36,24 +37,36 @@ const TIME_FOR_DEV_PROPOSALS = ONE_MINUTE + ONE_SECOND * 30 // ONE_DAY
 const TIME_FOR_DEV_VOTING = ONE_MINUTE + ONE_SECOND * 30 // ONE_DAY * 3
 const TIME_FOR_DEV_GRACE = ONE_MINUTE + ONE_SECOND * 30 // ONE_DAY
 const TIME_FOR_DEV_APPLY = ONE_MINUTE + ONE_SECOND * 30 // ONE_DAY * 2
+*/
+
+const TIME_FOR_PROPOSALS = ONE_DAY + ONE_SECOND * 30 // ONE_DAY
+const TIME_FOR_VOTING = 3 * ONE_DAY + ONE_SECOND * 30 // ONE_DAY * 3
+const TIME_FOR_GRACE = ONE_DAY + ONE_SECOND * 30 // ONE_DAY
+const TIME_FOR_APPLY = 2 * ONE_DAY + ONE_SECOND * 30 // ONE_DAY * 2
+
+const TIME_FOR_DEV_PROPOSALS = ONE_DAY + ONE_SECOND * 30 // ONE_DAY
+const TIME_FOR_DEV_VOTING = 3* ONE_DAY + ONE_SECOND * 30 // ONE_DAY * 3
+const TIME_FOR_DEV_GRACE = ONE_DAY + ONE_SECOND * 30 // ONE_DAY
+const TIME_FOR_DEV_APPLY = 2 * ONE_DAY + ONE_SECOND * 30 // ONE_DAY * 2
+
 
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
-const cycleDuration = 15
+const cycleDuration = 30
 
 // INITIAL NETWORK PARAMETERS FOR LIBERDUS
 const INITIAL_PARAMETERS: NetworkParameters = {
   title: 'Initial parameters',
   description: 'These are the initial network parameters liberdus started with',
-  nodeRewardInterval: ONE_MINUTE, //ONE_HOUR,
-  nodeRewardAmount: 10,
-  nodePenalty: 100,
+  nodeRewardInterval: ONE_HOUR, //ONE_HOUR,
+  nodeRewardAmount: 1,
+  nodePenalty: 10,
   transactionFee: 0.001,
-  stakeRequired: 500,
+  stakeRequired: 5,
   maintenanceInterval: ONE_DAY,
   maintenanceFee: 0,
-  proposalFee: 500,
-  devProposalFee: 500,
-  faucetAmount: 5000,
+  proposalFee: 50,
+  devProposalFee: 50,
+  faucetAmount: 10,
   defaultToll: 1
 }
 
@@ -80,9 +93,9 @@ Prop.set(config, 'server.p2p', {
     process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]',
   ),
   minNodesToAllowTxs: 1,
-  minNodes: 5,
-  maxNodes: 10,
-  maxJoinedPerCycle: 1,
+  minNodes: 50,
+  maxNodes: 50,
+  maxJoinedPerCycle: 2,
   maxSyncingPerCycle: 5,
   maxRotatedPerCycle: 1,
 })
