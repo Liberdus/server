@@ -76,7 +76,7 @@ if (process.env.BASE_DIR) {
   if (fs.existsSync(path.join(process.env.BASE_DIR, 'config.json'))) {
     config = JSON.parse(fs.readFileSync(path.join(process.env.BASE_DIR, 'config.json')).toString())
   }
-  config.server.baseDir = process.env.BASE_DIR
+  Prop.set(config, 'server.baseDir', process.env.BASE_DIR)
 }
 
 if (process.env.APP_IP) {
@@ -89,9 +89,13 @@ if (process.env.APP_IP) {
 // CONFIGURATION PARAMETERS PASSED INTO SHARDUS
 Prop.set(config, 'server.p2p', {
   cycleDuration: cycleDuration,
-  existingArchivers: JSON.parse(
-    process.env.APP_SEEDLIST || '[{ "ip": "127.0.0.1", "port": 4000, "publicKey": "758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3" }]',
-  ),
+  existingArchivers: config.server.p2p.existingArchivers || JSON.parse(process.env.APP_SEEDLIST || 'false') || [
+    {
+      ip: '127.0.0.1',
+      port: 4000,
+      publicKey: '758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3'
+    }
+  ],
   minNodesToAllowTxs: 1,
   minNodes: 50,
   maxNodes: 50,
@@ -106,7 +110,7 @@ Prop.set(config, 'server.loadDetection', {
   lowThreshold: 0.2,
 })
 Prop.set(config, 'server.reporting', {
-  recipient: `http://${process.env.APP_MONITOR || '0.0.0.0'}:3000/api`,
+  recipient: config.server.reporting.recipient || `http://${process.env.APP_MONITOR || '0.0.0.0'}:3000/api`,
   interval: 1,
 })
 Prop.set(config, 'server.rateLimiting', {
