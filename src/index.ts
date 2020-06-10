@@ -45,10 +45,9 @@ const TIME_FOR_GRACE = ONE_DAY + ONE_SECOND * 30 // ONE_DAY
 const TIME_FOR_APPLY = 2 * ONE_DAY + ONE_SECOND * 30 // ONE_DAY * 2
 
 const TIME_FOR_DEV_PROPOSALS = ONE_DAY + ONE_SECOND * 30 // ONE_DAY
-const TIME_FOR_DEV_VOTING = 3* ONE_DAY + ONE_SECOND * 30 // ONE_DAY * 3
+const TIME_FOR_DEV_VOTING = 3 * ONE_DAY + ONE_SECOND * 30 // ONE_DAY * 3
 const TIME_FOR_DEV_GRACE = ONE_DAY + ONE_SECOND * 30 // ONE_DAY
 const TIME_FOR_DEV_APPLY = 2 * ONE_DAY + ONE_SECOND * 30 // ONE_DAY * 2
-
 
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
 const cycleDuration = 30
@@ -67,7 +66,7 @@ const INITIAL_PARAMETERS: NetworkParameters = {
   proposalFee: 50,
   devProposalFee: 50,
   faucetAmount: 10,
-  defaultToll: 1
+  defaultToll: 1,
 }
 
 let config: any = {}
@@ -89,13 +88,14 @@ if (process.env.APP_IP) {
 // CONFIGURATION PARAMETERS PASSED INTO SHARDUS
 Prop.set(config, 'server.p2p', {
   cycleDuration: cycleDuration,
-  existingArchivers: config.server.p2p.existingArchivers || JSON.parse(process.env.APP_SEEDLIST || 'false') || [
-    {
-      ip: '127.0.0.1',
-      port: 4000,
-      publicKey: '758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3'
-    }
-  ],
+  existingArchivers: config.server.p2p.existingArchivers ||
+    JSON.parse(process.env.APP_SEEDLIST || 'false') || [
+      {
+        ip: '127.0.0.1',
+        port: 4000,
+        publicKey: '758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3',
+      },
+    ],
   minNodesToAllowTxs: 1,
   minNodes: 50,
   maxNodes: 50,
@@ -900,7 +900,8 @@ function maintenanceAmount(timestamp: number, account: UserAccount, network: Net
   if (timestamp - account.lastMaintenance < network.current.maintenanceInterval) {
     amount = 0
   } else {
-    amount = account.data.balance * (1 - Math.pow((1 - network.current.maintenanceFee), ((timestamp - account.lastMaintenance) / network.current.maintenanceInterval)))
+    amount =
+      account.data.balance * (1 - Math.pow(1 - network.current.maintenanceFee, (timestamp - account.lastMaintenance) / network.current.maintenanceInterval))
     account.lastMaintenance = timestamp
   }
   if (typeof amount === 'number') return amount
@@ -1157,7 +1158,8 @@ dapp.setup({
         } else {
           if (to.data.toll === null) {
             if (from.data.balance < network.current.defaultToll + network.current.transactionFee) {
-              response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the default toll + transaction fee ${network.current.defaultToll + network.current.transactionFee}.`
+              response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the default toll + transaction fee ${network.current
+                .defaultToll + network.current.transactionFee}.`
               return response
             }
           } else {
@@ -1270,8 +1272,34 @@ dapp.setup({
         response.reason = 'This transaction is valid!'
         return response
       }
+      case 'remove_stake': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
+        if (typeof from === 'undefined' || from === null) {
+          response.reason = 'from account does not exist'
+          return response
+        }
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (from.data.stake < network.current.stakeRequired) {
+          response.reason = `From account has insufficient stake ${network.current.stakeRequired}`
+          return response
+        }
+        if (tx.stake > network.current.stakeRequired) {
+          response.reason = `Stake amount sent: ${tx.stake} is more than the cost required to operate a node: ${network.current.stakeRequired}`
+          return response
+        }
+        response.success = true
+        response.reason = 'This transaction is valid!'
+        return response
+      }
       case 'node_reward': {
-        const network: NetworkAccount= wrappedStates[tx.network].data
+        const network: NetworkAccount = wrappedStates[tx.network].data
         let nodeInfo
         try {
           nodeInfo = dapp.getNode(tx.nodeId)
@@ -1710,15 +1738,14 @@ dapp.setup({
         const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue].data
 
-
         // let nodeInfo
         // try {
-          //   nodeInfo = dapp.getNode(tx.nodeId)
-          // } catch (err) {
-            //   dapp.log(err)
+        //   nodeInfo = dapp.getNode(tx.nodeId)
+        // } catch (err) {
+        //   dapp.log(err)
         // }
         // if (!nodeInfo) {
-          //   response.reason = 'no nodeInfo'
+        //   response.reason = 'no nodeInfo'
         //   return response
         // }
         if (network.id !== networkAccount) {
@@ -2137,6 +2164,19 @@ dapp.setup({
         }
         break
       }
+      case 'remove_stake': {
+        if (typeof tx.from !== 'string') {
+          success = false
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.stake !== 'number') {
+          success = false
+          reason = '"Stake" must be a number.'
+          throw new Error(reason)
+        }
+        break
+      }
       case 'snapshot_claim': {
         if (typeof tx.from !== 'string') {
           success = false
@@ -2531,7 +2571,17 @@ dapp.setup({
         from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
         from.data.stake = network.current.stakeRequired
         from.timestamp = tx.timestamp
-        // from.data.transactions.push({ ...tx, txId })
+        from.data.transactions.push({ ...tx, txId })
+        dapp.log('Applied stake tx', from)
+        break
+      }
+      case 'remove_stake': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
+        from.data.balance += network.current.stakeRequired
+        // from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
+        from.data.stake = 0
+        from.timestamp = tx.timestamp
+        from.data.transactions.push({ ...tx, txId })
         dapp.log('Applied stake tx', from)
         break
       }
@@ -2547,6 +2597,7 @@ dapp.setup({
         }
         from.nodeRewardTime = tx.timestamp
         from.timestamp = tx.timestamp
+        to.data.transactions.push({ ...tx, txId })
         dapp.log('Applied node_reward tx', from, to)
         break
       }
@@ -2992,6 +3043,10 @@ dapp.setup({
         result.targetKeys = [tx.to, tx.network]
         break
       case 'stake':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.network]
+        break
+      case 'remove_stake':
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.network]
         break
