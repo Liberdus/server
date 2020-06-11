@@ -10,6 +10,7 @@ interface UserAccount {
     chats: object
     friends: object
     stake?: number
+    remove_stake_request: boolean | null
     transactions: object[]
   }
   alias: string | null

@@ -187,6 +187,7 @@ function createAccount(accountId: string, timestamp: number): UserAccount {
     data: {
       balance: 0,
       stake: 0,
+      remove_stake_request: null,
       toll: null,
       chats: {},
       friends: {},
@@ -2577,20 +2578,23 @@ dapp.setup({
       }
       case 'remove_stake': {
         const network: NetworkAccount = wrappedStates[tx.network].data
-        from.data.balance += network.current.stakeRequired
-        // from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
-        from.data.stake = 0
-        from.timestamp = tx.timestamp
-        from.data.transactions.push({ ...tx, txId })
-        dapp.log('Applied stake tx', from)
+        from.data.remove_stake_request = true
+        setTimeout(function() {
+          removeStake(tx, wrappedStates)
+        }, 2 * network.current.nodeRewardInterval)
+        dapp.log('Applied remove_stake tx marked as requested', from)
         break
       }
       case 'node_reward': {
         const network: NetworkAccount = wrappedStates[tx.network].data
         from.balance += network.current.nodeRewardAmount
+        dapp.log(`Reward from ${tx.from} to ${tx.to}`)
         if (tx.from !== tx.to) {
+          dapp.log('Node reward to and from are different.')
+          dapp.log('TO ACCOUNT', to.data)
           if (to.data.stake >= network.current.stakeRequired) {
             to.data.balance += from.balance
+            if (to.data.remove_stake_request) to.data.remove_stake_request = null
             from.balance = 0
             to.timestamp = tx.timestamp
           }
@@ -3367,6 +3371,30 @@ function nodeReward(address: string, nodeId: string): void {
   dapp.put(tx)
   console.log('TX_DATA: ', tx)
   dapp.log('GENERATED_NODE_REWARD: ', nodeId)
+}
+
+// REMOVE_STAKE TRANSACTION FUNCTION
+function removeStake(tx, wrappedStates): void {
+  const from = wrappedStates[tx.from] && wrappedStates[tx.from].data
+  const to = wrappedStates[tx.to] && wrappedStates[tx.to].data
+  let txId
+  if (!tx.sign) {
+    txId = crypto.hashObj(tx)
+  } else {
+    txId = crypto.hashObj(tx, true) // compute from tx
+  }
+  const network: NetworkAccount = wrappedStates[tx.network].data
+  if (from.data.remove_stake_request) {
+    from.data.balance += network.current.stakeRequired
+    // from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
+    from.data.stake = 0
+    from.timestamp = tx.timestamp
+    from.data.remove_stake_request = null
+    from.data.transactions.push({ ...tx, txId })
+    dapp.log('Applied remove_stake tx', from)
+  } else {
+    dapp.log('Cancelled remove_stake tx because `remove_stake_request` is null', from)
+  }
 }
 
 // ISSUE TRANSACTION FUNCTION
