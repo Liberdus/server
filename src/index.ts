@@ -1291,6 +1291,36 @@ dapp.setup({
           response.reason = `From account has insufficient stake ${network.current.stakeRequired}`
           return response
         }
+        if (!from.data.remove_stake_request) {
+          response.reason = `Request is not active to remove stake.`
+          return response
+        }
+        if (tx.stake > network.current.stakeRequired) {
+          response.reason = `Stake amount sent: ${tx.stake} is more than the cost required to operate a node: ${network.current.stakeRequired}`
+          return response
+        }
+        response.success = true
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'remove_stake_request': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
+        if (typeof from === 'undefined' || from === null) {
+          response.reason = 'from account does not exist'
+          return response
+        }
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (from.data.stake < network.current.stakeRequired) {
+          response.reason = `From account has insufficient stake ${network.current.stakeRequired}`
+          return response
+        }
         if (tx.stake > network.current.stakeRequired) {
           response.reason = `Stake amount sent: ${tx.stake} is more than the cost required to operate a node: ${network.current.stakeRequired}`
           return response
@@ -2178,6 +2208,19 @@ dapp.setup({
         }
         break
       }
+      case 'remove_stake_request': {
+        if (typeof tx.from !== 'string') {
+          success = false
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.stake !== 'number') {
+          success = false
+          reason = '"Stake" must be a number.'
+          throw new Error(reason)
+        }
+        break
+      }
       case 'snapshot_claim': {
         if (typeof tx.from !== 'string') {
           success = false
@@ -2578,10 +2621,23 @@ dapp.setup({
       }
       case 'remove_stake': {
         const network: NetworkAccount = wrappedStates[tx.network].data
-        from.data.remove_stake_request = true
-        setTimeout(function() {
-          removeStake(tx, wrappedStates)
-        }, 2 * network.current.nodeRewardInterval)
+        const shouldRemoveState = from.data.remove_stake_request && from.data.remove_stake_request + 2 * network.current.nodeRewardInterval <= Date.now()
+        if (shouldRemoveState) {
+          from.data.balance += network.current.stakeRequired
+          from.data.stake = 0
+          from.timestamp = tx.timestamp
+          from.data.remove_stake_request = null
+          from.data.transactions.push({ ...tx, txId })
+          dapp.log('Applied remove_stake tx', from)
+        } else {
+          dapp.log('Cancelled remove_stake tx because `remove_stake_request` is null or earlier than 2 * nodeRewardInterval', from)
+        }
+        dapp.log('Applied remove_stake tx marked as requested', from)
+        break
+      }
+      case 'remove_stake_request': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
+        from.data.remove_stake_request = Date.now()
         dapp.log('Applied remove_stake tx marked as requested', from)
         break
       }
@@ -3054,6 +3110,10 @@ dapp.setup({
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.network]
         break
+      case 'remove_stake_request':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.network]
+        break
       case 'claim_reward':
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.network]
@@ -3371,30 +3431,6 @@ function nodeReward(address: string, nodeId: string): void {
   dapp.put(tx)
   console.log('TX_DATA: ', tx)
   dapp.log('GENERATED_NODE_REWARD: ', nodeId)
-}
-
-// REMOVE_STAKE TRANSACTION FUNCTION
-function removeStake(tx, wrappedStates): void {
-  const from = wrappedStates[tx.from] && wrappedStates[tx.from].data
-  const to = wrappedStates[tx.to] && wrappedStates[tx.to].data
-  let txId
-  if (!tx.sign) {
-    txId = crypto.hashObj(tx)
-  } else {
-    txId = crypto.hashObj(tx, true) // compute from tx
-  }
-  const network: NetworkAccount = wrappedStates[tx.network].data
-  if (from.data.remove_stake_request) {
-    from.data.balance += network.current.stakeRequired
-    // from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
-    from.data.stake = 0
-    from.timestamp = tx.timestamp
-    from.data.remove_stake_request = null
-    from.data.transactions.push({ ...tx, txId })
-    dapp.log('Applied remove_stake tx', from)
-  } else {
-    dapp.log('Cancelled remove_stake tx because `remove_stake_request` is null', from)
-  }
 }
 
 // ISSUE TRANSACTION FUNCTION
