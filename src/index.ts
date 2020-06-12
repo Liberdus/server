@@ -292,7 +292,7 @@ function createIssue(accountId: string): IssueAccount {
     proposals: [],
     proposalCount: 0,
     number: null,
-    winner: null,
+    winnerId: null,
     hash: '',
     timestamp: 0,
   }
@@ -1700,7 +1700,7 @@ dapp.setup({
           response.reason = 'This issue is no longer active'
           return response
         }
-        if (issue.winner !== null) {
+        if (issue.winnerId !== null) {
           response.reason = 'The winner for this issue has already been determined'
           return response
         }
@@ -2840,7 +2840,7 @@ dapp.setup({
           networkAccount,
         )
 
-        issue.winner = winner.id
+        issue.winnerId = winner.id
 
         from.timestamp = tx.timestamp
         issue.timestamp = tx.timestamp
