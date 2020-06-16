@@ -10,6 +10,7 @@ interface UserAccount {
     chats: object
     friends: object
     stake?: number
+    remove_stake_request: number | null
     transactions: object[]
   }
   alias: string | null
@@ -67,7 +68,7 @@ interface IssueAccount {
   proposals: string[]
   proposalCount: number
   number: number | null
-  winner: string | null
+  winnerId: string | null
   hash: string
   timestamp: number
 }
@@ -111,6 +112,7 @@ interface DevProposalAccount {
 }
 
 type Account = NetworkAccount & IssueAccount & DevIssueAccount & UserAccount & AliasAccount & ProposalAccount & DevProposalAccount & NodeAccount & ChatAccount
+// type Account = NetworkAccount | IssueAccount | DevIssueAccount | UserAccount | AliasAccount | ProposalAccount | DevProposalAccount | NodeAccount | ChatAccount
 
 /**
  * ---------------------- NETWORK DATA INTERFACES ----------------------

@@ -187,6 +187,7 @@ function createAccount(accountId: string, timestamp: number): UserAccount {
     data: {
       balance: 0,
       stake: 0,
+      remove_stake_request: null,
       toll: null,
       chats: {},
       friends: {},
@@ -291,7 +292,7 @@ function createIssue(accountId: string): IssueAccount {
     proposals: [],
     proposalCount: 0,
     number: null,
-    winner: null,
+    winnerId: null,
     hash: '',
     timestamp: 0,
   }
@@ -1290,6 +1291,36 @@ dapp.setup({
           response.reason = `From account has insufficient stake ${network.current.stakeRequired}`
           return response
         }
+        if (!from.data.remove_stake_request) {
+          response.reason = `Request is not active to remove stake.`
+          return response
+        }
+        if (tx.stake > network.current.stakeRequired) {
+          response.reason = `Stake amount sent: ${tx.stake} is more than the cost required to operate a node: ${network.current.stakeRequired}`
+          return response
+        }
+        response.success = true
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'remove_stake_request': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
+        if (typeof from === 'undefined' || from === null) {
+          response.reason = 'from account does not exist'
+          return response
+        }
+        if (tx.sign.owner !== tx.from) {
+          response.reason = 'not signed by from account'
+          return response
+        }
+        if (crypto.verifyObj(tx) === false) {
+          response.reason = 'incorrect signing'
+          return response
+        }
+        if (from.data.stake < network.current.stakeRequired) {
+          response.reason = `From account has insufficient stake ${network.current.stakeRequired}`
+          return response
+        }
         if (tx.stake > network.current.stakeRequired) {
           response.reason = `Stake amount sent: ${tx.stake} is more than the cost required to operate a node: ${network.current.stakeRequired}`
           return response
@@ -1669,7 +1700,7 @@ dapp.setup({
           response.reason = 'This issue is no longer active'
           return response
         }
-        if (issue.winner !== null) {
+        if (issue.winnerId !== null) {
           response.reason = 'The winner for this issue has already been determined'
           return response
         }
@@ -2177,6 +2208,19 @@ dapp.setup({
         }
         break
       }
+      case 'remove_stake_request': {
+        if (typeof tx.from !== 'string') {
+          success = false
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.stake !== 'number') {
+          success = false
+          reason = '"Stake" must be a number.'
+          throw new Error(reason)
+        }
+        break
+      }
       case 'snapshot_claim': {
         if (typeof tx.from !== 'string') {
           success = false
@@ -2577,20 +2621,36 @@ dapp.setup({
       }
       case 'remove_stake': {
         const network: NetworkAccount = wrappedStates[tx.network].data
-        from.data.balance += network.current.stakeRequired
-        // from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
-        from.data.stake = 0
-        from.timestamp = tx.timestamp
-        from.data.transactions.push({ ...tx, txId })
-        dapp.log('Applied stake tx', from)
+        const shouldRemoveState = from.data.remove_stake_request && from.data.remove_stake_request + 2 * network.current.nodeRewardInterval <= Date.now()
+        if (shouldRemoveState) {
+          from.data.balance += network.current.stakeRequired
+          from.data.stake = 0
+          from.timestamp = tx.timestamp
+          from.data.remove_stake_request = null
+          from.data.transactions.push({ ...tx, txId })
+          dapp.log('Applied remove_stake tx', from)
+        } else {
+          dapp.log('Cancelled remove_stake tx because `remove_stake_request` is null or earlier than 2 * nodeRewardInterval', from)
+        }
+        dapp.log('Applied remove_stake tx marked as requested', from)
+        break
+      }
+      case 'remove_stake_request': {
+        const network: NetworkAccount = wrappedStates[tx.network].data
+        from.data.remove_stake_request = Date.now()
+        dapp.log('Applied remove_stake tx marked as requested', from)
         break
       }
       case 'node_reward': {
         const network: NetworkAccount = wrappedStates[tx.network].data
         from.balance += network.current.nodeRewardAmount
+        dapp.log(`Reward from ${tx.from} to ${tx.to}`)
         if (tx.from !== tx.to) {
+          dapp.log('Node reward to and from are different.')
+          dapp.log('TO ACCOUNT', to.data)
           if (to.data.stake >= network.current.stakeRequired) {
             to.data.balance += from.balance
+            if (to.data.remove_stake_request) to.data.remove_stake_request = null
             from.balance = 0
             to.timestamp = tx.timestamp
           }
@@ -2780,7 +2840,7 @@ dapp.setup({
           networkAccount,
         )
 
-        issue.winner = winner.id
+        issue.winnerId = winner.id
 
         from.timestamp = tx.timestamp
         issue.timestamp = tx.timestamp
@@ -3047,6 +3107,10 @@ dapp.setup({
         result.targetKeys = [tx.network]
         break
       case 'remove_stake':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.network]
+        break
+      case 'remove_stake_request':
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.network]
         break
