@@ -1472,7 +1472,7 @@ dapp.setup({
           return response
         }
         if (issue.number !== network.issue) {
-          response.reason = 'This issue number ${issue.number} does not match the current network issue ${network.issue}'
+          response.reason = `This issue number ${issue.number} does not match the current network issue ${network.issue}`
           return response
         }
         if (issue.active === false) {
@@ -1563,8 +1563,8 @@ dapp.setup({
           response.reason = "devIssue doesn't exist"
           return response
         }
-        if (devIssue.number !== network.issue) {
-          response.reason = 'This issue number ${issue.number} does not match the current network issue ${network.issue}'
+        if (devIssue.number !== network.devIssue) {
+          response.reason = `This dev issue number ${devIssue.number} does not match the current network dev issue ${network.devIssue}`
           return response
         }
         if (devIssue.active === false) {
@@ -3589,7 +3589,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
   let nodeAddress: string
   let lastReward: number
   let cycleData: Shardus.Cycle
-  let cycleStartTimestamp: number
+  let currentTime: number
   let luckyNodes: string[]
   let expected = Date.now() + cycleInterval
   let drift: number
@@ -3598,8 +3598,9 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
 
   // THIS CODE IS CALLED ON EVERY NODE ON EVERY CYCLE
   async function networkMaintenance(): Promise<NodeJS.Timeout> {
-    console.log('GOT TO NETWORK MAINTENANCE')
+    dapp.log('New maintainence cycle has started')
     drift = Date.now() - expected
+    currentTime = Date.now()
 
     try {
       console.log('BEFORE getLocalOrRemoteAccount')
@@ -3608,7 +3609,6 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       network = account.data
       ;[cycleData] = dapp.getLatestCycles()
       console.log(`cycleData: ${stringify(cycleData)}`)
-      cycleStartTimestamp = cycleData.start * 1000
       console.log(cycleData.marker)
       luckyNodes = dapp.getClosestNodes(cycleData.previous, 3)
       nodeId = dapp.getNodeId()
@@ -3637,13 +3637,13 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     dapp.log('devIssue: ', network.devIssue)
 
     // THIS IS FOR NODE_REWARD
-    if (cycleStartTimestamp - lastReward > network.current.nodeRewardInterval) {
+    if (currentTime - lastReward > network.current.nodeRewardInterval) {
       nodeReward(nodeAddress, nodeId)
-      lastReward = cycleStartTimestamp
+      lastReward = currentTime
     }
 
     // ISSUE
-    if (cycleStartTimestamp >= network.windows.proposalWindow[0] && cycleStartTimestamp <= network.windows.proposalWindow[1]) {
+    if (currentTime >= network.windows.proposalWindow[0] && currentTime <= network.windows.proposalWindow[1]) {
       if (!issueGenerated && network.issue > 1) {
         if (luckyNodes.includes(nodeId)) {
           await generateIssue(nodeAddress, nodeId)
@@ -3654,8 +3654,20 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       }
     }
 
+    // DEV_ISSUE
+    if (currentTime >= network.devWindows.devProposalWindow[0] && currentTime <= network.devWindows.devProposalWindow[1]) {
+      if (!devIssueGenerated && network.devIssue > 1) {
+        if (luckyNodes.includes(nodeId)) {
+          await generateDevIssue(nodeAddress, nodeId)
+        }
+        devIssueGenerated = true
+        devTallyGenerated = false
+        devApplyGenerated = false
+      }
+    }
+
     // TALLY
-    if (cycleStartTimestamp >= network.windows.graceWindow[0] && cycleStartTimestamp <= network.windows.graceWindow[1]) {
+    if (currentTime >= network.windows.graceWindow[0] && currentTime <= network.windows.graceWindow[1]) {
       if (!tallyGenerated) {
         if (luckyNodes.includes(nodeId)) {
           await tallyVotes(nodeAddress, nodeId)
@@ -3667,7 +3679,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     }
 
     // APPLY
-    if (cycleStartTimestamp >= network.windows.applyWindow[0] && cycleStartTimestamp <= network.windows.applyWindow[1]) {
+    if (currentTime >= network.windows.applyWindow[0] && currentTime <= network.windows.applyWindow[1]) {
       if (!applyGenerated) {
         if (luckyNodes.includes(nodeId)) {
           await applyParameters(nodeAddress, nodeId)
@@ -3678,20 +3690,8 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       }
     }
 
-    // DEV_ISSUE
-    if (cycleStartTimestamp >= network.devWindows.devProposalWindow[0] && cycleStartTimestamp <= network.devWindows.devProposalWindow[1]) {
-      if (!devIssueGenerated && network.devIssue > 1) {
-        if (luckyNodes.includes(nodeId)) {
-          await generateDevIssue(nodeAddress, nodeId)
-        }
-        devIssueGenerated = true
-        devTallyGenerated = false
-        devApplyGenerated = false
-      }
-    }
-
     // DEV_TALLY
-    if (cycleStartTimestamp >= network.devWindows.devGraceWindow[0] && cycleStartTimestamp <= network.devWindows.devGraceWindow[1]) {
+    if (currentTime >= network.devWindows.devGraceWindow[0] && currentTime <= network.devWindows.devGraceWindow[1]) {
       if (!devTallyGenerated) {
         if (luckyNodes.includes(nodeId)) {
           await tallyDevVotes(nodeAddress, nodeId)
@@ -3703,7 +3703,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     }
 
     // DEV_APPLY
-    if (cycleStartTimestamp >= network.devWindows.devApplyWindow[0] && cycleStartTimestamp <= network.devWindows.devApplyWindow[1]) {
+    if (currentTime >= network.devWindows.devApplyWindow[0] && currentTime <= network.devWindows.devApplyWindow[1]) {
       if (!devApplyGenerated) {
         if (luckyNodes.includes(nodeId)) {
           await applyDevParameters(nodeAddress, nodeId)
@@ -3717,7 +3717,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     // LOOP THROUGH IN-MEMORY DEVELOPER_FUND
     for (const payment of network.developerFund) {
       // PAY DEVELOPER IF THE network.current TIME IS GREATER THAN THE PAYMENT TIME
-      if (cycleStartTimestamp >= payment.timestamp) {
+      if (currentTime >= payment.timestamp) {
         if (luckyNodes.includes(nodeId)) {
           releaseDeveloperFunds(payment, nodeAddress, nodeId)
         }
@@ -3731,6 +3731,8 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     dapp.log('devIssueGenerated: ', devIssueGenerated)
     dapp.log('devTallyGenerated: ', devTallyGenerated)
     dapp.log('devApplyGenerated: ', devApplyGenerated)
+
+    dapp.log('Maintainence cycle has ended')
 
     expected += cycleInterval
     return setTimeout(networkMaintenance, Math.max(0, cycleInterval - drift))
