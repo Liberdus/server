@@ -2543,11 +2543,11 @@ dapp.setup({
         const network: NetworkAccount = wrappedStates[tx.network].data
         const recipients: UserAccount[] = tx.recipients.map((id: string) => wrappedStates[id].data)
         from.data.balance -= network.current.transactionFee
-        // from.data.transactions.push({ ...tx, txId })
+        from.data.transactions.push({ ...tx, txId })
         for (const user of recipients) {
           from.data.balance -= tx.amount
           user.data.balance += tx.amount
-          // recipient.data.transactions.push({ ...tx, txId })
+          user.data.transactions.push({ ...tx, txId })
         }
         from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
         dapp.log('Applied distribute transaction', from, recipients)
@@ -2718,7 +2718,7 @@ dapp.setup({
         proposal.number = issue.proposalCount
         issue.proposals.push(proposal.id)
 
-        // from.data.transactions.push({ ...tx, txId })
+        from.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         issue.timestamp = tx.timestamp
         proposal.timestamp = tx.timestamp
@@ -2743,7 +2743,7 @@ dapp.setup({
         devProposal.number = devIssue.devProposalCount
         devIssue.devProposals.push(devProposal.id)
 
-        // from.data.transactions.push({ ...tx, txId })
+        from.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         devIssue.timestamp = tx.timestamp
         devProposal.timestamp = tx.timestamp
@@ -2759,7 +2759,7 @@ dapp.setup({
         proposal.power += tx.amount
         proposal.totalVotes++
 
-        // from.data.transactions.push({ ...tx, txId })
+        from.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         proposal.timestamp = tx.timestamp
         dapp.log('Applied vote tx', from, proposal)
@@ -2780,7 +2780,7 @@ dapp.setup({
         }
 
         devProposal.totalVotes++
-        // from.data.transactions.push({ ...tx, txId })
+        from.data.transactions.push({ ...tx, txId })
         from.timestamp = tx.timestamp
         devProposal.timestamp = tx.timestamp
         dapp.log('Applied dev_vote tx', from, devProposal)
@@ -3009,6 +3009,7 @@ dapp.setup({
         const network: NetworkAccount = wrappedStates[tx.network].data
         const developer: UserAccount = wrappedStates[tx.developer].data
         developer.data.balance += tx.payment.amount
+        developer.data.transactions.push({ ...tx, txId })
 
         const when = tx.timestamp + ONE_SECOND * 10
 
