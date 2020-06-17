@@ -73,27 +73,13 @@ if (distPackageJson.name !== 'shardus-global-server-dist') {
 try {
   execa.commandSync(`docker build -t registry.gitlab.com/liberdus/server:${tag} -f ${dockerfile} .`, { stdio: [0, 1, 2] })
 } catch (err) {
-  try {
-    execa.commandSync(`sudo docker build -t registry.gitlab.com/liberdus/server:${tag} -f ${dockerfile} .`, { stdio: [0, 1, 2] })
-  } catch (err) {
-    console.error(err)
-    console.error()
-    console.error('Error: Unable to run docker build command')
-    console.error()
-    process.exit(1)
-  }
+  execa.commandSync(`sudo docker build -t registry.gitlab.com/liberdus/server:${tag} -f ${dockerfile} .`, { stdio: [0, 1, 2] })
 }
+
+execa.commandSync(`docker login registry.gitlab.com`, { stdio: [0, 1, 2] })
 
 try {
   execa.commandSync(`docker push registry.gitlab.com/liberdus/server:${tag}`, { stdio: [0, 1, 2] })
 } catch (err) {
-  try {
-    execa.commandSync(`sudo docker push registry.gitlab.com/liberdus/server:${tag}`, { stdio: [0, 1, 2] })
-  } catch (err) {
-    console.error(err)
-    console.error()
-    console.error('Error: Unable to run docker push command')
-    console.error()
-    process.exit(1)
-  }
+  execa.commandSync(`sudo docker push registry.gitlab.com/liberdus/server:${tag}`, { stdio: [0, 1, 2] })
 }
