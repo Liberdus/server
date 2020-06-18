@@ -181,7 +181,7 @@ Prop.set(config, 'logs', {
 const dapp = shardus(config)
 
 // CREATE A USER ACCOUNT
-function createAccount(accountId: string, timestamp: number): UserAccount {
+function createAccount (accountId: string, timestamp: number): UserAccount {
   const account: UserAccount = {
     id: accountId,
     data: {
@@ -206,7 +206,7 @@ function createAccount(accountId: string, timestamp: number): UserAccount {
 }
 
 // CREATE A NODE ACCOUNT FOR MINING
-function createNode(accountId: string): NodeAccount {
+function createNode (accountId: string): NodeAccount {
   const account: NodeAccount = {
     id: accountId,
     balance: 0,
@@ -218,7 +218,7 @@ function createNode(accountId: string): NodeAccount {
   return account
 }
 
-function createChat(accountId: string): ChatAccount {
+function createChat (accountId: string): ChatAccount {
   const chat: ChatAccount = {
     id: accountId,
     messages: [],
@@ -230,7 +230,7 @@ function createChat(accountId: string): ChatAccount {
 }
 
 // CREATE AN ALIAS ACCOUNT
-function createAlias(accountId: string): AliasAccount {
+function createAlias (accountId: string): AliasAccount {
   const alias: AliasAccount = {
     id: accountId,
     hash: '',
@@ -243,7 +243,7 @@ function createAlias(accountId: string): AliasAccount {
 }
 
 // CREATE THE INITIAL NETWORK ACCOUNT
-function createNetworkAccount(accountId: string, timestamp: number): NetworkAccount {
+function createNetworkAccount (accountId: string, timestamp: number): NetworkAccount {
   const proposalWindow = [timestamp, timestamp + TIME_FOR_PROPOSALS]
   const votingWindow = [proposalWindow[1], proposalWindow[1] + TIME_FOR_VOTING]
   const graceWindow = [votingWindow[1], votingWindow[1] + TIME_FOR_GRACE]
@@ -285,7 +285,7 @@ function createNetworkAccount(accountId: string, timestamp: number): NetworkAcco
 }
 
 // CREATE AN ISSUE ACCOUNT
-function createIssue(accountId: string): IssueAccount {
+function createIssue (accountId: string): IssueAccount {
   const issue: IssueAccount = {
     id: accountId,
     active: null,
@@ -301,7 +301,7 @@ function createIssue(accountId: string): IssueAccount {
 }
 
 // CREATE A DEV_ISSUE ACCOUNT
-function createDevIssue(accountId: string): DevIssueAccount {
+function createDevIssue (accountId: string): DevIssueAccount {
   const devIssue: DevIssueAccount = {
     id: accountId,
     devProposals: [],
@@ -317,7 +317,7 @@ function createDevIssue(accountId: string): DevIssueAccount {
 }
 
 // CREATE A PROPOSAL ACCOUNT
-function createProposal(accountId: string, parameters: NetworkParameters): ProposalAccount {
+function createProposal (accountId: string, parameters: NetworkParameters): ProposalAccount {
   const proposal: ProposalAccount = {
     id: accountId,
     power: 0,
@@ -333,7 +333,7 @@ function createProposal(accountId: string, parameters: NetworkParameters): Propo
 }
 
 // CREATE A DEV_PROPOSAL ACCOUNT
-function createDevProposal(accountId: string): DevProposalAccount {
+function createDevProposal (accountId: string): DevProposalAccount {
   const devProposal: DevProposalAccount = {
     id: accountId,
     title: null,
@@ -892,11 +892,11 @@ dapp.registerExternalPost('debug/exit', (req: { body: { code: number } }) => {
 })
 
 // HELPER METHOD TO WAIT
-async function _sleep(ms = 0): Promise<NodeJS.Timeout> {
+async function _sleep (ms = 0): Promise<NodeJS.Timeout> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-function maintenanceAmount(timestamp: number, account: UserAccount, network: NetworkAccount): number {
+function maintenanceAmount (timestamp: number, account: UserAccount, network: NetworkAccount): number {
   let amount: number
   if (timestamp - account.lastMaintenance < network.current.maintenanceInterval) {
     amount = 0
@@ -911,7 +911,7 @@ function maintenanceAmount(timestamp: number, account: UserAccount, network: Net
 
 // SDK SETUP FUNCTIONS
 dapp.setup({
-  async sync(): Promise<void> {
+  async sync (): Promise<void> {
     if (dapp.p2p.isFirstSeed) {
       await _sleep(ONE_SECOND * 20)
 
@@ -962,7 +962,7 @@ dapp.setup({
       }
     }
   },
-  validateTransaction(tx: any, wrappedStates: { [id: string]: WrappedAccount }): Shardus.IncomingTransactionResult {
+  validateTransaction (tx: any, wrappedStates: { [id: string]: WrappedAccount }): Shardus.IncomingTransactionResult {
     const response: Shardus.IncomingTransactionResult = {
       success: false,
       reason: 'Transaction is not valid.',
@@ -1891,7 +1891,7 @@ dapp.setup({
     }
   },
   // THIS NEEDS TO BE FAST, BUT PROVIDES BETTER RESPONSE IF SOMETHING GOES WRONG
-  validateTxnFields(tx: any): Shardus.IncomingTransactionResult {
+  validateTxnFields (tx: any): Shardus.IncomingTransactionResult {
     // Validate tx fields here
     let success = true
     let reason = 'This transaction is valid!'
@@ -2424,7 +2424,7 @@ dapp.setup({
       txnTimestamp,
     }
   },
-  apply(tx: any, wrappedStates: { [id: string]: WrappedAccount }) {
+  apply (tx: any, wrappedStates: { [id: string]: WrappedAccount }) {
     const from = wrappedStates[tx.from] && wrappedStates[tx.from].data
     const to = wrappedStates[tx.to] && wrappedStates[tx.to].data
     // Validate the tx
@@ -2572,8 +2572,8 @@ dapp.setup({
         if (!to.data.chats[tx.from]) to.data.chats[tx.from] = tx.chatId
 
         chat.messages.push(tx.message)
-        // from.data.transactions.push({ ...tx, txId })
-        // to.data.transactions.push({ ...tx, txId })
+        from.data.transactions.push({ ...tx, txId })
+        to.data.transactions.push({ ...tx, txId })
 
         chat.timestamp = tx.timestamp
         from.timestamp = tx.timestamp
@@ -3040,7 +3040,7 @@ dapp.setup({
     }
     return applyResponse
   },
-  getKeyFromTransaction(tx: any): Shardus.TransactionKeys {
+  getKeyFromTransaction (tx: any): Shardus.TransactionKeys {
     const result: TransactionKeys = {
       sourceKeys: [],
       targetKeys: [],
@@ -3186,7 +3186,7 @@ dapp.setup({
     result.allKeys = result.allKeys.concat(result.sourceKeys, result.targetKeys)
     return result
   },
-  getStateId(accountAddress: string, mustExist = true): string {
+  getStateId (accountAddress: string, mustExist = true): string {
     const account = accounts[accountAddress]
     if ((typeof account === 'undefined' || account === null) && mustExist === true) {
       throw new Error('Could not get stateId for account ' + accountAddress)
@@ -3194,16 +3194,16 @@ dapp.setup({
     const stateId = account.hash
     return stateId
   },
-  deleteLocalAccountData(): void {
+  deleteLocalAccountData (): void {
     accounts = {}
   },
-  setAccountData(accountRecords: Account[]): void {
+  setAccountData (accountRecords: Account[]): void {
     for (const account of accountRecords) {
       // possibly need to clone this so others lose their ref
       accounts[account.id] = account
     }
   },
-  getRelevantData(accountId: string, tx: any): Shardus.WrappedResponse {
+  getRelevantData (accountId: string, tx: any): Shardus.WrappedResponse {
     let account: any = accounts[accountId]
     let accountCreated = false
     // Create the account if it doesn't exist
@@ -3285,7 +3285,7 @@ dapp.setup({
     const wrapped = dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
     return wrapped
   },
-  updateAccountFull(wrappedData, localCache, applyResponse): void {
+  updateAccountFull (wrappedData, localCache, applyResponse): void {
     const accountId = wrappedData.accountId
     const accountCreated = wrappedData.accountCreated
     const updatedAccount = wrappedData.data
@@ -3310,10 +3310,10 @@ dapp.setup({
     )
   },
   // TODO: This might be useful in making some optimizations
-  updateAccountPartial(wrappedData, localCache, applyResponse) {
+  updateAccountPartial (wrappedData, localCache, applyResponse) {
     this.updateAccountFull(wrappedData, localCache, applyResponse)
   },
-  getAccountDataByRange(accountStart, accountEnd, tsStart, tsEnd, maxRecords): WrappedAccount[] {
+  getAccountDataByRange (accountStart, accountEnd, tsStart, tsEnd, maxRecords): WrappedAccount[] {
     const results: WrappedAccount[] = []
     const start = parseInt(accountStart, 16)
     const end = parseInt(accountEnd, 16)
@@ -3342,7 +3342,7 @@ dapp.setup({
     results.sort((a, b) => a.timestamp - b.timestamp)
     return results
   },
-  getAccountData(accountStart, accountEnd, maxRecords): WrappedAccount[] {
+  getAccountData (accountStart, accountEnd, maxRecords): WrappedAccount[] {
     const results: WrappedAccount[] = []
     const start = parseInt(accountStart, 16)
     const end = parseInt(accountEnd, 16)
@@ -3369,7 +3369,7 @@ dapp.setup({
     results.sort((a, b) => a.timestamp - b.timestamp)
     return results
   },
-  getAccountDataByList(addressList: string[]): WrappedAccount[] {
+  getAccountDataByList (addressList: string[]): WrappedAccount[] {
     const results: WrappedAccount[] = []
     for (const address of addressList) {
       const account = accounts[address]
@@ -3386,32 +3386,32 @@ dapp.setup({
     results.sort((a, b) => parseInt(a.accountId, 16) - parseInt(b.accountId, 16))
     return results
   },
-  calculateAccountHash(account): string {
+  calculateAccountHash (account): string {
     console.log(`calculateAccountHash NETWORK_ACCOUNT before: ${stringify(account)}`)
     account.hash = '' // Not sure this is really necessary
     account.hash = crypto.hashObj(account)
     console.log(`calculateAccountHash NETWORK_ACCOUNT after: ${stringify(account)}`)
     return account.hash
   },
-  resetAccountData(accountBackupCopies: Account[]): void {
+  resetAccountData (accountBackupCopies: Account[]): void {
     console.log('RESET_ACCOUNT_DATA', stringify(accountBackupCopies))
     for (const recordData of accountBackupCopies) {
       accounts[recordData.id] = recordData
     }
   },
-  deleteAccountData(addressList: string[]): void {
+  deleteAccountData (addressList: string[]): void {
     stringify('DELETE_ACCOUNT_DATA', stringify(addressList))
     for (const address of addressList) {
       delete accounts[address]
     }
   },
-  getAccountDebugValue(wrappedAccount: WrappedAccount): string {
+  getAccountDebugValue (wrappedAccount: WrappedAccount): string {
     return `${stringify(wrappedAccount)}`
   },
-  canDebugDropTx(tx: any) {
+  canDebugDropTx (tx: any) {
     return false
   },
-  close(): void {
+  close (): void {
     dapp.log('Shutting down server...')
     console.log('Shutting down server...')
   },
@@ -3420,7 +3420,7 @@ dapp.setup({
 dapp.registerExceptionHandler()
 
 // NODE_REWARD TRANSACTION FUNCTION
-function nodeReward(address: string, nodeId: string): void {
+function nodeReward (address: string, nodeId: string): void {
   const tx = {
     type: 'node_reward',
     network: networkAccount,
@@ -3435,7 +3435,7 @@ function nodeReward(address: string, nodeId: string): void {
 }
 
 // ISSUE TRANSACTION FUNCTION
-async function generateIssue(address: string, nodeId: string): Promise<void> {
+async function generateIssue (address: string, nodeId: string): Promise<void> {
   const account = await dapp.getLocalOrRemoteAccount(networkAccount)
   const network: NetworkAccount = account.data
   const tx = {
@@ -3452,7 +3452,7 @@ async function generateIssue(address: string, nodeId: string): Promise<void> {
 }
 
 // DEV_ISSUE TRANSACTION FUNCTION
-async function generateDevIssue(address: string, nodeId: string): Promise<void> {
+async function generateDevIssue (address: string, nodeId: string): Promise<void> {
   const account = await dapp.getLocalOrRemoteAccount(networkAccount)
   const network: NetworkAccount = account.data
   const tx = {
@@ -3468,7 +3468,7 @@ async function generateDevIssue(address: string, nodeId: string): Promise<void> 
 }
 
 // TALLY TRANSACTION FUNCTION
-async function tallyVotes(address: string, nodeId: string): Promise<void> {
+async function tallyVotes (address: string, nodeId: string): Promise<void> {
   console.log(`GOT TO TALLY_VOTES FN ${address} ${nodeId}`)
   try {
     const network = await dapp.getLocalOrRemoteAccount(networkAccount)
@@ -3497,7 +3497,7 @@ async function tallyVotes(address: string, nodeId: string): Promise<void> {
 }
 
 // DEV_TALLY TRANSACTION FUNCTION
-async function tallyDevVotes(address: string, nodeId: string): Promise<void> {
+async function tallyDevVotes (address: string, nodeId: string): Promise<void> {
   try {
     const network = await dapp.getLocalOrRemoteAccount(networkAccount)
     const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${network.data.devIssue}`))
@@ -3525,7 +3525,7 @@ async function tallyDevVotes(address: string, nodeId: string): Promise<void> {
 }
 
 // APPLY_PARAMETERS TRANSACTION FUNCTION
-async function applyParameters(address: string, nodeId: string): Promise<void> {
+async function applyParameters (address: string, nodeId: string): Promise<void> {
   const account = await dapp.getLocalOrRemoteAccount(networkAccount)
   const network: NetworkAccount = account.data
   const tx = {
@@ -3541,7 +3541,7 @@ async function applyParameters(address: string, nodeId: string): Promise<void> {
 }
 
 // APPLY_DEV_PARAMETERS TRANSACTION FUNCTION
-async function applyDevParameters(address: string, nodeId: string): Promise<void> {
+async function applyDevParameters (address: string, nodeId: string): Promise<void> {
   const account = await dapp.getLocalOrRemoteAccount(networkAccount)
   const network: NetworkAccount = account.data
   const tx = {
@@ -3557,7 +3557,7 @@ async function applyDevParameters(address: string, nodeId: string): Promise<void
 }
 
 // RELEASE DEVELOPER FUNDS FOR A PAYMENT
-function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeId: string): void {
+function releaseDeveloperFunds (payment: DeveloperPayment, address: string, nodeId: string): void {
   const tx = {
     type: 'developer_payment',
     nodeId,
@@ -3598,7 +3598,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
   await dapp.start()
 
   // THIS CODE IS CALLED ON EVERY NODE ON EVERY CYCLE
-  async function networkMaintenance(): Promise<NodeJS.Timeout> {
+  async function networkMaintenance (): Promise<NodeJS.Timeout> {
     dapp.log('New maintainence cycle has started')
     drift = Date.now() - expected
     currentTime = Date.now()
