@@ -3387,16 +3387,14 @@ dapp.setup({
     return results
   },
   calculateAccountHash (account): string {
-    console.log(`calculateAccountHash NETWORK_ACCOUNT before: ${stringify(account)}`)
     account.hash = '' // Not sure this is really necessary
     account.hash = crypto.hashObj(account)
-    console.log(`calculateAccountHash NETWORK_ACCOUNT after: ${stringify(account)}`)
     return account.hash
   },
-  resetAccountData (accountBackupCopies: Account[]): void {
-    console.log('RESET_ACCOUNT_DATA', stringify(accountBackupCopies))
+  resetAccountData (accountBackupCopies: any[]): void {
     for (const recordData of accountBackupCopies) {
-      accounts[recordData.id] = recordData
+      const accountData: Account = recordData.data
+      accounts[accountData.id] = {...accountData}
     }
   },
   deleteAccountData (addressList: string[]): void {
