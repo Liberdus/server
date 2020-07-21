@@ -919,42 +919,44 @@ dapp.setup({
       const address = dapp.getNode(nodeId).address
       console.log('GET_NODE', dapp.getNode(nodeId))
       const when = Date.now() + ONE_SECOND * 10
-
-      dapp.setGlobal(
-        networkAccount,
-        {
-          type: 'init_network',
-          timestamp: when,
+      const existingNetworkAccount = await dapp.getLocalOrRemoteAccount(networkAccount)
+      if (existingNetworkAccount) {
+        dapp.log('NETWORK_ACCOUNT ALREADY EXISTED: ', existingNetworkAccount)
+        await _sleep(ONE_SECOND * 20)
+      } else {
+        dapp.setGlobal(
+          networkAccount,
+          {
+            type: 'init_network',
+            timestamp: when,
+            network: networkAccount,
+          },
+          when,
+          networkAccount,
+        )
+  
+        dapp.log('GENERATED_NEW_NETWORK: ', nodeId)
+        await _sleep(ONE_SECOND * 20)
+        
+        dapp.set({
+          type: 'issue',
           network: networkAccount,
-        },
-        when,
-        networkAccount,
-      )
-
-      dapp.log('GENERATED_NETWORK: ', nodeId)
-
-      await _sleep(ONE_SECOND * 20)
-
-      dapp.set({
-        type: 'issue',
-        network: networkAccount,
-        nodeId,
-        from: address,
-        issue: crypto.hash(`issue-${1}`),
-        proposal: crypto.hash(`issue-${1}-proposal-1`),
-        timestamp: Date.now(),
-      })
-
-      dapp.set({
-        type: 'dev_issue',
-        network: networkAccount,
-        nodeId,
-        from: address,
-        devIssue: crypto.hash(`dev-issue-${1}`),
-        timestamp: Date.now(),
-      })
-
-      await _sleep(ONE_SECOND * 10)
+          nodeId,
+          from: address,
+          issue: crypto.hash(`issue-${1}`),
+          proposal: crypto.hash(`issue-${1}-proposal-1`),
+          timestamp: Date.now(),
+        })
+        dapp.set({
+          type: 'dev_issue',
+          network: networkAccount,
+          nodeId,
+          from: address,
+          devIssue: crypto.hash(`dev-issue-${1}`),
+          timestamp: Date.now(),
+        })
+        await _sleep(ONE_SECOND * 10)
+      }
     } else {
       while (!(await dapp.getLocalOrRemoteAccount(networkAccount))) {
         console.log('waiting..')
