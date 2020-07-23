@@ -3212,61 +3212,61 @@ dapp.setup({
     if (typeof account === 'undefined' || account === null) {
       if (accountId === networkAccount) {
         account = createNetworkAccount(accountId, tx.timestamp)
-        accounts[accountId] = account
+        //accounts[accountId] = account
         accountCreated = true
       } else if (tx.type === 'issue') {
         if (accountId === tx.issue) {
           account = createIssue(accountId)
-          accounts[accountId] = account
+          //accounts[accountId] = account
           accountCreated = true
         } else if (accountId === tx.proposal) {
           account = createProposal(accountId, tx.parameters)
-          accounts[accountId] = account
+          //accounts[accountId] = account
           accountCreated = true
         }
       } else if (tx.type === 'dev_issue') {
         if (accountId === tx.devIssue) {
           account = createDevIssue(accountId)
-          accounts[accountId] = account
+          //accounts[accountId] = account
           accountCreated = true
         }
       } else if (tx.type === 'dev_proposal') {
         if (accountId === tx.devProposal) {
           account = createDevProposal(accountId)
-          accounts[accountId] = account
+          //accounts[accountId] = account
           accountCreated = true
         }
       } else if (tx.type === 'proposal') {
         if (accountId === tx.proposal) {
           account = createProposal(accountId, tx.parameters)
-          accounts[accountId] = account
+          //accounts[accountId] = account
           accountCreated = true
         }
       } else if (tx.type === 'register') {
         if (accountId === tx.aliasHash) {
           account = createAlias(accountId)
-          accounts[accountId] = account
+          //accounts[accountId] = account
           accountCreated = true
         }
       } else if (tx.type === 'message') {
         if (accountId === tx.chatId) {
           account = createChat(accountId)
-          accounts[accountId] = account
+          //accounts[accountId] = account
           accountCreated = true
         }
       } else if (tx.type === 'node_reward') {
         if (accountId === tx.from && accountId === tx.to) {
           account = createNode(accountId)
-          accounts[accountId] = account
+          //accounts[accountId] = account
           accountCreated = true
         } else {
           if (accountId === tx.to) {
             account = createAccount(accountId, tx.timestamp)
-            accounts[accountId] = account
+            //accounts[accountId] = account
             accountCreated = true
           } else {
             account = createNode(accountId)
-            accounts[accountId] = account
+            //accounts[accountId] = account
             accountCreated = true
           }
         }
@@ -3275,11 +3275,11 @@ dapp.setup({
     if (typeof account === 'undefined' || account === null) {
       if (tx.nodeId) {
         account = createNode(accountId)
-        accounts[accountId] = account
+        //accounts[accountId] = account
         accountCreated = true
       } else {
         account = createAccount(accountId, tx.timestamp)
-        accounts[accountId] = account
+        //accounts[accountId] = account
         accountCreated = true
       }
     }
