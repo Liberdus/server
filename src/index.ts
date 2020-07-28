@@ -2659,7 +2659,8 @@ dapp.setup({
         }
         from.nodeRewardTime = tx.timestamp
         from.timestamp = tx.timestamp
-        to.data.transactions.push({ ...tx, txId })
+        //NodeAccount does not have transactions
+        //to.data.transactions.push({ ...tx, txId })
         dapp.log('Applied node_reward tx', from, to)
         break
       }
