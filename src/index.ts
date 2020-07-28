@@ -50,7 +50,7 @@ const TIME_FOR_DEV_GRACE = ONE_DAY + ONE_SECOND * 30 // ONE_DAY
 const TIME_FOR_DEV_APPLY = 2 * ONE_DAY + ONE_SECOND * 30 // ONE_DAY * 2
 
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
-const cycleDuration = 30
+const cycleDuration = 20
 
 // INITIAL NETWORK PARAMETERS FOR LIBERDUS
 const INITIAL_PARAMETERS: NetworkParameters = {
@@ -99,8 +99,8 @@ Prop.set(config, 'server.p2p', {
   minNodesToAllowTxs: 1,
   minNodes: 50,
   maxNodes: 50,
-  maxJoinedPerCycle: 2,
-  maxSyncingPerCycle: 5,
+  maxJoinedPerCycle: 3,
+  maxSyncingPerCycle: 10,
   maxRotatedPerCycle: 1,
 })
 Prop.set(config, 'server.loadDetection', {
