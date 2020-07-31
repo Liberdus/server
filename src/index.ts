@@ -100,7 +100,7 @@ Prop.set(config, 'server.p2p', {
   minNodes: 50,
   maxNodes: 50,
   maxJoinedPerCycle: 3,
-  maxSyncingPerCycle: 10,
+  maxSyncingPerCycle: 1,
   maxRotatedPerCycle: 1,
 })
 Prop.set(config, 'server.loadDetection', {
@@ -118,7 +118,7 @@ Prop.set(config, 'server.rateLimiting', {
   loadLimit: 0.5,
 })
 Prop.set(config, 'server.sharding', {
-  nodesPerConsensusGroup: 50,
+  nodesPerConsensusGroup: 5,
 })
 Prop.set(config, 'logs', {
   dir: './logs',
