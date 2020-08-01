@@ -185,7 +185,7 @@ function createAccount (accountId: string, timestamp: number): UserAccount {
   const account: UserAccount = {
     id: accountId,
     data: {
-      balance: 0,
+      balance: 50,
       stake: 0,
       remove_stake_request: null,
       toll: null,
