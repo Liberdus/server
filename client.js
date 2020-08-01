@@ -13,7 +13,7 @@ crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
 let USER
 let HOST = process.argv[2] || 'localhost:9001'
-const HOST_IP = '173.255.195.137'
+const HOST_IP = '69.30.199.114'
 const ARCHIVESERVER = process.argv[3] || 'localhost:4000'
 console.log(`Using ${HOST} as node for queries and transactions.`)
 
