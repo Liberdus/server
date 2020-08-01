@@ -100,7 +100,7 @@ Prop.set(config, 'server.p2p', {
   minNodes: 50,
   maxNodes: 50,
   maxJoinedPerCycle: 3,
-  maxSyncingPerCycle: 1,
+  maxSyncingPerCycle: 5,
   maxRotatedPerCycle: 1,
 })
 Prop.set(config, 'server.loadDetection', {
@@ -913,7 +913,7 @@ function maintenanceAmount (timestamp: number, account: UserAccount, network: Ne
 dapp.setup({
   async sync (): Promise<void> {
     if (dapp.p2p.isFirstSeed) {
-      await _sleep(ONE_SECOND * 20)
+      await _sleep(ONE_SECOND * 5)
 
       const nodeId = dapp.getNodeId()
       const address = dapp.getNode(nodeId).address
@@ -922,7 +922,7 @@ dapp.setup({
       const existingNetworkAccount = await dapp.getLocalOrRemoteAccount(networkAccount)
       if (existingNetworkAccount) {
         dapp.log('NETWORK_ACCOUNT ALREADY EXISTED: ', existingNetworkAccount)
-        await _sleep(ONE_SECOND * 20)
+        await _sleep(ONE_SECOND * 5)
       } else {
         dapp.setGlobal(
           networkAccount,
@@ -936,7 +936,7 @@ dapp.setup({
         )
   
         dapp.log('GENERATED_NEW_NETWORK: ', nodeId)
-        await _sleep(ONE_SECOND * 20)
+        await _sleep(ONE_SECOND * 5)
         
         dapp.set({
           type: 'issue',
