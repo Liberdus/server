@@ -1,6 +1,6 @@
 {
   "name": "liberdus",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Liberdus is a payment network that allows users to govern their own money system in a democratic fashion",
   "main": "dist/index.js",
   "scripts": {
@@ -63,7 +63,7 @@
     "execa": "^4.0.1",
     "gts": "^2.0.0",
     "hygen-create": "^0.2.1",
-    "monitor-server": "git+https://gitlab.com/shardus/monitor-server.git",
+    "monitor-server": "git+https://gitlab.com/shardus/monitor-server.git#semver:^1.0.0",
     "pm2": "^4.1.2",
     "prettier": "^1.19.1",
     "shelljs": "^0.8.4",
