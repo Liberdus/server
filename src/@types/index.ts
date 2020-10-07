@@ -4,6 +4,7 @@
 
 interface UserAccount {
   id: string
+  type: string
   data: {
     balance: number
     toll: number | null
@@ -24,6 +25,7 @@ interface UserAccount {
 
 interface NodeAccount {
   id: string
+  type: string
   balance: number
   nodeRewardTime: number
   hash: string
@@ -32,6 +34,7 @@ interface NodeAccount {
 
 interface ChatAccount {
   id: string
+  type: string
   messages: unknown[]
   timestamp: number
   hash: string
@@ -39,6 +42,7 @@ interface ChatAccount {
 
 interface AliasAccount {
   id: string
+  type: string
   hash: string
   inbox: string
   address: string
@@ -47,6 +51,7 @@ interface AliasAccount {
 
 interface NetworkAccount {
   id: string
+  type: string
   current: NetworkParameters
   next: NetworkParameters | {}
   windows: Windows
@@ -64,6 +69,7 @@ interface NetworkAccount {
 
 interface IssueAccount {
   id: string
+  type: string
   active: boolean | null
   proposals: string[]
   proposalCount: number
@@ -75,6 +81,7 @@ interface IssueAccount {
 
 interface DevIssueAccount {
   id: string
+  type: string
   devProposals: string[]
   devProposalCount: number
   winners: string[]
@@ -86,6 +93,7 @@ interface DevIssueAccount {
 
 interface ProposalAccount {
   id: string
+  type: string
   power: number
   totalVotes: number
   parameters: NetworkParameters
@@ -97,6 +105,7 @@ interface ProposalAccount {
 
 interface DevProposalAccount {
   id: string
+  type: string
   approve: number
   reject: number
   title: string | null

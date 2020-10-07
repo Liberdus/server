@@ -157,10 +157,15 @@ Prop.set(config, 'logs', {
       },
       playback: {
         type: 'file',
-        maxLogSize: 1000000000,
+        maxLogSize: 100000000,
         backups: 10,
       },
       shardDump: {
+        type: 'file',
+        maxLogSize: 100000000,
+        backups: 10,
+      },
+      statsDump: {
         type: 'file',
         maxLogSize: 100000000,
         backups: 10,
@@ -174,9 +179,22 @@ Prop.set(config, 'logs', {
       net: { appenders: ['net'], level: 'trace' },
       playback: { appenders: ['playback'], level: 'trace' },
       shardDump: { appenders: ['shardDump'], level: 'trace' },
+      statsDump: { appenders: ['statsDump'], level: 'trace' },
     },
   },
 })
+
+//account type constants. not sure if best practice, open to suggestions.
+const UserAccount = 'UserAccount'
+const NodeAccount = 'NodeAccount'
+const ChatAccount = 'ChatAccount'
+const AliasAccount = 'AliasAccount'
+const DevIssueAccount = 'DevIssueAccount'
+const IssueAccount = 'IssueAccount'
+const NetworkAccount = 'NetworkAccount'
+const ProposalAccount = 'ProposalAccount'
+const DevProposalAccount = 'DevProposalAccount'
+const UndeterminedAccountType = 'undetermined'
 
 const dapp = shardus(config)
 
@@ -184,6 +202,7 @@ const dapp = shardus(config)
 function createAccount (accountId: string, timestamp: number): UserAccount {
   const account: UserAccount = {
     id: accountId,
+    type: 'UserAccount',
     data: {
       balance: 50,
       stake: 0,
@@ -209,6 +228,7 @@ function createAccount (accountId: string, timestamp: number): UserAccount {
 function createNode (accountId: string): NodeAccount {
   const account: NodeAccount = {
     id: accountId,
+    type: 'NodeAccount',
     balance: 0,
     nodeRewardTime: 0,
     hash: '',
@@ -221,6 +241,7 @@ function createNode (accountId: string): NodeAccount {
 function createChat (accountId: string): ChatAccount {
   const chat: ChatAccount = {
     id: accountId,
+    type: 'ChatAccount',
     messages: [],
     timestamp: 0,
     hash: '',
@@ -233,6 +254,7 @@ function createChat (accountId: string): ChatAccount {
 function createAlias (accountId: string): AliasAccount {
   const alias: AliasAccount = {
     id: accountId,
+    type: 'AliasAccount',
     hash: '',
     inbox: '',
     address: '',
@@ -256,6 +278,7 @@ function createNetworkAccount (accountId: string, timestamp: number): NetworkAcc
 
   const account: NetworkAccount = {
     id: accountId,
+    type: 'NetworkAccount',
     current: INITIAL_PARAMETERS,
     next: {},
     windows: {
@@ -288,6 +311,7 @@ function createNetworkAccount (accountId: string, timestamp: number): NetworkAcc
 function createIssue (accountId: string): IssueAccount {
   const issue: IssueAccount = {
     id: accountId,
+    type: 'IssueAccount',
     active: null,
     proposals: [],
     proposalCount: 0,
@@ -304,6 +328,7 @@ function createIssue (accountId: string): IssueAccount {
 function createDevIssue (accountId: string): DevIssueAccount {
   const devIssue: DevIssueAccount = {
     id: accountId,
+    type: 'DevIssueAccount',
     devProposals: [],
     devProposalCount: 0,
     winners: [],
@@ -320,6 +345,7 @@ function createDevIssue (accountId: string): DevIssueAccount {
 function createProposal (accountId: string, parameters: NetworkParameters): ProposalAccount {
   const proposal: ProposalAccount = {
     id: accountId,
+    type: 'ProposalAccount',
     power: 0,
     totalVotes: 0,
     winner: false,
@@ -336,6 +362,7 @@ function createProposal (accountId: string, parameters: NetworkParameters): Prop
 function createDevProposal (accountId: string): DevProposalAccount {
   const devProposal: DevProposalAccount = {
     id: accountId,
+    type: 'DevProposalAccount',
     title: null,
     description: null,
     approve: 0,
@@ -3416,7 +3443,106 @@ dapp.setup({
     dapp.log('Shutting down server...')
     console.log('Shutting down server...')
   },
+
+  //txSummaryUpdate: (blob: any, tx: any, wrappedStates: any) => void
+  txSummaryUpdate(blob, tx, wrappedStates){
+    if(blob.initialized == null){
+      blob.initialized = true
+      blob.txByType = {}
+    }
+
+    if(blob.txByType[tx.type] == null){
+      blob.txByType[tx.type] = 0
+    }
+    blob.txByType[tx.type]++
+
+  },
+  // dataSummaryInit: (blob: any, accountData: any) => void
+  dataSummaryInit(blob, accountData) {
+    if(blob.initialized == null){
+      blob.initialized = true
+      blob.accByType = {}
+      blob.totalBalance=0
+    }
+
+    let accType = getAccountType(accountData)
+    if(blob.accByType[accType] == null){
+      blob.accByType[accType] = 0
+    }
+    blob.accByType[accType]++
+
+    if(accType == UserAccount){
+      blob.totalBalance += accountData.data.balance
+    }
+    if(accType == NodeAccount){
+      blob.totalBalance += accountData.balance
+    } 
+
+  },
+  // dataSummaryUpdate: (blob: any, accountDataBefore: any, accountDataAfter: any) => void
+  dataSummaryUpdate(blob, accountDataBefore, accountDataAfter){
+    if(blob.initialized == null){
+      //should not ever get here though.
+      blob.initialized = true
+      blob.accByType = {}
+      blob.totalBalance=0
+    }
+    let accType = getAccountType(accountDataAfter)
+    
+    if(accType == UserAccount){
+      let balanceChange = accountDataAfter.data.balance - accountDataBefore.data.balance
+      blob.totalBalance += balanceChange
+    }
+    if(accType == NodeAccount){
+      let balanceChange = accountDataAfter.balance - accountDataBefore.balance
+      blob.totalBalance += balanceChange
+    } 
+
+
+  },
 })
+
+function getAccountType(data){
+  if(data == null){
+    return UndeterminedAccountType
+  }
+
+  if(data.type != null){
+    return data.type
+  }
+
+  //make sure this works on old accounts with no type
+  if(data.alias !== undefined){
+    return UserAccount
+  }
+  if(data.nodeRewardTime !== undefined){
+    return NodeAccount
+  }
+  if(data.messages !== undefined){
+    return ChatAccount
+  }
+  if(data.inbox !== undefined){
+    return AliasAccount
+  }  
+  if(data.devProposals !== undefined){
+    return DevIssueAccount
+  }
+  if(data.proposals !== undefined){
+    return IssueAccount
+  }
+  if(data.devWindows !== undefined){
+    return NetworkAccount
+  }
+  if(data.totalVotes !== undefined){
+    if(data.power !== undefined){
+      return ProposalAccount
+    }
+    if(data.payAddress !== undefined){
+      return DevProposalAccount
+    }
+  }
+  return UndeterminedAccountType
+}
 
 dapp.registerExceptionHandler()
 
