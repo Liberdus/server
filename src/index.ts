@@ -2672,6 +2672,7 @@ dapp.setup({
       }
       case 'node_reward': {
         const network: NetworkAccount = wrappedStates[tx.network].data
+        //const nodeAccount: NodeAccount = to
         from.balance += network.current.nodeRewardAmount
         dapp.log(`Reward from ${tx.from} to ${tx.to}`)
         if (tx.from !== tx.to) {
@@ -3472,10 +3473,18 @@ dapp.setup({
     blob.accByType[accType]++
 
     if(accType == UserAccount){
-      blob.totalBalance += accountData.data.balance
+      if(accountData.data.balance != null){
+        blob.totalBalance += accountData.data.balance
+      } else {
+        dapp.log(`error: null balance attempt. dataSummaryInit UserAccount ${accountData?.data.balance} ${stringify(accountData?.id)}`)
+      }
     }
     if(accType == NodeAccount){
-      blob.totalBalance += accountData.balance
+      if(accountData.balance != null){
+        blob.totalBalance += accountData.balance
+      } else {
+        dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount ${accountData?.balance} ${stringify(accountData?.id)}`)
+      }
     } 
 
   },
@@ -3490,13 +3499,23 @@ dapp.setup({
     let accType = getAccountType(accountDataAfter)
     
     if(accType == UserAccount){
-      let balanceChange = accountDataAfter.data.balance - accountDataBefore.data.balance
-      blob.totalBalance += balanceChange
+      let balanceChange = accountDataAfter?.data?.balance - accountDataBefore?.data?.balance
+      if(balanceChange != null){
+        blob.totalBalance += balanceChange    
+      } else {
+        dapp.log(`error: null balance attempt. dataSummaryUpdate UserAccount ${accountDataAfter?.data?.balance} ${stringify(accountDataAfter?.id)} ${accountDataBefore?.data?.balance} ${stringify(accountDataBefore?.id)}`)
+      }
+
+
     }
     if(accType == NodeAccount){
-      let balanceChange = accountDataAfter.balance - accountDataBefore.balance
-      blob.totalBalance += balanceChange
-    } 
+      let balanceChange = accountDataAfter?.balance - accountDataBefore?.balance
+      if(balanceChange != null){
+        blob.totalBalance += balanceChange
+      } else {
+        dapp.log(`error: null balance attempt. dataSummaryUpdate NodeAccount ${accountDataAfter?.balance} ${stringify(accountDataAfter?.id)} ${accountDataBefore?.balance} ${stringify(accountDataBefore?.id)}`)
+      }
+    }
 
 
   },
