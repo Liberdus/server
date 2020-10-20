@@ -3450,12 +3450,14 @@ dapp.setup({
     if(blob.initialized == null){
       blob.initialized = true
       blob.txByType = {}
+      blob.totalTx = 0
     }
 
     if(blob.txByType[tx.type] == null){
       blob.txByType[tx.type] = 0
     }
     blob.txByType[tx.type]++
+    blob.totalTx++
 
   },
   // dataSummaryInit: (blob: any, accountData: any) => void
@@ -3464,6 +3466,7 @@ dapp.setup({
       blob.initialized = true
       blob.accByType = {}
       blob.totalBalance=0
+      blob.totalAccounts=0
     }
 
     let accType = getAccountType(accountData)
@@ -3471,6 +3474,7 @@ dapp.setup({
       blob.accByType[accType] = 0
     }
     blob.accByType[accType]++
+    blob.totalAccounts++
 
     if(accType == UserAccount){
       if(accountData.data.balance != null){
@@ -3495,6 +3499,7 @@ dapp.setup({
       blob.initialized = true
       blob.accByType = {}
       blob.totalBalance=0
+      blob.totalAccounts=0
     }
     let accType = getAccountType(accountDataAfter)
     
