@@ -3225,6 +3225,24 @@ dapp.setup({
     const stateId = account.hash
     return stateId
   },
+  getAccountTimestamp(accountAddress: string, mustExist = true): number {
+    const account = accounts[accountAddress]
+    if ((typeof account === 'undefined' || account === null) && mustExist === true) {
+      throw new Error('Could not get getAccountTimestamp for account ' + accountAddress)
+    }
+    const timestamp = account.timestamp
+    return timestamp
+  },  
+  getTimestampAndHashFromAccount(accountData: any): {timestamp:number, hash: string} {
+    const account:Account = accountData as Account
+    // if ((typeof account === 'undefined' || account === null)) {
+    //   throw new Error(`Could not get getAccountInfo for account ${stringify(accountData)} `)
+    // }
+    const timestamp = account.timestamp
+    const hash = account.hash
+    return {timestamp,hash}
+  },
+
   deleteLocalAccountData (): void {
     accounts = {}
   },
@@ -3478,16 +3496,31 @@ dapp.setup({
 
     if(accType == UserAccount){
       if(accountData.data.balance != null){
-        blob.totalBalance += accountData.data.balance
+        let blobBalanceBefore = blob.totalBalance
+        let accountBalance = accountData.data.balance  
+        let totalBalance = blobBalanceBefore + accountBalance
+
+        dapp.log(`stats balance init ${blobBalanceBefore}+${accountBalance}=${totalBalance}  ${stringify(accountData?.id)}`)
+
+        if(totalBalance != null){
+          blob.totalBalance = totalBalance
+        } else {
+          dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 1 ${accountData?.data.balance} ${stringify(accountData?.id)}`)
+        }
       } else {
-        dapp.log(`error: null balance attempt. dataSummaryInit UserAccount ${accountData?.data.balance} ${stringify(accountData?.id)}`)
+        dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 2 ${accountData?.data.balance} ${stringify(accountData?.id)}`)
       }
     }
     if(accType == NodeAccount){
       if(accountData.balance != null){
-        blob.totalBalance += accountData.balance
+        let totalBalance = blob.totalBalance + accountData.balance   
+        if(totalBalance != null){
+          blob.totalBalance = totalBalance
+        } else {
+          dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 1 ${accountData?.balance} ${stringify(accountData?.id)}`)
+        }
       } else {
-        dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount ${accountData?.balance} ${stringify(accountData?.id)}`)
+        dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 2 ${accountData?.balance} ${stringify(accountData?.id)}`)
       }
     } 
 
@@ -3504,11 +3537,23 @@ dapp.setup({
     let accType = getAccountType(accountDataAfter)
     
     if(accType == UserAccount){
+      let blobBalanceBefore = blob.totalBalance
+      let accountBalanceBefore = accountDataBefore?.data?.balance 
+      let accountBalanceAfter = accountDataAfter?.data?.balance
       let balanceChange = accountDataAfter?.data?.balance - accountDataBefore?.data?.balance
+
+      let totalBalance = blob.totalBalance + balanceChange  
+      dapp.log(`stats balance update ${blobBalanceBefore}+${balanceChange}(${accountBalanceAfter}-${accountBalanceBefore})=${totalBalance}  ${stringify(accountDataAfter?.id)}`)
+
       if(balanceChange != null){
-        blob.totalBalance += balanceChange    
+        totalBalance = blob.totalBalance + balanceChange    
+        if(totalBalance != null){
+          blob.totalBalance = totalBalance
+        } else {
+          dapp.log(`error: null balance attempt. dataSummaryUpdate UserAccount 1 ${accountDataAfter?.data?.balance} ${stringify(accountDataAfter?.id)} ${accountDataBefore?.data?.balance} ${stringify(accountDataBefore?.id)}`)
+        }
       } else {
-        dapp.log(`error: null balance attempt. dataSummaryUpdate UserAccount ${accountDataAfter?.data?.balance} ${stringify(accountDataAfter?.id)} ${accountDataBefore?.data?.balance} ${stringify(accountDataBefore?.id)}`)
+        dapp.log(`error: null balance attempt. dataSummaryUpdate UserAccount 2 ${accountDataAfter?.data?.balance} ${stringify(accountDataAfter?.id)} ${accountDataBefore?.data?.balance} ${stringify(accountDataBefore?.id)}`)
       }
 
 
@@ -3516,14 +3561,20 @@ dapp.setup({
     if(accType == NodeAccount){
       let balanceChange = accountDataAfter?.balance - accountDataBefore?.balance
       if(balanceChange != null){
-        blob.totalBalance += balanceChange
+        let totalBalance = blob.totalBalance + balanceChange    
+        if(totalBalance != null){
+          blob.totalBalance = totalBalance
+        } else {
+          dapp.log(`error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter?.balance} ${stringify(accountDataAfter?.id)} ${accountDataBefore?.balance} ${stringify(accountDataBefore?.id)}`)  
+        }
       } else {
-        dapp.log(`error: null balance attempt. dataSummaryUpdate NodeAccount ${accountDataAfter?.balance} ${stringify(accountDataAfter?.id)} ${accountDataBefore?.balance} ${stringify(accountDataBefore?.id)}`)
+        dapp.log(`error: null balance attempt. dataSummaryUpdate NodeAccount 2 ${accountDataAfter?.balance} ${stringify(accountDataAfter?.id)} ${accountDataBefore?.balance} ${stringify(accountDataBefore?.id)}`)
       }
     }
 
 
   },
+
 })
 
 function getAccountType(data){
