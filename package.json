@@ -1,6 +1,6 @@
 {
   "name": "liberdus",
-  "version": "2.1.5",
+  "version": "2.1.6",
   "description": "Liberdus is a payment network that allows users to govern their own money system in a democratic fashion",
   "main": "dist/index.js",
   "scripts": {
@@ -29,7 +29,7 @@
     "dot-prop": "^5.1.1",
     "dotenv": "^8.2.0",
     "esm": "^3.2.25",
-    "explorer-server": "git+https://gitlab.com/liberdus/explorer-server.git#semver:^0.1.6",
+    "explorer-server": "git+https://gitlab.com/liberdus/explorer-server.git#semver:^0.1.7",
     "fast-stable-stringify": "^1.0.0",
     "heapdump": "^0.3.15",
     "inquirer": "^7.0.0",
