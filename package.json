@@ -1,13 +1,12 @@
 {
   "name": "liberdus",
-  "version": "2.1.7",
+  "version": "2.1.8",
   "description": "Liberdus is a payment network that allows users to govern their own money system in a democratic fashion",
   "main": "dist/index.js",
   "scripts": {
     "pm2": "cross-env PM2_HOME='./.pm2' pm2 --node-args='--experimental-modules'",
-    "start": "node scripts/start.js && node dist/index.js",
-    "stop": "node scripts/stop.js",
-    "clean": "node scripts/clean.js",
+    "start": "shardus clean && shardus start 10 && echo \"\nmonitor:    http://localhost:3000\nweb-client: http://localhost:3333\nexplorer:   http://localhost:4444\" && npm explore liberdus-web-client -- npm run dev",
+    "stop": "shardus stop",
     "test": "echo \"Error: no test specified\" && exit 1",
     "update-template": "node scripts/update-template.js",
     "update-docker": "node scripts/update-docker.js latest",
@@ -18,7 +17,8 @@
     "lint": "tsc --noEmit && eslint '*/**/*.{js,ts,tsx}' --quiet --fix",
     "prepare": "npm run compile",
     "pretest": "npm run compile",
-    "posttest": "npm run check"
+    "posttest": "npm run check",
+    "postinstall": "npm explore liberdus-web-client -- npm i"
   },
   "author": "Kyle Shifflett",
   "license": "ISC",
@@ -64,9 +64,11 @@
     "execa": "^4.0.1",
     "gts": "^2.0.0",
     "hygen-create": "^0.2.1",
+    "liberdus-web-client": "git+https://gitlab.com/liberdus/web-client/liberdus-web-client.git#dev-local",
     "monitor-server": "git+https://gitlab.com/shardus/monitor-server.git#semver:^1.0.1",
     "pm2": "^4.1.2",
     "prettier": "^1.19.1",
+    "shardus": "^4.1.2",
     "shelljs": "^0.8.4",
     "standard": "^12.0.1",
     "typescript": "~3.7.0",

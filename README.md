@@ -9,3 +9,15 @@ For millennia, money has existed in some form or another. Money has made it easy
 The Liberdus team believes a more democratic form of money can be achieved with the use of distributed ledger technologies and an on-chain governance system – so that every decision about the rules of the money is made by the people who use it. This is what the Liberdus project aims to achieve.
 
 For more info, please checkout our [Whitepaper](https://liberdus.com/Liberdus-Whitepaper-19.10.19.pdf)
+
+## Usage
+
+Clone this repository then run `npm install`.
+
+`npm start` will start a network of local Liberdus nodes and apps to interact with the nodes:
+
+[Shardus Monitor](https://gitlab.com/shardus/monitor-server) - http://localhost:3000  
+[Liberdus Client](https://gitlab.com/liberdus/web-client/liberdus-web-client) - http://localhost:3333  
+[Liberdus Explorer](https://gitlab.com/liberdus/explorer-server) - http://localhost:4444    
+
+`npm stop` will stop all nodes and apps.
