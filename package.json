@@ -4,10 +4,9 @@
   "description": "Liberdus is a payment network that allows users to govern their own money system in a democratic fashion",
   "main": "dist/index.js",
   "scripts": {
-    "pm2": "cross-env PM2_HOME='./instances/.pm2' pm2",
     "client": "npm explore liberdus-web-client -- npm run build && npm explore liberdus-web-client -- npm start",
-    "start-client": "cross-env-shell PM2_HOME='./instances/.pm2' \"pm2 start liberdus-web-client || pm2 start npm --name liberdus-web-client -- run client\"",
-    "stop-client": "cross-env-shell PM2_HOME='./instances/.pm2' \"pm2 stop liberdus-web-client\"",
+    "start-client": "shardus pm2 del npm && shardus pm2 start npm -- run client",
+    "stop-client": "shardus pm2 stop npm",
     "start": "shardus start 10 && npm run start-client && echo \"\nmonitor:    http://localhost:3000\nweb-client: http://localhost:3333\nexplorer:   http://localhost:4444\"",
     "stop": "shardus stop && npm run stop-client",
     "test": "echo \"Error: no test specified\" && exit 1",
