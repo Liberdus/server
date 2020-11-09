@@ -4,8 +4,9 @@
   "description": "Liberdus is a payment network that allows users to govern their own money system in a democratic fashion",
   "main": "dist/index.js",
   "scripts": {
-    "client": "npm explore liberdus-web-client -- npm run build && npm explore liberdus-web-client -- npm start",
-    "start-client": "shardus pm2 del npm && shardus pm2 start npm -- run client",
+    "build-client": "npm explore liberdus-web-client -- npm run build",
+    "run-client": "npm explore liberdus-web-client -- npm start",
+    "start-client": "shardus pm2 del npm && npm run build-client && shardus pm2 start npm -- run run-client",
     "stop-client": "shardus pm2 stop npm",
     "start": "npm run start-client && shardus start 10 && echo \"\nmonitor:    http://localhost:3000\nweb-client: http://localhost:3333\nexplorer:   http://localhost:4444\"",
     "stop": "npm run stop-client && shardus stop",
