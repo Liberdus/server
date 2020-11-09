@@ -20,7 +20,7 @@
     "prepare": "npm run compile",
     "pretest": "npm run compile",
     "posttest": "npm run check",
-    "postinstall": "npm explore liberdus-web-client -- npm i"
+    "postinstall": "npm explore liberdus-web-client -- npm i && npm run compile"
   },
   "author": "Kyle Shifflett",
   "license": "ISC",
