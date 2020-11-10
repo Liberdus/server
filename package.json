@@ -6,9 +6,9 @@
   "scripts": {
     "build-client": "npm explore liberdus-web-client -- npm run build",
     "run-client": "npm explore liberdus-web-client -- npm start",
-    "start-client": "shardus pm2 del npm && npm run build-client && shardus pm2 start npm -- run run-client",
+    "start-client": "shardus pm2 start npm -- run run-client",
     "stop-client": "shardus pm2 stop npm",
-    "start": "shardus clean && shardus start 10 && npm run start-client && echo \"\nmonitor:    http://localhost:3000\nweb-client: http://localhost:3333\nexplorer:   http://localhost:4444\"",
+    "start": "shardus clean && npm run build_client && shardus start 10 && npm run start-client && echo \"\nmonitor:    http://localhost:3000\nweb-client: http://localhost:3333\nexplorer:   http://localhost:4444\"",
     "stop": "npm run stop-client && shardus stop",
     "test": "echo \"Error: no test specified\" && exit 1",
     "update-template": "node scripts/update-template.js",
