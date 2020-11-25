@@ -10,9 +10,24 @@ The Liberdus team believes a more democratic form of money can be achieved with 
 
 For more info, please checkout our [Whitepaper](https://liberdus.com/Liberdus-Whitepaper-19.10.19.pdf)
 
-## Usage
+## Installation
 
-Clone this repository then run `npm install`.
+### For demos, testing, etc.
+
+1. Clone this repository with `git clone https://gitlab.com/liberdus/server.git`
+2. Checkout the `dist` branch with `git checkout dist`
+3. Install dependencies with `npm install`
+
+### For Liberdus/Shardus development:
+
+1. Ensure you have access to [`shardus-global-server`](https://gitlab.com/shardus/global/shardus-global-server)
+2. Make sure your git installation is set to cache credentials with `git config --global credential.helper cache`
+3. Force git to prompt for credentials by cloning [`shardus-global-server`](https://gitlab.com/shardus/global/shardus-global-server):  
+   `git clone https://gitlab.com/shardus/global/shardus-global-server.git`
+4. In another directory, clone this repository with `git clone https://gitlab.com/liberdus/server.git`
+5. Install dependencies with `npm install`
+
+## Usage
 
 `npm start` will start a network of local Liberdus nodes and apps to interact with the nodes:
 
