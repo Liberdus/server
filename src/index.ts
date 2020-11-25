@@ -2453,6 +2453,625 @@ dapp.setup({
       txnTimestamp,
     }
   },
+  // apply (tx: any, wrappedStates: { [id: string]: WrappedAccount }) {
+  //   const from = wrappedStates[tx.from] && wrappedStates[tx.from].data
+  //   const to = wrappedStates[tx.to] && wrappedStates[tx.to].data
+  //   // Validate the tx
+  //   const { success, reason } = this.validateTransaction(tx, wrappedStates)
+
+  //   if (success !== true) {
+  //     throw new Error(`invalid transaction, reason: ${reason}. tx: ${stringify(tx)}`)
+  //   }
+
+  //   // Create an applyResponse which will be used to tell Shardus that the tx has been applied
+  //   let txId: string
+  //   if (!tx.sign) {
+  //     txId = crypto.hashObj(tx)
+  //   } else {
+  //     txId = crypto.hashObj(tx, true) // compute from tx
+  //   }
+  //   const applyResponse: Shardus.ApplyResponse = dapp.createApplyResponse(txId, tx.timestamp)
+
+  //   // Apply the tx
+  //   switch (tx.type) {
+  //     case 'init_network': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       network.timestamp = tx.timestamp
+  //       console.log(`init_network NETWORK_ACCOUNT: ${stringify(network)}`)
+  //       // from.timestamp = tx.timestamp
+  //       dapp.log('Applied init_network transaction', network)
+  //       break
+  //     }
+  //     case 'snapshot': {
+  //       to.snapshot = tx.snapshot
+  //       to.timestamp = tx.timestamp
+  //       dapp.log('Applied snapshot tx', to)
+  //       break
+  //     }
+  //     case 'email': {
+  //       const source: UserAccount = wrappedStates[tx.signedTx.from].data
+  //       const nodeId = dapp.getNodeId()
+  //       const { address } = dapp.getNode(nodeId)
+  //       const [closest] = dapp.getClosestNodes(tx.signedTx.from, 5)
+  //       if (nodeId === closest) {
+  //         const baseNumber = 99999
+  //         const randomNumber = Math.floor(Math.random() * 899999) + 1
+  //         const verificationNumber = baseNumber + randomNumber
+
+  //         axios.post('http://arimaa.com/mailAPI/index.cgi', {
+  //           from: 'liberdus.verify',
+  //           to: `${tx.email}`,
+  //           subject: 'Verify your email for liberdus',
+  //           message: `Please verify your email address by sending a "verify" transaction with the number: ${verificationNumber}`,
+  //           secret: 'Liberdus',
+  //         })
+
+  //         dapp.put({
+  //           type: 'gossip_email_hash',
+  //           nodeId,
+  //           account: source.id,
+  //           from: address,
+  //           emailHash: tx.signedTx.emailHash,
+  //           verified: crypto.hash(`${verificationNumber}`),
+  //           timestamp: Date.now(),
+  //         })
+  //       }
+  //       dapp.log('Applied email tx', source)
+  //       break
+  //     }
+  //     case 'gossip_email_hash': {
+  //       // const targets = tx.targets.map(target => wrappedStates[target].data)
+  //       const account: UserAccount = wrappedStates[tx.account].data
+  //       account.emailHash = tx.emailHash
+  //       account.verified = tx.verified
+  //       account.timestamp = tx.timestamp
+  //       dapp.log('Applied gossip_email_hash tx', account)
+  //       break
+  //     }
+  //     case 'verify': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       from.verified = true
+  //       from.data.balance += network.current.faucetAmount
+  //       from.timestamp = tx.timestamp
+  //       dapp.log('Applied verify tx', from)
+  //       break
+  //     }
+  //     case 'register': {
+  //       const alias: AliasAccount = wrappedStates[tx.aliasHash].data
+  //       // from.data.balance -= network.current.transactionFee
+  //       // from.data.balance -= maintenanceAmount(tx.timestamp, from)
+  //       alias.inbox = tx.alias
+  //       from.alias = tx.alias
+  //       alias.address = tx.from
+  //       // from.data.transactions.push({ ...tx, txId })
+  //       alias.timestamp = tx.timestamp
+  //       from.timestamp = tx.timestamp
+  //       dapp.log('Applied register tx', from, alias)
+  //       break
+  //     }
+  //     case 'create': {
+  //       to.data.balance += tx.amount
+  //       to.timestamp = tx.timestamp
+  //       // to.data.transactions.push({ ...tx, txId })
+  //       dapp.log('Applied create tx', to)
+  //       break
+  //     }
+  //     case 'transfer': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       from.data.balance -= tx.amount + network.current.transactionFee
+  //       from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
+  //       to.data.balance += tx.amount
+  //       from.data.transactions.push({ ...tx, txId })
+  //       to.data.transactions.push({ ...tx, txId })
+  //       from.timestamp = tx.timestamp
+  //       to.timestamp = tx.timestamp
+  //       dapp.log('Applied transfer tx', from, to)
+  //       break
+  //     }
+  //     case 'distribute': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       const recipients: UserAccount[] = tx.recipients.map((id: string) => wrappedStates[id].data)
+  //       from.data.balance -= network.current.transactionFee
+  //       from.data.transactions.push({ ...tx, txId })
+  //       for (const user of recipients) {
+  //         from.data.balance -= tx.amount
+  //         user.data.balance += tx.amount
+  //         user.data.transactions.push({ ...tx, txId })
+  //       }
+  //       from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
+  //       dapp.log('Applied distribute transaction', from, recipients)
+  //       break
+  //     }
+  //     case 'message': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       const chat = wrappedStates[tx.chatId].data
+  //       from.data.balance -= network.current.transactionFee
+  //       if (!to.data.friends[from.id]) {
+  //         if (to.data.toll === null) {
+  //           from.data.balance -= network.current.defaultToll
+  //           to.data.balance += network.current.defaultToll
+  //         } else {
+  //           from.data.balance -= to.data.toll
+  //           to.data.balance += to.data.toll
+  //         }
+  //       }
+  //       from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
+
+  //       if (!from.data.chats[tx.to]) from.data.chats[tx.to] = tx.chatId
+  //       if (!to.data.chats[tx.from]) to.data.chats[tx.from] = tx.chatId
+
+  //       chat.messages.push(tx.message)
+  //       from.data.transactions.push({ ...tx, txId })
+  //       to.data.transactions.push({ ...tx, txId })
+
+  //       chat.timestamp = tx.timestamp
+  //       from.timestamp = tx.timestamp
+  //       to.timestamp = tx.timestamp
+
+  //       dapp.log('Applied message tx', chat, from, to)
+  //       break
+  //     }
+  //     case 'toll': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       from.data.balance -= network.current.transactionFee
+  //       from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
+  //       from.data.toll = tx.toll
+  //       // from.data.transactions.push({ ...tx, txId })
+  //       from.timestamp = tx.timestamp
+  //       dapp.log('Applied toll tx', from)
+  //       break
+  //     }
+  //     case 'friend': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       from.data.balance -= network.current.transactionFee
+  //       from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
+  //       from.data.friends[tx.to] = tx.alias
+  //       // from.data.transactions.push({ ...tx, txId })
+  //       from.timestamp = tx.timestamp
+  //       dapp.log('Applied friend tx', from)
+  //       break
+  //     }
+  //     case 'remove_friend': {
+  //       delete from.data.friends[tx.to]
+  //       from.timestamp = tx.timestamp
+  //       // from.data.transactions.push({ ...tx, txId })
+  //       dapp.log('Applied remove_friend tx', from)
+  //       break
+  //     }
+  //     case 'stake': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       from.data.balance -= network.current.stakeRequired
+  //       from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
+  //       from.data.stake = network.current.stakeRequired
+  //       from.timestamp = tx.timestamp
+  //       from.data.transactions.push({ ...tx, txId })
+  //       dapp.log('Applied stake tx', from)
+  //       break
+  //     }
+  //     case 'remove_stake': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       const shouldRemoveState = from.data.remove_stake_request && from.data.remove_stake_request + 2 * network.current.nodeRewardInterval <= Date.now()
+  //       if (shouldRemoveState) {
+  //         from.data.balance += network.current.stakeRequired
+  //         from.data.stake = 0
+  //         from.timestamp = tx.timestamp
+  //         from.data.remove_stake_request = null
+  //         from.data.transactions.push({ ...tx, txId })
+  //         dapp.log('Applied remove_stake tx', from)
+  //       } else {
+  //         dapp.log('Cancelled remove_stake tx because `remove_stake_request` is null or earlier than 2 * nodeRewardInterval', from)
+  //       }
+  //       dapp.log('Applied remove_stake tx marked as requested', from)
+  //       break
+  //     }
+  //     case 'remove_stake_request': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       from.data.remove_stake_request = Date.now()
+  //       dapp.log('Applied remove_stake tx marked as requested', from)
+  //       break
+  //     }
+  //     case 'node_reward': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       //const nodeAccount: NodeAccount = to
+  //       from.balance += network.current.nodeRewardAmount
+  //       dapp.log(`Reward from ${tx.from} to ${tx.to}`)
+  //       if (tx.from !== tx.to) {
+  //         dapp.log('Node reward to and from are different.')
+  //         dapp.log('TO ACCOUNT', to.data)
+  //         if (to.data.stake >= network.current.stakeRequired) {
+  //           to.data.balance += from.balance
+  //           if (to.data.remove_stake_request) to.data.remove_stake_request = null
+  //           from.balance = 0
+  //           to.timestamp = tx.timestamp
+  //         }
+  //       }
+  //       from.nodeRewardTime = tx.timestamp
+  //       from.timestamp = tx.timestamp
+  //       //NodeAccount does not have transactions
+  //       //to.data.transactions.push({ ...tx, txId })
+  //       dapp.log('Applied node_reward tx', from, to)
+  //       break
+  //     }
+  //     case 'snapshot_claim': {
+  //       from.data.balance += to.snapshot[tx.from]
+  //       to.snapshot[tx.from] = 0
+  //       // from.data.transactions.push({ ...tx, txId })
+  //       from.claimedSnapshot = true
+  //       from.timestamp = tx.timestamp
+  //       to.timestamp = tx.timestamp
+  //       dapp.log('Applied snapshot_claim tx', from, to)
+  //       break
+  //     }
+  //     case 'issue': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       const issue: IssueAccount = wrappedStates[tx.issue].data
+  //       const proposal: ProposalAccount = wrappedStates[tx.proposal].data
+
+  //       proposal.parameters = _.cloneDeep(network.current)
+  //       proposal.parameters.title = 'Default parameters'
+  //       proposal.parameters.description = 'Keep the current network parameters as they are'
+  //       proposal.number = 1
+
+  //       issue.number = network.issue
+  //       issue.active = true
+  //       issue.proposals.push(proposal.id)
+  //       issue.proposalCount++
+
+  //       from.timestamp = tx.timestamp
+  //       issue.timestamp = tx.timestamp
+  //       proposal.timestamp = tx.timestamp
+  //       dapp.log('Applied issue tx', issue, proposal)
+  //       break
+  //     }
+  //     case 'dev_issue': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
+
+  //       devIssue.number = network.devIssue
+  //       devIssue.active = true
+
+  //       from.timestamp = tx.timestamp
+  //       devIssue.timestamp = tx.timestamp
+  //       dapp.log('Applied dev_issue tx', devIssue)
+  //       break
+  //     }
+  //     case 'proposal': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       const proposal: ProposalAccount = wrappedStates[tx.proposal].data
+  //       const issue: IssueAccount = wrappedStates[tx.issue].data
+
+  //       from.data.balance -= network.current.proposalFee
+  //       from.data.balance -= network.current.transactionFee
+  //       from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
+
+  //       proposal.parameters = tx.parameters
+  //       issue.proposalCount++
+  //       proposal.number = issue.proposalCount
+  //       issue.proposals.push(proposal.id)
+
+  //       from.data.transactions.push({ ...tx, txId })
+  //       from.timestamp = tx.timestamp
+  //       issue.timestamp = tx.timestamp
+  //       proposal.timestamp = tx.timestamp
+  //       dapp.log('Applied proposal tx', from, issue, proposal)
+  //       break
+  //     }
+  //     case 'dev_proposal': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
+  //       const devProposal: DevProposalAccount = wrappedStates[tx.devProposal].data
+
+  //       from.data.balance -= network.current.devProposalFee
+  //       from.data.balance -= network.current.transactionFee
+  //       from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
+
+  //       devProposal.totalAmount = tx.totalAmount
+  //       devProposal.payAddress = tx.payAddress
+  //       devProposal.title = tx.title
+  //       devProposal.description = tx.description
+  //       devProposal.payments = tx.payments
+  //       devIssue.devProposalCount++
+  //       devProposal.number = devIssue.devProposalCount
+  //       devIssue.devProposals.push(devProposal.id)
+
+  //       from.data.transactions.push({ ...tx, txId })
+  //       from.timestamp = tx.timestamp
+  //       devIssue.timestamp = tx.timestamp
+  //       devProposal.timestamp = tx.timestamp
+  //       dapp.log('Applied dev_proposal tx', from, devIssue, devProposal)
+  //       break
+  //     }
+  //     case 'vote': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       const proposal: ProposalAccount = wrappedStates[tx.proposal].data
+  //       from.data.balance -= tx.amount
+  //       from.data.balance -= network.current.transactionFee
+  //       from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
+  //       proposal.power += tx.amount
+  //       proposal.totalVotes++
+
+  //       from.data.transactions.push({ ...tx, txId })
+  //       from.timestamp = tx.timestamp
+  //       proposal.timestamp = tx.timestamp
+  //       dapp.log('Applied vote tx', from, proposal)
+  //       break
+  //     }
+  //     case 'dev_vote': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       const devProposal: DevProposalAccount = wrappedStates[tx.devProposal].data
+
+  //       from.data.balance -= tx.amount
+  //       from.data.balance -= network.current.transactionFee
+  //       from.data.balance -= maintenanceAmount(tx.timestamp, from, network)
+
+  //       if (tx.approve) {
+  //         devProposal.approve += tx.amount
+  //       } else {
+  //         devProposal.reject += tx.amount
+  //       }
+
+  //       devProposal.totalVotes++
+  //       from.data.transactions.push({ ...tx, txId })
+  //       from.timestamp = tx.timestamp
+  //       devProposal.timestamp = tx.timestamp
+  //       dapp.log('Applied dev_vote tx', from, devProposal)
+  //       break
+  //     }
+  //     case 'tally': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       const issue: IssueAccount = wrappedStates[tx.issue].data
+  //       const margin = 100 / (2 * (issue.proposalCount + 1)) / 100
+
+  //       const defaultProposal: ProposalAccount = wrappedStates[crypto.hash(`issue-${issue.number}-proposal-1`)].data
+  //       const sortedProposals: ProposalAccount[] = tx.proposals
+  //         .map((id: string) => wrappedStates[id].data)
+  //         .sort((a: ProposalAccount, b: ProposalAccount) => a.power < b.power)
+  //       let winner = defaultProposal
+
+  //       for (const proposal of sortedProposals) {
+  //         proposal.winner = false
+  //       }
+
+  //       if (sortedProposals.length >= 2) {
+  //         const firstPlace = sortedProposals[0]
+  //         const secondPlace = sortedProposals[1]
+  //         const marginToWin = secondPlace.power + margin * secondPlace.power
+  //         if (firstPlace.power >= marginToWin) {
+  //           winner = firstPlace
+  //         }
+  //       }
+
+  //       winner.winner = true // CHICKEN DINNER
+  //       const next = winner.parameters
+  //       const nextWindows: Windows = {
+  //         proposalWindow: [network.windows.applyWindow[1], network.windows.applyWindow[1] + TIME_FOR_PROPOSALS],
+  //         votingWindow: [network.windows.applyWindow[1] + TIME_FOR_PROPOSALS, network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING],
+  //         graceWindow: [
+  //           network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING,
+  //           network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE,
+  //         ],
+  //         applyWindow: [
+  //           network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE,
+  //           network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE + TIME_FOR_APPLY,
+  //         ],
+  //       }
+
+  //       const when = tx.timestamp + ONE_SECOND * 10
+
+  //       dapp.setGlobal(
+  //         networkAccount,
+  //         {
+  //           type: 'apply_tally',
+  //           timestamp: when,
+  //           network: networkAccount,
+  //           next,
+  //           nextWindows,
+  //         },
+  //         when,
+  //         networkAccount,
+  //       )
+
+  //       issue.winnerId = winner.id
+
+  //       from.timestamp = tx.timestamp
+  //       issue.timestamp = tx.timestamp
+  //       winner.timestamp = tx.timestamp
+  //       dapp.log('Applied tally tx', issue, winner)
+  //       break
+  //     }
+  //     case 'apply_tally': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       network.next = tx.next
+  //       network.nextWindows = tx.nextWindows
+  //       network.timestamp = tx.timestamp
+  //       dapp.log(`APPLIED TALLY GLOBAL ${stringify(network)} ===`)
+  //       break
+  //     }
+  //     case 'dev_tally': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
+  //       const devProposals: DevProposalAccount[] = tx.devProposals.map((id: string) => wrappedStates[id].data)
+  //       let nextDeveloperFund: DeveloperPayment[] = []
+
+  //       for (const devProposal of devProposals) {
+  //         if (devProposal.approve > devProposal.reject + devProposal.reject * 0.15) {
+  //           devProposal.approved = true
+  //           const payments = []
+  //           for (const payment of devProposal.payments) {
+  //             payments.push({
+  //               timestamp: tx.timestamp + TIME_FOR_DEV_GRACE + payment.delay,
+  //               amount: payment.amount * devProposal.totalAmount,
+  //               address: devProposal.payAddress,
+  //               id: crypto.hashObj(payment),
+  //             })
+  //           }
+  //           nextDeveloperFund = [...nextDeveloperFund, ...payments]
+  //           devProposal.timestamp = tx.timestamp
+  //           devIssue.winners.push(devProposal.id)
+  //         } else {
+  //           devProposal.approved = false
+  //           devProposal.timestamp = tx.timestamp
+  //         }
+  //       }
+
+  //       const nextDevWindows: DevWindows = {
+  //         devProposalWindow: [network.devWindows.devApplyWindow[1], network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS],
+  //         devVotingWindow: [
+  //           network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS,
+  //           network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING,
+  //         ],
+  //         devGraceWindow: [
+  //           network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING,
+  //           network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING + TIME_FOR_DEV_GRACE,
+  //         ],
+  //         devApplyWindow: [
+  //           network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING + TIME_FOR_DEV_GRACE,
+  //           network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING + TIME_FOR_DEV_GRACE + TIME_FOR_DEV_APPLY,
+  //         ],
+  //       }
+
+  //       const when = tx.timestamp + ONE_SECOND * 10
+
+  //       dapp.setGlobal(
+  //         networkAccount,
+  //         {
+  //           type: 'apply_dev_tally',
+  //           timestamp: when,
+  //           network: networkAccount,
+  //           nextDeveloperFund,
+  //           nextDevWindows,
+  //         },
+  //         when,
+  //         networkAccount,
+  //       )
+
+  //       from.timestamp = tx.timestamp
+  //       devIssue.timestamp = tx.timestamp
+  //       dapp.log('Applied dev_tally tx', devIssue, devProposals)
+  //       break
+  //     }
+  //     case 'apply_dev_tally': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       network.nextDeveloperFund = tx.nextDeveloperFund
+  //       network.nextDevWindows = tx.nextDevWindows
+  //       network.timestamp = tx.timestamp
+  //       dapp.log(`=== APPLIED DEV_TALLY GLOBAL ${stringify(network)} ===`)
+  //       break
+  //     }
+  //     case 'parameters': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       const issue: IssueAccount = wrappedStates[tx.issue].data
+
+  //       const when = tx.timestamp + ONE_SECOND * 10
+
+  //       dapp.setGlobal(
+  //         networkAccount,
+  //         {
+  //           type: 'apply_parameters',
+  //           timestamp: when,
+  //           network: networkAccount,
+  //           current: network.next,
+  //           next: {},
+  //           windows: network.nextWindows,
+  //           nextWindows: {},
+  //           issue: network.issue + 1,
+  //         },
+  //         when,
+  //         networkAccount,
+  //       )
+
+  //       issue.active = false
+
+  //       from.timestamp = tx.timestamp
+  //       issue.timestamp = tx.timestamp
+  //       dapp.log('Applied parameters tx', issue)
+  //       break
+  //     }
+  //     case 'apply_parameters': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       network.current = tx.current
+  //       network.next = tx.next
+  //       network.windows = tx.windows
+  //       network.nextWindows = tx.nextWindows
+  //       network.issue = tx.issue
+  //       network.timestamp = tx.timestamp
+  //       dapp.log(`=== APPLIED PARAMETERS GLOBAL ${stringify(network)} ===`)
+  //       break
+  //     }
+  //     case 'dev_parameters': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
+  //       const when = tx.timestamp + ONE_SECOND * 10
+
+  //       dapp.setGlobal(
+  //         networkAccount,
+  //         {
+  //           type: 'apply_dev_parameters',
+  //           timestamp: when,
+  //           network: networkAccount,
+  //           devWindows: network.nextDevWindows,
+  //           nextDevWindows: {},
+  //           developerFund: [...network.developerFund, ...network.nextDeveloperFund].sort((a, b) => a.timestamp - b.timestamp),
+  //           nextDeveloperFund: [],
+  //           devIssue: network.devIssue + 1,
+  //         },
+  //         when,
+  //         networkAccount,
+  //       )
+
+  //       devIssue.active = false
+
+  //       from.timestamp = tx.timestamp
+  //       devIssue.timestamp = tx.timestamp
+  //       dapp.log('Applied dev_parameters tx', from, devIssue)
+  //       break
+  //     }
+  //     case 'apply_dev_parameters': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       network.devWindows = tx.devWindows
+  //       network.nextDevWindows = tx.nextDevWindows
+  //       network.developerFund = tx.developerFund
+  //       network.nextDeveloperFund = tx.nextDeveloperFund
+  //       network.devIssue = tx.devIssue
+  //       network.timestamp = tx.timestamp
+  //       break
+  //     }
+  //     case 'developer_payment': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       const developer: UserAccount = wrappedStates[tx.developer].data
+  //       developer.data.balance += tx.payment.amount
+  //       developer.data.transactions.push({ ...tx, txId })
+
+  //       const when = tx.timestamp + ONE_SECOND * 10
+
+  //       dapp.setGlobal(
+  //         networkAccount,
+  //         {
+  //           type: 'apply_developer_payment',
+  //           timestamp: when,
+  //           network: networkAccount,
+  //           developerFund: network.developerFund.filter((payment: DeveloperPayment) => payment.id !== tx.payment.id),
+  //         },
+  //         when,
+  //         networkAccount,
+  //       )
+
+  //       developer.timestamp = tx.timestamp
+  //       from.timestamp = tx.timestamp
+  //       dapp.log('Applied developer_payment tx', from, developer)
+  //       break
+  //     }
+  //     case 'apply_developer_payment': {
+  //       const network: NetworkAccount = wrappedStates[tx.network].data
+  //       network.developerFund = tx.developerFund
+  //       network.timestamp = tx.timestamp
+  //       dapp.log(`=== APPLIED DEV_PAYMENT GLOBAL ${stringify(network)} ===`)
+  //       break
+  //     }
+  //   }
+  //   return applyResponse
+  // },
+
   apply (tx: any, wrappedStates: { [id: string]: WrappedAccount }) {
     const from = wrappedStates[tx.from] && wrappedStates[tx.from].data
     const to = wrappedStates[tx.to] && wrappedStates[tx.to].data
@@ -2490,32 +3109,32 @@ dapp.setup({
       }
       case 'email': {
         const source: UserAccount = wrappedStates[tx.signedTx.from].data
-        const nodeId = dapp.getNodeId()
-        const { address } = dapp.getNode(nodeId)
-        const [closest] = dapp.getClosestNodes(tx.signedTx.from, 5)
-        if (nodeId === closest) {
-          const baseNumber = 99999
-          const randomNumber = Math.floor(Math.random() * 899999) + 1
-          const verificationNumber = baseNumber + randomNumber
+        // const nodeId = dapp.getNodeId()
+        // const { address } = dapp.getNode(nodeId)
+        // const [closest] = dapp.getClosestNodes(tx.signedTx.from, 5)
+        // if (nodeId === closest) {
+        //   const baseNumber = 99999
+        //   const randomNumber = Math.floor(Math.random() * 899999) + 1
+        //   const verificationNumber = baseNumber + randomNumber
 
-          axios.post('http://arimaa.com/mailAPI/index.cgi', {
-            from: 'liberdus.verify',
-            to: `${tx.email}`,
-            subject: 'Verify your email for liberdus',
-            message: `Please verify your email address by sending a "verify" transaction with the number: ${verificationNumber}`,
-            secret: 'Liberdus',
-          })
+        //   axios.post('http://arimaa.com/mailAPI/index.cgi', {
+        //     from: 'liberdus.verify',
+        //     to: `${tx.email}`,
+        //     subject: 'Verify your email for liberdus',
+        //     message: `Please verify your email address by sending a "verify" transaction with the number: ${verificationNumber}`,
+        //     secret: 'Liberdus',
+        //   })
 
-          dapp.put({
-            type: 'gossip_email_hash',
-            nodeId,
-            account: source.id,
-            from: address,
-            emailHash: tx.signedTx.emailHash,
-            verified: crypto.hash(`${verificationNumber}`),
-            timestamp: Date.now(),
-          })
-        }
+        //   dapp.put({
+        //     type: 'gossip_email_hash',
+        //     nodeId,
+        //     account: source.id,
+        //     from: address,
+        //     emailHash: tx.signedTx.emailHash,
+        //     verified: crypto.hash(`${verificationNumber}`),
+        //     timestamp: Date.now(),
+        //   })
+        // }
         dapp.log('Applied email tx', source)
         break
       }
@@ -2858,18 +3477,29 @@ dapp.setup({
 
         const when = tx.timestamp + ONE_SECOND * 10
 
-        dapp.setGlobal(
-          networkAccount,
-          {
-            type: 'apply_tally',
-            timestamp: when,
-            network: networkAccount,
-            next,
-            nextWindows,
-          },
-          when,
-          networkAccount,
-        )
+        // dapp.setGlobal(
+        //   networkAccount,
+        //   {
+        //     type: 'apply_tally',
+        //     timestamp: when,
+        //     network: networkAccount,
+        //     next,
+        //     nextWindows,
+        //   },
+        //   when,
+        //   networkAccount,
+        // )
+
+        let value = {
+          type: 'apply_tally',
+          timestamp: when,
+          network: networkAccount,
+          next,
+          nextWindows,
+        }
+        
+        applyResponse.appDefinedData.globalMsg = {address:networkAccount, value, when, source: networkAccount}
+
 
         issue.winnerId = winner.id
 
@@ -2931,19 +3561,27 @@ dapp.setup({
         }
 
         const when = tx.timestamp + ONE_SECOND * 10
+        // dapp.setGlobal(
+        //   networkAccount,
+        //   {
+        //     type: 'apply_dev_tally',
+        //     timestamp: when,
+        //     network: networkAccount,
+        //     nextDeveloperFund,
+        //     nextDevWindows,
+        //   },
+        //   when,
+        //   networkAccount,
+        // )
+        let value =   {
+          type: 'apply_dev_tally',
+          timestamp: when,
+          network: networkAccount,
+          nextDeveloperFund,
+          nextDevWindows,
+        }
 
-        dapp.setGlobal(
-          networkAccount,
-          {
-            type: 'apply_dev_tally',
-            timestamp: when,
-            network: networkAccount,
-            nextDeveloperFund,
-            nextDevWindows,
-          },
-          when,
-          networkAccount,
-        )
+        applyResponse.appDefinedData.globalMsg = {address:networkAccount, value, when, source: networkAccount}
 
         from.timestamp = tx.timestamp
         devIssue.timestamp = tx.timestamp
@@ -2962,23 +3600,22 @@ dapp.setup({
         const network: NetworkAccount = wrappedStates[tx.network].data
         const issue: IssueAccount = wrappedStates[tx.issue].data
 
-        const when = tx.timestamp + ONE_SECOND * 10
-
-        dapp.setGlobal(
-          networkAccount,
-          {
-            type: 'apply_parameters',
-            timestamp: when,
-            network: networkAccount,
-            current: network.next,
-            next: {},
-            windows: network.nextWindows,
-            nextWindows: {},
-            issue: network.issue + 1,
-          },
-          when,
-          networkAccount,
-        )
+        // const when = tx.timestamp + ONE_SECOND * 10
+        // dapp.setGlobal(
+        //   networkAccount,
+        //   {
+        //     type: 'apply_parameters',
+        //     timestamp: when,
+        //     network: networkAccount,
+        //     current: network.next,
+        //     next: {},
+        //     windows: network.nextWindows,
+        //     nextWindows: {},
+        //     issue: network.issue + 1,
+        //   },
+        //   when,
+        //   networkAccount,
+        // )
 
         issue.active = false
 
@@ -3001,23 +3638,23 @@ dapp.setup({
       case 'dev_parameters': {
         const network: NetworkAccount = wrappedStates[tx.network].data
         const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
-        const when = tx.timestamp + ONE_SECOND * 10
 
-        dapp.setGlobal(
-          networkAccount,
-          {
-            type: 'apply_dev_parameters',
-            timestamp: when,
-            network: networkAccount,
-            devWindows: network.nextDevWindows,
-            nextDevWindows: {},
-            developerFund: [...network.developerFund, ...network.nextDeveloperFund].sort((a, b) => a.timestamp - b.timestamp),
-            nextDeveloperFund: [],
-            devIssue: network.devIssue + 1,
-          },
-          when,
-          networkAccount,
-        )
+        // const when = tx.timestamp + ONE_SECOND * 10
+        // dapp.setGlobal(
+        //   networkAccount,
+        //   {
+        //     type: 'apply_dev_parameters',
+        //     timestamp: when,
+        //     network: networkAccount,
+        //     devWindows: network.nextDevWindows,
+        //     nextDevWindows: {},
+        //     developerFund: [...network.developerFund, ...network.nextDeveloperFund].sort((a, b) => a.timestamp - b.timestamp),
+        //     nextDeveloperFund: [],
+        //     devIssue: network.devIssue + 1,
+        //   },
+        //   when,
+        //   networkAccount,
+        // )
 
         devIssue.active = false
 
@@ -3042,19 +3679,18 @@ dapp.setup({
         developer.data.balance += tx.payment.amount
         developer.data.transactions.push({ ...tx, txId })
 
-        const when = tx.timestamp + ONE_SECOND * 10
-
-        dapp.setGlobal(
-          networkAccount,
-          {
-            type: 'apply_developer_payment',
-            timestamp: when,
-            network: networkAccount,
-            developerFund: network.developerFund.filter((payment: DeveloperPayment) => payment.id !== tx.payment.id),
-          },
-          when,
-          networkAccount,
-        )
+        // const when = tx.timestamp + ONE_SECOND * 10
+        // dapp.setGlobal(
+        //   networkAccount,
+        //   {
+        //     type: 'apply_developer_payment',
+        //     timestamp: when,
+        //     network: networkAccount,
+        //     developerFund: network.developerFund.filter((payment: DeveloperPayment) => payment.id !== tx.payment.id),
+        //   },
+        //   when,
+        //   networkAccount,
+        // )
 
         developer.timestamp = tx.timestamp
         from.timestamp = tx.timestamp
@@ -3071,11 +3707,10 @@ dapp.setup({
     }
     return applyResponse
   },
-  transactionApproved (tx: any, wrappedStates: { [id: string]: WrappedAccount }, applyResponse: Shardus.ApplyResponse) {
+
+  transactionReceiptPass (tx: any, wrappedStates: { [id: string]: WrappedAccount }, applyResponse: Shardus.ApplyResponse) {
     const from = wrappedStates[tx.from] && wrappedStates[tx.from].data
     const to = wrappedStates[tx.to] && wrappedStates[tx.to].data
-
-    /*
 
     switch (tx.type) {
       case 'init_network': {
@@ -3112,7 +3747,7 @@ dapp.setup({
             timestamp: Date.now(),
           })
         }
-        dapp.log('Applied email tx', source)
+        dapp.log('PostApplied email tx', source)
         break
       }
       case 'gossip_email_hash': {
@@ -3199,66 +3834,15 @@ dapp.setup({
         break
       }
       case 'tally': {
-        // This one is more complicated I need to think on it.
-        // const network: NetworkAccount = wrappedStates[tx.network].data
-        // const issue: IssueAccount = wrappedStates[tx.issue].data
-        // const margin = 100 / (2 * (issue.proposalCount + 1)) / 100
 
-        // const defaultProposal: ProposalAccount = wrappedStates[crypto.hash(`issue-${issue.number}-proposal-1`)].data
-        // const sortedProposals: ProposalAccount[] = tx.proposals
-        //   .map((id: string) => wrappedStates[id].data)
-        //   .sort((a: ProposalAccount, b: ProposalAccount) => a.power < b.power)
-        // let winner = defaultProposal
+        const issue: IssueAccount = wrappedStates[tx.issue].data
+        const defaultProposal: ProposalAccount = wrappedStates[crypto.hash(`issue-${issue.number}-proposal-1`)].data
+        let winner = defaultProposal
 
-        // for (const proposal of sortedProposals) {
-        //   proposal.winner = false
-        // }
-
-        // if (sortedProposals.length >= 2) {
-        //   const firstPlace = sortedProposals[0]
-        //   const secondPlace = sortedProposals[1]
-        //   const marginToWin = secondPlace.power + margin * secondPlace.power
-        //   if (firstPlace.power >= marginToWin) {
-        //     winner = firstPlace
-        //   }
-        // }
-
-        // winner.winner = true // CHICKEN DINNER
-        // const next = winner.parameters
-        // const nextWindows: Windows = {
-        //   proposalWindow: [network.windows.applyWindow[1], network.windows.applyWindow[1] + TIME_FOR_PROPOSALS],
-        //   votingWindow: [network.windows.applyWindow[1] + TIME_FOR_PROPOSALS, network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING],
-        //   graceWindow: [
-        //     network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING,
-        //     network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE,
-        //   ],
-        //   applyWindow: [
-        //     network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE,
-        //     network.windows.applyWindow[1] + TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE + TIME_FOR_APPLY,
-        //   ],
-        // }
-
-        // const when = tx.timestamp + ONE_SECOND * 10
-
-        // dapp.setGlobal(
-        //   networkAccount,
-        //   {
-        //     type: 'apply_tally',
-        //     timestamp: when,
-        //     network: networkAccount,
-        //     next,
-        //     nextWindows,
-        //   },
-        //   when,
-        //   networkAccount,
-        // )
-
-        // issue.winnerId = winner.id
-
-        // from.timestamp = tx.timestamp
-        // issue.timestamp = tx.timestamp
-        // winner.timestamp = tx.timestamp
-        // dapp.log('Applied tally tx', issue, winner)
+        
+        let {address, value, when, source} = applyResponse.appDefinedData.globalMsg
+        dapp.setGlobal(address, value, when, source)
+        dapp.log('PostApplied tally tx', issue, winner)
         break
       }
       case 'apply_tally': {
@@ -3266,66 +3850,14 @@ dapp.setup({
         break
       }
       case 'dev_tally': {
-        // const network: NetworkAccount = wrappedStates[tx.network].data
-        // const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
-        // const devProposals: DevProposalAccount[] = tx.devProposals.map((id: string) => wrappedStates[id].data)
-        // let nextDeveloperFund: DeveloperPayment[] = []
+        //const network: NetworkAccount = wrappedStates[tx.network].data
+        const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
+        const devProposals: DevProposalAccount[] = tx.devProposals.map((id: string) => wrappedStates[id].data)
 
-        // for (const devProposal of devProposals) {
-        //   if (devProposal.approve > devProposal.reject + devProposal.reject * 0.15) {
-        //     devProposal.approved = true
-        //     const payments = []
-        //     for (const payment of devProposal.payments) {
-        //       payments.push({
-        //         timestamp: tx.timestamp + TIME_FOR_DEV_GRACE + payment.delay,
-        //         amount: payment.amount * devProposal.totalAmount,
-        //         address: devProposal.payAddress,
-        //         id: crypto.hashObj(payment),
-        //       })
-        //     }
-        //     nextDeveloperFund = [...nextDeveloperFund, ...payments]
-        //     devProposal.timestamp = tx.timestamp
-        //     devIssue.winners.push(devProposal.id)
-        //   } else {
-        //     devProposal.approved = false
-        //     devProposal.timestamp = tx.timestamp
-        //   }
-        // }
-
-        // const nextDevWindows: DevWindows = {
-        //   devProposalWindow: [network.devWindows.devApplyWindow[1], network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS],
-        //   devVotingWindow: [
-        //     network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS,
-        //     network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING,
-        //   ],
-        //   devGraceWindow: [
-        //     network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING,
-        //     network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING + TIME_FOR_DEV_GRACE,
-        //   ],
-        //   devApplyWindow: [
-        //     network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING + TIME_FOR_DEV_GRACE,
-        //     network.devWindows.devApplyWindow[1] + TIME_FOR_DEV_PROPOSALS + TIME_FOR_DEV_VOTING + TIME_FOR_DEV_GRACE + TIME_FOR_DEV_APPLY,
-        //   ],
-        // }
-
-        // const when = tx.timestamp + ONE_SECOND * 10
-
-        // dapp.setGlobal(
-        //   networkAccount,
-        //   {
-        //     type: 'apply_dev_tally',
-        //     timestamp: when,
-        //     network: networkAccount,
-        //     nextDeveloperFund,
-        //     nextDevWindows,
-        //   },
-        //   when,
-        //   networkAccount,
-        // )
-
-        // from.timestamp = tx.timestamp
-        // devIssue.timestamp = tx.timestamp
-        // dapp.log('Applied dev_tally tx', devIssue, devProposals)
+        let {address, value, when, source} = applyResponse.appDefinedData.globalMsg
+        dapp.setGlobal(address, value, when, source)
+        dapp.log('PostApplied tally tx', devIssue, devProposals)
+      
         break
       }
       case 'apply_dev_tally': {
@@ -3352,7 +3884,7 @@ dapp.setup({
           when,
           networkAccount,
         )
-        dapp.log('Applied parameters tx', issue)
+        dapp.log('PostApplied parameters tx', issue)
         break
       }
       case 'apply_parameters': {
@@ -3380,7 +3912,7 @@ dapp.setup({
           networkAccount,
         )
 
-        dapp.log('Applied dev_parameters tx', from, devIssue)
+        dapp.log('PostApplied dev_parameters tx', from, devIssue)
         break
       }
       case 'apply_dev_parameters': {
@@ -3403,14 +3935,14 @@ dapp.setup({
           when,
           networkAccount,
         )
-        dapp.log('Applied developer_payment tx', from, developer)
+        dapp.log('PostApplied developer_payment tx', from, developer)
         break
       }
       case 'apply_developer_payment': {
         break
       }
     }
-    */
+    
   },
   getKeyFromTransaction (tx: any): Shardus.TransactionKeys {
     const result: TransactionKeys = {
