@@ -71,14 +71,14 @@ const INITIAL_PARAMETERS: NetworkParameters = {
 
 let config: any = {}
 
-if (process.env.BASE_DIR) {
+if (process.env.BASE_DIR) { // set by shardus-network tool when creating multiple instances
   if (fs.existsSync(path.join(process.env.BASE_DIR, 'config.json'))) {
     config = JSON.parse(fs.readFileSync(path.join(process.env.BASE_DIR, 'config.json')).toString())
   }
   Prop.set(config, 'server.baseDir', process.env.BASE_DIR)
 }
 
-if (process.env.APP_IP) {
+if (process.env.APP_IP) { // used by deploy-to-aws script to tell the node its IP addr
   Prop.set(config, 'server.ip', {
     externalIp: process.env.APP_IP,
     internalIp: process.env.APP_IP,
@@ -86,10 +86,11 @@ if (process.env.APP_IP) {
 }
 
 // CONFIGURATION PARAMETERS PASSED INTO SHARDUS
+const existingArchiversCheck = config.server && config.server.p2p && config.server.p2p ? config.server.p2p.existingArchivers : false
 Prop.set(config, 'server.p2p', {
   cycleDuration: cycleDuration,
-  existingArchivers: config.server.p2p.existingArchivers ||
-    JSON.parse(process.env.APP_SEEDLIST || 'false') || [
+  existingArchivers: existingArchiversCheck ||
+    JSON.parse(process.env.APP_SEEDLIST || 'false') || [ // used by deploy-to-aws script to tell node Archiver IP
       {
         ip: '127.0.0.1',
         port: 4000,
@@ -109,8 +110,9 @@ Prop.set(config, 'server.loadDetection', {
   highThreshold: 0.8,
   lowThreshold: 0.2,
 })
+const recipientCheck = config.server && config.server.reporting ? config.server.reporting.recipient : false
 Prop.set(config, 'server.reporting', {
-  recipient: config.server.reporting.recipient || `http://${process.env.APP_MONITOR || '0.0.0.0'}:3000/api`,
+  recipient: recipientCheck || `http://${process.env.APP_MONITOR || '0.0.0.0'}:3000/api`, // used by deploy-to-aws script to tell node Monitor IP
   interval: 1,
 })
 Prop.set(config, 'server.rateLimiting', {
