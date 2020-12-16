@@ -1,3 +1,281 @@
+// ---------------------- TRANSACTION INTERFACES ------------------
+
+declare namespace Tx {
+  interface ApplyParameters {
+    type: string
+    timestamp: number
+    network: string
+    current: NetworkParameters
+    next: {}
+    windows: Windows
+    nextWindows: {}
+    issue: number
+  }
+
+  interface ApplyTally {
+    type: string
+    timestamp: number
+    network: string
+    next: Parameters
+    nextWindows: Windows
+  }
+
+  interface Commit {
+    type: string
+    from: string
+    swap: string
+    bid: string
+    reserve: string
+    exchanger: string
+    timestamp: number
+    sign: Signature
+  }
+
+  interface Create {
+    type: string
+    from: string
+    to: string
+    amount: number
+    timestamp: number
+  }
+
+  interface Distribute {
+    type: string
+    network: string
+    from: string
+    recipients: string[]
+    amount: number
+    timestamp: number
+    sign: Signature
+  }
+
+  interface Email {
+    type: string
+    signedTx: {
+      emailHash: string
+      from: string
+      sign: Signature
+    }
+    email: string
+    timestamp: number
+  }
+
+  interface Friend {
+    type: string
+    network: string
+    alias: string
+    from: string
+    to: string
+    timestamp: number
+    sign: Signature
+  }
+
+  interface GossipEmailHash {
+    type: string
+    nodeId: string
+    account: string
+    from: string
+    emailHash: string
+    verified: string
+    timestamp: number
+  }
+
+  interface InitNetwork {
+    type: string
+    network: string
+    timestamp: number
+  }
+
+  interface Issue {
+    type: string
+    network: string
+    nodeId: string
+    from: string
+    issue: string
+    proposal: string
+    timestamp: number
+  }
+
+  interface Message {
+    type: string
+    network: string
+    from: string
+    to: string
+    chatId: string
+    message: string
+    timestamp: number
+    sign: Signature
+  }
+
+  interface NodeReward {
+    type: string
+    network: string
+    nodeId: string
+    from: string
+    to: string
+    timestamp: number
+  }
+
+  interface Parameters {
+    type: string
+    nodeId: string
+    from: string
+    network: string
+    issue: string
+    timestamp: number
+  }
+
+  interface Proposal {
+    type: string
+    network: string
+    from: string
+    proposal: string
+    issue: string
+    parameters: NetworkParameters
+    timestamp: number
+    sign: Signature
+  }
+
+  interface Receipt {
+    type: string
+    from: string
+    swap: string
+    bid: string
+    exchanger: string
+    reserve: string
+    timestamp: number
+    sign: Signature
+  }
+
+  interface Register {
+    type: string
+    aliasHash: string
+    from: string
+    alias: string
+    timestamp: number
+    sign: Signature
+  }
+
+  interface RemoveFriend {
+    type: string
+    network: string
+    from: string
+    to: string
+    timestamp: number
+    sign: Signature
+  }
+
+  interface RemoveStakeRequest {
+    type: string
+    network: string
+    from: string
+    stake: number
+    timestamp: number
+    sign: Signature
+  }
+
+  interface RemoveStake {
+    type: string
+    network: string
+    from: string
+    stake: number
+    timestamp: number
+    sign: Signature
+  }
+
+  interface SnapshotClaim {
+    type: string
+    network: string
+    from: string
+    timestamp: number
+    sign: Signature
+  }
+
+  interface Snapshot {
+    type: string
+    from: string
+    network: string
+    snapshot: any
+    timestamp: number
+    sign: Signature
+  }
+
+  interface Stake {
+    type: string
+    network: string
+    from: string
+    stake: number
+    timestamp: number
+    sign: Signature
+  }
+
+  interface Dispute {
+    type: string
+    dispute: string
+    from: string
+    exchanger: string
+    swap: string
+    bid: string
+    reserve: string
+    timestamp: number
+    sign: Signature
+  }
+
+  interface Tally {
+    type: string
+    nodeId: string
+    from: string
+    network: string
+    issue: string
+    proposals: string[]
+    timestamp: number
+  }
+
+  interface Toll {
+    type: string
+    network: string
+    from: string
+    toll: number
+    timestamp: number
+    sign: Signature
+  }
+
+  interface Transfer {
+    type: string
+    network: string
+    from: string
+    to: string
+    amount: number
+    timestamp: number
+    sign: Signature
+  }
+
+  interface Verify {
+    type: string
+    from: string
+    network: string
+    code: string
+    timestamp: number
+    sign: Signature
+  }
+
+  interface Vote {
+    type: string
+    network: string
+    from: string
+    issue: string
+    proposal: string
+    amount: number
+    timestamp: number
+    sign: Signature
+  }
+}
+
+interface Signature {
+  owner: string
+  sig: string
+}
+
 /**
  * ---------------------- ACCOUNT INTERFACES ----------------------
  */
@@ -197,4 +475,8 @@ interface WrappedAccount {
   data: Account
   timestamp: number
   accountCreated?: boolean
+}
+
+interface WrappedStates {
+  [id: string]: WrappedAccount
 }
