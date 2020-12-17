@@ -100,10 +100,10 @@ export const validate = (tx: Tx.DevProposal, wrappedStates: WrappedStates, respo
     response.reason = 'From account has insufficient balance to submit a devProposal'
     return response
   }
-  if (tx.payments.reduce((acc: number, payment: DeveloperPayment) => new Decimal(payment.amount).plus(acc), 0) > 1) {
-    response.reason = 'tx payment amounts added up to more than 100%'
-    return response
-  }
+  // if (tx.payments.reduce((acc: number, payment: DeveloperPayment) => new Decimal(payment.amount).plus(acc), 0) > 1) {
+  //   response.reason = 'tx payment amounts added up to more than 100%'
+  //   return response
+  // }
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
