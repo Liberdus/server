@@ -12,6 +12,28 @@ declare namespace Tx {
     issue: number
   }
 
+  interface ApplyDevParameters {
+    type: string
+    timestamp: number
+    network: string
+    current: NetworkParameters
+    next: {}
+    devWindows: DevWindows
+    nextDevWindows: {}
+    developerFund: DeveloperPayment[]
+    nextDeveloperFund: DeveloperPayment[]
+    issue: number
+    devIssue: number
+  }
+
+  interface ApplyDevPayment {
+    type: string
+    timestamp: number
+    network: string
+    developerFund: DeveloperPayment[]
+    issue: number
+  }
+
   interface ApplyTally {
     type: string
     timestamp: number
@@ -20,15 +42,13 @@ declare namespace Tx {
     nextWindows: Windows
   }
 
-  interface Commit {
+  interface ApplyDevTally {
     type: string
-    from: string
-    swap: string
-    bid: string
-    reserve: string
-    exchanger: string
     timestamp: number
-    sign: Signature
+    network: string
+    nextDeveloperFund: DeveloperPayment[]
+    nextDevWindows: Windows
+    nextWindows: Windows
   }
 
   interface Create {
@@ -96,6 +116,15 @@ declare namespace Tx {
     timestamp: number
   }
 
+  interface DevIssue {
+    type: string
+    network: string
+    nodeId: string
+    from: string
+    devIssue: string
+    timestamp: number
+  }
+
   interface Message {
     type: string
     network: string
@@ -125,6 +154,15 @@ declare namespace Tx {
     timestamp: number
   }
 
+  interface DevParameters {
+    type: string
+    nodeId: string
+    from: string
+    network: string
+    devIssue: string
+    timestamp: number
+  }
+
   interface Proposal {
     type: string
     network: string
@@ -136,13 +174,17 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface Receipt {
+  interface DevProposal {
     type: string
+    network: string
     from: string
-    swap: string
-    bid: string
-    exchanger: string
-    reserve: string
+    devProposal: string
+    devIssue: string
+    totalAmount: number
+    payments: DeveloperPayment[]
+    title: string
+    description: string
+    payAddress: string
     timestamp: number
     sign: Signature
   }
@@ -209,18 +251,6 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface Dispute {
-    type: string
-    dispute: string
-    from: string
-    exchanger: string
-    swap: string
-    bid: string
-    reserve: string
-    timestamp: number
-    sign: Signature
-  }
-
   interface Tally {
     type: string
     nodeId: string
@@ -228,6 +258,16 @@ declare namespace Tx {
     network: string
     issue: string
     proposals: string[]
+    timestamp: number
+  }
+
+  interface DevTally {
+    type: string
+    nodeId: string
+    from: string
+    network: string
+    devIssue: string
+    devProposals: string[]
     timestamp: number
   }
 
@@ -266,6 +306,28 @@ declare namespace Tx {
     issue: string
     proposal: string
     amount: number
+    timestamp: number
+    sign: Signature
+  }
+
+  interface DevVote {
+    type: string
+    network: string
+    from: string
+    devIssue: string
+    devProposal: string
+    approve: boolean
+    amount: number
+    timestamp: number
+    sign: Signature
+  }
+
+  interface DevPayment {
+    type: string
+    network: string
+    from: string
+    developer: string
+    payment: DeveloperPayment
     timestamp: number
     sign: Signature
   }
@@ -398,7 +460,7 @@ interface DevProposalAccount {
   timestamp: number
 }
 
-type Account = NetworkAccount & IssueAccount & DevIssueAccount & UserAccount & AliasAccount & ProposalAccount & DevProposalAccount & NodeAccount & ChatAccount
+type Accounts = NetworkAccount & IssueAccount & DevIssueAccount & UserAccount & AliasAccount & ProposalAccount & DevProposalAccount & NodeAccount & ChatAccount
 // type Account = NetworkAccount | IssueAccount | DevIssueAccount | UserAccount | AliasAccount | ProposalAccount | DevProposalAccount | NodeAccount | ChatAccount
 
 /**
@@ -472,7 +534,7 @@ interface ValidationResponse {
 interface WrappedAccount {
   accountId: string
   stateId: string
-  data: Account
+  data: Accounts
   timestamp: number
   accountCreated?: boolean
 }

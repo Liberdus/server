@@ -20,7 +20,7 @@ export const validate_fields = (tx: Tx.Create, response: Shardus.IncomingTransac
 }
 
 export const validate = (tx: Tx.Create, wrappedStates: WrappedStates, response: Shardus.IncomingTransactionResult, dapp: Shardus) => {
-  const to: Account = wrappedStates[tx.to] && wrappedStates[tx.to].data
+  const to: Accounts = wrappedStates[tx.to] && wrappedStates[tx.to].data
   if (to === undefined || to === null) {
     response.reason = "target account doesn't exist"
     return response

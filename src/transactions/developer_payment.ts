@@ -1,0 +1,94 @@
+import * as crypto from 'shardus-crypto-utils'
+import Shardus from 'shardus-global-server/src/shardus/shardus-types'
+import * as config from '../config'
+
+export const validate_fields = (tx: Tx.DevPayment, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.from !== 'string') {
+    response.success = false
+    response.reason = '"From" must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.payment !== 'object') {
+    response.success = false
+    response.reason = '"Payment" must be an object.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.payment.amount !== 'number') {
+    response.success = false
+    response.reason = '"payment.amount" must be a number.'
+    throw new Error(response.reason)
+  }
+  return response
+}
+
+export const validate = (tx: Tx.DevPayment, wrappedStates: WrappedStates, response: Shardus.IncomingTransactionResult, dapp: Shardus) => {
+  const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
+  const network: NetworkAccount = wrappedStates[tx.network].data
+  const developer: UserAccount = wrappedStates[tx.developer] && wrappedStates[tx.developer].data
+  // let nodeInfo
+  // try {
+  //   nodeInfo = dapp.getNode(tx.nodeId)
+  // } catch (err) {
+  //   dapp.log(err)
+  // }
+  // if (!nodeInfo) {
+  //   response.reason = 'no nodeInfo'
+  //   return response
+  // }
+  if (tx.timestamp < tx.payment.timestamp) {
+    response.reason = 'This payment is not ready to be released'
+    return response
+  }
+  if (network.id !== config.networkAccount) {
+    response.reason = 'To account must be the network account'
+    return response
+  }
+  if (!network.developerFund.some((payment: DeveloperPayment) => payment.id === tx.payment.id)) {
+    response.reason = 'This payment doesnt exist'
+    return response
+  }
+  if (!developer || !developer.data) {
+    response.reason = `No account exists for the passed in tx.developer ${tx.developer}`
+    return response
+  }
+  if (tx.developer !== tx.payment.address) {
+    response.reason = `tx developer ${tx.developer} does not match address in payment ${tx.payment.address}`
+    return response
+  }
+  response.success = true
+  response.reason = 'This transaction is valid!'
+  return response
+}
+
+export const apply = (tx: Tx.DevPayment, txId: string, wrappedStates: WrappedStates, dapp) => {
+  const from: UserAccount = wrappedStates[tx.from].data
+  const network: NetworkAccount = wrappedStates[tx.network].data
+  const developer: UserAccount = wrappedStates[tx.developer].data
+  developer.data.balance += tx.payment.amount
+  developer.data.transactions.push({ ...tx, txId })
+
+  const when = tx.timestamp + config.ONE_SECOND * 10
+
+  dapp.setGlobal(
+    config.networkAccount,
+    {
+      type: 'apply_developer_payment',
+      timestamp: when,
+      network: config.networkAccount,
+      developerFund: network.developerFund.filter((payment: DeveloperPayment) => payment.id !== tx.payment.id),
+    },
+    when,
+    config.networkAccount,
+  )
+
+  developer.timestamp = tx.timestamp
+  from.timestamp = tx.timestamp
+  dapp.log('Applied developer_payment tx', from, developer)
+}
+
+export const keys = (tx: Tx.DevPayment, result: TransactionKeys) => {
+  result.sourceKeys = [tx.from]
+  result.targetKeys = [tx.developer, tx.network]
+  result.allKeys = [...result.sourceKeys, ...result.targetKeys]
+  return result
+}
