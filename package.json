@@ -1,6 +1,6 @@
 {
   "name": "liberdus",
-  "version": "2.1.9",
+  "version": "2.1.11",
   "description": "Liberdus is a payment network that allows users to govern their own money system in a democratic fashion",
   "main": "dist/index.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "run-client": "npm explore liberdus-web-client -- npm start",
     "start-client": "shardus pm2 start npm -- run run-client",
     "stop-client": "shardus pm2 stop npm",
-    "start": "shardus clean && npm run build-client && shardus start 10 && npm run start-client && echo \"\nmonitor:    http://localhost:3000\nweb-client: http://localhost:3333\nexplorer:   http://localhost:4444\"",
+    "start": "(shardus clean || true) && npm run build-client && shardus start 10 && npm run start-client && echo \"\nmonitor:    http://localhost:3000\nweb-client: http://localhost:3333\nexplorer:   http://localhost:4444\"",
     "stop": "npm run stop-client && shardus stop",
     "test": "echo \"Error: no test specified\" && exit 1",
     "update-template": "node scripts/update-template.js",
@@ -21,7 +21,8 @@
     "prepare": "npm run compile",
     "pretest": "npm run compile",
     "posttest": "npm run check",
-    "postinstall": "npm explore liberdus-web-client -- npm i && npm run compile"
+    "postinstall": "npm explore liberdus-web-client -- npm i && npm run compile",
+    "dbg": "shardus start 3 && shardus stop && rm -rf instances/"
   },
   "author": "Kyle Shifflett",
   "license": "ISC",
@@ -41,7 +42,7 @@
     "nodemailer": "^6.3.1",
     "nodemailer-smtp-transport": "^2.7.4",
     "shardus-crypto-utils": "git+https://gitlab.com/shardus/shardus-crypto-utils.git#semver:^3.0.1",
-    "shardus-global-server": "git+https://gitlab.com/shardus/global/shardus-global-server.git#semver:^2.1.4",
+    "shardus-global-server": "git+https://gitlab.com/shardus/global/shardus-global-server.git#semver:^2.1.5",
     "streamroller": "^2.2.3",
     "vorpal": "^1.12.0"
   },
@@ -68,10 +69,10 @@
     "gts": "^2.0.0",
     "hygen-create": "^0.2.1",
     "liberdus-web-client": "git+https://gitlab.com/liberdus/web-client/liberdus-web-client.git#semver:^1.0.0",
-    "monitor-server": "git+https://gitlab.com/shardus/monitor-server.git#semver:^1.0.1",
+    "monitor-server": "git+https://gitlab.com/shardus/monitor-server.git#semver:^1.1.2",
     "pm2": "^4.1.2",
     "prettier": "^1.19.1",
-    "shardus": "^4.1.2",
+    "shardus": "^4.2.0",
     "shelljs": "^0.8.4",
     "standard": "^12.0.1",
     "typescript": "~3.7.0",

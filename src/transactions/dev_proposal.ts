@@ -104,6 +104,10 @@ export const validate = (tx: Tx.DevProposal, wrappedStates: WrappedStates, respo
   //   response.reason = 'tx payment amounts added up to more than 100%'
   //   return response
   // }
+  if (tx.payments.reduce<number>((acc: number, payment: DeveloperPayment) => new Decimal(payment.amount).plus(acc) as any, 0) > 1) {
+    response.reason = 'tx payment amounts added up to more than 100%'
+    return response
+  }
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
