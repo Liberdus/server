@@ -17,8 +17,12 @@ WORKDIR /usr/src/app
 COPY . .
 
 # Install node_modules
-RUN npm set unsafe-perm true
-RUN npm install
+# RUN npm set unsafe-perm true
+# RUN npm install
+
+WORKDIR /usr/src/app/node_modules/shardus-global-server
+CMD rm -rf ./node_modules && npm i
+WORKDIR /usr/src/app
 
 # Define run command
-CMD [ "node", "dist/index.js" ]
+CMD node dist/index.js & (sleep 5 && npx log-streamer)
