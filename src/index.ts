@@ -963,10 +963,10 @@ dapp.setup({
           when,
           networkAccount,
         )
-  
+
         dapp.log('GENERATED_NEW_NETWORK: ', nodeId)
         await _sleep(ONE_SECOND * 5)
-        
+
         dapp.set({
           type: 'issue',
           network: networkAccount,
@@ -1097,6 +1097,19 @@ dapp.setup({
         return response
       }
       case 'create': {
+        if (to === undefined || to === null) {
+          response.reason = "target account doesn't exist"
+          return response
+        }
+        if (tx.amount < 1) {
+          response.reason = 'create amount needs to be positive (1 or greater)'
+          return response
+        }
+        response.success = true
+        response.reason = 'This transaction is valid!'
+        return response
+      }
+      case 'debug-create': {
         if (to === undefined || to === null) {
           response.reason = "target account doesn't exist"
           return response
@@ -2072,6 +2085,24 @@ dapp.setup({
         }
         break
       }
+      case 'debug-create': {
+        if (typeof tx.from !== 'string') {
+          success = false
+          reason = '"From" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.to !== 'string') {
+          success = false
+          reason = '"To" must be a string.'
+          throw new Error(reason)
+        }
+        if (typeof tx.amount !== 'number') {
+          success = false
+          reason = '"Amount" must be a number.'
+          throw new Error(reason)
+        }
+        break
+      }
       case 'transfer': {
         if (typeof tx.from !== 'string') {
           success = false
@@ -2556,6 +2587,13 @@ dapp.setup({
         to.timestamp = tx.timestamp
         // to.data.transactions.push({ ...tx, txId })
         dapp.log('Applied create tx', to)
+        break
+      }
+      case 'debug-create': {
+        to.data.balance += tx.amount
+        to.timestamp = tx.timestamp
+        // to.data.transactions.push({ ...tx, txId })
+        dapp.log('Applied debug-create tx', to)
         break
       }
       case 'transfer': {
@@ -3108,6 +3146,10 @@ dapp.setup({
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.to]
         break
+      case 'debug-create':
+        result.sourceKeys = [tx.from]
+        result.targetKeys = [tx.to]
+        break
       case 'transfer':
         result.sourceKeys = [tx.from]
         result.targetKeys = [tx.to, tx.network]
@@ -3234,7 +3276,7 @@ dapp.setup({
     }
     const timestamp = account.timestamp
     return timestamp
-  },  
+  },
   getTimestampAndHashFromAccount(accountData: any): {timestamp:number, hash: string} {
     const account:Account = accountData as Account
     // if ((typeof account === 'undefined' || account === null)) {
@@ -3499,7 +3541,7 @@ dapp.setup({
     if(accType == UserAccount){
       if(accountData.data.balance != null){
         let blobBalanceBefore = blob.totalBalance
-        let accountBalance = accountData.data.balance  
+        let accountBalance = accountData.data.balance
         let totalBalance = blobBalanceBefore + accountBalance
 
         dapp.log(`stats balance init ${blobBalanceBefore}+${accountBalance}=${totalBalance}  ${stringify(accountData?.id)}`)
@@ -3515,7 +3557,7 @@ dapp.setup({
     }
     if(accType == NodeAccount){
       if(accountData.balance != null){
-        let totalBalance = blob.totalBalance + accountData.balance   
+        let totalBalance = blob.totalBalance + accountData.balance
         if(totalBalance != null){
           blob.totalBalance = totalBalance
         } else {
@@ -3524,7 +3566,7 @@ dapp.setup({
       } else {
         dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 2 ${accountData?.balance} ${stringify(accountData?.id)}`)
       }
-    } 
+    }
 
   },
   // dataSummaryUpdate: (blob: any, accountDataBefore: any, accountDataAfter: any) => void
@@ -3537,18 +3579,18 @@ dapp.setup({
       blob.totalAccounts=0
     }
     let accType = getAccountType(accountDataAfter)
-    
+
     if(accType == UserAccount){
       let blobBalanceBefore = blob.totalBalance
-      let accountBalanceBefore = accountDataBefore?.data?.balance 
+      let accountBalanceBefore = accountDataBefore?.data?.balance
       let accountBalanceAfter = accountDataAfter?.data?.balance
       let balanceChange = accountDataAfter?.data?.balance - accountDataBefore?.data?.balance
 
-      let totalBalance = blob.totalBalance + balanceChange  
+      let totalBalance = blob.totalBalance + balanceChange
       dapp.log(`stats balance update ${blobBalanceBefore}+${balanceChange}(${accountBalanceAfter}-${accountBalanceBefore})=${totalBalance}  ${stringify(accountDataAfter?.id)}`)
 
       if(balanceChange != null){
-        totalBalance = blob.totalBalance + balanceChange    
+        totalBalance = blob.totalBalance + balanceChange
         if(totalBalance != null){
           blob.totalBalance = totalBalance
         } else {
@@ -3563,11 +3605,11 @@ dapp.setup({
     if(accType == NodeAccount){
       let balanceChange = accountDataAfter?.balance - accountDataBefore?.balance
       if(balanceChange != null){
-        let totalBalance = blob.totalBalance + balanceChange    
+        let totalBalance = blob.totalBalance + balanceChange
         if(totalBalance != null){
           blob.totalBalance = totalBalance
         } else {
-          dapp.log(`error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter?.balance} ${stringify(accountDataAfter?.id)} ${accountDataBefore?.balance} ${stringify(accountDataBefore?.id)}`)  
+          dapp.log(`error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter?.balance} ${stringify(accountDataAfter?.id)} ${accountDataBefore?.balance} ${stringify(accountDataBefore?.id)}`)
         }
       } else {
         dapp.log(`error: null balance attempt. dataSummaryUpdate NodeAccount 2 ${accountDataAfter?.balance} ${stringify(accountDataAfter?.id)} ${accountDataBefore?.balance} ${stringify(accountDataBefore?.id)}`)
@@ -3600,7 +3642,7 @@ function getAccountType(data){
   }
   if(data.inbox !== undefined){
     return AliasAccount
-  }  
+  }
   if(data.devProposals !== undefined){
     return DevIssueAccount
   }
