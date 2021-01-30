@@ -102,8 +102,7 @@ Prop.set(config, 'server.p2p', {
   maxNodes: 400,
   maxJoinedPerCycle: 50,
   maxSyncingPerCycle: 50,
-  rotateNodes: false,
-  maxRemovedPerCycle: 10,
+  maxRotatedPerCycle: 0,
   amountToScale: 10
 })
 Prop.set(config, 'server.loadDetection', {
@@ -176,15 +175,16 @@ Prop.set(config, 'logs', {
       },
     },
     categories: {
-      default: { appenders: ['out'], level: 'fatal' },
-      app: { appenders: ['app', 'errors'], level: 'fatal' },
-      main: { appenders: ['main', 'errors'], level: 'fatal' },
-      fatal: { appenders: ['fatal'], level: 'fatal' },
-      net: { appenders: ['net'], level: 'fatal' },
-      playback: { appenders: ['playback'], level: 'fatal' },
-      shardDump: { appenders: ['shardDump'], level: 'fatal' },
-      statsDump: { appenders: ['statsDump'], level: 'fatal' },
-    },
+      default: { appenders: ["out"], level: "fatal" },
+      main: { appenders: ["main", "errors"], level: "fatal" },
+      p2p: { appenders: ["p2p"], level: "fatal" },
+      snapshot: { appenders: ["snapshot"], level: "fatal" },
+      cycle: { appenders: ["cycle"], level: "fatal" },
+      fatal: { appenders: ["fatal"], level: "fatal" },
+      net: { appenders: ["net"], level: "fatal" },
+      playback: { appenders: ["playback"], level: "fatal" },
+      shardDump: { appenders: ["shardDump"], level: "fatal" },
+      statsDump: { appenders: ["statsDump"], level: "fatal" }    },
   },
 })
 
