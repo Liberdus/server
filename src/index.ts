@@ -98,12 +98,12 @@ Prop.set(config, 'server.p2p', {
       },
     ],
   minNodesToAllowTxs: 1,
-  minNodes: 400,
+  minNodes: 20,
   maxNodes: 400,
   maxJoinedPerCycle: 50,
   maxSyncingPerCycle: 50,
   rotateNodes: false,
-  maxRemovedPerCycle: 0,
+  maxRemovedPerCycle: 10,
   amountToScale: 10
 })
 Prop.set(config, 'server.loadDetection', {
