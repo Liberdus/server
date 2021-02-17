@@ -7,7 +7,6 @@ import { friends } from './friends'
 import { toll } from './toll'
 import { tollOfFriend } from './tollOfFriend'
 import { transactions } from './transactions'
-// import { all } from './all'
 
 export default {
   account,
@@ -19,5 +18,4 @@ export default {
   tollOfFriend,
   transactions,
   recentMessages,
-  //   all
 }

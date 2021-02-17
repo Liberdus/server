@@ -73,7 +73,7 @@ dapp.setup({
           configs.networkAccount,
         )
 
-        dapp.log('GENERATED_NEW_NETWORK: ', nodeId)
+        dapp.log(`node ${nodeId} GENERATED_A_NEW_NETWORK_ACCOUNT: `)
         await _sleep(configs.ONE_SECOND * 5)
 
         dapp.set({
