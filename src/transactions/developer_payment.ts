@@ -1,6 +1,7 @@
 import * as crypto from 'shardus-crypto-utils'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import * as config from '../config'
+import stringify from 'fast-stable-stringify'
 
 export const validate_fields = (tx: Tx.DevPayment, response: Shardus.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -55,6 +56,10 @@ export const validate = (tx: Tx.DevPayment, wrappedStates: WrappedStates, respon
     response.reason = `tx developer ${tx.developer} does not match address in payment ${tx.payment.address}`
     return response
   }
+  if (developer.data.payments.some((payment) => payment.id === tx.payment.id)) {
+    response.reason = `This payment ${stringify(tx.payment)} has already been given to the developer ${tx.developer}`
+    return response
+  }
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
@@ -64,6 +69,7 @@ export const apply = (tx: Tx.DevPayment, txId: string, wrappedStates: WrappedSta
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[tx.network].data
   const developer: UserAccount = wrappedStates[tx.developer].data
+  developer.data.payments.push(tx.payment)
   developer.data.balance += tx.payment.amount
   developer.data.transactions.push({ ...tx, txId })
 
@@ -83,7 +89,7 @@ export const apply = (tx: Tx.DevPayment, txId: string, wrappedStates: WrappedSta
 
   developer.timestamp = tx.timestamp
   from.timestamp = tx.timestamp
-  dapp.log('Applied developer_payment tx', from, developer)
+  dapp.log('Applied developer_payment tx', from, developer, tx.payment)
 }
 
 export const keys = (tx: Tx.DevPayment, result: TransactionKeys) => {

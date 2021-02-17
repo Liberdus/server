@@ -353,6 +353,7 @@ interface UserAccount {
     stake?: number
     remove_stake_request: number | null
     transactions: object[]
+    payments: DeveloperPayment[]
   }
   alias: string | null
   emailHash: string | null
