@@ -42,6 +42,6 @@ export default (dapp: any) => {
 
   dapp.registerExternalGet('messages/:chatId', messages(dapp))
 
-  dapp.registerExternalGet('debug/dump', debug.dump)
+  dapp.registerExternalGet('debug/dump', debug.dump(dapp))
   dapp.registerExternalPost('debug/exit', debug.exit)
 }

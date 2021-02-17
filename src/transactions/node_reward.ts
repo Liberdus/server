@@ -1,4 +1,4 @@
-import Shardus from "shardus-global-server/src/shardus/shardus-types"
+import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 
 export const validate_fields = (tx: Tx.NodeReward, response: Shardus.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {

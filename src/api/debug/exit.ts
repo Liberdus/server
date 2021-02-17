@@ -1,7 +1,7 @@
-export const exit = (req: {body: {code: number}}) => {
+export const exit = (req: { body: { code: number } }) => {
   try {
-    process.exit(req.body.code);
+    process.exit(req.body.code)
   } catch (err) {
-    console.log(err);
+    console.log(err)
   }
-};
+}

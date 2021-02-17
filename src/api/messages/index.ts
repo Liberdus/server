@@ -1,18 +1,18 @@
 export default dapp => async (req, res): Promise<void> => {
   try {
-    const {chatId} = req.params
+    const { chatId } = req.params
     const chat = await dapp.getLocalOrRemoteAccount(chatId)
     if (!chat) {
-      res.json({error: "Chat doesn't exist"})
+      res.json({ error: "Chat doesn't exist" })
       return
     }
     if (!chat.data.messages) {
-      res.json({error: 'no chat history for this request'})
+      res.json({ error: 'no chat history for this request' })
     } else {
-      res.json({messages: chat.data.messages})
+      res.json({ messages: chat.data.messages })
     }
   } catch (error) {
     dapp.log(error)
-    res.json({error})
+    res.json({ error })
   }
 }

@@ -1,13 +1,13 @@
 import * as crypto from 'shardus-crypto-utils'
 
 export const chatAccount = (accountId: string): ChatAccount => {
-    const chat: ChatAccount = {
-        id: accountId,
-        type: 'ChatAccount',
-        messages: [],
-        timestamp: 0,
-        hash: '',
-    }
-    chat.hash = crypto.hashObj(chat)
-    return chat
+  const chat: ChatAccount = {
+    id: accountId,
+    type: 'ChatAccount',
+    messages: [],
+    timestamp: 0,
+    hash: '',
+  }
+  chat.hash = crypto.hashObj(chat)
+  return chat
 }

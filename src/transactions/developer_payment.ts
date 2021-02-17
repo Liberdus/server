@@ -56,7 +56,7 @@ export const validate = (tx: Tx.DevPayment, wrappedStates: WrappedStates, respon
     response.reason = `tx developer ${tx.developer} does not match address in payment ${tx.payment.address}`
     return response
   }
-  if (developer.data.payments.some((payment) => payment.id === tx.payment.id)) {
+  if (developer.data.payments.some(payment => payment.id === tx.payment.id)) {
     response.reason = `This payment ${stringify(tx.payment)} has already been given to the developer ${tx.developer}`
     return response
   }
