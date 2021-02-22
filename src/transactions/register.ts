@@ -22,10 +22,16 @@ export const validate_fields = (tx: Tx.Register, response: Shardus.IncomingTrans
     response.reason = '"alias" must be less than 21 characters (20 max)'
     throw new Error(response.reason)
   }
+  if (/[^A-Za-z0-9]+/g.test(tx.alias)) {
+    response.success = false
+    response.reason = 'Alias may only contain alphanumeric characters'
+    throw new Error(response.reason)
+  }
   return response
 }
 
 export const validate = (tx: Tx.Register, wrappedStates: WrappedStates, response: Shardus.IncomingTransactionResult, dapp: Shardus) => {
+  const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const alias: AliasAccount = wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
   if (tx.sign.owner !== tx.from) {
     response.reason = 'not signed by from account'
@@ -39,8 +45,16 @@ export const validate = (tx: Tx.Register, wrappedStates: WrappedStates, response
     response.reason = 'Alias account was not found for some reason'
     return response
   }
+  if (from.alias !== null) {
+    response.reason = 'User has already registered an alias'
+    return response
+  }
   if (alias.inbox === tx.alias) {
     response.reason = 'This alias is already taken'
+    return response
+  }
+  if (/[^A-Za-z0-9]+/g.test(tx.alias)) {
+    response.reason = 'Alias may only contain alphanumeric characters'
     return response
   }
   response.success = true
