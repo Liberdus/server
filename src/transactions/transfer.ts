@@ -80,8 +80,6 @@ export const keys = (tx: Tx.Transfer, result: TransactionKeys) => {
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.Transfer, accountCreated = false) => {
   if (!account) {
     throw Error('Account must exist in order to send a transfer transaction')
-    // account = create.userAccount(accountId, tx.timestamp)
-    // accountCreated = true
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }

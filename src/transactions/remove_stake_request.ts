@@ -60,8 +60,7 @@ export const keys = (tx: Tx.RemoveStakeRequest, result: TransactionKeys) => {
 
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.RemoveStakeRequest, accountCreated = false) => {
   if (!account) {
-    account = create.userAccount(accountId, tx.timestamp)
-    accountCreated = true
+    throw new Error('Account must already exist for the remove_stake_request transaction')
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }

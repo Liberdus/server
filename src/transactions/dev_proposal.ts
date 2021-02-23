@@ -147,9 +147,13 @@ export const keys = (tx: Tx.DevProposal, result: TransactionKeys) => {
   return result
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.DevProposal, accountCreated = false) => {
+export const createRelevantAccount = (dapp: Shardus, account: UserAccount | DevProposalAccount, accountId: string, tx: Tx.DevProposal, accountCreated = false) => {
   if (!account) {
-    account = create.userAccount(accountId, tx.timestamp)
+    if (accountId === tx.devProposal) {
+      account = create.devProposalAccount(accountId)
+    } else {
+      account = create.userAccount(accountId, tx.timestamp)
+    }
     accountCreated = true
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)

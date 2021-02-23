@@ -10,16 +10,6 @@ export const validate = (tx: Tx.Parameters, wrappedStates: WrappedStates, respon
   const network: NetworkAccount = wrappedStates[tx.network].data
   const issue: IssueAccount = wrappedStates[tx.issue].data
 
-  // let nodeInfo
-  // try {
-  //   nodeInfo = dapp.getNode(tx.nodeId)
-  // } catch (err) {
-  //   dapp.log(err)
-  // }
-  // if (!nodeInfo) {
-  //   response.reason = 'no nodeInfo'
-  //   return response
-  // }
   if (network.id !== config.networkAccount) {
     response.reason = 'To account must be the network account'
     return response

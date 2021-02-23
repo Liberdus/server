@@ -28,8 +28,8 @@ export const validate = (tx: Tx.DevParameters, wrappedStates: WrappedStates, res
     response.reason = "devIssue doesn't exist"
     return response
   }
-  if (devIssue.number !== network.issue) {
-    response.reason = `This devIssue number ${devIssue.number} does not match the current network issue ${network.issue}`
+  if (devIssue.number !== network.devIssue) {
+    response.reason = `This devIssue number ${devIssue.number} does not match the current network issue ${network.devIssue}`
     return response
   }
   if (devIssue.active === false) {

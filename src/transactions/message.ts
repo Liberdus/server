@@ -114,7 +114,7 @@ export const createRelevantAccount = (dapp: Shardus, account: UserAccount | Chat
     if (accountId === tx.chatId) {
       account = create.chatAccount(accountId)
     } else {
-      account = create.userAccount(accountId, tx.timestamp)
+      throw Error('Account must exist in order to send a message transaction')
     }
     accountCreated = true
   }
