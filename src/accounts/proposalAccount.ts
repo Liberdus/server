@@ -1,6 +1,6 @@
 import * as crypto from 'shardus-crypto-utils'
 
-export const proposalAccount = (accountId: string, parameters: NetworkParameters) => {
+export const proposalAccount = (accountId: string, parameters?: NetworkParameters) => {
   const proposal: ProposalAccount = {
     id: accountId,
     type: 'ProposalAccount',

@@ -658,7 +658,7 @@ vorpal.command('transfer', 'transfers tokens to another account').action(async f
     type: 'transfer',
     network,
     from: USER.address,
-    to: to,
+    to,
     amount: answers.amount,
     timestamp: Date.now(),
   }

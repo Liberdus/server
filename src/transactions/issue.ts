@@ -1,6 +1,7 @@
 import * as crypto from 'shardus-crypto-utils'
 import _ from 'lodash'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
+import create from '../accounts'
 
 export const validate_fields = (tx: Tx.Issue, response: Shardus.IncomingTransactionResult) => {
   return response
@@ -23,6 +24,7 @@ export const validate = (tx: Tx.Issue, wrappedStates: WrappedStates, response: S
     response.reason = 'Issue is already active'
     return response
   }
+  console.log(`networkAccount: ${JSON.stringify(network)}`)
   const networkIssueHash = crypto.hash(`issue-${network.issue}`)
   if (tx.issue !== networkIssueHash) {
     response.reason = `issue hash (${tx.issue}) does not match current network issue hash (${networkIssueHash})`
@@ -65,4 +67,18 @@ export const keys = (tx: Tx.Issue, result: TransactionKeys) => {
   result.targetKeys = [tx.issue, tx.proposal, tx.network]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
+}
+
+export const createRelevantAccount = (dapp: Shardus, account: NodeAccount | IssueAccount | ProposalAccount, accountId: string, tx: Tx.Issue, accountCreated = false) => {
+  if (!account) {
+    if (accountId === tx.issue) {
+      account = create.issueAccount(accountId)
+    } else if (accountId === tx.proposal) {
+      account = create.proposalAccount(accountId)
+    } else {
+      account = create.nodeAccount(accountId)
+    }
+    accountCreated = true
+  }
+  return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }

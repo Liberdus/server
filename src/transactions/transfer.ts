@@ -1,6 +1,7 @@
 import * as crypto from 'shardus-crypto-utils'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import * as utils from '../utils'
+import create from '../accounts'
 
 export const validate_fields = (tx: Tx.Transfer, response: Shardus.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -74,4 +75,13 @@ export const keys = (tx: Tx.Transfer, result: TransactionKeys) => {
   result.targetKeys = [tx.to, tx.network]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
+}
+
+export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.Transfer, accountCreated = false) => {
+  if (!account) {
+    throw Error('Account must exist in order to send a transfer transaction')
+    // account = create.userAccount(accountId, tx.timestamp)
+    // accountCreated = true
+  }
+  return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }

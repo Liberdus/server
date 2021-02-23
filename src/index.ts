@@ -74,7 +74,7 @@ dapp.setup({
         )
 
         dapp.log(`node ${nodeId} GENERATED_A_NEW_NETWORK_ACCOUNT: `)
-        await _sleep(configs.ONE_SECOND * 5)
+        await _sleep(configs.ONE_SECOND * 10)
 
         dapp.set({
           type: 'issue',
@@ -200,86 +200,87 @@ dapp.setup({
     }
   },
   getRelevantData(accountId: string, tx: any): Shardus.WrappedResponse {
-    let account: any = accounts[accountId]
+    let account = accounts[accountId]
     let accountCreated = false
     // Create the account if it doesn't exist
-    if (typeof account === 'undefined' || account === null) {
-      if (accountId === configs.networkAccount) {
-        account = create.networkAccount(accountId, tx.timestamp)
-        //accounts[accountId] = account
-        accountCreated = true
-      } else if (tx.type === 'issue') {
-        if (accountId === tx.issue) {
-          account = create.issueAccount(accountId)
-          //accounts[accountId] = account
-          accountCreated = true
-        } else if (accountId === tx.proposal) {
-          account = create.proposalAccount(accountId, tx.parameters)
-          //accounts[accountId] = account
-          accountCreated = true
-        }
-      } else if (tx.type === 'dev_issue') {
-        if (accountId === tx.devIssue) {
-          account = create.devIssueAccount(accountId)
-          //accounts[accountId] = account
-          accountCreated = true
-        }
-      } else if (tx.type === 'dev_proposal') {
-        if (accountId === tx.devProposal) {
-          account = create.devProposalAccount(accountId)
-          //accounts[accountId] = account
-          accountCreated = true
-        }
-      } else if (tx.type === 'proposal') {
-        if (accountId === tx.proposal) {
-          account = create.proposalAccount(accountId, tx.parameters)
-          //accounts[accountId] = account
-          accountCreated = true
-        }
-      } else if (tx.type === 'register') {
-        if (accountId === tx.aliasHash) {
-          account = create.aliasAccount(accountId)
-          //accounts[accountId] = account
-          accountCreated = true
-        }
-      } else if (tx.type === 'message') {
-        if (accountId === tx.chatId) {
-          account = create.chatAccount(accountId)
-          //accounts[accountId] = account
-          accountCreated = true
-        }
-      } else if (tx.type === 'node_reward') {
-        if (accountId === tx.from && accountId === tx.to) {
-          account = create.nodeAccount(accountId)
-          //accounts[accountId] = account
-          accountCreated = true
-        } else {
-          if (accountId === tx.to) {
-            account = create.userAccount(accountId, tx.timestamp)
-            //accounts[accountId] = account
-            accountCreated = true
-          } else {
-            account = create.nodeAccount(accountId)
-            //accounts[accountId] = account
-            accountCreated = true
-          }
-        }
-      }
-    }
-    if (typeof account === 'undefined' || account === null) {
-      if (tx.nodeId) {
-        account = create.nodeAccount(accountId)
-        //accounts[accountId] = account
-        accountCreated = true
-      } else {
-        account = create.userAccount(accountId, tx.timestamp)
-        //accounts[accountId] = account
-        accountCreated = true
-      }
-    }
-    // Wrap it for Shardus
-    const wrapped = dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
-    return wrapped
+    // if (typeof account === 'undefined' || account === null) {
+    //   if (accountId === configs.networkAccount) {
+    //     account = create.networkAccount(accountId, tx.timestamp)
+    //     //accounts[accountId] = account
+    //     accountCreated = true
+    //   } else if (tx.type === 'issue') {
+    //     if (accountId === tx.issue) {
+    //       account = create.issueAccount(accountId)
+    //       //accounts[accountId] = account
+    //       accountCreated = true
+    //     } else if (accountId === tx.proposal) {
+    //       account = create.proposalAccount(accountId, tx.parameters)
+    //       //accounts[accountId] = account
+    //       accountCreated = true
+    //     }
+    //   } else if (tx.type === 'dev_issue') {
+    //     if (accountId === tx.devIssue) {
+    //       account = create.devIssueAccount(accountId)
+    //       //accounts[accountId] = account
+    //       accountCreated = true
+    //     }
+    //   } else if (tx.type === 'dev_proposal') {
+    //     if (accountId === tx.devProposal) {
+    //       account = create.devProposalAccount(accountId)
+    //       //accounts[accountId] = account
+    //       accountCreated = true
+    //     }
+    //   } else if (tx.type === 'proposal') {
+    //     if (accountId === tx.proposal) {
+    //       account = create.proposalAccount(accountId, tx.parameters)
+    //       //accounts[accountId] = account
+    //       accountCreated = true
+    //     }
+    //   } else if (tx.type === 'register') {
+    //     if (accountId === tx.aliasHash) {
+    //       account = create.aliasAccount(accountId)
+    //       //accounts[accountId] = account
+    //       accountCreated = true
+    //     }
+    //   } else if (tx.type === 'message') {
+    //     if (accountId === tx.chatId) {
+    //       account = create.chatAccount(accountId)
+    //       //accounts[accountId] = account
+    //       accountCreated = true
+    //     }
+    //   } else if (tx.type === 'node_reward') {
+    //     if (accountId === tx.from && accountId === tx.to) {
+    //       account = create.nodeAccount(accountId)
+    //       //accounts[accountId] = account
+    //       accountCreated = true
+    //     } else {
+    //       if (accountId === tx.to) {
+    //         account = create.userAccount(accountId, tx.timestamp)
+    //         //accounts[accountId] = account
+    //         accountCreated = true
+    //       } else {
+    //         account = create.nodeAccount(accountId)
+    //         //accounts[accountId] = account
+    //         accountCreated = true
+    //       }
+    //     }
+    //   }
+    // }
+    // if (typeof account === 'undefined' || account === null) {
+    //   if (tx.nodeId) {
+    //     account = create.nodeAccount(accountId)
+    //     //accounts[accountId] = account
+    //     accountCreated = true
+    //   } else {
+    //     account = create.userAccount(accountId, tx.timestamp)
+    //     //accounts[accountId] = account
+    //     accountCreated = true
+    //   }
+    // }
+    // // Wrap it for Shardus
+    // const wrapped = dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
+    // return wrapped
+    return transactions[tx.type].createRelevantAccount(dapp, account, accountId, tx, accountCreated)
   },
   updateAccountFull(wrappedData, localCache, applyResponse): void {
     const accountId = wrappedData.accountId

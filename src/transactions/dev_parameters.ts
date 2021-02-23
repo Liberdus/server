@@ -1,5 +1,6 @@
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import * as config from '../config'
+import create from '../accounts'
 
 export const validate_fields = (tx: Tx.DevParameters, response: Shardus.IncomingTransactionResult) => {
   return response
@@ -74,4 +75,12 @@ export const keys = (tx: Tx.DevParameters, result: TransactionKeys) => {
   result.targetKeys = [tx.devIssue, tx.network]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
+}
+
+export const createRelevantAccount = (dapp: Shardus, account: NodeAccount, accountId: string, tx: Tx.DevParameters, accountCreated = false) => {
+  if (!account) {
+    account = create.nodeAccount(accountId)
+    accountCreated = true
+  }
+  return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }
