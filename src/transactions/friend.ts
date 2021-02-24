@@ -66,8 +66,7 @@ export const keys = (tx: Tx.Friend, result: TransactionKeys) => {
 
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.Friend, accountCreated = false) => {
   if (!account) {
-    account = create.userAccount(accountId, tx.timestamp)
-    accountCreated = true
+    throw Error('Account must exist in order to send a friend transaction')
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }

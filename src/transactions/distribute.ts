@@ -82,8 +82,7 @@ export const keys = (tx: Tx.Distribute, result: TransactionKeys) => {
 
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.Distribute, accountCreated = false) => {
   if (!account) {
-    account = create.userAccount(accountId, tx.timestamp)
-    accountCreated = true
+    throw new Error('Account must exist in order to send a distribute transaction')
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }
