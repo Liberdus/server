@@ -2,6 +2,9 @@ import fs from 'fs'
 import path from 'path'
 import Prop from 'dot-prop'
 import * as crypto from 'shardus-crypto-utils'
+import merge from 'deepmerge'
+import minimist from 'minimist'
+import { join } from 'lodash'
 
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
@@ -58,16 +61,14 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   defaultToll: 1,
 }
 
-export const initConfig = () => {
+export const initConfigFromFile = () => {
   let config: any = {}
-
-  if (process.env.BASE_DIR) {
+  let baseDir = process.env.BASE_DIR || '.'
     // set by shardus-network tool when creating multiple instances
-    if (fs.existsSync(path.join(process.env.BASE_DIR, 'config.json'))) {
-      config = JSON.parse(fs.readFileSync(path.join(process.env.BASE_DIR, 'config.json')).toString())
+    if (fs.existsSync(path.join(baseDir, 'config.json'))) {
+      config = JSON.parse(fs.readFileSync(path.join(baseDir, 'config.json')).toString())
     }
-    Prop.set(config, 'server.baseDir', process.env.BASE_DIR)
-  }
+    if(process.env.BASE_DIR) Prop.set(config, 'server.baseDir', process.env.BASE_DIR)
 
   if (process.env.APP_IP) {
     // used by deploy-to-aws script to tell the node its IP addr
@@ -78,18 +79,16 @@ export const initConfig = () => {
   }
 
   // CONFIGURATION PARAMETERS PASSED INTO SHARDUS
-  const existingArchiversCheck = config.server && config.server.p2p && config.server.p2p ? config.server.p2p.existingArchivers : false
   Prop.set(config, 'server.p2p', {
     cycleDuration: cycleDuration,
-    existingArchivers: existingArchiversCheck ||
-      JSON.parse(process.env.APP_SEEDLIST || 'false') || [
-        // used by deploy-to-aws script to tell node Archiver IP
-        {
-          ip: '127.0.0.1',
-          port: 4000,
-          publicKey: '758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3',
-        },
-      ],
+    existingArchivers: [
+      // used by deploy-to-aws script to tell node Archiver IP
+      {
+        ip: '127.0.0.1',
+        port: 4000,
+        publicKey: '758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3',
+      },
+    ],
     minNodesToAllowTxs: 1,
     minNodes: 50,
     maxNodes: 50,
@@ -178,6 +177,111 @@ export const initConfig = () => {
       },
     },
   })
+  config.username = 'test'
+  return config
+}
 
+function replaceAll(str, find, replace) {
+  return str.replace(new RegExp(find, 'g'), replace);
+}
+
+function createJointKey(keys) {
+  let jointKey = ''
+  for (let key of keys) {
+    if (jointKey.length > 0) {
+      jointKey += '_' + key
+    } else {
+      jointKey += key
+    }
+  }
+  return jointKey
+}
+
+function getPropertyFromJointKey(obj, jointKey) {
+  if (!obj || !jointKey) return
+  if (jointKey.split('_').length === 1) return obj[jointKey]
+  else {
+    let nestedKey = replaceAll(jointKey, '_', '.')
+    console.log('nestedKey', nestedKey)
+    let value = Prop.get(obj, nestedKey)
+    console.log('value', value)
+    return value
+  }
+}
+
+function setPropertyToJointKey(obj, jointKey, value) {
+  if (!obj || !jointKey) return
+  if (jointKey.split('_').length === 1) obj[jointKey] = value
+  else {
+    let nestedKey = replaceAll(jointKey, '_', '.')
+    Prop.set(obj, nestedKey, value)
+  }
+}
+
+function overwriteFromEnvOrArgs(jointKey, overwriteInfo) {
+  let {config, env, args} = overwriteInfo
+  // Override config from ENV variable
+  overwriteConfig(jointKey, config, env)
+  const parsedArgs = minimist(args.slice(2))
+  // Override config from cli args
+  overwriteConfig(jointKey, config, parsedArgs)
+}
+
+function overwriteConfig(jointKey, config, overWriteObj) {
+  if (overWriteObj[jointKey]) {
+    switch (typeof getPropertyFromJointKey(config, jointKey)) {
+      case 'number': {
+        setPropertyToJointKey(config, jointKey, Number(overWriteObj[jointKey]))
+        break
+      }
+      case 'string': {
+        setPropertyToJointKey(config, jointKey, String(overWriteObj[jointKey]))
+        break
+      }
+      case 'object': {
+        try {
+          var parameterStr = overWriteObj[jointKey]
+          if(parameterStr) {
+            let parameterObj = JSON.parse(parameterStr)
+            setPropertyToJointKey(config, jointKey, parameterObj)
+          }
+        } catch(e) {
+          console.log(e)
+          console.log('Unable to JSON parse', overWriteObj[jointKey])
+        }
+        break
+      }
+      case 'boolean': {
+        setPropertyToJointKey(config, jointKey, String(overWriteObj[jointKey]).toLowerCase() === 'true')
+        break
+      }
+      default: {
+      }
+    }
+  }
+}
+
+export function overrideDefaultConfig(
+  defaultConfig,
+  env: NodeJS.ProcessEnv,
+  args: string[]
+) {
+  let config = JSON.parse(JSON.stringify(defaultConfig))
+  let overwriteInfo = {config, env, args}
+  for (const key1 in config) {
+    if (typeof config[key1] === 'object' && Object.keys(config[key1]).length > 0) {
+      for (const key2 in config[key1]) {
+        if (typeof config[key1][key2] === 'object' && Object.keys(config[key1][key2]).length > 0) {
+          for (const key3 in config[key1][key2]) {
+            overwriteFromEnvOrArgs(createJointKey([key1, key2, key3]),overwriteInfo)
+          }
+        } else {
+          overwriteFromEnvOrArgs(createJointKey([key1, key2]), overwriteInfo)
+        }
+      }
+    } else {
+      overwriteFromEnvOrArgs(createJointKey([key1]), overwriteInfo)
+    }
+  }
   return config
 }

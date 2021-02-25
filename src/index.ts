@@ -15,9 +15,14 @@ crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 // THE ENTIRE APP STATE FOR THIS NODE
 let accounts: { [id: string]: Accounts } = {}
 
-const config = configs.initConfig()
+const env = process.env
+const args = process.argv
+let defaultConfig = configs.initConfigFromFile()
+let config = configs.overrideDefaultConfig(defaultConfig, env, args)
 
-//account type constants. not sure if best practice, open to suggestions.
+console.log('Overwritten config', JSON.stringify(config))
+
+// //account type constants. not sure if best practice, open to suggestions.
 const UserAccount = 'UserAccount'
 const NodeAccount = 'NodeAccount'
 const ChatAccount = 'ChatAccount'
