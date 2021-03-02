@@ -2,8 +2,34 @@ import * as crypto from 'shardus-crypto-utils'
 import _ from 'lodash'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import create from '../accounts'
+import * as config from '../config'
 
 export const validate_fields = (tx: Tx.DevIssue, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
+  if (typeof tx.nodeId !== 'string') {
+    response.success = false
+    response.reason = 'tx "nodeId" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.from !== 'string') {
+    response.success = false
+    response.reason = 'tx "from" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.devIssue !== 'string') {
+    response.success = false
+    response.reason = 'tx "devIssue" field must be a string.'
+    throw new Error(response.reason)
+  }
   return response
 }
 
@@ -26,7 +52,11 @@ export const validate = (tx: Tx.DevIssue, wrappedStates: WrappedStates, response
   }
   const networkDevIssueHash = crypto.hash(`dev-issue-${network.devIssue}`)
   if (tx.devIssue !== networkDevIssueHash) {
-    response.reason = `devIssue hash (${tx.devIssue}) does not match current network devIssue (${networkDevIssueHash})`
+    response.reason = `devIssue address (${tx.devIssue}) does not match current network devIssue address (${networkDevIssueHash})`
+    return response
+  }
+  if (tx.timestamp < network.devWindows.devProposalWindow[0] || tx.timestamp > network.devWindows.devProposalWindow[1]) {
+    response.reason = 'Network is not within the time window to generate developer proposal issues'
     return response
   }
   response.success = true

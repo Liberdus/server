@@ -1,8 +1,34 @@
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
+import * as crypto from 'shardus-crypto-utils'
 import * as config from '../config'
 import create from '../accounts'
 
 export const validate_fields = (tx: Tx.DevParameters, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
+  if (typeof tx.nodeId !== 'string') {
+    response.success = false
+    response.reason = 'tx "nodeId" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.from !== 'string') {
+    response.success = false
+    response.reason = 'tx "from" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.devIssue !== 'string') {
+    response.success = false
+    response.reason = 'tx "devIssue" field must be a string.'
+    throw new Error(response.reason)
+  }
   return response
 }
 
@@ -32,8 +58,17 @@ export const validate = (tx: Tx.DevParameters, wrappedStates: WrappedStates, res
     response.reason = `This devIssue number ${devIssue.number} does not match the current network issue ${network.devIssue}`
     return response
   }
+  const networkDevIssueHash = crypto.hash(`dev-issue-${network.devIssue}`)
+  if (tx.devIssue !== networkDevIssueHash) {
+    response.reason = `devIssue address (${tx.devIssue}) does not match current network devIssue address (${networkDevIssueHash})`
+    return response
+  }
   if (devIssue.active === false) {
     response.reason = 'This devIssue is no longer active'
+    return response
+  }
+  if (tx.timestamp < network.devWindows.devApplyWindow[0] || tx.timestamp > network.devWindows.devApplyWindow[1]) {
+    response.reason = 'Network is not within the time window to apply developer proposal winners'
     return response
   }
   response.success = true

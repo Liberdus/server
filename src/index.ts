@@ -1,6 +1,7 @@
 import shardus from 'shardus-global-server'
 import * as crypto from 'shardus-crypto-utils'
 import * as configs from './config'
+import * as utils from './utils'
 import Shardus = require('shardus-global-server/src/shardus/shardus-types')
 import stringify = require('fast-stable-stringify')
 import './@types'
@@ -17,18 +18,6 @@ let accounts: { [id: string]: Accounts } = {}
 
 const config = configs.initConfig()
 
-//account type constants. not sure if best practice, open to suggestions.
-const UserAccount = 'UserAccount'
-const NodeAccount = 'NodeAccount'
-const ChatAccount = 'ChatAccount'
-const AliasAccount = 'AliasAccount'
-const DevIssueAccount = 'DevIssueAccount'
-const IssueAccount = 'IssueAccount'
-const NetworkAccount = 'NetworkAccount'
-const ProposalAccount = 'ProposalAccount'
-const DevProposalAccount = 'DevProposalAccount'
-const UndeterminedAccountType = 'undetermined'
-
 const dapp = shardus(config)
 
 // API
@@ -41,16 +30,11 @@ dapp.registerExternalGet(
   },
 )
 
-// HELPER METHOD TO WAIT
-async function _sleep(ms = 0): Promise<NodeJS.Timeout> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
 // SDK SETUP FUNCTIONS
 dapp.setup({
   async sync(): Promise<void> {
     if (dapp.p2p.isFirstSeed) {
-      await _sleep(configs.ONE_SECOND * 5)
+      await utils._sleep(configs.ONE_SECOND * 5)
 
       const nodeId = dapp.getNodeId()
       const address = dapp.getNode(nodeId).address
@@ -59,7 +43,7 @@ dapp.setup({
       const existingNetworkAccount = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
       if (existingNetworkAccount) {
         dapp.log('NETWORK_ACCOUNT ALREADY EXISTED: ', existingNetworkAccount)
-        await _sleep(configs.ONE_SECOND * 5)
+        await utils._sleep(configs.ONE_SECOND * 5)
       } else {
         dapp.setGlobal(
           configs.networkAccount,
@@ -73,7 +57,7 @@ dapp.setup({
         )
 
         dapp.log(`node ${nodeId} GENERATED_A_NEW_NETWORK_ACCOUNT: `)
-        await _sleep(configs.ONE_SECOND * 10)
+        await utils._sleep(configs.ONE_SECOND * 10)
 
         dapp.set({
           type: 'issue',
@@ -92,12 +76,12 @@ dapp.setup({
           devIssue: crypto.hash(`dev-issue-${1}`),
           timestamp: Date.now(),
         })
-        await _sleep(configs.ONE_SECOND * 10)
+        await utils._sleep(configs.ONE_SECOND * 10)
       }
     } else {
       while (!(await dapp.getLocalOrRemoteAccount(configs.networkAccount))) {
         console.log('waiting..')
-        await _sleep(1000)
+        await utils._sleep(1000)
       }
     }
   },
@@ -121,13 +105,13 @@ dapp.setup({
 
     if (typeof tx.type !== 'string') {
       response.success = false
-      response.reason = '"type" must be a string.'
+      response.reason = 'Tx "type" field must be a string.'
       throw new Error(response.reason)
     }
 
     if (typeof tx.timestamp !== 'number') {
       response.success = false
-      response.reason = '"timestamp" must be a number.'
+      response.reason = 'Tx "timestamp" field must be a number.'
       throw new Error(response.reason)
     }
 
@@ -188,7 +172,6 @@ dapp.setup({
     const hash = account.hash
     return { timestamp, hash }
   },
-
   deleteLocalAccountData(): void {
     accounts = {}
   },
@@ -331,7 +314,6 @@ dapp.setup({
     dapp.log('Shutting down server...')
     console.log('Shutting down server...')
   },
-
   //txSummaryUpdate: (blob: any, tx: any, wrappedStates: any) => void
   txSummaryUpdate(blob, tx, wrappedStates) {
     if (blob.initialized == null) {
@@ -355,14 +337,14 @@ dapp.setup({
       blob.totalAccounts = 0
     }
 
-    let accType = getAccountType(accountData)
+    let accType = utils.getAccountType(accountData)
     if (blob.accByType[accType] == null) {
       blob.accByType[accType] = 0
     }
     blob.accByType[accType]++
     blob.totalAccounts++
 
-    if (accType == UserAccount) {
+    if (accType == 'UserAccount') {
       if (accountData.data.balance != null) {
         let blobBalanceBefore = blob.totalBalance
         let accountBalance = accountData.data.balance
@@ -379,7 +361,7 @@ dapp.setup({
         dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 2 ${accountData?.data.balance} ${stringify(accountData?.id)}`)
       }
     }
-    if (accType == NodeAccount) {
+    if (accType == 'NodeAccount') {
       if (accountData.balance != null) {
         let totalBalance = blob.totalBalance + accountData.balance
         if (totalBalance != null) {
@@ -401,9 +383,9 @@ dapp.setup({
       blob.totalBalance = 0
       blob.totalAccounts = 0
     }
-    let accType = getAccountType(accountDataAfter)
+    let accType = utils.getAccountType(accountDataAfter)
 
-    if (accType == UserAccount) {
+    if (accType == 'UserAccount') {
       let blobBalanceBefore = blob.totalBalance
       let accountBalanceBefore = accountDataBefore?.data?.balance
       let accountBalanceAfter = accountDataAfter?.data?.balance
@@ -435,7 +417,7 @@ dapp.setup({
         )
       }
     }
-    if (accType == NodeAccount) {
+    if (accType == 'NodeAccount') {
       let balanceChange = accountDataAfter?.balance - accountDataBefore?.balance
       if (balanceChange != null) {
         let totalBalance = blob.totalBalance + balanceChange
@@ -459,201 +441,7 @@ dapp.setup({
   },
 })
 
-function getAccountType(data) {
-  if (data == null) {
-    return UndeterminedAccountType
-  }
-
-  if (data.type != null) {
-    return data.type
-  }
-
-  //make sure this works on old accounts with no type
-  if (data.alias !== undefined) {
-    return UserAccount
-  }
-  if (data.nodeRewardTime !== undefined) {
-    return NodeAccount
-  }
-  if (data.messages !== undefined) {
-    return ChatAccount
-  }
-  if (data.inbox !== undefined) {
-    return AliasAccount
-  }
-  if (data.devProposals !== undefined) {
-    return DevIssueAccount
-  }
-  if (data.proposals !== undefined) {
-    return IssueAccount
-  }
-  if (data.devWindows !== undefined) {
-    return NetworkAccount
-  }
-  if (data.totalVotes !== undefined) {
-    if (data.power !== undefined) {
-      return ProposalAccount
-    }
-    if (data.payAddress !== undefined) {
-      return DevProposalAccount
-    }
-  }
-  return UndeterminedAccountType
-}
-
 dapp.registerExceptionHandler()
-
-// NODE_REWARD TRANSACTION FUNCTION
-function nodeReward(address: string, nodeId: string): void {
-  const tx = {
-    type: 'node_reward',
-    network: configs.networkAccount,
-    nodeId: nodeId,
-    from: address,
-    to: process.env.PAY_ADDRESS || address,
-    timestamp: Date.now(),
-  }
-  dapp.put(tx)
-  console.log('TX_DATA: ', tx)
-  dapp.log('GENERATED_NODE_REWARD: ', nodeId)
-}
-
-// ISSUE TRANSACTION FUNCTION
-async function generateIssue(address: string, nodeId: string): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-  const network: NetworkAccount = account.data
-  const tx = {
-    type: 'issue',
-    network: configs.networkAccount,
-    nodeId,
-    from: address,
-    issue: crypto.hash(`issue-${network.issue}`),
-    proposal: crypto.hash(`issue-${network.issue}-proposal-1`),
-    timestamp: Date.now(),
-  }
-  dapp.put(tx)
-  dapp.log('GENERATED_ISSUE: ', nodeId)
-}
-
-// DEV_ISSUE TRANSACTION FUNCTION
-async function generateDevIssue(address: string, nodeId: string): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-  const network: NetworkAccount = account.data
-  const tx = {
-    type: 'dev_issue',
-    network: configs.networkAccount,
-    nodeId,
-    from: address,
-    devIssue: crypto.hash(`dev-issue-${network.devIssue}`),
-    timestamp: Date.now(),
-  }
-  dapp.put(tx)
-  dapp.log('GENERATED_DEV_ISSUE: ', nodeId)
-}
-
-// TALLY TRANSACTION FUNCTION
-async function tallyVotes(address: string, nodeId: string): Promise<void> {
-  console.log(`GOT TO TALLY_VOTES FN ${address} ${nodeId}`)
-  try {
-    const network = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${network.data.issue}`))
-    if (!account) {
-      await _sleep(500)
-      return tallyVotes(address, nodeId)
-    }
-    const issue: IssueAccount = account.data
-    const tx = {
-      type: 'tally',
-      nodeId,
-      from: address,
-      network: configs.networkAccount,
-      issue: issue.id,
-      proposals: issue.proposals,
-      timestamp: Date.now(),
-    }
-    dapp.put(tx)
-    dapp.log('GENERATED_TALLY: ', nodeId)
-  } catch (err) {
-    dapp.log('ERR: ', err)
-    await _sleep(1000)
-    return tallyVotes(address, nodeId)
-  }
-}
-
-// DEV_TALLY TRANSACTION FUNCTION
-async function tallyDevVotes(address: string, nodeId: string): Promise<void> {
-  try {
-    const network = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${network.data.devIssue}`))
-    if (!account) {
-      await _sleep(500)
-      return tallyDevVotes(address, nodeId)
-    }
-    const devIssue: DevIssueAccount = account.data
-    const tx = {
-      type: 'dev_tally',
-      nodeId,
-      from: address,
-      network: configs.networkAccount,
-      devIssue: devIssue.id,
-      devProposals: devIssue.devProposals,
-      timestamp: Date.now(),
-    }
-    dapp.put(tx)
-    dapp.log('GENERATED_DEV_TALLY: ', nodeId)
-  } catch (err) {
-    dapp.log('ERR: ', err)
-    await _sleep(1000)
-    return tallyDevVotes(address, nodeId)
-  }
-}
-
-// APPLY_PARAMETERS TRANSACTION FUNCTION
-async function applyParameters(address: string, nodeId: string): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-  const network: NetworkAccount = account.data
-  const tx = {
-    type: 'parameters',
-    nodeId,
-    from: address,
-    network: configs.networkAccount,
-    issue: crypto.hash(`issue-${network.issue}`),
-    timestamp: Date.now(),
-  }
-  dapp.put(tx)
-  dapp.log('GENERATED_APPLY: ', nodeId)
-}
-
-// APPLY_DEV_PARAMETERS TRANSACTION FUNCTION
-async function applyDevParameters(address: string, nodeId: string): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-  const network: NetworkAccount = account.data
-  const tx = {
-    type: 'dev_parameters',
-    nodeId,
-    from: address,
-    network: configs.networkAccount,
-    devIssue: crypto.hash(`dev-issue-${network.devIssue}`),
-    timestamp: Date.now(),
-  }
-  dapp.put(tx)
-  dapp.log('GENERATED_DEV_APPLY: ', nodeId)
-}
-
-// RELEASE DEVELOPER FUNDS FOR A PAYMENT
-function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeId: string): void {
-  const tx = {
-    type: 'developer_payment',
-    nodeId,
-    from: address,
-    network: configs.networkAccount,
-    developer: payment.address,
-    payment: payment,
-    timestamp: Date.now(),
-  }
-  dapp.put(tx)
-  dapp.log('GENERATED_DEV_FUND_RELEASE: ', nodeId)
-}
 
 // CODE THAT GETS EXECUTED WHEN NODES START
 ;(async (): Promise<void> => {
@@ -688,13 +476,9 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     currentTime = Date.now()
 
     try {
-      console.log('BEFORE getLocalOrRemoteAccount')
       const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-      console.log('AFTER getLocalOrRemoteAccount')
       network = account.data
       ;[cycleData] = dapp.getLatestCycles()
-      console.log(`cycleData: ${stringify(cycleData)}`)
-      console.log(cycleData.marker)
       luckyNodes = dapp.getClosestNodes(cycleData.previous, 3)
       nodeId = dapp.getNodeId()
       node = dapp.getNode(nodeId)
@@ -723,7 +507,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
 
     // THIS IS FOR NODE_REWARD
     if (currentTime - lastReward > network.current.nodeRewardInterval) {
-      nodeReward(nodeAddress, nodeId)
+      utils.nodeReward(nodeAddress, nodeId, dapp)
       lastReward = currentTime
     }
 
@@ -731,7 +515,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     if (currentTime >= network.windows.proposalWindow[0] && currentTime <= network.windows.proposalWindow[1]) {
       if (!issueGenerated && network.issue > 1) {
         if (luckyNodes.includes(nodeId)) {
-          await generateIssue(nodeAddress, nodeId)
+          await utils.generateIssue(nodeAddress, nodeId, dapp)
         }
         issueGenerated = true
         tallyGenerated = false
@@ -743,7 +527,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     if (currentTime >= network.devWindows.devProposalWindow[0] && currentTime <= network.devWindows.devProposalWindow[1]) {
       if (!devIssueGenerated && network.devIssue > 1) {
         if (luckyNodes.includes(nodeId)) {
-          await generateDevIssue(nodeAddress, nodeId)
+          await utils.generateDevIssue(nodeAddress, nodeId, dapp)
         }
         devIssueGenerated = true
         devTallyGenerated = false
@@ -755,7 +539,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     if (currentTime >= network.windows.graceWindow[0] && currentTime <= network.windows.graceWindow[1]) {
       if (!tallyGenerated) {
         if (luckyNodes.includes(nodeId)) {
-          await tallyVotes(nodeAddress, nodeId)
+          await utils.tallyVotes(nodeAddress, nodeId, dapp)
         }
         issueGenerated = false
         tallyGenerated = true
@@ -767,7 +551,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     if (currentTime >= network.windows.applyWindow[0] && currentTime <= network.windows.applyWindow[1]) {
       if (!applyGenerated) {
         if (luckyNodes.includes(nodeId)) {
-          await applyParameters(nodeAddress, nodeId)
+          await utils.applyParameters(nodeAddress, nodeId, dapp)
         }
         issueGenerated = false
         tallyGenerated = false
@@ -779,7 +563,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     if (currentTime >= network.devWindows.devGraceWindow[0] && currentTime <= network.devWindows.devGraceWindow[1]) {
       if (!devTallyGenerated) {
         if (luckyNodes.includes(nodeId)) {
-          await tallyDevVotes(nodeAddress, nodeId)
+          await utils.tallyDevVotes(nodeAddress, nodeId, dapp)
         }
         devIssueGenerated = false
         devTallyGenerated = true
@@ -791,7 +575,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     if (currentTime >= network.devWindows.devApplyWindow[0] && currentTime <= network.devWindows.devApplyWindow[1]) {
       if (!devApplyGenerated) {
         if (luckyNodes.includes(nodeId)) {
-          await applyDevParameters(nodeAddress, nodeId)
+          await utils.applyDevParameters(nodeAddress, nodeId, dapp)
         }
         devIssueGenerated = false
         devTallyGenerated = false
@@ -804,7 +588,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
       // PAY DEVELOPER IF THE network.current TIME IS GREATER THAN THE PAYMENT TIME
       if (currentTime >= payment.timestamp) {
         if (luckyNodes.includes(nodeId)) {
-          releaseDeveloperFunds(payment, nodeAddress, nodeId)
+          utils.releaseDeveloperFunds(payment, nodeAddress, nodeId, dapp)
         }
       }
     }
@@ -827,7 +611,7 @@ function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeI
     'active',
     async (): Promise<NodeJS.Timeout> => {
       if (dapp.p2p.isFirstSeed) {
-        await _sleep(configs.ONE_SECOND * configs.cycleDuration * 2)
+        await utils._sleep(configs.ONE_SECOND * configs.cycleDuration * 2)
       }
       lastReward = Date.now()
       return setTimeout(networkMaintenance, cycleInterval)

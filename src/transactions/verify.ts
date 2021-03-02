@@ -1,26 +1,37 @@
 import * as crypto from 'shardus-crypto-utils'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import create from '../accounts'
+import * as config from '../config'
 
 export const validate_fields = (tx: Tx.Verify, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
   if (typeof tx.from !== 'string') {
     response.success = false
-    response.reason = '"From" must be a string.'
+    response.reason = 'tx "from" field must be a string.'
     throw new Error(response.reason)
   }
   if (typeof tx.code !== 'string') {
     response.success = false
-    response.reason = '"Code" must be a string.'
+    response.reason = 'tx "code" field must be a string.'
     throw new Error(response.reason)
   }
   if (tx.code.length !== 6) {
     response.success = false
-    response.reason = '"Code" length must be 6 digits.'
+    response.reason = 'tx "code" length must be 6 digits.'
     throw new Error(response.reason)
   }
   if (typeof parseInt(tx.code) !== 'number') {
     response.success = false
-    response.reason = '"Code" must be parseable to an integer.'
+    response.reason = 'tx "code" field must be parseable to an integer.'
     throw new Error(response.reason)
   }
   return response

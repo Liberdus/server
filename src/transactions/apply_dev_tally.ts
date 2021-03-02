@@ -1,8 +1,35 @@
 import stringify from 'fast-stable-stringify'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import create from '../accounts'
+import * as config from '../config'
+import _ from 'lodash'
 
 export const validate_fields = (tx: Tx.ApplyDevTally, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be ' + config.networkAccount
+    throw new Error(response.reason)
+  }
+  if (!Array.isArray(tx.nextDeveloperFund)) {
+    response.success = false
+    response.reason = 'tx "nextDeveloperFund" field must be an array.'
+    throw new Error(response.reason)
+  }
+  if (_.isEmpty(tx.nextDevWindows)) {
+    response.success = false
+    response.reason = 'tx "nextDevWindows" field cannot be an empty object.'
+    throw new Error(response.reason)
+  }
   return response
 }
 

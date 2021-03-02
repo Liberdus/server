@@ -2,16 +2,27 @@ import * as crypto from 'shardus-crypto-utils'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import * as utils from '../utils'
 import create from '../accounts'
+import * as config from '../config'
 
 export const validate_fields = (tx: Tx.DevVote, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
   if (typeof tx.from !== 'string') {
     response.success = false
-    response.reason = '"From" must be a string.'
+    response.reason = 'tx "from" field must be a string.'
     throw new Error(response.reason)
   }
   if (typeof tx.amount !== 'number') {
     response.success = false
-    response.reason = '"amount" must be a number.'
+    response.reason = 'ts "amount" field must be a number.'
     throw new Error(response.reason)
   }
   if (tx.amount < 1) {
@@ -21,24 +32,19 @@ export const validate_fields = (tx: Tx.DevVote, response: Shardus.IncomingTransa
   }
   if (typeof tx.approve !== 'boolean') {
     response.success = false
-    response.reason = '"approve" must be a boolean.'
+    response.reason = 'tx "approve" field must be a boolean.'
     throw new Error(response.reason)
   }
   if (typeof tx.devProposal !== 'string') {
     response.success = false
-    response.reason = '"devProposal" must be a string.'
+    response.reason = 'tx "devProposal" field must be a string.'
     throw new Error(response.reason)
   }
   if (typeof tx.devIssue !== 'string') {
     response.success = false
-    response.reason = '"devIssue" must be a string.'
+    response.reason = 'tx "devIssue" field must be a string.'
     throw new Error(response.reason)
   }
-  // if (tx.timestamp < network.devWindows.devVotingWindow[0] || tx.timestamp > network.devWindows.devVotingWindow[1]) {
-  //   response.success = false
-  //   response.reason = 'Network is not currently accepting dev votes'
-  //   throw new Error(response.reason)
-  // }
   return response
 }
 
@@ -78,6 +84,10 @@ export const validate = (tx: Tx.DevVote, wrappedStates: WrappedStates, response:
   }
   if (from.data.balance < tx.amount + network.current.transactionFee) {
     response.reason = 'From account has insufficient balance to cover the amount sent in the transaction'
+    return response
+  }
+  if (tx.timestamp < network.devWindows.devVotingWindow[0] || tx.timestamp > network.devWindows.devVotingWindow[1]) {
+    response.reason = 'Network is not within the time window to accept votes for developer proposals'
     return response
   }
   response.success = true

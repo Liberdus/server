@@ -1,8 +1,110 @@
 import stringify from 'fast-stable-stringify'
+import _ from 'lodash'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import create from '../accounts'
+import * as config from '../config'
 
 export const validate_fields = (tx: Tx.ApplyParameters, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
+  if (_.isEmpty(tx.current) || typeof tx.current !== 'object') {
+    response.success = false
+    response.reason = 'tx "current" field must not be a non empty object'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.current.title !== 'string') {
+    response.success = false
+    response.reason = 'tx "current parameter title" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.current.description !== 'string') {
+    response.success = false
+    response.reason = 'tx "current parameter description" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.current.nodeRewardInterval !== 'number') {
+    response.success = false
+    response.reason = 'tx "current parameter nodeRewardInterval" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.current.nodeRewardAmount !== 'number') {
+    response.success = false
+    response.reason = 'tx "current parameter nodeRewardAmount" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.current.nodePenalty !== 'number') {
+    response.success = false
+    response.reason = 'tx "current parameter nodePenalty" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.current.transactionFee !== 'number') {
+    response.success = false
+    response.reason = 'tx "current parameter transactionFee" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.current.stakeRequired !== 'number') {
+    response.success = false
+    response.reason = 'tx "current parameter stakeRequired" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.current.maintenanceInterval !== 'number') {
+    response.success = false
+    response.reason = 'tx "current parameter maintenanceInterval" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.current.maintenanceFee !== 'number') {
+    response.success = false
+    response.reason = 'tx "current parameter maintenanceFee" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.current.proposalFee !== 'number') {
+    response.success = false
+    response.reason = 'tx "current parameter proposalFee" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.current.devProposalFee !== 'number') {
+    response.success = false
+    response.reason = 'tx "current parameter devProposalFee" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.current.faucetAmount !== 'number') {
+    response.success = false
+    response.reason = 'tx "current parameter faucetAmount" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.current.transactionFee !== 'number') {
+    response.success = false
+    response.reason = 'tx "current parameter defaultToll" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (!_.isEmpty(tx.next) || typeof tx.next !== 'object') {
+    response.success = false
+    response.reason = 'tx "next" field must be an empty object.'
+    throw new Error(response.reason)
+  }
+  if (_.isEmpty(tx.windows) || typeof tx.windows !== 'object') {
+    response.success = false
+    response.reason = 'tx "windows" field must be a non empty object.'
+    throw new Error(response.reason)
+  }
+  if (!_.isEmpty(tx.nextWindows)) {
+    response.success = false
+    response.reason = 'tx "nextWindows" field must be an empty object.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.issue !== 'number') {
+    response.success = false
+    response.reason = 'tx "issue" field must be a number.'
+    throw new Error(response.reason)
+  }
   return response
 }
 

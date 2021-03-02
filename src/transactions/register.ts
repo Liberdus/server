@@ -1,31 +1,32 @@
 import * as crypto from 'shardus-crypto-utils'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import create from '../accounts'
+import * as config from '../config'
 
 export const validate_fields = (tx: Tx.Register, response: Shardus.IncomingTransactionResult) => {
   if (typeof tx.aliasHash !== 'string') {
     response.success = false
-    response.reason = '"aliasHash" must be a string.'
+    response.reason = 'tx "aliasHash" field must be a string.'
     throw new Error(response.reason)
   }
   if (typeof tx.from !== 'string') {
     response.success = false
-    response.reason = '"From" must be a string.'
+    response.reason = 'tx "from" field must be a string.'
     throw new Error(response.reason)
   }
   if (typeof tx.alias !== 'string') {
     response.success = false
-    response.reason = '"alias" must be a string.'
+    response.reason = 'tx "alias" field must be a string.'
     throw new Error(response.reason)
   }
   if (tx.alias.length >= 20) {
     response.success = false
-    response.reason = '"alias" must be less than 21 characters (20 max)'
+    response.reason = 'tx "alias" field must be less than 21 characters (20 max)'
     throw new Error(response.reason)
   }
   if (/[^A-Za-z0-9]+/g.test(tx.alias)) {
     response.success = false
-    response.reason = 'Alias may only contain alphanumeric characters'
+    response.reason = 'tx "alias" field may only contain alphanumeric characters'
     throw new Error(response.reason)
   }
   return response

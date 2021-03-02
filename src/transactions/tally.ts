@@ -4,6 +4,36 @@ import * as config from '../config'
 import create from '../accounts'
 
 export const validate_fields = (tx: Tx.Tally, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
+  if (typeof tx.nodeId !== 'string') {
+    response.success = false
+    response.reason = 'tx "nodeId" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.from !== 'string') {
+    response.success = false
+    response.reason = 'tx "from" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.issue !== 'string') {
+    response.success = false
+    response.reason = 'tx "issue" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (!Array.isArray(tx.proposals)) {
+    response.success = false
+    response.reason = 'tx "proposals" field must be an array.'
+    throw new Error(response.reason)
+  }
   return response
 }
 
@@ -44,6 +74,10 @@ export const validate = (tx: Tx.Tally, wrappedStates: WrappedStates, response: S
   }
   if (proposals.length !== issue.proposalCount) {
     response.reason = 'The number of proposals sent in with the transaction doesnt match the issues proposalCount'
+    return response
+  }
+  if (tx.timestamp < network.windows.graceWindow[0] || tx.timestamp > network.windows.graceWindow[1]) {
+    response.reason = 'Network is not within the time window to tally votes for proposals'
     return response
   }
   response.success = true

@@ -2,8 +2,39 @@ import * as crypto from 'shardus-crypto-utils'
 import _ from 'lodash'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import create from '../accounts'
+import * as config from '../config'
 
 export const validate_fields = (tx: Tx.Issue, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
+  if (typeof tx.nodeId !== 'string') {
+    response.success = false
+    response.reason = 'tx "nodeId" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.from !== 'string') {
+    response.success = false
+    response.reason = 'tx "from field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.issue !== 'string') {
+    response.success = false
+    response.reason = 'tx "issue" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.proposal !== 'string') {
+    response.success = false
+    response.reason = 'tx "proposal" field must be a string.'
+    throw new Error(response.reason)
+  }
   return response
 }
 
@@ -24,15 +55,21 @@ export const validate = (tx: Tx.Issue, wrappedStates: WrappedStates, response: S
     response.reason = 'Issue is already active'
     return response
   }
-  console.log(`networkAccount: ${JSON.stringify(network)}`)
+
   const networkIssueHash = crypto.hash(`issue-${network.issue}`)
   if (tx.issue !== networkIssueHash) {
-    response.reason = `issue hash (${tx.issue}) does not match current network issue hash (${networkIssueHash})`
+    response.reason = `issue hash (${tx.issue}) does not match current network issue hash (${networkIssueHash}) --- networkAccount: ${JSON.stringify(network)}`
     return response
   }
   const networkProposalHash = crypto.hash(`issue-${network.issue}-proposal-1`)
   if (tx.proposal !== networkProposalHash) {
-    response.reason = `proposalHash (${tx.proposal}) does not match the current default network proposal (${networkProposalHash})`
+    response.reason = `proposalHash (${
+      tx.proposal
+    }) does not match the current default network proposal (${networkProposalHash}) --- networkAccount: ${JSON.stringify(network)}`
+    return response
+  }
+  if (tx.timestamp < network.windows.proposalWindow[0] || tx.timestamp > network.windows.proposalWindow[1]) {
+    response.reason = 'Network is not within the time window to generate issues'
     return response
   }
   response.success = true
@@ -69,7 +106,13 @@ export const keys = (tx: Tx.Issue, result: TransactionKeys) => {
   return result
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: NodeAccount | IssueAccount | ProposalAccount, accountId: string, tx: Tx.Issue, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: NodeAccount | IssueAccount | ProposalAccount,
+  accountId: string,
+  tx: Tx.Issue,
+  accountCreated = false,
+) => {
   if (!account) {
     if (accountId === tx.issue) {
       account = create.issueAccount(accountId)

@@ -1,8 +1,45 @@
-import stringify from 'fast-stable-stringify'
+import _ from 'lodash';
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
+import * as config from '../config'
+import * as crypto from 'shardus-crypto-utils'
 import create from '../accounts'
 
 export const validate_fields = (tx: Tx.ApplyDevParameters, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
+  if (typeof tx.devIssue !== 'number') {
+    response.success = false
+    response.reason = 'tx "devIssue" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (_.isEmpty(tx.devWindows)) {
+    response.success = false
+    response.reason = 'tx "devWindows" field must not be empty.'
+    throw new Error(response.reason)
+  }
+  if (!_.isEmpty(tx.nextDevWindows)) {
+    response.success = false
+    response.reason = 'tx "nextDevWindows" field must be an empty object.'
+    throw new Error(response.reason)
+  }
+  if (!Array.isArray(tx.developerFund)) {
+    response.success = false
+    response.reason = 'tx "developerFund" field must be an array.'
+    throw new Error(response.reason)
+  }
+  if (!_.isEmpty(tx.nextDeveloperFund) || !Array.isArray(tx.nextDeveloperFund)) {
+    response.success = false
+    response.reason = 'tx "nextDeveloperFund" field must be an empty array.'
+    throw new Error(response.reason)
+  }
   return response
 }
 
