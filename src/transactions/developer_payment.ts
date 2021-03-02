@@ -5,19 +5,59 @@ import stringify from 'fast-stable-stringify'
 import create from '../accounts'
 
 export const validate_fields = (tx: Tx.DevPayment, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
   if (typeof tx.from !== 'string') {
     response.success = false
-    response.reason = '"From" must be a string.'
+    response.reason = 'tx "from" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.nodeId !== 'string') {
+    response.success = false
+    response.reason = 'tx "nodeId" field must be a string.'
     throw new Error(response.reason)
   }
   if (typeof tx.payment !== 'object') {
     response.success = false
-    response.reason = '"Payment" must be an object.'
+    response.reason = 'tx "payment" field must be an object.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.developer !== 'string') {
+    response.success = false
+    response.reason = 'tx "developer" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.payment.id !== 'string') {
+    response.success = false
+    response.reason = 'tx "payment.id" must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.payment.address !== 'string') {
+    response.success = false
+    response.reason = 'tx "payment.address" must be a string.'
     throw new Error(response.reason)
   }
   if (typeof tx.payment.amount !== 'number') {
     response.success = false
-    response.reason = '"payment.amount" must be a number.'
+    response.reason = 'tx "payment.amount" must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.payment.delay !== 'number') {
+    response.success = false
+    response.reason = 'tx "payment.delay" must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.payment.timestamp !== 'number') {
+    response.success = false
+    response.reason = 'tx "payment.timestamp" must be a number.'
     throw new Error(response.reason)
   }
   return response

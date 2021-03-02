@@ -1,8 +1,95 @@
 import stringify from 'fast-stable-stringify'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import create from '../accounts'
+import _ from 'lodash'
+import * as config from '../config'
 
 export const validate_fields = (tx: Tx.ApplyTally, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
+  if (_.isEmpty(tx.next) || typeof tx.next !== 'object') {
+    response.success = false
+    response.reason = 'tx "next" field must be a non empty object'
+    throw new Error(response.reason)
+  }
+  if (_.isEmpty(tx.nextWindows) || typeof tx.nextWindows !== 'object') {
+    response.success = false
+    response.reason = 'tx "nextWindows" field must be a non empty object'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.next.title !== 'string') {
+    response.success = false
+    response.reason = 'tx "next parameter title" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.next.description !== 'string') {
+    response.success = false
+    response.reason = 'tx "next parameter description" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.next.nodeRewardInterval !== 'number') {
+    response.success = false
+    response.reason = 'tx "next parameter nodeRewardInterval" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.next.nodeRewardAmount !== 'number') {
+    response.success = false
+    response.reason = 'tx "next parameter nodeRewardAmount" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.next.nodePenalty !== 'number') {
+    response.success = false
+    response.reason = 'tx "next parameter nodePenalty" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.next.transactionFee !== 'number') {
+    response.success = false
+    response.reason = 'tx "next parameter transactionFee" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.next.stakeRequired !== 'number') {
+    response.success = false
+    response.reason = 'tx "next parameter stakeRequired" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.next.maintenanceInterval !== 'number') {
+    response.success = false
+    response.reason = 'tx "next parameter maintenanceInterval" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.next.maintenanceFee !== 'number') {
+    response.success = false
+    response.reason = 'tx "next parameter maintenanceFee" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.next.proposalFee !== 'number') {
+    response.success = false
+    response.reason = 'tx "next parameter proposalFee" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.next.devProposalFee !== 'number') {
+    response.success = false
+    response.reason = 'tx "next parameter devProposalFee" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.next.faucetAmount !== 'number') {
+    response.success = false
+    response.reason = 'tx "next parameter faucetAmount" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.next.transactionFee !== 'number') {
+    response.success = false
+    response.reason = 'tx "next parameter defaultToll" field must be a number.'
+    throw new Error(response.reason)
+  }
   return response
 }
 

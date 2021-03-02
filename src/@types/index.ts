@@ -16,13 +16,10 @@ declare namespace Tx {
     type: string
     timestamp: number
     network: string
-    current: NetworkParameters
-    next: {}
     devWindows: DevWindows
     nextDevWindows: {}
     developerFund: DeveloperPayment[]
     nextDeveloperFund: DeveloperPayment[]
-    issue: number
     devIssue: number
   }
 
@@ -31,14 +28,13 @@ declare namespace Tx {
     timestamp: number
     network: string
     developerFund: DeveloperPayment[]
-    issue: number
   }
 
   interface ApplyTally {
     type: string
     timestamp: number
     network: string
-    next: Parameters
+    next: NetworkParameters
     nextWindows: Windows
   }
 
@@ -48,7 +44,6 @@ declare namespace Tx {
     network: string
     nextDeveloperFund: DeveloperPayment[]
     nextDevWindows: Windows
-    nextWindows: Windows
   }
 
   interface Create {
@@ -325,6 +320,7 @@ declare namespace Tx {
   interface DevPayment {
     type: string
     network: string
+    nodeId: string
     from: string
     developer: string
     payment: DeveloperPayment

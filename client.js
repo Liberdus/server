@@ -47,7 +47,7 @@ async function getSeedNodes() {
   let seedNodes = []
   const nodelist = result.data.nodeList
   if (nodelist !== null) {
-    // Filter out all non-active nodes. dont filter yet no one will say active.
+    // Filter out all non-active nodes. don't filter yet no one will say active.
     // nodelist = nodelist.filter(node => node.status ? node.status === 'active' : false)
     seedNodes = nodelist
   }
@@ -510,6 +510,7 @@ vorpal.command('snapshot', 'submits the snapshot the ULT contract').action(funct
   this.log(snapshot)
   const tx = {
     type: 'snapshot',
+    network,
     from: USER.address,
     to: '0'.repeat(64),
     snapshot,

@@ -3,68 +3,90 @@ import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import Decimal from 'decimal.js'
 import * as utils from '../utils'
 import create from '../accounts'
+import _ from 'lodash'
+import * as config from '../config'
 
 export const validate_fields = (tx: Tx.DevProposal, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
   if (typeof tx.devIssue !== 'string') {
     response.success = false
-    response.reason = '"devIssue" must be a string.'
+    response.reason = 'tx "devIssue" field must be a string.'
     throw new Error(response.reason)
   }
   if (typeof tx.devProposal !== 'string') {
     response.success = false
-    response.reason = '"devProposal" must be a string.'
+    response.reason = 'tx "devProposal" field must be a string.'
     throw new Error(response.reason)
   }
   if (typeof tx.totalAmount !== 'number') {
     response.success = false
-    response.reason = '"totalAmount" must be a number.'
+    response.reason = 'tx "totalAmount" field must be a number.'
     throw new Error(response.reason)
   }
   if (tx.totalAmount < 1) {
     response.success = false
-    response.reason = 'Minimum "totalAmount" allowed is 1 token'
+    response.reason = 'Minimum "tx totalAmount" allowed for a developer proposal is 1 token'
     throw new Error(response.reason)
   }
   if (tx.totalAmount > 100000) {
     response.success = false
-    response.reason = 'Maximum "totalAmount" allowed is 100,000 tokens'
+    response.reason = 'Maximum "tx totalAmount" allowed for a developer proposal is 100,000 tokens'
     throw new Error(response.reason)
   }
-  if (Array.isArray(tx.payments) !== true) {
+  if (_.isEmpty(tx.payments) || !Array.isArray(tx.payments)) {
     response.success = false
-    response.reason = '"payments" must be an array.'
+    response.reason = 'tx "payments" field must be a non empty array.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.title !== 'string') {
+    response.success = false
+    response.reason = 'tx "title" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.title.length < 1) {
+    response.success = false
+    response.reason = 'Minimum "tx title" field character count is 1'
+    throw new Error(response.reason)
+  }
+  if (tx.title.length > 100) {
+    response.success = false
+    response.reason = 'Maximum "tx title" field character count is 100'
     throw new Error(response.reason)
   }
   if (typeof tx.description !== 'string') {
     response.success = false
-    response.reason = '"description" must be a string.'
+    response.reason = 'tx "description" field must be a string.'
     throw new Error(response.reason)
   }
   if (tx.description.length < 1) {
     response.success = false
-    response.reason = 'Minimum "description" character count is 1'
+    response.reason = 'Minimum "tx description" field character count is 1'
     throw new Error(response.reason)
   }
   if (tx.description.length > 1000) {
     response.success = false
-    response.reason = 'Maximum "description" character count is 1000'
+    response.reason = 'Maximum "tx description" field character count is 1000'
     throw new Error(response.reason)
   }
   if (typeof tx.payAddress !== 'string') {
     response.success = false
-    response.reason = '"payAddress" must be a string.'
+    response.reason = 'tx "payAddress" field must be a string.'
     throw new Error(response.reason)
   }
   if (tx.payAddress.length !== 64) {
     response.success = false
-    response.reason = '"payAddress" length must be 64 characters (A valid public address)'
+    response.reason = 'tx "payAddress" field length must be 64 characters (A valid public hex address)'
     throw new Error(response.reason)
   }
-  // if (tx.timestamp < network.devWindows.devProposalWindow[0] || tx.timestamp > network.devWindows.devProposalWindow[1]) {
-  //   response.success = false
-  //   response.reason = 'Network is not accepting dev proposals'
-  //   throw new Error(response.reason)
-  // }
   return response
 }
 
@@ -101,10 +123,10 @@ export const validate = (tx: Tx.DevProposal, wrappedStates: WrappedStates, respo
     response.reason = 'From account has insufficient balance to submit a devProposal'
     return response
   }
-  // if (tx.payments.reduce((acc: number, payment: DeveloperPayment) => new Decimal(payment.amount).plus(acc), 0) > 1) {
-  //   response.reason = 'tx payment amounts added up to more than 100%'
-  //   return response
-  // }
+  if (tx.timestamp < network.devWindows.devProposalWindow[0] || tx.timestamp > network.devWindows.devProposalWindow[1]) {
+    response.reason = 'Network is not within the time window to accept developer proposals'
+    return response
+  }
   if (tx.payments.reduce<number>((acc: number, payment: DeveloperPayment) => new Decimal(payment.amount).plus(acc) as any, 0) > 1) {
     response.reason = 'tx payment amounts added up to more than 100%'
     return response
@@ -147,7 +169,13 @@ export const keys = (tx: Tx.DevProposal, result: TransactionKeys) => {
   return result
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount | DevProposalAccount, accountId: string, tx: Tx.DevProposal, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount | DevProposalAccount,
+  accountId: string,
+  tx: Tx.DevProposal,
+  accountCreated = false,
+) => {
   if (!account) {
     if (accountId === tx.devProposal) {
       account = create.devProposalAccount(accountId)

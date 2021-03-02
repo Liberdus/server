@@ -1,16 +1,27 @@
 import * as crypto from 'shardus-crypto-utils'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import create from '../accounts'
+import * as config from '../config'
 
 export const validate_fields = (tx: Tx.RemoveFriend, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
   if (typeof tx.from !== 'string') {
     response.success = false
-    response.reason = '"From" must be a string.'
+    response.reason = 'tx "from" field must be a string.'
     throw new Error(response.reason)
   }
   if (typeof tx.to !== 'string') {
     response.success = false
-    response.reason = '"To" must be a string.'
+    response.reason = 'tx "to" field must be a string.'
     throw new Error(response.reason)
   }
   return response
