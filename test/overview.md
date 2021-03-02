@@ -1,5 +1,7 @@
-# Testing Liberdus
-## Main Features
+# Testing Liberdus Functionalities
+This document describes all the key features of Liberdus application and steps to test those features using CLI tool or web browser.
+
+## Key Features
 - Sign up + Sign In
 - Account import
 - Account export
@@ -12,9 +14,9 @@
 - Staking coin
 - Submit economy proposal
 - Submit funding proposal
-- Submit voting
-- Verify transaction
-- Export transaction json
+- Voting proposals
+- Verify transaction (front-end + explorer-server)
+- Export transaction json (front-end)
 
 ## Sign up + Sign In
 ### Sign up
@@ -31,7 +33,7 @@
  - click `Create Account` if username is available
 ### Sign in
 #### CLI
- - not necessary
+ - N/A
 #### Browser
  - visit `/welcome` page
  - click `Sign In` button
@@ -40,7 +42,7 @@
 
  ## Account import
 ### CLI
- - not necessary
+ - N/A
 ### Browser
 - visit `/welcome` page
 - click `Import Account` button
@@ -49,7 +51,7 @@
 
  ## Account export
  ### CLI
- - not necessary
+ - N/A
 ### Browser
 - follow `Sign In` steps
 - visit `setting/export` page
@@ -148,5 +150,47 @@
 - click `Stake` button from the menu on the left of home page
 - on `/setting/stake` page, click `Add Stake` button
 
+## Submit economy proposal
+### CLI
+- wait until proposal window is open
+- enter `proposal`
+- enter title, description and proposed network parameters of proposal
 
+### Browser
+- follow `Sign In` steps
+- click `Economy` button from the menu on the left of home page
+- on `/economy` page, click `New Economy Proposal` button
+- on `/economy/new/economy` page, wait until proposal window starts
+- when proposal window starts, enter desired network parameters
+- enter proposal tile
+- enter proposal description
+- click `Submit Propsal` button
 
+## Submit funding proposal
+### CLI
+- wait until dev proposal window is open
+- enter `dev proposal`
+- enter title, description, requested fund, receive address and payment plan of funding proposal
+
+### Browser
+- follow `Sign In` steps
+- click `Funding` button from the menu on the left of home page
+- on `/funding` page, click `New Economy Proposal` button
+- on `/economy/new/funding` page, wait until dev proposal window starts
+- when dev proposal window starts, enter title, description, requested fund, receive address and payment plan of funding proposal
+- click `Submit Propsal` button
+
+## Voting proposals
+### CLI
+- wait until voting proposal window is open
+- enter `vote`
+- select the id of proposal using arrow
+- enter the amount to vote the selected proposal
+
+### Browser
+- follow `Sign In` steps
+- click `Funding` button from the menu on the left of home page
+- on `/funding` page, click `Vote Proposal` button
+- on `/vote/economy` page, wait until vote proposal window starts
+- when voting window starts, enter amount of coins to vote
+- click `Submit Votes` button
