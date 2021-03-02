@@ -2,16 +2,27 @@ import * as crypto from 'shardus-crypto-utils'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import * as utils from '../utils'
 import create from '../accounts'
+import * as config from '../config'
 
 export const validate_fields = (tx: Tx.Toll, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
   if (typeof tx.from !== 'string') {
     response.success = false
-    response.reason = '"From" must be a string.'
+    response.reason = 'tx "from" field must be a string.'
     throw new Error(response.reason)
   }
   if (typeof tx.toll !== 'number') {
     response.success = false
-    response.reason = '"Toll" must be a number.'
+    response.reason = 'tx "toll" field must be a number.'
     throw new Error(response.reason)
   }
   if (tx.toll < 1) {

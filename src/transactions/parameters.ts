@@ -3,6 +3,31 @@ import * as config from '../config'
 import create from '../accounts'
 
 export const validate_fields = (tx: Tx.Parameters, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
+  if (typeof tx.from !== 'string') {
+    response.success = false
+    response.reason = 'tx "from" field must be a string'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.nodeId !== 'string') {
+    response.success = false
+    response.reason = 'tx "nodeId" field must be a string'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.issue !== 'string') {
+    response.success = false
+    response.reason = 'tx "issue" field must be a string'
+    throw new Error(response.reason)
+  }
   return response
 }
 
@@ -20,6 +45,10 @@ export const validate = (tx: Tx.Parameters, wrappedStates: WrappedStates, respon
   }
   if (issue.active === false) {
     response.reason = 'This issue is no longer active'
+    return response
+  }
+  if (tx.timestamp < network.windows.applyWindow[0] || tx.timestamp > network.windows.applyWindow[1]) {
+    response.reason = 'Network is not within the time window to apply parameters'
     return response
   }
   response.success = true

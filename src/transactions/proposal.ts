@@ -2,26 +2,102 @@ import * as crypto from 'shardus-crypto-utils'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import * as utils from '../utils'
 import create from '../accounts'
+import * as config from '../config'
 
 export const validate_fields = (tx: Tx.Proposal, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
   if (typeof tx.from !== 'string') {
     response.success = false
-    response.reason = '"From" must be a string.'
+    response.reason = 'tx "from" field must be a string.'
     throw new Error(response.reason)
   }
   if (typeof tx.proposal !== 'string') {
     response.success = false
-    response.reason = '"Proposal" must be a string.'
+    response.reason = 'tx "proposal" field must be a string.'
     throw new Error(response.reason)
   }
   if (typeof tx.issue !== 'string') {
     response.success = false
-    response.reason = '"Issue" must be a string.'
+    response.reason = 'tx "issue" field must be a string.'
     throw new Error(response.reason)
   }
   if (typeof tx.parameters !== 'object') {
     response.success = false
-    response.reason = '"Parameters" must be an object.'
+    response.reason = 'tx "parameters" field must be an object.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.parameters.title !== 'string') {
+    response.success = false
+    response.reason = 'tx "parameter title" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.parameters.description !== 'string') {
+    response.success = false
+    response.reason = 'tx "parameter description" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.parameters.nodeRewardInterval !== 'number') {
+    response.success = false
+    response.reason = 'tx "parameter nodeRewardInterval" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.parameters.nodeRewardAmount !== 'number') {
+    response.success = false
+    response.reason = 'tx "parameter nodeRewardAmount" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.parameters.nodePenalty !== 'number') {
+    response.success = false
+    response.reason = 'tx "parameter nodePenalty" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.parameters.transactionFee !== 'number') {
+    response.success = false
+    response.reason = 'tx "parameter transactionFee" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.parameters.stakeRequired !== 'number') {
+    response.success = false
+    response.reason = 'tx "parameter stakeRequired" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.parameters.maintenanceInterval !== 'number') {
+    response.success = false
+    response.reason = 'tx "parameter maintenanceInterval" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.parameters.maintenanceFee !== 'number') {
+    response.success = false
+    response.reason = 'tx "parameter maintenanceFee" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.parameters.proposalFee !== 'number') {
+    response.success = false
+    response.reason = 'tx "parameter proposalFee" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.parameters.devProposalFee !== 'number') {
+    response.success = false
+    response.reason = 'tx "parameter devProposalFee" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.parameters.faucetAmount !== 'number') {
+    response.success = false
+    response.reason = 'tx "parameter faucetAmount" field must be a number.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.parameters.transactionFee !== 'number') {
+    response.success = false
+    response.reason = 'tx "parameter defaultToll" field must be a number.'
     throw new Error(response.reason)
   }
   return response
@@ -114,6 +190,10 @@ export const validate = (tx: Tx.Proposal, wrappedStates: WrappedStates, response
   }
   if (parameters.devProposalFee > 1000000000) {
     response.reason = 'Max devProposalFee permitted is 1000000000 tokens'
+    return response
+  }
+  if (tx.timestamp < network.windows.proposalWindow[0] || tx.timestamp > network.windows.proposalWindow[1]) {
+    response.reason = 'Network is not within the time window to accept proposals'
     return response
   }
   response.success = true

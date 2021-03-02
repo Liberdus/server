@@ -5,6 +5,36 @@ import stringify from 'fast-stable-stringify'
 import create from '../accounts'
 
 export const validate_fields = (tx: Tx.DevTally, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
+  if (typeof tx.nodeId !== 'string') {
+    response.success = false
+    response.reason = 'tx "nodeId" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.from !== 'string') {
+    response.success = false
+    response.reason = 'tx "from" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.devIssue !== 'string') {
+    response.success = false
+    response.reason = 'tx "devIssue" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (!Array.isArray(tx.devProposals)) {
+    response.success = false
+    response.reason = 'tx "devProposals" field must be an array.'
+    throw new Error(response.reason)
+  }
   return response
 }
 
@@ -47,6 +77,10 @@ export const validate = (tx: Tx.DevTally, wrappedStates: WrappedStates, response
     response.reason = `The number of devProposals sent in with the transaction ${devProposals.length} doesn't match the devIssue proposalCount ${devIssue.devProposalCount}`
     return response
   }
+  if (tx.timestamp < network.devWindows.devGraceWindow[0] || tx.timestamp > network.devWindows.devGraceWindow[1]) {
+    response.reason = 'Network is not within the time window to tally votes for developer proposals'
+    return response
+  }
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
@@ -66,6 +100,7 @@ export const apply = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedState
       for (const payment of devProposal.payments) {
         payments.push({
           timestamp: tx.timestamp + config.TIME_FOR_DEV_GRACE + payment.delay,
+          delay: payment.delay,
           amount: payment.amount * devProposal.totalAmount,
           address: devProposal.payAddress,
           id: crypto.hashObj(payment),

@@ -26,7 +26,6 @@ export const ONE_DAY = 24 * ONE_HOUR
 // export const TIME_FOR_DEV_GRACE = ONE_MINUTE + ONE_SECOND * 30
 // export const TIME_FOR_DEV_APPLY = ONE_MINUTE + ONE_SECOND * 30
 
-
 // PROD SETTINGS
 export const TIME_FOR_PROPOSALS = ONE_DAY
 export const TIME_FOR_VOTING = 3 * ONE_DAY

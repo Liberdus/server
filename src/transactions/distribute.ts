@@ -2,26 +2,32 @@ import * as crypto from 'shardus-crypto-utils'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import * as utils from '../utils'
 import create from '../accounts'
+import * as config from '../config'
 
 export const validate_fields = (tx: Tx.Distribute, response: Shardus.IncomingTransactionResult) => {
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.network !== config.networkAccount) {
+    response.success = false
+    response.reason = 'tx "network" field must be: ' + config.networkAccount
+    throw new Error(response.reason)
+  }
   if (typeof tx.from !== 'string') {
     response.success = false
-    response.reason = '"From" must be a string.'
+    response.reason = 'tx "from" field must be a string.'
     throw new Error(response.reason)
   }
   if (Array.isArray(tx.recipients) !== true) {
     response.success = false
-    response.reason = '"Recipients" must be an array.'
+    response.reason = 'tx "recipients" field must be an array.'
     throw new Error(response.reason)
   }
-  if (typeof tx.amount !== 'number') {
+  if (typeof tx.amount !== 'number' || tx.amount <= 0) {
     response.success = false
-    response.reason = '"Amount" must be a number.'
-    throw new Error(response.reason)
-  }
-  if (tx.amount <= 0) {
-    response.success = false
-    response.reason = '"Amount" must be a positive number.'
+    response.reason = 'tx "amount" field must be a positive number.'
     throw new Error(response.reason)
   }
   return response
@@ -31,6 +37,7 @@ export const validate = (tx: Tx.Distribute, wrappedStates: WrappedStates, respon
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[tx.network].data
   const recipients: UserAccount[] = tx.recipients.map((id: string) => wrappedStates[id].data)
+
   if (tx.sign.owner !== tx.from) {
     response.reason = 'not signed by from account'
     return response
@@ -53,6 +60,7 @@ export const validate = (tx: Tx.Distribute, wrappedStates: WrappedStates, respon
     response.reason = "from account doesn't have sufficient balance to cover the transaction"
     return response
   }
+
   response.success = true
   response.reason = 'This transaction is valid!'
   return response

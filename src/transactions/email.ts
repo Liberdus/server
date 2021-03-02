@@ -2,11 +2,12 @@ import * as crypto from 'shardus-crypto-utils'
 import axios from 'axios'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
 import create from '../accounts'
+import * as config from '../config'
 
 export const validate_fields = (tx: Tx.Email, response: Shardus.IncomingTransactionResult) => {
   if (typeof tx.signedTx !== 'object') {
     response.success = false
-    response.reason = '"signedTx" must be an object.'
+    response.reason = 'tx "signedTx" field must be an object.'
     throw new Error(response.reason)
   }
 
