@@ -10,7 +10,7 @@
     "stop-client": "shardus pm2 stop npm",
     "start": "(shardus clean || true) && npm run build-client && shardus start 10 && npm run start-client && echo \"\nmonitor:    http://localhost:3000\nweb-client: http://localhost:3333\nexplorer:   http://localhost:4444\"",
     "stop": "npm run stop-client && shardus stop",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "update-template": "node scripts/update-template.js",
     "update-docker": "node scripts/update-docker.js latest",
     "update-docker-dev": "node scripts/update-docker.js dev",
@@ -20,7 +20,7 @@
     "lint": "tsc --noEmit && eslint '*/**/*.{js,ts,tsx}' --quiet --fix",
     "prepare": "npm run compile",
     "pretest": "npm run compile",
-    "posttest": "npm run check",
+    "posttest": "",
     "postinstall": "npm explore liberdus-web-client -- npm i && npm run compile",
     "dbg": "shardus start 3 && shardus stop && rm -rf instances/"
   },
@@ -50,6 +50,7 @@
     "@types/decimal.js": "^7.4.0",
     "@types/express": "^4.17.2",
     "@types/heapdump": "^0.3.1",
+    "@types/jest": "^26.0.20",
     "@types/lodash": "^4.14.149",
     "@types/node": "^12.20.4",
     "@typescript-eslint/eslint-plugin": "^2.34.0",
@@ -68,6 +69,7 @@
     "execa": "^4.0.1",
     "gts": "^2.0.0",
     "hygen-create": "^0.2.1",
+    "jest": "^26.6.3",
     "liberdus-web-client": "git+https://gitlab.com/liberdus/web-client/liberdus-web-client.git#semver:^1.0.0",
     "monitor-server": "git+https://gitlab.com/shardus/monitor-server.git#semver:^1.2.0",
     "pm2": "^4.1.2",
@@ -75,7 +77,8 @@
     "shardus": "^4.2.0",
     "shelljs": "^0.8.4",
     "standard": "^12.0.1",
-    "typescript": "~3.7.0",
+    "ts-jest": "^26.5.2",
+    "typescript": "^4.2.2",
     "yarpm": "^0.2.1"
   }
 }
