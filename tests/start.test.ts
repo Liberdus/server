@@ -213,6 +213,46 @@ describe('Submits transactions successfully', () => {
     expect(accountData1.data.balance).toBe(550)
     expect(accountData2.data.balance).toBe(550)
   })
+
+  it('Submits a "proposal" transaction for both accounts', async () => {
+    let ready = false
+    while (!ready) {
+      let windows = await queryWindow()
+      if (windows.window.proposals < 60) {
+        ready = true
+      } else {
+        await _sleep(1000)
+      }
+    }
+    let tx = {
+      type: 'proposal',
+      network,
+      from: account1.address,
+      proposal: crypto.hash(`issue-${1}-proposal-${2}`),
+      issue: crypto.hash(`issue-${1}`),
+      parameters: {
+        title: 'Account1 proposal',
+        description: 'This is a test proposal submitted by account1. It will change the nodeRewardAmount to 100.',
+        nodeRewardInterval: 3600000,
+        nodeRewardAmount: 100,
+        nodePenalty: 10,
+        transactionFee: 0.001,
+        stakeRequired: 5,
+        maintenanceInterval: 86400000,
+        maintenanceFee: 0,
+        proposalFee: 50,
+        devProposalFee: 50,
+        faucetAmount: 10,
+        defaultToll: 1,
+      },
+      timestamp: Date.now(),
+    }
+    crypto.signObj(tx as any, account1.keys.secretKey, account1.keys.publicKey)
+    injectTx(tx).then(res => {
+      console.log(res)
+      expect(res.result.success).toBe(true)
+    })
+  })
 })
 
 it('Stops a network successfully', async () => {
