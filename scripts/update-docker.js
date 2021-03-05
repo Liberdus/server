@@ -26,6 +26,7 @@ switch (tag) {
     process.exit(1)
 }
 
+/*
 // Don't package the shardus-global-server src into the docker image
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json')))
 if (packageJson.dependencies['shardus-global-server']) {
@@ -68,6 +69,7 @@ if (distPackageJson.name !== 'shardus-global-server-dist') {
   console.error()
   process.exit(1)
 }
+*/
 
 // Build the docker image and push it to the gitlab registry
 try {
