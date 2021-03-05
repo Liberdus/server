@@ -20,5 +20,9 @@ COPY . .
 RUN npm set unsafe-perm true
 RUN npm install
 
+COPY node_modules/shardus-global-server node_modules/shardus-global-server 
+
+RUN npm run compile
+
 # Define run command
 CMD [ "node", "dist/index.js" ]
