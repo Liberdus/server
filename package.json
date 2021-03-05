@@ -17,10 +17,7 @@
     "compile": "tsc -p .",
     "fix": "gts fix",
     "lint": "tsc --noEmit && eslint '*/**/*.{js,ts,tsx}' --quiet --fix",
-    "prepare": "npm run compile",
-    "pretest": "npm run compile",
-    "posttest": "",
-    "postinstall": "npm explore liberdus-web-client -- npm i && npm run compile",
+    "posttest": "npm run check",
     "dbg": "shardus start 3 && shardus stop && rm -rf instances/"
   },
   "author": "Kyle Shifflett",
@@ -40,7 +37,6 @@
     "nodemailer": "^6.3.1",
     "nodemailer-smtp-transport": "^2.7.4",
     "shardus-crypto-utils": "git+https://gitlab.com/shardus/shardus-crypto-utils.git#semver:^3.0.1",
-    "shardus-global-server": "git+https://gitlab.com/shardus/global/shardus-global-server.git#semver:^2.3.0",
     "streamroller": "^2.2.3",
     "vorpal": "^1.12.0"
   },
