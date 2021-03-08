@@ -127,7 +127,7 @@ export async function waitForNetworkParameters() {
   let ready = false
   while (!ready) {
     try {
-      ready = (await queryParameters()).issue === 1
+      ready = (await queryParameters()).current !== undefined
     } catch {
       await _sleep(1000)
     }
@@ -247,7 +247,7 @@ export async function getAccountData(id) {
   }
 }
 
-// Waits until there's only 60 seconds left within a chosen window
+// Waits until there's 60 seconds left within a chosen window
 export async function waitForWindow(name: string) {
   console.log(info(`Waiting for ${name} window to become available`))
   switch (name) {
