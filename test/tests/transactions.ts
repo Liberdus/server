@@ -4,6 +4,7 @@ import * as crypto from 'shardus-crypto-utils'
 import fs from 'fs'
 import axios from 'axios'
 import * as utils from '../testUtils'
+import { util } from 'prettier'
 
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
@@ -478,6 +479,25 @@ export const transactionsTest = () =>
       expect(accountData1.data.stake).toBe(networkParams.current.stakeRequired)
     })
 
+    // TODO: Figure out way to test this because of the time needed to wait
+    // it('Submits a "remove_stake" transaction successfully', async () => {
+    //   let accountData1 = await utils.getAccountData(account1.address)
+
+    //   await utils.injectTx(
+    //     {
+    //       type: 'remove_stake',
+    //       network,
+    //       from: account1.address,
+    //       stake: accountData1.data.stake,
+    //       timestamp: Date.now(),
+    //     },
+    //     account1,
+    //   )
+    //   await utils._sleep(8000)
+    //   accountData1 = await utils.getAccountData(account1.address)
+    //   expect(accountData1.data.stake).toBe(0)
+    // })
+
     it('Submits "vote" transaction successfully', async () => {
       await utils.waitForWindow('voting')
       await utils.injectTx(
@@ -588,5 +608,10 @@ export const transactionsTest = () =>
       let devIssue2 = await utils.getAccountData(crypto.hash(`dev-issue-2`))
       expect(devIssue2).toBeDefined()
       expect(devIssue2.number).toBe(2)
+    })
+
+    it('Ensures that a developer payment is made to account1', async () => {
+      let accountData1 = await utils.getAccountData(account1.address)
+      expect(accountData1.data.balance).toBeGreaterThan(2000)
     })
   })
