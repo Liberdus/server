@@ -72,7 +72,7 @@ export const transactionsTest = () =>
         account2,
       )
 
-      await utils._sleep(8000)
+      await utils._sleep(8500)
       let res = await axios.get(`http://${HOST}/address/${crypto.hash(wallet1)}`)
       expect(res.data.address).toBe(account1.address)
       res = await axios.get(`http://${HOST}/address/${crypto.hash(wallet2)}`)
@@ -104,7 +104,7 @@ export const transactionsTest = () =>
         false,
       )
 
-      await utils._sleep(8000)
+      await utils._sleep(8500)
       let accountData1 = await utils.getAccountData(account1.address)
       let accountData2 = await utils.getAccountData(account2.address)
       expect(accountData1.data.balance).toBe(550)
@@ -141,7 +141,7 @@ export const transactionsTest = () =>
         account1,
       )
 
-      await utils._sleep(8000)
+      await utils._sleep(8500)
       let proposal1 = await utils.getAccountData(crypto.hash(`issue-${1}-proposal-${2}`))
       expect(proposal1.parameters).toEqual({
         title: 'Account1 proposal',
@@ -186,7 +186,7 @@ export const transactionsTest = () =>
         account2,
       )
 
-      await utils._sleep(8000)
+      await utils._sleep(8500)
       let proposal2 = await utils.getAccountData(crypto.hash(`issue-${1}-proposal-${3}`))
       expect(proposal2.parameters).toEqual({
         title: 'Account2 proposal',
@@ -244,7 +244,7 @@ export const transactionsTest = () =>
         account1,
       )
 
-      await utils._sleep(8000)
+      await utils._sleep(8500)
 
       utils.injectTx(
         {
@@ -284,7 +284,7 @@ export const transactionsTest = () =>
         account2,
       )
 
-      await utils._sleep(8000)
+      await utils._sleep(8500)
       let devProposal1 = await utils.getAccountData(crypto.hash(`dev-issue-${1}-dev-proposal-${1}`))
       let devProposal2 = await utils.getAccountData(crypto.hash(`dev-issue-${1}-dev-proposal-${2}`))
       expect(devProposal1.payAddress).toEqual(account1.address)
@@ -305,7 +305,7 @@ export const transactionsTest = () =>
         account1,
       )
 
-      await utils._sleep(8000)
+      await utils._sleep(8500)
       let accountData1 = await utils.getAccountData(account1.address)
       let accountData2 = await utils.getAccountData(account2.address)
       expect(accountData1.data.balance).toBeCloseTo(400 - networkParams.current.transactionFee * 3)
@@ -323,7 +323,7 @@ export const transactionsTest = () =>
         account2,
       )
 
-      await utils._sleep(8000)
+      await utils._sleep(8500)
       accountData1 = await utils.getAccountData(account1.address)
       accountData2 = await utils.getAccountData(account2.address)
       expect(accountData1.data.balance).toBeCloseTo(450 - networkParams.current.transactionFee * 3)
@@ -342,7 +342,7 @@ export const transactionsTest = () =>
         account1,
       )
 
-      await utils._sleep(8000)
+      await utils._sleep(8500)
       let accountData1 = await utils.getAccountData(account1.address)
       expect(accountData1.data.toll).toBe(25)
     })
@@ -368,7 +368,7 @@ export const transactionsTest = () =>
         account2,
       )
 
-      await utils._sleep(8000)
+      await utils._sleep(8500)
       let accountData1 = await utils.getAccountData(account1.address)
       let accountData2 = await utils.getAccountData(account2.address)
       expect(accountData1.data.balance).toBeCloseTo(475 - networkParams.current.transactionFee * 3)
@@ -387,7 +387,7 @@ export const transactionsTest = () =>
         },
         account1,
       )
-      await utils._sleep(8000)
+      await utils._sleep(8500)
 
       let accountData1 = await utils.getAccountData(account1.address)
       expect(accountData1.data.friends[account2.address]).toBe(wallet2)
@@ -412,7 +412,7 @@ export const transactionsTest = () =>
         account2,
       )
 
-      await utils._sleep(8000)
+      await utils._sleep(8500)
 
       accountData1 = await utils.getAccountData(account1.address)
       let accountData2 = await utils.getAccountData(account2.address)
@@ -431,7 +431,7 @@ export const transactionsTest = () =>
         },
         account1,
       )
-      await utils._sleep(8000)
+      await utils._sleep(8500)
 
       const message = JSON.stringify({
         body: 'Test message after friend transaction',
@@ -453,7 +453,7 @@ export const transactionsTest = () =>
         account2,
       )
 
-      await utils._sleep(8000)
+      await utils._sleep(8500)
 
       let accountData1 = await utils.getAccountData(account1.address)
       let accountData2 = await utils.getAccountData(account2.address)
@@ -474,7 +474,7 @@ export const transactionsTest = () =>
         },
         account1,
       )
-      await utils._sleep(8000)
+      await utils._sleep(8500)
       let accountData1 = await utils.getAccountData(account1.address)
       expect(accountData1.data.stake).toBe(networkParams.current.stakeRequired)
     })
@@ -493,7 +493,7 @@ export const transactionsTest = () =>
     //     },
     //     account1,
     //   )
-    //   await utils._sleep(8000)
+    //   await utils._sleep(8500)
     //   accountData1 = await utils.getAccountData(account1.address)
     //   expect(accountData1.data.stake).toBe(0)
     // })
@@ -513,7 +513,7 @@ export const transactionsTest = () =>
         account1,
       )
 
-      await utils._sleep(8000)
+      await utils._sleep(8500)
       let proposalData = await utils.getAccountData(crypto.hash(`issue-${1}-proposal-${2}`))
       expect(proposalData.power).toBe(50)
     })
@@ -533,7 +533,7 @@ export const transactionsTest = () =>
         },
         account1,
       )
-      await utils._sleep(8000)
+      await utils._sleep(8500)
       let proposalData = await utils.getAccountData(crypto.hash(`dev-issue-${1}-dev-proposal-${1}`))
       expect(proposalData.approve).toBe(50)
     })
