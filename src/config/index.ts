@@ -107,8 +107,11 @@ export const initConfigFromFile = () => {
     interval: 1,
   })
   Prop.set(config, 'server.rateLimiting', {
-    limitRate: false,
-    loadLimit: 0.5,
+    limitRate: true,
+    loadLimit: {
+      internal: 0.5,
+      external: 0.4
+    }
   })
   Prop.set(config, 'server.sharding', {
     nodesPerConsensusGroup: 5,
