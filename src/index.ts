@@ -9,6 +9,7 @@ import _ from 'lodash'
 import dotenv from 'dotenv'
 import transactions from './transactions'
 import registerAPI from './api'
+//import {logFlags} from 'shardus-global-server/build/src/logger'
 
 dotenv.config()
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
@@ -22,6 +23,13 @@ let defaultConfig = configs.initConfigFromFile()
 let config = configs.overrideDefaultConfig(defaultConfig, env, args)
 
 const dapp = shardus(config)
+
+// let logFlags = {}
+// if(dapp.getLogFlags){
+//   logFlags = dapp.getLogFlags()
+// }
+let statsDebugLogs = false
+
 
 // API
 registerAPI(dapp)
@@ -353,15 +361,15 @@ dapp.setup({
         let accountBalance = accountData.data.balance
         let totalBalance = blobBalanceBefore + accountBalance
 
-        dapp.log(`stats balance init ${blobBalanceBefore}+${accountBalance}=${totalBalance}  ${stringify(accountData?.id)}`)
+        if(statsDebugLogs) dapp.log(`stats balance init ${blobBalanceBefore}+${accountBalance}=${totalBalance}  ${stringify(accountData?.id)}`)
 
         if (totalBalance != null) {
           blob.totalBalance = totalBalance
         } else {
-          dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 1 ${accountData?.data.balance} ${stringify(accountData?.id)}`)
+          if(statsDebugLogs) dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 1 ${accountData?.data.balance} ${stringify(accountData?.id)}`)
         }
       } else {
-        dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 2 ${accountData?.data.balance} ${stringify(accountData?.id)}`)
+        if(statsDebugLogs) dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 2 ${accountData?.data.balance} ${stringify(accountData?.id)}`)
       }
     }
     if (accType == 'NodeAccount') {
@@ -370,10 +378,10 @@ dapp.setup({
         if (totalBalance != null) {
           blob.totalBalance = totalBalance
         } else {
-          dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 1 ${accountData?.balance} ${stringify(accountData?.id)}`)
+          if(statsDebugLogs) dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 1 ${accountData?.balance} ${stringify(accountData?.id)}`)
         }
       } else {
-        dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 2 ${accountData?.balance} ${stringify(accountData?.id)}`)
+        if(statsDebugLogs) dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 2 ${accountData?.balance} ${stringify(accountData?.id)}`)
       }
     }
   },
@@ -395,7 +403,7 @@ dapp.setup({
       let balanceChange = accountDataAfter?.data?.balance - accountDataBefore?.data?.balance
 
       let totalBalance = blob.totalBalance + balanceChange
-      dapp.log(
+      if(statsDebugLogs) dapp.log(
         `stats balance update ${blobBalanceBefore}+${balanceChange}(${accountBalanceAfter}-${accountBalanceBefore})=${totalBalance}  ${stringify(
           accountDataAfter?.id,
         )}`,
@@ -406,14 +414,14 @@ dapp.setup({
         if (totalBalance != null) {
           blob.totalBalance = totalBalance
         } else {
-          dapp.log(
+          if(statsDebugLogs) dapp.log(
             `error: null balance attempt. dataSummaryUpdate UserAccount 1 ${accountDataAfter?.data?.balance} ${stringify(accountDataAfter?.id)} ${
               accountDataBefore?.data?.balance
             } ${stringify(accountDataBefore?.id)}`,
           )
         }
       } else {
-        dapp.log(
+        if(statsDebugLogs) dapp.log(
           `error: null balance attempt. dataSummaryUpdate UserAccount 2 ${accountDataAfter?.data?.balance} ${stringify(accountDataAfter?.id)} ${
             accountDataBefore?.data?.balance
           } ${stringify(accountDataBefore?.id)}`,
@@ -427,14 +435,14 @@ dapp.setup({
         if (totalBalance != null) {
           blob.totalBalance = totalBalance
         } else {
-          dapp.log(
+          if(statsDebugLogs) dapp.log(
             `error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter?.balance} ${stringify(accountDataAfter?.id)} ${
               accountDataBefore?.balance
             } ${stringify(accountDataBefore?.id)}`,
           )
         }
       } else {
-        dapp.log(
+        if(statsDebugLogs) dapp.log(
           `error: null balance attempt. dataSummaryUpdate NodeAccount 2 ${accountDataAfter?.balance} ${stringify(accountDataAfter?.id)} ${
             accountDataBefore?.balance
           } ${stringify(accountDataBefore?.id)}`,

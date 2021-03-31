@@ -116,6 +116,11 @@ export const initConfigFromFile = () => {
   Prop.set(config, 'server.sharding', {
     nodesPerConsensusGroup: 5,
   })
+
+  Prop.set(config, 'server.debug', {
+    startInFatalsLogMode: true, //true setting good for big aws test with nodes joining under stress.
+  })
+  
   Prop.set(config, 'logs', {
     dir: './logs',
     files: { main: '', fatal: '', net: '', app: '' },
