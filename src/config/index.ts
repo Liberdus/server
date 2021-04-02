@@ -110,7 +110,9 @@ export const initConfigFromFile = () => {
     limitRate: true,
     loadLimit: {
       internal: 0.5,
-      external: 0.4
+      external: 0.4,
+      txTimeInQueue: 0.2,
+      queueLength: 0.2
     }
   })
   Prop.set(config, 'server.sharding', {
