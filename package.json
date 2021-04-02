@@ -42,7 +42,7 @@
     "nodemailer": "^6.3.1",
     "nodemailer-smtp-transport": "^2.7.4",
     "shardus-crypto-utils": "git+https://gitlab.com/shardus/shardus-crypto-utils.git#semver:^3.0.1",
-    "shardus-global-server": "git+https://gitlab.com/shardus/global/shardus-global-server.git#debugImprovments",
+    "shardus-global-server": "git+https://gitlab.com/shardus/global/shardus-global-server.git#mixed-rate-limit",
     "streamroller": "^2.2.3",
     "vorpal": "^1.12.0"
   },
