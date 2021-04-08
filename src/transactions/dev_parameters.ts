@@ -80,23 +80,23 @@ export const apply = (tx: Tx.DevParameters, txId: string, wrappedStates: Wrapped
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[tx.network].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
-  const when = tx.timestamp + config.ONE_SECOND * 10
+  // const when = tx.timestamp + config.ONE_SECOND * 10
 
-  dapp.setGlobal(
-    config.networkAccount,
-    {
-      type: 'apply_dev_parameters',
-      timestamp: when,
-      network: config.networkAccount,
-      devWindows: network.nextDevWindows,
-      nextDevWindows: {},
-      developerFund: [...network.developerFund, ...network.nextDeveloperFund].sort((a, b) => a.timestamp - b.timestamp),
-      nextDeveloperFund: [],
-      devIssue: network.devIssue + 1,
-    },
-    when,
-    config.networkAccount,
-  )
+  // dapp.setGlobal(
+  //   config.networkAccount,
+  //   {
+  //     type: 'apply_dev_parameters',
+  //     timestamp: when,
+  //     network: config.networkAccount,
+  //     devWindows: network.nextDevWindows,
+  //     nextDevWindows: {},
+  //     developerFund: [...network.developerFund, ...network.nextDeveloperFund].sort((a, b) => a.timestamp - b.timestamp),
+  //     nextDeveloperFund: [],
+  //     devIssue: network.devIssue + 1,
+  //   },
+  //   when,
+  //   config.networkAccount,
+  // )
 
   devIssue.active = false
 

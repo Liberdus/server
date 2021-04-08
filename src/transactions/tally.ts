@@ -85,7 +85,7 @@ export const validate = (tx: Tx.Tally, wrappedStates: WrappedStates, response: S
   return response
 }
 
-export const apply = (tx: Tx.Tally, txId: string, wrappedStates: WrappedStates, dapp) => {
+export const apply = (tx: Tx.Tally, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[tx.network].data
   const issue: IssueAccount = wrappedStates[tx.issue].data
@@ -130,18 +130,28 @@ export const apply = (tx: Tx.Tally, txId: string, wrappedStates: WrappedStates, 
 
   const when = tx.timestamp + config.ONE_SECOND * 10
 
-  dapp.setGlobal(
-    config.networkAccount,
-    {
-      type: 'apply_tally',
-      timestamp: when,
-      network: config.networkAccount,
-      next,
-      nextWindows,
-    },
-    when,
-    config.networkAccount,
-  )
+  // dapp.setGlobal(
+  //   config.networkAccount,
+  //   {
+  //     type: 'apply_tally',
+  //     timestamp: when,
+  //     network: config.networkAccount,
+  //     next,
+  //     nextWindows,
+  //   },
+  //   when,
+  //   config.networkAccount,
+  // )
+
+  let value = {
+    type: 'apply_tally',
+    timestamp: when,
+    network: config.networkAccount,
+    next,
+    nextWindows,
+  }
+  
+  applyResponse.appDefinedData.globalMsg = {address:config.networkAccount, value, when, source: config.networkAccount}
 
   issue.winnerId = winner.id
 

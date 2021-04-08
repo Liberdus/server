@@ -144,7 +144,7 @@ dapp.setup({
     }
     const applyResponse: Shardus.ApplyResponse = dapp.createApplyResponse(txId, tx.timestamp)
 
-    transactions[tx.type].apply(tx, txId, wrappedStates, dapp)
+    transactions[tx.type].apply(tx, txId, wrappedStates, dapp, applyResponse)
 
     return applyResponse
   },

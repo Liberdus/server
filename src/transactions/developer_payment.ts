@@ -114,19 +114,19 @@ export const apply = (tx: Tx.DevPayment, txId: string, wrappedStates: WrappedSta
   developer.data.balance += tx.payment.amount
   developer.data.transactions.push({ ...tx, txId })
 
-  const when = tx.timestamp + config.ONE_SECOND * 10
+  // const when = tx.timestamp + config.ONE_SECOND * 10
 
-  dapp.setGlobal(
-    config.networkAccount,
-    {
-      type: 'apply_developer_payment',
-      timestamp: when,
-      network: config.networkAccount,
-      developerFund: network.developerFund.filter((payment: DeveloperPayment) => payment.id !== tx.payment.id),
-    },
-    when,
-    config.networkAccount,
-  )
+  // dapp.setGlobal(
+  //   config.networkAccount,
+  //   {
+  //     type: 'apply_developer_payment',
+  //     timestamp: when,
+  //     network: config.networkAccount,
+  //     developerFund: network.developerFund.filter((payment: DeveloperPayment) => payment.id !== tx.payment.id),
+  //   },
+  //   when,
+  //   config.networkAccount,
+  // )
 
   developer.timestamp = tx.timestamp
   from.timestamp = tx.timestamp

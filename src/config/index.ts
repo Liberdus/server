@@ -120,7 +120,8 @@ export const initConfigFromFile = () => {
   })
 
   Prop.set(config, 'server.debug', {
-    startInFatalsLogMode: true, //true setting good for big aws test with nodes joining under stress.
+    startInFatalsLogMode: false, //true setting good for big aws test with nodes joining under stress.
+    fakeNetworkDelay:1500
   })
   
   Prop.set(config, 'logs', {

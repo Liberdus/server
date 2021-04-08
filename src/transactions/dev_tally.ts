@@ -86,7 +86,7 @@ export const validate = (tx: Tx.DevTally, wrappedStates: WrappedStates, response
   return response
 }
 
-export const apply = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedStates, dapp) => {
+export const apply = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[tx.network].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
@@ -133,18 +133,28 @@ export const apply = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedState
 
   const when = tx.timestamp + config.ONE_SECOND * 10
 
-  dapp.setGlobal(
-    config.networkAccount,
-    {
-      type: 'apply_dev_tally',
-      timestamp: when,
-      network: config.networkAccount,
-      nextDeveloperFund,
-      nextDevWindows,
-    },
-    when,
-    config.networkAccount,
-  )
+  // dapp.setGlobal(
+  //   config.networkAccount,
+  //   {
+  //     type: 'apply_dev_tally',
+  //     timestamp: when,
+  //     network: config.networkAccount,
+  //     nextDeveloperFund,
+  //     nextDevWindows,
+  //   },
+  //   when,
+  //   config.networkAccount,
+  // )
+
+  let value =   {
+    type: 'apply_dev_tally',
+    timestamp: when,
+    network: config.networkAccount,
+    nextDeveloperFund,
+    nextDevWindows,
+  }
+
+  applyResponse.appDefinedData.globalMsg = {address:config.networkAccount, value, when, source: config.networkAccount}
 
   from.timestamp = tx.timestamp
   devIssue.timestamp = tx.timestamp
