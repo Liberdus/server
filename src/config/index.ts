@@ -111,7 +111,7 @@ export const initConfigFromFile = () => {
     loadLimit: {
       internal: 0.5,
       external: 0.4,
-      txTimeInQueue: 0.2,
+      txTimeInQueue: 0.3,
       queueLength: 0.2
     }
   })
@@ -120,8 +120,8 @@ export const initConfigFromFile = () => {
   })
 
   Prop.set(config, 'server.debug', {
-    startInFatalsLogMode: false, //true setting good for big aws test with nodes joining under stress.
-    fakeNetworkDelay:1500
+    startInFatalsLogMode: true, //true setting good for big aws test with nodes joining under stress.
+    fakeNetworkDelay:0
   })
   
   Prop.set(config, 'logs', {
