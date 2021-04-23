@@ -245,14 +245,19 @@ dapp.setup({
         timestamp: account.timestamp,
       }
       results.push(wrapped)
+
+      // oof, much slower to do this but making it up to standard with how a DB needs to sort first.
       // Return results early if maxRecords reached
-      if (results.length >= maxRecords) {
-        results.sort((a, b) => a.timestamp - b.timestamp)
-        return results
-      }
+      // if (results.length >= maxRecords) {
+      //   results.sort((a, b) => a.timestamp - b.timestamp)
+      //   return results
+      // }
     }
     results.sort((a, b) => a.timestamp - b.timestamp)
-    return results
+
+    let finalResults = results.slice(0, maxRecords)
+
+    return finalResults
   },
   getAccountData(accountStart, accountEnd, maxRecords): WrappedAccount[] {
     const results: WrappedAccount[] = []
