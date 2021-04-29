@@ -21,9 +21,13 @@ async function start() {
   let nodeCountToSet = Math.floor(activeNodes.length * networkPercentage)
   console.log("nodeCountToSet", nodeCountToSet)
   for (let i = 0; i < nodeCountToSet; i++) {
-    const node = activeNodes[i]
-    let res = await axios.get(`http://${node.nodeIpInfo.externalIp}:${node.nodeIpInfo.externalPort}/loadset?load=${load}`)
-    console.log(`Load set response for ${node.nodeIpInfo.externalIp}:${node.nodeIpInfo.externalPort}`, res.data)
+    try {
+      const node = activeNodes[i]
+      let res = await axios.get(`http://${node.nodeIpInfo.externalIp}:${node.nodeIpInfo.externalPort}/loadset?load=${load}`)
+      console.log(`Load set response for ${node.nodeIpInfo.externalIp}:${node.nodeIpInfo.externalPort}`, res.data)
+    } catch(e) {
+      console.log(e)
+    }
   }
 }
 
