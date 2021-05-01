@@ -89,17 +89,18 @@ export const initConfigFromFile = () => {
       },
     ],
     minNodesToAllowTxs: 1,
-    minNodes: 50,
-    maxNodes: 50,
-    maxJoinedPerCycle: 3,
+    minNodes: 10,
+    maxNodes: 40,
+    maxJoinedPerCycle: 5,
     maxSyncingPerCycle: 5,
-    maxRotatedPerCycle: 1,
+    maxRotatedPerCycle: 0,
+    amountToScale: 5
   })
   Prop.set(config, 'server.loadDetection', {
     queueLimit: 1000,
     desiredTxTime: 15,
-    highThreshold: 0.8,
-    lowThreshold: 0.2,
+    highThreshold: 0.2,
+    lowThreshold: 0.1,
   })
   const recipientCheck = config.server && config.server.reporting ? config.server.reporting.recipient : false
   Prop.set(config, 'server.reporting', {
