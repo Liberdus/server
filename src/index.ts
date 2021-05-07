@@ -49,7 +49,6 @@ dapp.setup({
 
       const nodeId = dapp.getNodeId()
       const address = dapp.getNode(nodeId).address
-      console.log('GET_NODE', dapp.getNode(nodeId))
       const when = Date.now() + configs.ONE_SECOND * 10
       const existingNetworkAccount = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
       if (existingNetworkAccount) {

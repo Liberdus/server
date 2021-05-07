@@ -133,19 +133,6 @@ export const apply = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedState
 
   const when = tx.timestamp + config.ONE_SECOND * 10
 
-  // dapp.setGlobal(
-  //   config.networkAccount,
-  //   {
-  //     type: 'apply_dev_tally',
-  //     timestamp: when,
-  //     network: config.networkAccount,
-  //     nextDeveloperFund,
-  //     nextDevWindows,
-  //   },
-  //   when,
-  //   config.networkAccount,
-  // )
-
   let value =   {
     type: 'apply_dev_tally',
     timestamp: when,
@@ -159,6 +146,12 @@ export const apply = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedState
   from.timestamp = tx.timestamp
   devIssue.timestamp = tx.timestamp
   dapp.log('Applied dev_tally tx', devIssue, devProposals)
+}
+
+export const transactionReceiptPass = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
+  let { address, value, when, source } = applyResponse.appDefinedData.globalMsg
+  dapp.setGlobal(address, value, when, source)
+  dapp.log('PostApplied dev_tally tx')
 }
 
 export const keys = (tx: Tx.DevTally, result: TransactionKeys) => {

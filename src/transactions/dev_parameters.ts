@@ -76,33 +76,36 @@ export const validate = (tx: Tx.DevParameters, wrappedStates: WrappedStates, res
   return response
 }
 
-export const apply = (tx: Tx.DevParameters, txId: string, wrappedStates: WrappedStates, dapp) => {
+export const apply = (tx: Tx.DevParameters, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: Shardus.ApplyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[tx.network].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
-  // const when = tx.timestamp + config.ONE_SECOND * 10
 
-  // dapp.setGlobal(
-  //   config.networkAccount,
-  //   {
-  //     type: 'apply_dev_parameters',
-  //     timestamp: when,
-  //     network: config.networkAccount,
-  //     devWindows: network.nextDevWindows,
-  //     nextDevWindows: {},
-  //     developerFund: [...network.developerFund, ...network.nextDeveloperFund].sort((a, b) => a.timestamp - b.timestamp),
-  //     nextDeveloperFund: [],
-  //     devIssue: network.devIssue + 1,
-  //   },
-  //   when,
-  //   config.networkAccount,
-  // )
+  const when = tx.timestamp + config.ONE_SECOND * 10
+  let value = {
+    type: 'apply_dev_parameters',
+    timestamp: when,
+    network: config.networkAccount,
+    devWindows: network.nextDevWindows,
+    nextDevWindows: {},
+    developerFund: [...network.developerFund, ...network.nextDeveloperFund].sort((a, b) => a.timestamp - b.timestamp),
+    nextDeveloperFund: [],
+    devIssue: network.devIssue + 1,
+  }
+
+  applyResponse.appDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
 
   devIssue.active = false
 
   from.timestamp = tx.timestamp
   devIssue.timestamp = tx.timestamp
   dapp.log('Applied dev_parameters tx', from, devIssue)
+}
+
+export const transactionReceiptPass = (tx: Tx.DevParameters, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
+  let { address, value, when, source } = applyResponse.appDefinedData.globalMsg
+  dapp.setGlobal(address, value, when, source)
+  dapp.log('PostApplied dev_parameters tx')
 }
 
 export const keys = (tx: Tx.DevParameters, result: TransactionKeys) => {

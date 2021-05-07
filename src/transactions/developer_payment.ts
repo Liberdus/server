@@ -106,7 +106,7 @@ export const validate = (tx: Tx.DevPayment, wrappedStates: WrappedStates, respon
   return response
 }
 
-export const apply = (tx: Tx.DevPayment, txId: string, wrappedStates: WrappedStates, dapp) => {
+export const apply = (tx: Tx.DevPayment, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: Shardus.ApplyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[tx.network].data
   const developer: UserAccount = wrappedStates[tx.developer].data
@@ -114,23 +114,24 @@ export const apply = (tx: Tx.DevPayment, txId: string, wrappedStates: WrappedSta
   developer.data.balance += tx.payment.amount
   developer.data.transactions.push({ ...tx, txId })
 
-  // const when = tx.timestamp + config.ONE_SECOND * 10
+  const when = tx.timestamp + config.ONE_SECOND * 10
+  let value = {
+    type: 'apply_developer_payment',
+    timestamp: when,
+    network: config.networkAccount,
+    developerFund: network.developerFund.filter((payment: DeveloperPayment) => payment.id !== tx.payment.id),
+  }
 
-  // dapp.setGlobal(
-  //   config.networkAccount,
-  //   {
-  //     type: 'apply_developer_payment',
-  //     timestamp: when,
-  //     network: config.networkAccount,
-  //     developerFund: network.developerFund.filter((payment: DeveloperPayment) => payment.id !== tx.payment.id),
-  //   },
-  //   when,
-  //   config.networkAccount,
-  // )
-
+  applyResponse.appDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
   developer.timestamp = tx.timestamp
   from.timestamp = tx.timestamp
   dapp.log('Applied developer_payment tx', from, developer, tx.payment)
+}
+
+export const transactionReceiptPass = (tx: Tx.DevPayment, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
+  let { address, value, when, source } = applyResponse.appDefinedData.globalMsg
+  dapp.setGlobal(address, value, when, source)
+  dapp.log('PostApplied developer_payment tx')
 }
 
 export const keys = (tx: Tx.DevPayment, result: TransactionKeys) => {

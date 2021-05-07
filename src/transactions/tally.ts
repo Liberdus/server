@@ -129,20 +129,6 @@ export const apply = (tx: Tx.Tally, txId: string, wrappedStates: WrappedStates, 
   }
 
   const when = tx.timestamp + config.ONE_SECOND * 10
-
-  // dapp.setGlobal(
-  //   config.networkAccount,
-  //   {
-  //     type: 'apply_tally',
-  //     timestamp: when,
-  //     network: config.networkAccount,
-  //     next,
-  //     nextWindows,
-  //   },
-  //   when,
-  //   config.networkAccount,
-  // )
-
   let value = {
     type: 'apply_tally',
     timestamp: when,
@@ -165,9 +151,6 @@ export const transactionReceiptPass = (tx: Tx.Tally, txId: string, wrappedStates
   const issue: IssueAccount = wrappedStates[tx.issue].data
   const defaultProposal: ProposalAccount = wrappedStates[crypto.hash(`issue-${issue.number}-proposal-1`)].data
   let winner = defaultProposal
-
-  console.log("inside applyResponse")
-  console.log("applyResponse", applyResponse)
 
   let { address, value, when, source } = applyResponse.appDefinedData.globalMsg
   dapp.setGlobal(address, value, when, source)

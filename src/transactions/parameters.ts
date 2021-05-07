@@ -56,34 +56,36 @@ export const validate = (tx: Tx.Parameters, wrappedStates: WrappedStates, respon
   return response
 }
 
-export const apply = (tx: Tx.Parameters, txId: string, wrappedStates: WrappedStates, dapp) => {
+export const apply = (tx: Tx.Parameters, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: Shardus.ApplyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[tx.network].data
   const issue: IssueAccount = wrappedStates[tx.issue].data
+  
+  const when = tx.timestamp + config.ONE_SECOND * 10
+  let value = {
+    type: 'apply_parameters',
+    timestamp: when,
+    network: config.networkAccount,
+    current: network.next,
+    next: {},
+    windows: network.nextWindows,
+    nextWindows: {},
+    issue: network.issue + 1,
+  }
 
-  // const when = tx.timestamp + config.ONE_SECOND * 10
-
-  // dapp.setGlobal(
-  //   config.networkAccount,
-  //   {
-  //     type: 'apply_parameters',
-  //     timestamp: when,
-  //     network: config.networkAccount,
-  //     current: network.next,
-  //     next: {},
-  //     windows: network.nextWindows,
-  //     nextWindows: {},
-  //     issue: network.issue + 1,
-  //   },
-  //   when,
-  //   config.networkAccount,
-  // )
+  applyResponse.appDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
 
   issue.active = false
 
   from.timestamp = tx.timestamp
   issue.timestamp = tx.timestamp
   dapp.log('Applied parameters tx', issue)
+}
+
+export const transactionReceiptPass = (tx: Tx.Tally, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
+  let { address, value, when, source } = applyResponse.appDefinedData.globalMsg
+  dapp.setGlobal(address, value, when, source)
+  dapp.log('PostApplied parameters tx')
 }
 
 export const keys = (tx: Tx.Parameters, result: TransactionKeys) => {
