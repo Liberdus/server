@@ -148,6 +148,17 @@ dapp.setup({
 
     return applyResponse
   },
+  transactionReceiptPass(tx: any, wrappedStates: { [id: string]: WrappedAccount }, applyResponse: Shardus.ApplyResponse) {
+    let txId: string
+    if (!tx.sign) {
+      txId = crypto.hashObj(tx)
+    } else {
+      txId = crypto.hashObj(tx, true) // compute from tx
+    }
+    if(transactions[tx.type].transactionReceiptPass) transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
+
+    return applyResponse
+  },
   getKeyFromTransaction(tx: any): Shardus.TransactionKeys {
     const result: TransactionKeys = {
       sourceKeys: [],

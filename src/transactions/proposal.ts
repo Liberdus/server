@@ -223,6 +223,32 @@ export const apply = (tx: Tx.Proposal, txId: string, wrappedStates: WrappedState
   dapp.log('Applied proposal tx', from, issue, proposal)
 }
 
+
+export const transactionReceiptPass = (tx: Tx.Proposal, txId: string, wrappedStates: WrappedStates, dapp: any, applyResponse: Shardus.ApplyResponse) => {
+  const network: NetworkAccount = wrappedStates[tx.network].data
+  const issue: IssueAccount = wrappedStates[tx.issue].data
+
+  const when = tx.timestamp + config.ONE_SECOND * 10
+  console.log("Inside transactionReceiptPass")
+  console.log("network", network)
+
+  dapp.setGlobal(
+    config.networkAccount,
+    {
+      type: 'apply_parameters',
+      timestamp: when,
+      network: config.networkAccount,
+      current: network.next,
+      next: {},
+      windows: network.nextWindows,
+      nextWindows: {},
+      issue: network.issue + 1,
+    },
+    when,
+    config.networkAccount,
+  )
+  dapp.log('PostApplied parameters tx', issue)
+}
 export const keys = (tx: Tx.Proposal, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [tx.issue, tx.proposal, tx.network]
