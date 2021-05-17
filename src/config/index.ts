@@ -94,7 +94,8 @@ export const initConfigFromFile = () => {
     maxJoinedPerCycle: 5,
     maxSyncingPerCycle: 5,
     maxRotatedPerCycle: 0,
-    amountToScale: 5
+    amountToGrow: 5,
+    amountToShrink: 2
   })
   Prop.set(config, 'server.loadDetection', {
     queueLimit: 1000,
