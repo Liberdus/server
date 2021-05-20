@@ -5,6 +5,7 @@ export const chatAccount = (accountId: string): ChatAccount => {
     id: accountId,
     type: 'ChatAccount',
     messages: [],
+    freeReply: {},
     timestamp: 0,
     hash: '',
   }

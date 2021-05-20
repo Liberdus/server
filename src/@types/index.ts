@@ -75,16 +75,6 @@ declare namespace Tx {
     timestamp: number
   }
 
-  interface Friend {
-    type: string
-    network: string
-    alias: string
-    from: string
-    to: string
-    timestamp: number
-    sign: Signature
-  }
-
   interface GossipEmailHash {
     type: string
     nodeId: string
@@ -127,6 +117,7 @@ declare namespace Tx {
     to: string
     chatId: string
     message: string
+    freeReply: boolean
     timestamp: number
     sign: Signature
   }
@@ -189,15 +180,6 @@ declare namespace Tx {
     aliasHash: string
     from: string
     alias: string
-    timestamp: number
-    sign: Signature
-  }
-
-  interface RemoveFriend {
-    type: string
-    network: string
-    from: string
-    to: string
     timestamp: number
     sign: Signature
   }
@@ -345,7 +327,6 @@ interface UserAccount {
     balance: number
     toll: number | null
     chats: object
-    friends: object
     stake?: number
     remove_stake_request: number | null
     transactions: object[]
@@ -373,6 +354,7 @@ interface ChatAccount {
   id: string
   type: string
   messages: unknown[]
+  freeReply: { [id: string]: boolean }
   timestamp: number
   hash: string
 }

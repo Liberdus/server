@@ -701,6 +701,8 @@ vorpal.command('distribute', 'distributes tokens to multiple accounts').action(a
   })
 })
 
+let addressBook = {}
+
 // COMMAND TO SEND A MESSAGE TO ANOTHER USER ON THE NETWORK
 vorpal.command('message', 'sends a message to another user').action(async function(_, callback) {
   const answers = await this.prompt([
@@ -713,9 +715,25 @@ vorpal.command('message', 'sends a message to another user').action(async functi
       type: 'input',
       name: 'message',
       message: 'Enter the message: ',
-    },
+    }
   ])
   const to = await getAddress(answers.to)
+  if (addressBook[to] !== 'yes' && addressBook[to] !== 'no') {
+    const answer = await this.prompt({
+      type: 'list',
+      name: 'confirm',
+      message: `Would you like to make the reply to your messages cost nothing? `,
+      choices: [
+        { name: 'yes', value: true, short: true },
+        { name: 'no', value: false, short: false },
+      ]
+    })
+    if (answer.confirm) {
+      addressBook[to] = 'yes'
+    } else {
+      addressBook[to] = 'no'
+    }
+  }
   const data = await getAccountData(USER.address)
   const handle = data.account.alias
   if (to === undefined || to === null) {
@@ -752,6 +770,7 @@ vorpal.command('message', 'sends a message to another user').action(async functi
         to: to,
         chatId: crypto.hash([USER.address, to].sort((a, b) => a < b).join``),
         message: encryptedMsg,
+        freeReply: addressBook[to] === 'yes',
         timestamp: Date.now(),
       }
       crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
@@ -766,7 +785,7 @@ vorpal.command('message', 'sends a message to another user').action(async functi
 })
 
 // COMMAND TO SET A TOLL FOR PEOPLE NOT ON YOUR FRIENDS LIST THAT SEND YOU MESSAGES
-vorpal.command('toll', 'sets a toll people must you in order to send you messages').action(async function(_, callback) {
+vorpal.command('toll', 'sets a toll people must send in order to send you messages').action(async function(_, callback) {
   const answer = await this.prompt({
     type: 'number',
     name: 'toll',
@@ -778,59 +797,6 @@ vorpal.command('toll', 'sets a toll people must you in order to send you message
     network,
     from: USER.address,
     toll: answer.toll,
-    timestamp: Date.now(),
-  }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
-  injectTx(tx).then(res => {
-    this.log(res)
-    callback()
-  })
-})
-
-// COMMAND TO ADD A FRIEND TO YOUR USER ACCOUNT'S FRIEND LIST
-vorpal.command('add friend', 'adds a friend to your account').action(async function(args, callback) {
-  const answer = await this.prompt({
-    type: 'input',
-    name: 'friend',
-    message: 'Enter the alias or publicKey of the friend: ',
-  })
-  const to = await getAddress(answer.friend)
-  if (to === undefined || to === null) {
-    this.log("Target account doesn't exist for: ", answer.friend)
-    callback()
-  }
-  const tx = {
-    type: 'friend',
-    network,
-    alias: answer.friend,
-    from: USER.address,
-    to: to,
-    timestamp: Date.now(),
-  }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
-  injectTx(tx).then(res => {
-    this.log(res)
-    callback()
-  })
-})
-
-// COMMAND TO REMOVE A FRIEND FROM YOUR USER ACCOUNT'S FRIEND LIST
-vorpal.command('remove friend', 'removes a friend from your account').action(async function(_, callback) {
-  const answer = await this.prompt({
-    type: 'input',
-    name: 'friend',
-    message: 'Enter the alias or publicKey of the friend to remove: ',
-  })
-  const to = await getAddress(answer.friend)
-  if (to === undefined || to === null) {
-    this.log("Target account doesn't exist for: ", answer.friend)
-    callback()
-  }
-  const tx = {
-    type: 'remove_friend',
-    network,
-    from: USER.address,
-    to: to,
     timestamp: Date.now(),
   }
   crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)

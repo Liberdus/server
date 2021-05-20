@@ -9,8 +9,6 @@ import * as transfer from './transfer'
 import * as distribute from './distribute'
 import * as message from './message'
 import * as toll from './toll'
-import * as friend from './friend'
-import * as remove_friend from './remove_friend'
 import * as stake from './stake'
 import * as remove_stake from './remove_stake'
 import * as remove_stake_request from './remove_stake_request'
@@ -45,8 +43,6 @@ export default {
   distribute,
   message,
   toll,
-  friend,
-  remove_friend,
   stake,
   remove_stake,
   remove_stake_request,

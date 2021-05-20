@@ -10,7 +10,6 @@ export const userAccount = (accountId: string, timestamp: number) => {
       remove_stake_request: null,
       toll: null,
       chats: {},
-      friends: {},
       transactions: [],
       payments: [],
     },

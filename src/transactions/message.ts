@@ -47,6 +47,7 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[tx.network].data
   const to: Accounts = wrappedStates[tx.to] && wrappedStates[tx.to].data
+  const chat = wrappedStates[tx.chatId].data
   if (tx.sign.owner !== tx.from) {
     response.reason = 'not signed by from account'
     return response
@@ -63,23 +64,21 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
     response.reason = '"target" account does not exist.'
     return response
   }
-  if (to.data.friends[tx.from]) {
+  if (chat.freeReply[tx.from]) {
     if (from.data.balance < network.current.transactionFee) {
-      response.reason = `from account does not have sufficient funds: ${from.data.balance} to cover transaction fee: ${network.current.transactionFee}.`
+      response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the transaction fee ${network.current.transactionFee}.`
+      return response
+    }
+  } else if (to.data.toll === null) {
+    if (from.data.balance < network.current.defaultToll + network.current.transactionFee) {
+      response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the default toll + transaction fee ${network.current
+        .defaultToll + network.current.transactionFee}.`
       return response
     }
   } else {
-    if (to.data.toll === null) {
-      if (from.data.balance < network.current.defaultToll + network.current.transactionFee) {
-        response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the default toll + transaction fee ${network.current
-          .defaultToll + network.current.transactionFee}.`
-        return response
-      }
-    } else {
-      if (from.data.balance < to.data.toll + network.current.transactionFee) {
-        response.reason = 'from account does not have sufficient funds.'
-        return response
-      }
+    if (from.data.balance < to.data.toll + network.current.transactionFee) {
+      response.reason = 'from account does not have sufficient funds.'
+      return response
     }
   }
   response.success = true
@@ -93,7 +92,8 @@ export const apply = (tx: Tx.Message, txId: string, wrappedStates: WrappedStates
   const network: NetworkAccount = wrappedStates[tx.network].data
   const chat = wrappedStates[tx.chatId].data
   from.data.balance -= network.current.transactionFee
-  if (!to.data.friends[from.id]) {
+  chat.freeReply[tx.to] = tx.freeReply
+  if (!chat.freeReply[tx.from]) {
     if (to.data.toll === null) {
       from.data.balance -= network.current.defaultToll
       to.data.balance += network.current.defaultToll
