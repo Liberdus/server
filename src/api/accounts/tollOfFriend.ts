@@ -15,7 +15,7 @@ export const tollOfFriend = dapp => async (req, res): Promise<void> => {
         error: 'No provided friendId in the route: account/:id/:friendId/toll',
       })
     }
-    const chat = await dapp.getLocalOrRemoteAccount(crypto.hash([id, friendId].sort((a, b): any => a < b).join('')))
+    const chat = await dapp.getLocalOrRemoteAccount(crypto.hash([...id, ...friendId].sort().join('')))
     const account = await dapp.getLocalOrRemoteAccount(id)
     if (chat) {
       if (chat.data.freeReply[friendId]) {

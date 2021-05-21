@@ -359,7 +359,7 @@ async function getAddress(handle) {
 
 async function queryMessages(to, from) {
   try {
-    const res = await axios.get(`http://${HOST}/messages/${crypto.hash([from, to].sort((a, b) => a < b).join(''))}`)
+    const res = await axios.get(`http://${HOST}/messages/${crypto.hash([...from, ...to].sort().join(''))}`)
     const { messages } = res.data
     return messages
   } catch (error) {
@@ -715,7 +715,7 @@ vorpal.command('message', 'sends a message to another user').action(async functi
       type: 'input',
       name: 'message',
       message: 'Enter the message: ',
-    }
+    },
   ])
   const to = await getAddress(answers.to)
   if (addressBook[to] !== 'yes' && addressBook[to] !== 'no') {
@@ -726,7 +726,7 @@ vorpal.command('message', 'sends a message to another user').action(async functi
       choices: [
         { name: 'yes', value: true, short: true },
         { name: 'no', value: false, short: false },
-      ]
+      ],
     })
     if (answer.confirm) {
       addressBook[to] = 'yes'
@@ -746,17 +746,26 @@ vorpal.command('message', 'sends a message to another user').action(async functi
     this.log(result.error)
     callback()
   } else {
-    const answer = await this.prompt({
-      type: 'list',
-      name: 'confirm',
-      message: `The toll for sending this user a message is ${result.toll}, continue? `,
-      choices: [
-        { name: 'yes', value: true, short: true },
-        { name: 'no', value: false, short: false },
-      ],
-      default: 'yes',
-    })
-    if (answer.confirm) {
+    const prompt = await this.prompt([
+      {
+        type: 'list',
+        name: 'confirm',
+        message: `The toll for sending this user a message is ${result.toll}, continue? `,
+        choices: [
+          { name: 'yes', value: true, short: true },
+          { name: 'no', value: false, short: false },
+        ],
+        default: 'yes',
+      },
+      {
+        type: 'number',
+        name: 'payment',
+        message: `Enter a payment to send the receiver (Optional): `,
+        default: 0,
+        filter: value => parseFloat(value),
+      },
+    ])
+    if (prompt.confirm) {
       const message = stringify({
         body: answers.message,
         handle,
@@ -768,9 +777,10 @@ vorpal.command('message', 'sends a message to another user').action(async functi
         network,
         from: USER.address,
         to: to,
-        chatId: crypto.hash([USER.address, to].sort((a, b) => a < b).join``),
+        chatId: crypto.hash([...USER.address, ...to].sort().join('')),
         message: encryptedMsg,
         freeReply: addressBook[to] === 'yes',
+        payment: prompt.payment,
         timestamp: Date.now(),
       }
       crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)

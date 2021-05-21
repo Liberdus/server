@@ -35,6 +35,16 @@ export const validate_fields = (tx: Tx.Message, response: Shardus.IncomingTransa
     response.reason = 'tx "message" field must be a string.'
     throw new Error(response.reason)
   }
+  if (typeof tx.freeReply !== 'boolean') {
+    response.success = false
+    response.reason = 'tx "freeReply" field must be a boolean.'
+    throw new Error(response.reason)
+  }
+  if (typeof tx.payment !== 'number') {
+    response.success = false
+    response.reason = 'tx "payment" field must be a number.'
+    throw new Error(response.reason)
+  }
   if (tx.message.length > 5000) {
     response.success = false
     response.reason = 'tx "message" length must be less than 5000 characters.'
@@ -65,18 +75,21 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
     return response
   }
   if (chat.freeReply[tx.from]) {
-    if (from.data.balance < network.current.transactionFee) {
-      response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the transaction fee ${network.current.transactionFee}.`
+    if (from.data.balance < network.current.transactionFee + tx.payment) {
+      response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the transaction fee ${network.current.transactionFee +
+        tx.payment}.`
       return response
     }
   } else if (to.data.toll === null) {
-    if (from.data.balance < network.current.defaultToll + network.current.transactionFee) {
-      response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the default toll + transaction fee ${network.current
-        .defaultToll + network.current.transactionFee}.`
+    if (from.data.balance < network.current.defaultToll + network.current.transactionFee + tx.payment) {
+      response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the default toll + transaction fee + tx.payment ${network
+        .current.defaultToll +
+        network.current.transactionFee +
+        tx.payment}.`
       return response
     }
   } else {
-    if (from.data.balance < to.data.toll + network.current.transactionFee) {
+    if (from.data.balance < to.data.toll + network.current.transactionFee + tx.payment) {
       response.reason = 'from account does not have sufficient funds.'
       return response
     }
@@ -101,6 +114,10 @@ export const apply = (tx: Tx.Message, txId: string, wrappedStates: WrappedStates
       from.data.balance -= to.data.toll
       to.data.balance += to.data.toll
     }
+  }
+  if (tx.payment !== 0) {
+    from.data.balance -= tx.payment
+    to.data.balance += tx.payment
   }
   from.data.balance -= utils.maintenanceAmount(tx.timestamp, from, network)
 

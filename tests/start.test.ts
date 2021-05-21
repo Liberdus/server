@@ -410,7 +410,7 @@ describe('Submits and applies transactions successfully', () => {
         network,
         from: account2.address,
         to: account1.address,
-        chatId: crypto.hash([account2.address, account1.address].sort((a, b) => a - b).join('')),
+        chatId: crypto.hash([...account2.address, ...account1.address].sort().join('')),
         message: encryptedMsg,
         timestamp: Date.now(),
       },
@@ -422,93 +422,6 @@ describe('Submits and applies transactions successfully', () => {
     let accountData2 = await utils.getAccountData(account2.address)
     expect(accountData1.data.balance).toBeCloseTo(475 - networkParams.current.transactionFee * 3)
     expect(accountData2.data.balance).toBeCloseTo(425 - networkParams.current.transactionFee * 4)
-  })
-
-  it('Submits a "friend" transaction successfully', async () => {
-    await utils.injectTx(
-      {
-        type: 'friend',
-        network,
-        alias: wallet2,
-        from: account1.address,
-        to: account2.address,
-        timestamp: Date.now(),
-      },
-      account1,
-    )
-    await utils._sleep(8000)
-
-    let accountData1 = await utils.getAccountData(account1.address)
-    expect(accountData1.data.friends[account2.address]).toBe(wallet2)
-
-    const message = JSON.stringify({
-      body: 'Test message after friend transaction',
-      handle: wallet2,
-      timestamp: Date.now(),
-    })
-    const encryptedMsg = crypto.encrypt(message, crypto.convertSkToCurve(account2.keys.secretKey), crypto.convertPkToCurve(account1.keys.publicKey))
-
-    await utils.injectTx(
-      {
-        type: 'message',
-        network,
-        from: account2.address,
-        to: account1.address,
-        chatId: crypto.hash([account2.address, account1.address].sort((a, b) => a - b).join('')),
-        message: encryptedMsg,
-        timestamp: Date.now(),
-      },
-      account2,
-    )
-
-    await utils._sleep(8000)
-
-    accountData1 = await utils.getAccountData(account1.address)
-    let accountData2 = await utils.getAccountData(account2.address)
-    expect(accountData1.data.balance).toBeCloseTo(475 - networkParams.current.transactionFee * 5)
-    expect(accountData2.data.balance).toBeCloseTo(425 - networkParams.current.transactionFee * 5)
-  })
-
-  it('Submits a "remove_friend" transaction successfully', async () => {
-    await utils.injectTx(
-      {
-        type: 'remove_friend',
-        network,
-        from: account1.address,
-        to: account2.address,
-        timestamp: Date.now(),
-      },
-      account1,
-    )
-    await utils._sleep(8000)
-
-    const message = JSON.stringify({
-      body: 'Test message after friend transaction',
-      handle: wallet2,
-      timestamp: Date.now(),
-    })
-    const encryptedMsg = crypto.encrypt(message, crypto.convertSkToCurve(account2.keys.secretKey), crypto.convertPkToCurve(account1.keys.publicKey))
-
-    await utils.injectTx(
-      {
-        type: 'message',
-        network,
-        from: account2.address,
-        to: account1.address,
-        chatId: crypto.hash([account2.address, account1.address].sort((a, b) => a - b).join('')),
-        message: encryptedMsg,
-        timestamp: Date.now(),
-      },
-      account2,
-    )
-
-    await utils._sleep(8000)
-
-    let accountData1 = await utils.getAccountData(account1.address)
-    let accountData2 = await utils.getAccountData(account2.address)
-    expect(accountData1.data.friends).toEqual({})
-    expect(accountData1.data.balance).toBeCloseTo(500 - networkParams.current.transactionFee * 5)
-    expect(accountData2.data.balance).toBeCloseTo(400 - networkParams.current.transactionFee * 6)
   })
 
   it('Submits a "stake" transaction successfully', async () => {

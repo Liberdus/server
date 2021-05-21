@@ -118,6 +118,7 @@ declare namespace Tx {
     chatId: string
     message: string
     freeReply: boolean
+    payment: number
     timestamp: number
     sign: Signature
   }
