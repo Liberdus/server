@@ -12,6 +12,7 @@ export const userAccount = (accountId: string, timestamp: number) => {
       chats: {},
       transactions: [],
       payments: [],
+      referrals: []
     },
     alias: null,
     emailHash: null,

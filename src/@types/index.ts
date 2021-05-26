@@ -332,6 +332,7 @@ interface UserAccount {
     remove_stake_request: number | null
     transactions: object[]
     payments: DeveloperPayment[]
+    referrals: string[]
   }
   alias: string | null
   emailHash: string | null
