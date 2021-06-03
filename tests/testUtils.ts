@@ -12,10 +12,12 @@ const infoGreen = chalkPipe('bgGreen.#000000.bold')
 const warning = chalkPipe('orange.bold')
 const success = chalkPipe('green.bold')
 
-console.log(infoGreen(` THIS TESTING WILL TAKE AROUND 5 MINUTES TO COMPLETE `))
+// console.log(infoGreen(` THIS TESTING WILL TAKE AROUND 5 MINUTES TO COMPLETE `))
 
 
 const HOST = 'localhost:9001'
+const ARCHIVER_HOST = 'localhost:4000'
+const MONITOR_HOST = 'localhost:3000'
 
 export async function _sleep(ms = 0): Promise<NodeJS.Timeout> {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -53,6 +55,13 @@ export async function queryParameters() {
   }
 }
 
+// QUERY'S THE CURRENT NETWORK PARAMETERS
+export async function queryActiveNodes() {
+  const res = await axios.get(`http://${MONITOR_HOST}/api/report`)
+  if (res.data.nodes.active) return res.data.nodes.active
+  else return null
+}
+
 export async function waitForNetworkParameters() {
   let ready = false
   while (!ready) {
@@ -63,6 +72,64 @@ export async function waitForNetworkParameters() {
     }
   }
   return
+}
+
+export async function waitForNetworkToBeActive(numberOfExpectedNodes) {
+  let ready = false
+  while (!ready) {
+    try {
+      let activeNodes = await queryActiveNodes()
+      if (activeNodes) {
+        if (Object.keys(activeNodes).length >= numberOfExpectedNodes) ready = true
+      }
+    } catch(e) {
+      // console.log(e)
+      await _sleep(5000)
+    }
+  }
+  return true
+}
+
+export async function waitForNetworkLoad(load, value) {
+  let isCriteriaMet = false
+  while (!isCriteriaMet) {
+    try {
+      let activeNodes = await queryActiveNodes()
+      if (activeNodes) {
+        let totalLoad = 0
+        let avgLoad = 0
+        for (let nodeId in activeNodes) {
+          const node = activeNodes[nodeId]
+          totalLoad += node.currentLoad.networkLoad
+        }
+        avgLoad = totalLoad / Object.keys(activeNodes).length
+        console.log('avg load', avgLoad)
+        if (load === 'high' && avgLoad >= value) isCriteriaMet = true
+        else if (load === 'low' && avgLoad >= value) isCriteriaMet = true
+        else {
+          await _sleep(30000)
+        }
+      }
+    } catch(e) {
+      // console.log(e)
+      await _sleep(30000)
+    }
+  }
+  return true
+}
+
+export async function waitForNetworkScaling(desired) {
+  let isCriteriaMet = false
+  while (!isCriteriaMet) {
+    try {
+      let activeNodes = await queryActiveNodes()
+      if (Object.keys(activeNodes).length === desired) isCriteriaMet = true
+      else await _sleep(30000)
+    } catch(e) {
+      await _sleep(30000)
+    }
+  }
+  return true
 }
 
 // QUERY'S THE CURRENT PHASE OF THE DYNAMIC PARAMETER SYSTEM
