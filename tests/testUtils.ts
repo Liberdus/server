@@ -62,6 +62,12 @@ export async function queryActiveNodes() {
   else return null
 }
 
+export async function queryLatestCycleRecordFromArchiver() {
+  const res = await axios.get(`http://${ARCHIVER_HOST}/cycleinfo/1`)
+  if (res.data.cycleInfo.length > 0) return res.data.cycleInfo[0]
+  else return null
+}
+
 export async function waitForNetworkParameters() {
   let ready = false
   while (!ready) {
@@ -83,9 +89,27 @@ export async function waitForNetworkToBeActive(numberOfExpectedNodes) {
         if (Object.keys(activeNodes).length >= numberOfExpectedNodes) ready = true
       }
     } catch(e) {
-      // console.log(e)
-      await _sleep(5000)
+      console.log(e)
     }
+    if (!ready) await _sleep(5000)
+  }
+  return true
+}
+
+export async function waitForArchiverToJoin(ip, port) {
+  let ready = false
+
+  while (!ready) {
+    try {
+      let cycleRecord = await queryLatestCycleRecordFromArchiver()
+      let newArchiver = cycleRecord.joinedArchivers[0]
+      if (newArchiver) {
+       if (newArchiver.ip === ip && newArchiver.port === port) ready = true 
+      }
+    } catch(e) {
+      console.log("error while checking new archiver to join", e.message)
+    }
+    if (!ready) await _sleep(10000)
   }
   return true
 }
@@ -105,7 +129,7 @@ export async function waitForNetworkLoad(load, value) {
         avgLoad = totalLoad / Object.keys(activeNodes).length
         console.log('avg load', avgLoad)
         if (load === 'high' && avgLoad >= value) isCriteriaMet = true
-        else if (load === 'low' && avgLoad >= value) isCriteriaMet = true
+        else if (load === 'low' && avgLoad <= value) isCriteriaMet = true
         else {
           await _sleep(30000)
         }
@@ -198,4 +222,116 @@ export async function waitForWindow(name: string) {
       break
   }
   return
+}
+
+
+function mode(list) {
+  const arr = [...list]
+  return arr
+      .sort(
+          (a, b) =>
+              arr.filter(v => v === a).length - arr.filter(v => v === b).length
+      )
+      .pop()
+}
+
+const checkNodeSyncedState = function (partitionMatrix, cycleCounter) {
+  console.log('checkNodeSyncedState', arguments)
+  if (!cycleCounter || !partitionMatrix[cycleCounter]) return false
+  let nodeSyncState = {}
+  let nodeList = Object.keys(partitionMatrix[cycleCounter])
+  nodeList = nodeList.sort()
+  let syncedObj = {}
+  for (let nodeId of nodeList) {
+    const partitionReport = partitionMatrix[cycleCounter][nodeId].res
+    for (let i in partitionReport) {
+      const index = partitionReport[i].i
+      let hash = partitionReport[i].h
+      hash = hash.split('0').join('')
+      hash = hash.split('x').join('')
+      // collect to syncedObj to decide synced status of nodes later
+      if (!syncedObj[index]) {
+        syncedObj[index] = []
+      } else {
+        syncedObj[index].push({
+          nodeId,
+          hash
+        })
+      }
+    }
+    let syncedPenaltyObj = {}
+    for (let nodeId of nodeList) {
+      syncedPenaltyObj[nodeId] = 0
+    }
+    for (let index in syncedObj) {
+      let hashArr = syncedObj[index].map(obj => obj.hash)
+      let mostCommonHash = mode(hashArr)
+      syncedObj[index].forEach(obj => {
+        if (obj.hash !== mostCommonHash) {
+          syncedPenaltyObj[obj.nodeId] += 1
+        }
+      })
+    }
+    for (let nodeId in syncedPenaltyObj) {
+      if (syncedPenaltyObj[nodeId] === 0) {
+        nodeSyncState[nodeId] = 0
+      } else if (syncedPenaltyObj[nodeId] <= 3) {
+        nodeSyncState[nodeId] = 1
+      } else if (syncedPenaltyObj[nodeId] > 3) {
+        nodeSyncState[nodeId] = 2
+      }
+    }
+  }
+  let areAllNodeSynced = true
+  for (let nodeId in nodeSyncState) {
+    if (nodeSyncState[nodeId] !== 0) {
+      areAllNodeSynced = false
+      break
+    }
+  }
+  console.log("nodeSyncState", cycleCounter, areAllNodeSynced)
+  return areAllNodeSynced
+}
+
+export async function checkPartitionMatrix() {
+  let partitionMatrix = {}
+  let syncTracker = {}
+  let ready = false
+  let isCriteriaMet = false
+  while (!ready) {
+    const activeNodes = await queryActiveNodes()
+    const activeCount = Object.keys(activeNodes).length
+    let cycleCounter
+    for (let nodeId in activeNodes) {
+      const partitionReport = activeNodes[nodeId].partitionReport
+      cycleCounter = activeNodes[nodeId].cycleCounter
+      if (partitionReport && partitionReport.hasOwnProperty('res')) {
+        if (!partitionMatrix[cycleCounter]) {
+          partitionMatrix[cycleCounter] = {}
+          partitionMatrix[cycleCounter][nodeId] = partitionReport
+        } else {
+          partitionMatrix[cycleCounter][nodeId] = partitionReport
+        }
+      }
+    }
+    if (Object.keys(partitionMatrix).length > 0) {
+      const currentCycleCounter = Math.max(...Object.keys(partitionMatrix).map(x => parseInt(x)))
+      const receivedReport = Object.keys(partitionMatrix[currentCycleCounter]).length
+      if (!syncTracker[currentCycleCounter] && receivedReport === activeCount) {
+        const isSynced = checkNodeSyncedState(partitionMatrix, currentCycleCounter)
+        syncTracker[currentCycleCounter] = isSynced
+        if (isSynced) {
+          isCriteriaMet = true
+          break
+        }
+      }
+    }
+    if (Object.keys(syncTracker).length >= 3) {
+      console.log("criteria is not met within 3 cycles")
+      break
+    }
+    if (!ready) _sleep(2000)
+  }
+  console.log('isCriteriaMet', isCriteriaMet)
+  return isCriteriaMet
 }
