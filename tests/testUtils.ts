@@ -6,11 +6,11 @@ import axios from 'axios'
 import chalkPipe from 'chalk-pipe'
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
-const link = chalkPipe('blue.underline')
-const info = chalkPipe('bgYellow.#000000.bold')
-const infoGreen = chalkPipe('bgGreen.#000000.bold')
-const warning = chalkPipe('orange.bold')
-const success = chalkPipe('green.bold')
+export const link = chalkPipe('blue.underline')
+export const info = chalkPipe('bgYellow.#000000.bold')
+export const infoGreen = chalkPipe('bgGreen.#000000.bold')
+export const warning = chalkPipe('orange.bold')
+export const success = chalkPipe('green.bold')
 
 // console.log(infoGreen(` THIS TESTING WILL TAKE AROUND 5 MINUTES TO COMPLETE `))
 
@@ -45,7 +45,6 @@ export function createAccount(keys = crypto.generateKeypair()) {
   }
 }
 
-// QUERY'S THE CURRENT NETWORK PARAMETERS
 export async function queryParameters() {
   const res = await axios.get(`http://${HOST}/network/parameters`)
   if (res.data.error) {
@@ -55,11 +54,21 @@ export async function queryParameters() {
   }
 }
 
-// QUERY'S THE CURRENT NETWORK PARAMETERS
 export async function queryActiveNodes() {
   const res = await axios.get(`http://${MONITOR_HOST}/api/report`)
   if (res.data.nodes.active) return res.data.nodes.active
   else return null
+}
+
+export async function queryLatestReport() {
+  const res = await axios.get(`http://${MONITOR_HOST}/api/report`)
+  if (res.data.nodes.active) return res.data
+  else return null
+}
+
+export async function resetReport() {
+  const res = await axios.get(`http://${MONITOR_HOST}/api/flush`)
+  return res.data
 }
 
 export async function queryLatestCycleRecordFromArchiver() {
