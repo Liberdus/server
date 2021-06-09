@@ -1,4 +1,3 @@
-node_modules/
 .pm2/
 instances/
 logs
@@ -7,3 +6,4 @@ wallet.json
 dist/
 notes/
 statistics.tsv
+package-lock.json
