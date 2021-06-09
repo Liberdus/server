@@ -98,15 +98,9 @@ export const initConfigFromFile = () => {
     maxJoinedPerCycle: 6,
     maxSyncingPerCycle: 12,
     maxRotatedPerCycle: 0,
-<<<<<<< HEAD
     amountToGrow: 10,
     amountToShrink: 2,
     firstCycleJoin: 25
-=======
-    amountToScale: 5,
-    amountToGrow: 5,
-    amountToShrink: 2
->>>>>>> some test changes
   })
 
   Prop.set(config, 'server.loadDetection', {

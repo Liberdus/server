@@ -19,7 +19,7 @@
     "lint": "tsc --noEmit && eslint '*/**/*.{js,ts,tsx}' --quiet --fix",
     "prepare": "npm run compile",
     "pretest": "npm run compile",
-    "posttest": "",
+    "posttest": "npm run check",
     "dbg": "shardus start 3 && shardus stop && rm -rf instances/"
   },
   "author": "Kyle Shifflett",
