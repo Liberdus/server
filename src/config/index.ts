@@ -94,7 +94,9 @@ export const initConfigFromFile = () => {
     maxJoinedPerCycle: 5,
     maxSyncingPerCycle: 5,
     maxRotatedPerCycle: 0,
-    amountToScale: 5
+    amountToScale: 5,
+    amountToGrow: 5,
+    amountToShrink: 2
   })
   Prop.set(config, 'server.loadDetection', {
     queueLimit: 1000,
@@ -117,12 +119,12 @@ export const initConfigFromFile = () => {
     }
   })
   Prop.set(config, 'server.sharding', {
-    nodesPerConsensusGroup: 5,
+    nodesPerConsensusGroup: 5, //todo put back to 5
   })
 
   Prop.set(config, 'server.debug', {
     startInFatalsLogMode: true, //true setting good for big aws test with nodes joining under stress.
-    fakeNetworkDelay:0
+    fakeNetworkDelay:500
   })
   
   Prop.set(config, 'logs', {
