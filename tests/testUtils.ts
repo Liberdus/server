@@ -54,6 +54,16 @@ export async function queryParameters() {
   }
 }
 
+export async function queryLatestCycleRecordFromConsensor() {
+  const activeNodes = await queryActiveNodes()
+  const activeNodeList = Object.values(activeNodes)
+  if (activeNodeList.length > 0) {
+    const node: any = activeNodeList[0]
+    const res = await axios.get(`http://${node.nodeIpInfo.externalIp}:${node.nodeIpInfo.externalPort}/sync-newest-cycle`)
+    return res.data.newestCycle
+  }
+}
+
 export async function queryActiveNodes() {
   const res = await axios.get(`http://${MONITOR_HOST}/api/report`)
   if (res.data.nodes.active) return res.data.nodes.active
@@ -75,6 +85,11 @@ export async function queryLatestCycleRecordFromArchiver() {
   const res = await axios.get(`http://${ARCHIVER_HOST}/cycleinfo/1`)
   if (res.data.cycleInfo.length > 0) return res.data.cycleInfo[0]
   else return null
+}
+
+export async function queryArchivedCycles(ip, port, count) {
+  const res = await axios.get(`http://${ip}:${port}/full-archive/${count}`)
+  return res.data.archivedCycles
 }
 
 export async function waitForNetworkParameters() {
@@ -343,4 +358,12 @@ export async function checkPartitionMatrix() {
   }
   console.log('isCriteriaMet', isCriteriaMet)
   return isCriteriaMet
+}
+
+export function isIncreasingSequence(numbers) {
+  return numbers.every((number, i) => i === 0 || numbers[i - 1] + 1 === number)
+}
+
+export function isDecreasingSequence(numbers) {
+  return numbers.every((number, i) => i === 0 || numbers[i - 1] - 1 === number)
 }
