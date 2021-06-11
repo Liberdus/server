@@ -70,6 +70,26 @@ export async function queryActiveNodes() {
   else return null
 }
 
+export async function queryAccounts() {
+  const res = await axios.get(`http://${MONITOR_HOST}/api/report`)
+  if (res.data.nodes.active) {
+    const node: any = Object.values(res.data.nodes.active)[0]
+    if (!node) return []
+    const response = await axios.get(`http://${node.nodeIpInfo.externalIp}:${node.nodeIpInfo.externalPort}/accounts`)
+    return response.data.accounts
+  }
+}
+
+export async function queryAccountById(id) {
+  const res = await axios.get(`http://${MONITOR_HOST}/api/report`)
+  if (res.data.nodes.active) {
+    const node: any = Object.values(res.data.nodes.active)[0]
+    if (!node) return []
+    const response = await axios.get(`http://${node.nodeIpInfo.externalIp}:${node.nodeIpInfo.externalPort}/account/${id}`)
+    return response.data.account
+  }
+}
+
 export async function queryLatestReport() {
   const res = await axios.get(`http://${MONITOR_HOST}/api/report`)
   if (res.data.nodes.active) return res.data

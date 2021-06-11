@@ -9,8 +9,9 @@ import { spawn,exec } from 'child_process'
 
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
-const USE_EXISTING_NETWORK = true
+const USE_EXISTING_NETWORK = false
 const START_NETWORK_SIZE = 5
+let accounts = []
 
 test('Start a new network successfully', async () => {
   console.log(utils.infoGreen('TEST: Start a new network successfully'))
@@ -32,7 +33,7 @@ test('Start a new network successfully', async () => {
   }
 })
 
-test.skip('Process txs at the rate of 5 txs per node/per second for 5 min', async () => {
+test('Process txs at the rate of 5 txs per node/per second for 5 min', async () => {
   console.log(utils.infoGreen('TEST: Process txs at the rate of 5 txs per node/per second for 5 min'))
 
   const activeNodes = await utils.queryActiveNodes()
@@ -58,7 +59,7 @@ test.skip('Process txs at the rate of 5 txs per node/per second for 5 min', asyn
   expect(report.totalRejected).toBeLessThanOrEqual(report.totalInjected * 0.03)
 })
 
-test.skip('Auto scale up the network successfully', async () => {
+test('Auto scale up the network successfully', async () => {
   console.log(utils.infoGreen('TEST: Auto scale up the network successfully'))
   let spamCommand = `spammer spam -t create -d 3600 -r ${START_NETWORK_SIZE * 6} -a ${START_NETWORK_SIZE * 60} -m http://localhost:3000/api/report`
   let spamProcess = execa.command(spamCommand)
@@ -73,7 +74,7 @@ test.skip('Auto scale up the network successfully', async () => {
   expect(hasNetworkScaledUp).toBe(true)
 })
 
-test.skip('Auto scale down the network successfully', async () => {
+test('Auto scale down the network successfully', async () => {
   console.log(utils.infoGreen('TEST: Auto scale down the network successfully'))
   console.log(utils.info('Waiting for network to scale down...'))
 
@@ -84,14 +85,14 @@ test.skip('Auto scale down the network successfully', async () => {
   expect(isLoadDecreased).toBe(true)
 })
 
-test.skip('Data is correctly synced across the nodes after network scaled down', async () => {
+test('Data is correctly synced across the nodes after network scaled down', async () => {
   console.log(utils.infoGreen('TEST: Data is correctly synced across the nodes after network scaled down'))
   let isPartitionMatirxCorrect = await utils.checkPartitionMatrix()
   expect(isPartitionMatirxCorrect).toBe(true)
 })
 
-test.skip('Start new archivers successfully', async () => {
-  console.log("Starting new archiver at port 4001")
+test('Start new archivers successfully', async () => {
+  console.log(utils.infoGreen('TEST: Start new archivers successfully'))
 
   try {
     execa.commandSync('shardus-network start --archivers 1')
@@ -104,6 +105,7 @@ test.skip('Start new archivers successfully', async () => {
 })
 
 test('New archivers sync archived data successfully', async () => {
+  console.log(utils.infoGreen('TEST: New archivers sync archived data successfully'))
   await utils._sleep(10000) // needs to wait while new archiver is syncing data
 
   const dataFromArchiver_1 = await utils.queryArchivedCycles('localhost', 4000, 10)
@@ -123,6 +125,8 @@ test('New archivers sync archived data successfully', async () => {
 })
 
 test('Archivers store complete historical data without missing cycles', async () => {
+  console.log(utils.infoGreen('TEST: Archivers store complete historical data without missing cycles'))
+  
   const dataFromArchiver_1 = await utils.queryArchivedCycles('localhost', 4000, 10)
   const dataFromArchiver_2 = await utils.queryArchivedCycles('localhost', 4001, 10)
   const latestRecord = await utils.queryLatestCycleRecordFromConsensor()
@@ -141,17 +145,35 @@ test('Tx receipt checking', () => {
   expect(true).toBe(true)
 })
 
-test.skip('Stops a network successfully', async () => {
+
+test('Stops a network successfully', async () => {
+  console.log(utils.infoGreen('TEST: Stops a network successfully'))
+
+  accounts = await utils.queryAccGunts()
   execa.commandSync('shardus-network stop', { stdio: [0, 1, 2] })
   await utils._sleep(3000)
   expect(true).toBe(true)
 })
 
-test.skip('Recover stopped network without losing old data', () => {
-  expect(true).toBe(true)
+test('Recover stopped network without losing old data', async () => {
+  console.log(utils.infoGreen('TEST: Recover stopped network without losing old data'))
+
+  execa.commandSync('shardus-network start', { stdio: [0, 1, 2] })
+  await utils.waitForNetworkToBeActive(START_NETWORK_SIZE)
+  let isDataRecovered = true
+  for (let i = 0; i < Math.min(accounts.length, 10); i++) {
+    let account = accounts[i]
+    let recoveredAccount = await utils.queryAccountById(account.id)
+    if (!recoveredAccount) {
+      console.log(`Account: ${account.id} is not found in recovered network`)
+      isDataRecovered = false
+      break
+    }
+  }
+  expect(isDataRecovered).toBe(true)
 })
 
-test.skip('Cleans a network successfully', async () => {
+test('Cleans a network successfully', async () => {
   execa.commandSync('shardus-network clean', { stdio: [0, 1, 2] })
   await utils._sleep(2000)
   execa.commandSync('rm -rf instances')
