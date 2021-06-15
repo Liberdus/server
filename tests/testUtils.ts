@@ -11,13 +11,14 @@ export const info = chalkPipe('bgYellow.#000000.bold')
 export const infoGreen = chalkPipe('bgGreen.#000000.bold')
 export const warning = chalkPipe('orange.bold')
 export const success = chalkPipe('green.bold')
+export let walletEntries = {}
 
 // console.log(infoGreen(` THIS TESTING WILL TAKE AROUND 5 MINUTES TO COMPLETE `))
 
 
-const HOST = 'localhost:9001'
-const ARCHIVER_HOST = 'localhost:4000'
-const MONITOR_HOST = 'localhost:3000'
+export const HOST = 'localhost:9001'
+export const ARCHIVER_HOST = 'localhost:4000'
+export const MONITOR_HOST = 'localhost:3000'
 
 export async function _sleep(ms = 0): Promise<NodeJS.Timeout> {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -43,6 +44,16 @@ export function createAccount(keys = crypto.generateKeypair()) {
     keys,
     id: '',
   }
+}
+
+export function createEntry(name, id) {
+  const account = createAccount()
+  if (typeof id === 'undefined' || id === null) {
+    id = crypto.hash(name)
+  }
+  account.id = id
+  walletEntries[name] = account
+  return account
 }
 
 export async function queryParameters() {

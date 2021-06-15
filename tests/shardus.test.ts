@@ -12,6 +12,8 @@ crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 const USE_EXISTING_NETWORK = false
 const START_NETWORK_SIZE = 5
 let accounts = []
+const network = '0'.repeat(64)
+
 
 test('Start a new network successfully', async () => {
   console.log(utils.infoGreen('TEST: Start a new network successfully'))
@@ -145,11 +147,66 @@ test('Tx receipt checking', () => {
   expect(true).toBe(true)
 })
 
+test('Check receipt of a transfer tx between 2 accounts', async () => {
+  console.log(utils.infoGreen('TEST: Check receipt of a transfer tx'))
+
+  const account1 = utils.createEntry('tester1', null)
+  const account2 = utils.createEntry('tester2', null)
+
+  await utils.injectTx(
+    {
+      type: 'register',
+      aliasHash: crypto.hash('tester1'),
+      from: account1.address,
+      alias: 'tester1',
+      timestamp: Date.now(),
+    },
+    account1,
+  )
+
+  await utils.injectTx(
+    {
+      type: 'register',
+      aliasHash: crypto.hash('tester2'),
+      from: account2.address,
+      alias: 'tester2',
+      timestamp: Date.now(),
+    },
+    account2,
+  )
+
+  await utils._sleep(8000)
+  let res = await axios.get(`http://${utils.HOST}/address/${crypto.hash('tester1')}`)
+  expect(res.data.address).toBe(account1.address)
+  res = await axios.get(`http://${utils.HOST}/address/${crypto.hash('tester2')}`)
+  expect(res.data.address).toBe(account2.address)
+
+  await utils.injectTx(
+    {
+      type: 'transfer',
+      network,
+      from: account1.address,
+      to: account2.address,
+      amount: 50,
+      timestamp: Date.now(),
+    },
+    account1,
+  )
+
+  await utils._sleep(8000)
+
+  const accountData1 = await utils.getAccountData(account1.address)
+  const txs = accountData1.data.transactions
+  expect(txs.length).toBe(1)
+
+  const transferTx = txs[0]
+  res = await axios.post(`http://localhost:4444/api/tx/status`, transferTx)
+  expect(res.data.success).toBe(true)
+})
+
 
 test('Stops a network successfully', async () => {
   console.log(utils.infoGreen('TEST: Stops a network successfully'))
-
-  accounts = await utils.queryAccGunts()
   execa.commandSync('shardus-network stop', { stdio: [0, 1, 2] })
   await utils._sleep(3000)
   expect(true).toBe(true)
