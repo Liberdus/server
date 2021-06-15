@@ -143,22 +143,21 @@ test('Archivers store complete historical data without missing cycles', async ()
   expect(utils.isDecreasingSequence(countersFromData2)).toBe(true)
 })
 
-test('Tx receipt checking', () => {
-  expect(true).toBe(true)
-})
-
 test('Check receipt of a transfer tx between 2 accounts', async () => {
   console.log(utils.infoGreen('TEST: Check receipt of a transfer tx'))
 
-  const account1 = utils.createEntry('tester1', null)
-  const account2 = utils.createEntry('tester2', null)
+  const alias1 = 'tester' + Math.floor(Math.random() * 1000)
+  const alias2 = 'tester' + Math.floor(Math.random() * 1000)
+
+  const account1 = utils.createEntry(alias1, null)
+  const account2 = utils.createEntry(alias2, null)
 
   await utils.injectTx(
     {
       type: 'register',
-      aliasHash: crypto.hash('tester1'),
+      aliasHash: crypto.hash(alias1),
       from: account1.address,
-      alias: 'tester1',
+      alias: alias1,
       timestamp: Date.now(),
     },
     account1,
@@ -167,18 +166,18 @@ test('Check receipt of a transfer tx between 2 accounts', async () => {
   await utils.injectTx(
     {
       type: 'register',
-      aliasHash: crypto.hash('tester2'),
+      aliasHash: crypto.hash(alias2),
       from: account2.address,
-      alias: 'tester2',
+      alias: alias2,
       timestamp: Date.now(),
     },
     account2,
   )
 
   await utils._sleep(8000)
-  let res = await axios.get(`http://${utils.HOST}/address/${crypto.hash('tester1')}`)
+  let res = await axios.get(`http://${utils.HOST}/address/${crypto.hash(alias1)}`)
   expect(res.data.address).toBe(account1.address)
-  res = await axios.get(`http://${utils.HOST}/address/${crypto.hash('tester2')}`)
+  res = await axios.get(`http://${utils.HOST}/address/${crypto.hash(alias2)}`)
   expect(res.data.address).toBe(account2.address)
 
   await utils.injectTx(
@@ -187,20 +186,26 @@ test('Check receipt of a transfer tx between 2 accounts', async () => {
       network,
       from: account1.address,
       to: account2.address,
-      amount: 50,
+      amount: 1,
       timestamp: Date.now(),
     },
     account1,
   )
 
-  await utils._sleep(8000)
+  await utils._sleep(10000)
 
   const accountData1 = await utils.getAccountData(account1.address)
   const txs = accountData1.data.transactions
   expect(txs.length).toBe(1)
 
+  await utils._sleep(90000) // wait 3 cycles to make sure archiver and explorer have archived data
+
   const transferTx = txs[0]
-  res = await axios.post(`http://localhost:4444/api/tx/status`, transferTx)
+  res = await axios.post(`http://localhost:4444/api/tx/status`, {
+    address: transferTx.from,
+    timestamp: transferTx.timestamp,
+    txid: transferTx.txId
+  })
   expect(res.data.success).toBe(true)
 })
 
