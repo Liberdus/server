@@ -1,7 +1,7 @@
 import '../@types'
 import * as crypto from 'shardus-crypto-utils'
 import * as configs from '../config'
-import Shardus from 'shardus-global-server/src/shardus/shardus-types'
+import { Shardus, ShardusTypes } from 'shardus-global-server'
 
 export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): number => {
   let amount: number

@@ -1,9 +1,9 @@
 import * as crypto from 'shardus-crypto-utils'
-import Shardus from 'shardus-global-server/src/shardus/shardus-types'
+import { Shardus, ShardusTypes } from 'shardus-global-server'
 import create from '../accounts'
 import * as config from '../config'
 
-export const validate_fields = (tx: Tx.Register, response: Shardus.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.Register, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.aliasHash !== 'string') {
     response.success = false
     response.reason = 'tx "aliasHash" field must be a string.'
@@ -32,7 +32,7 @@ export const validate_fields = (tx: Tx.Register, response: Shardus.IncomingTrans
   return response
 }
 
-export const validate = (tx: Tx.Register, wrappedStates: WrappedStates, response: Shardus.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (tx: Tx.Register, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const alias: AliasAccount = wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
   if (tx.sign.owner !== tx.from) {

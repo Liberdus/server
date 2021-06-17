@@ -1,10 +1,10 @@
 import * as crypto from 'shardus-crypto-utils'
 import axios from 'axios'
-import Shardus from 'shardus-global-server/src/shardus/shardus-types'
+import { Shardus, ShardusTypes } from 'shardus-global-server'
 import create from '../accounts'
 import * as config from '../config'
 
-export const validate_fields = (tx: Tx.Email, response: Shardus.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.Email, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.signedTx !== 'object') {
     response.success = false
     response.reason = 'tx "signedTx" field must be an object.'
@@ -48,7 +48,7 @@ export const validate_fields = (tx: Tx.Email, response: Shardus.IncomingTransact
   return response
 }
 
-export const validate = (tx: Tx.Email, wrappedStates: WrappedStates, response: Shardus.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (tx: Tx.Email, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   const source: UserAccount = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data
   if (!source) {
     response.reason = 'no account associated with address in signed tx'

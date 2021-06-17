@@ -1,10 +1,10 @@
 import _ from 'lodash';
-import Shardus from 'shardus-global-server/src/shardus/shardus-types'
+import { Shardus, ShardusTypes } from 'shardus-global-server'
 import * as config from '../config'
 import * as crypto from 'shardus-crypto-utils'
 import create from '../accounts'
 
-export const validate_fields = (tx: Tx.ApplyDevParameters, response: Shardus.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.ApplyDevParameters, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.network !== 'string') {
     response.success = false
     response.reason = 'tx "network" field must be a string.'
@@ -43,7 +43,7 @@ export const validate_fields = (tx: Tx.ApplyDevParameters, response: Shardus.Inc
   return response
 }
 
-export const validate = (tx: Tx.ApplyDevParameters, wrappedStates: WrappedStates, response: Shardus.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (tx: Tx.ApplyDevParameters, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   response.success = true
   response.reason = 'This transaction is valid!'
   return response

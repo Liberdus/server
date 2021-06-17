@@ -1,10 +1,10 @@
 import stringify from 'fast-stable-stringify'
-import Shardus from 'shardus-global-server/src/shardus/shardus-types'
+import { Shardus, ShardusTypes } from 'shardus-global-server'
 import create from '../accounts'
 import _ from 'lodash'
 import * as config from '../config'
 
-export const validate_fields = (tx: Tx.ApplyTally, response: Shardus.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.ApplyTally, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.network !== 'string') {
     response.success = false
     response.reason = 'tx "network" field must be a string'
@@ -93,7 +93,7 @@ export const validate_fields = (tx: Tx.ApplyTally, response: Shardus.IncomingTra
   return response
 }
 
-export const validate = (tx: Tx.ApplyTally, wrappedStates: WrappedStates, response: Shardus.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (tx: Tx.ApplyTally, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   response.success = true
   response.reason = 'This transaction is valid!'
   return response

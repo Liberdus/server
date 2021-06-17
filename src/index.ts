@@ -1,8 +1,7 @@
-import shardus from 'shardus-global-server'
+import {shardusFactory, ShardusTypes} from 'shardus-global-server'
 import * as crypto from 'shardus-crypto-utils'
 import * as configs from './config'
 import * as utils from './utils'
-import Shardus = require('shardus-global-server/src/shardus/shardus-types')
 import stringify = require('fast-stable-stringify')
 import './@types'
 import _ from 'lodash'
@@ -22,7 +21,7 @@ const args = process.argv
 let defaultConfig = configs.initConfigFromFile()
 let config = configs.overrideDefaultConfig(defaultConfig, env, args)
 
-const dapp = shardus(config)
+const dapp = shardusFactory(config)
 
 // let logFlags = {}
 // if(dapp.getLogFlags){
@@ -95,8 +94,8 @@ dapp.setup({
       }
     }
   },
-  validateTransaction(tx: any, wrappedStates: { [id: string]: WrappedAccount }): Shardus.IncomingTransactionResult {
-    const response: Shardus.IncomingTransactionResult = {
+  validateTransaction(tx: any, wrappedStates: { [id: string]: WrappedAccount }): ShardusTypes.IncomingTransactionResult {
+    const response: ShardusTypes.IncomingTransactionResult = {
       success: false,
       reason: 'Transaction is not valid.',
       txnTimestamp: tx.timestamp,
@@ -105,9 +104,9 @@ dapp.setup({
     return transactions[tx.type].validate(tx, wrappedStates, response, dapp)
   },
   // THIS NEEDS TO BE FAST, BUT PROVIDES BETTER RESPONSE IF SOMETHING GOES WRONG
-  validateTxnFields(tx: any): Shardus.IncomingTransactionResult {
+  validateTxnFields(tx: any): ShardusTypes.IncomingTransactionResult {
     // Validate tx fields here
-    const response: Shardus.IncomingTransactionResult = {
+    const response: ShardusTypes.IncomingTransactionResult = {
       success: true,
       reason: 'This transaction is valid!',
       txnTimestamp: tx.timestamp,
@@ -141,13 +140,13 @@ dapp.setup({
     } else {
       txId = crypto.hashObj(tx, true) // compute from tx
     }
-    const applyResponse: Shardus.ApplyResponse = dapp.createApplyResponse(txId, tx.timestamp)
+    const applyResponse: ShardusTypes.ApplyResponse = dapp.createApplyResponse(txId, tx.timestamp)
 
     transactions[tx.type].apply(tx, txId, wrappedStates, dapp, applyResponse)
 
     return applyResponse
   },
-  transactionReceiptPass(tx: any, wrappedStates: { [id: string]: WrappedAccount }, applyResponse: Shardus.ApplyResponse) {
+  transactionReceiptPass(tx: any, wrappedStates: { [id: string]: WrappedAccount }, applyResponse: ShardusTypes.ApplyResponse) {
     let txId: string
     if (!tx.sign) {
       txId = crypto.hashObj(tx)
@@ -158,7 +157,7 @@ dapp.setup({
 
     return applyResponse
   },
-  getKeyFromTransaction(tx: any): Shardus.TransactionKeys {
+  getKeyFromTransaction(tx: any): ShardusTypes.TransactionKeys {
     const result: TransactionKeys = {
       sourceKeys: [],
       targetKeys: [],
@@ -202,7 +201,7 @@ dapp.setup({
       accounts[account.id] = account
     }
   },
-  getRelevantData(accountId: string, tx: any): Shardus.WrappedResponse {
+  getRelevantData(accountId: string, tx: any): ShardusTypes.WrappedResponse {
     let account = accounts[accountId]
     let accountCreated = false
     return transactions[tx.type].createRelevantAccount(dapp, account, accountId, tx, accountCreated)
@@ -487,7 +486,7 @@ dapp.registerExceptionHandler()
   let nodeId: string
   let nodeAddress: string
   let lastReward: number
-  let cycleData: Shardus.Cycle
+  let cycleData: ShardusTypes.Cycle
   let currentTime: number
   let luckyNodes: string[]
   let expected = Date.now() + cycleInterval

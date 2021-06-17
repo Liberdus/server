@@ -1,10 +1,10 @@
 import * as crypto from 'shardus-crypto-utils'
 import _ from 'lodash'
-import Shardus from 'shardus-global-server/src/shardus/shardus-types'
+import { Shardus, ShardusTypes } from 'shardus-global-server'
 import create from '../accounts'
 import * as config from '../config'
 
-export const validate_fields = (tx: Tx.Issue, response: Shardus.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.Issue, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.network !== 'string') {
     response.success = false
     response.reason = 'tx "network" field must be a string.'
@@ -38,7 +38,7 @@ export const validate_fields = (tx: Tx.Issue, response: Shardus.IncomingTransact
   return response
 }
 
-export const validate = (tx: Tx.Issue, wrappedStates: WrappedStates, response: Shardus.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (tx: Tx.Issue, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   const network: NetworkAccount = wrappedStates[tx.network].data
   const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
   // let nodeInfo

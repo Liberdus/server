@@ -1,8 +1,8 @@
-import Shardus from 'shardus-global-server/src/shardus/shardus-types'
+import { Shardus, ShardusTypes } from 'shardus-global-server'
 import create from '../accounts'
 import * as config from '../config'
 
-export const validate_fields = (tx: Tx.GossipEmailHash, response: Shardus.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.GossipEmailHash, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.nodeId !== 'string') {
     response.success = false
     response.reason = 'tx "nodeId" field must be a string.'
@@ -31,7 +31,7 @@ export const validate_fields = (tx: Tx.GossipEmailHash, response: Shardus.Incomi
   return response
 }
 
-export const validate = (tx: Tx.GossipEmailHash, wrappedStates: WrappedStates, response: Shardus.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (tx: Tx.GossipEmailHash, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   response.success = true
   response.reason = 'This transaction is valid!'
   return response

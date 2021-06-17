@@ -1,8 +1,8 @@
-import Shardus from 'shardus-global-server/src/shardus/shardus-types'
+import { Shardus, ShardusTypes } from 'shardus-global-server'
 import create from '../accounts'
 import * as config from '../config'
 
-export const validate_fields = (tx: Tx.Create, response: Shardus.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.Create, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
     response.success = false
     response.reason = '"From" must be a string.'
@@ -21,7 +21,7 @@ export const validate_fields = (tx: Tx.Create, response: Shardus.IncomingTransac
   return response
 }
 
-export const validate = (tx: Tx.Create, wrappedStates: WrappedStates, response: Shardus.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (tx: Tx.Create, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   const to: Accounts = wrappedStates[tx.to] && wrappedStates[tx.to].data
   if (to === undefined || to === null) {
     response.reason = "target account doesn't exist"

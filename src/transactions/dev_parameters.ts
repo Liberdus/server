@@ -1,9 +1,9 @@
-import Shardus from 'shardus-global-server/src/shardus/shardus-types'
+import { Shardus, ShardusTypes } from 'shardus-global-server'
 import * as crypto from 'shardus-crypto-utils'
 import * as config from '../config'
 import create from '../accounts'
 
-export const validate_fields = (tx: Tx.DevParameters, response: Shardus.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.DevParameters, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.network !== 'string') {
     response.success = false
     response.reason = 'tx "network" field must be a string.'
@@ -32,7 +32,7 @@ export const validate_fields = (tx: Tx.DevParameters, response: Shardus.Incoming
   return response
 }
 
-export const validate = (tx: Tx.DevParameters, wrappedStates: WrappedStates, response: Shardus.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (tx: Tx.DevParameters, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   const network: NetworkAccount = wrappedStates[tx.network].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
 
@@ -76,7 +76,7 @@ export const validate = (tx: Tx.DevParameters, wrappedStates: WrappedStates, res
   return response
 }
 
-export const apply = (tx: Tx.DevParameters, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: Shardus.ApplyResponse) => {
+export const apply = (tx: Tx.DevParameters, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: ShardusTypes.ApplyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[tx.network].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data

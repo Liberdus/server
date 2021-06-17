@@ -1,9 +1,9 @@
 import * as crypto from 'shardus-crypto-utils'
-import Shardus from 'shardus-global-server/src/shardus/shardus-types'
+import { Shardus, ShardusTypes } from 'shardus-global-server'
 import * as config from '../config'
 import create from '../accounts'
 
-export const validate_fields = (tx: Tx.Snapshot, response: Shardus.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.Snapshot, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.network !== 'string') {
     response.success = false
     response.reason = 'tx "network" field must be a string.'
@@ -27,7 +27,7 @@ export const validate_fields = (tx: Tx.Snapshot, response: Shardus.IncomingTrans
   return response
 }
 
-export const validate = (tx: Tx.Snapshot, wrappedStates: WrappedStates, response: Shardus.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (tx: Tx.Snapshot, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   if (tx.sign.owner !== tx.from) {
     response.reason = 'not signed by from account'
     return response
