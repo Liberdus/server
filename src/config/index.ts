@@ -90,7 +90,7 @@ export const initConfigFromFile = () => {
     ],
     minNodesToAllowTxs: 1,
     minNodes: 10,
-    maxNodes: 40,
+    maxNodes: 200,
     maxJoinedPerCycle: 5,
     maxSyncingPerCycle: 5,
     maxRotatedPerCycle: 0,
