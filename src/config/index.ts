@@ -89,12 +89,12 @@ export const initConfigFromFile = () => {
       },
     ],
     minNodesToAllowTxs: 1,
-    minNodes: 10,
+    minNodes: 20,
     maxNodes: 200,
-    maxJoinedPerCycle: 5,
-    maxSyncingPerCycle: 5,
+    maxJoinedPerCycle: 8,
+    maxSyncingPerCycle: 10,
     maxRotatedPerCycle: 0,
-    amountToGrow: 5,
+    amountToGrow: 10,
     amountToShrink: 2
   })
   Prop.set(config, 'server.loadDetection', {
