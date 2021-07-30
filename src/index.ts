@@ -333,6 +333,9 @@ dapp.setup({
     return `${stringify(wrappedAccount)}`
   },
   canDebugDropTx(tx: any) {
+    if(tx.type === 'create'){
+      return true
+    }
     return false
   },
   close(): void {
