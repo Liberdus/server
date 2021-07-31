@@ -5,6 +5,7 @@ import * as gossip_email_hash from './gossip_email_hash'
 import * as verify from './verify'
 import * as register from './register'
 import * as create from './create'
+import * as create_referral from './create_referral'
 import * as transfer from './transfer'
 import * as distribute from './distribute'
 import * as message from './message'
@@ -32,6 +33,7 @@ import * as dev_parameters from './dev_parameters'
 import * as apply_dev_parameters from './apply_dev_parameters'
 import * as developer_payment from './developer_payment'
 import * as apply_developer_payment from './apply_developer_payment'
+import * as apply_root_user from './apply_root_user'
 
 export default {
   init_network,
@@ -41,6 +43,7 @@ export default {
   verify,
   register,
   create,
+  create_referral,
   transfer,
   distribute,
   message,
@@ -68,4 +71,5 @@ export default {
   apply_dev_parameters,
   developer_payment,
   apply_developer_payment,
+  apply_root_user
 }

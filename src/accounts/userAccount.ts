@@ -15,6 +15,8 @@ export const userAccount = (accountId: string, timestamp: number) => {
       payments: [],
     },
     alias: null,
+    referrals: [],
+    codeHash: null,
     emailHash: null,
     verified: false,
     hash: '',

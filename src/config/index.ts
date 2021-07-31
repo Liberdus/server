@@ -9,6 +9,7 @@ import { join } from 'lodash'
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 export const networkAccount = '0'.repeat(64)
+export const maxRootUsers = 3
 
 // HELPFUL TIME CONSTANTS IN MILLISECONDS
 export const ONE_SECOND = 1000

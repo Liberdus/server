@@ -1,5 +1,6 @@
 import stringify from 'fast-stable-stringify'
 import Shardus from 'shardus-global-server/src/shardus/shardus-types'
+import * as crypto from 'shardus-crypto-utils'
 import * as config from '../config'
 import create from '../accounts'
 

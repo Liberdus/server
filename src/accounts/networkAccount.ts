@@ -35,6 +35,7 @@ export const networkAccount = (accountId: string, timestamp: number) => {
     nextDeveloperFund: [],
     issue: 1,
     devIssue: 1,
+    rootUsers: [],
     hash: '',
     timestamp: 0,
   }

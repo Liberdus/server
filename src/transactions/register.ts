@@ -14,6 +14,11 @@ export const validate_fields = (tx: Tx.Register, response: Shardus.IncomingTrans
     response.reason = 'tx "from" field must be a string.'
     throw new Error(response.reason)
   }
+  if (typeof tx.network !== 'string') {
+    response.success = false
+    response.reason = 'tx "network" field must be a string.'
+    throw new Error(response.reason)
+  }
   if (typeof tx.alias !== 'string') {
     response.success = false
     response.reason = 'tx "alias" field must be a string.'
@@ -34,7 +39,9 @@ export const validate_fields = (tx: Tx.Register, response: Shardus.IncomingTrans
 
 export const validate = (tx: Tx.Register, wrappedStates: WrappedStates, response: Shardus.IncomingTransactionResult, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
+  const referrer: UserAccount = wrappedStates[tx.referrer] && wrappedStates[tx.referrer].data
   const alias: AliasAccount = wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
+  const network: NetworkAccount = wrappedStates[tx.network] && wrappedStates[tx.network].data
   if (tx.sign.owner !== tx.from) {
     response.reason = 'not signed by from account'
     return response
@@ -45,6 +52,10 @@ export const validate = (tx: Tx.Register, wrappedStates: WrappedStates, response
   }
   if (!alias) {
     response.reason = 'Alias account was not found for some reason'
+    return response
+  }
+  if (!referrer) {
+    response.reason = 'Referrer account was not found for some reason'
     return response
   }
   if (from.alias !== null) {
@@ -59,16 +70,51 @@ export const validate = (tx: Tx.Register, wrappedStates: WrappedStates, response
     response.reason = 'Alias may only contain alphanumeric characters'
     return response
   }
+  if (network.rootUsers.length >= config.maxRootUsers) {
+    if (tx.referrer === config.networkAccount) {
+      response.reason = 'All early adopters have already registered, you need to be invited to join the network'
+      return response
+    } else {
+      if (referrer.codeHash === null) {
+        response.reason = 'The user you entered who referred you has not created a referral code'
+        return response
+      }
+      if (referrer.codeHash !== crypto.hash(tx.code)) {
+        response.reason = 'The referral code you submitted does not match'
+        return response
+      }
+    }
+  }
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
 }
 
-export const apply = (tx: Tx.Register, txId: string, wrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.Register, txId: string, wrappedStates, dapp) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const alias: AliasAccount = wrappedStates[tx.aliasHash].data
+  const network: NetworkAccount = wrappedStates[tx.network].data
+  const referrer: UserAccount = wrappedStates[tx.referrer].data
   // from.data.balance -= network.current.transactionFee
   // from.data.balance -= maintenanceAmount(tx.timestamp, from)
+  if (referrer.id === network.id) {
+      const when = tx.timestamp + config.ONE_SECOND * 10
+
+      dapp.setGlobal(
+        config.networkAccount,
+        {
+          type: 'apply_root_user',
+          timestamp: when,
+          network: config.networkAccount,
+          account: from.id,
+        },
+        when,
+        config.networkAccount,
+      )
+  } else {
+    referrer.referrals.push(tx.from)
+    referrer.timestamp = tx.timestamp
+  }
   alias.inbox = tx.alias
   from.alias = tx.alias
   alias.address = tx.from
@@ -80,7 +126,7 @@ export const apply = (tx: Tx.Register, txId: string, wrappedStates, dapp: Shardu
 
 export const keys = (tx: Tx.Register, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.aliasHash]
+  result.targetKeys = [tx.aliasHash, tx.network, tx.referrer]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }

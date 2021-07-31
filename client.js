@@ -584,16 +584,32 @@ vorpal.command('verify', 'verifies your email address').action(async function(_,
 
 // COMMAND TO REGISTER AN ALIAS FOR A USER ACCOUNT
 vorpal.command('register', 'registers a unique alias for your account').action(async function(args, callback) {
-  const answer = await this.prompt({
-    type: 'input',
-    name: 'alias',
-    message: 'Enter the alias you want: ',
-  })
+  const answers = await this.prompt([
+    {
+      type: 'input',
+      name: 'alias',
+      message: 'Enter the alias you want: ',
+    },
+    {
+      type: 'input',
+      name: 'code',
+      message: 'Enter the referral code that was given to you: ',
+    },
+    {
+      type: 'input',
+      name: 'referrer',
+      message: 'Enter the address of the user that referred you: ',
+      default: network
+    },
+  ])
   const tx = {
     type: 'register',
-    aliasHash: crypto.hash(answer.alias),
+    aliasHash: crypto.hash(answers.alias),
     from: USER.address,
-    alias: answer.alias,
+    alias: answers.alias,
+    network,
+    code: answers.code,
+    referrer: answers.referrer,
     timestamp: Date.now(),
   }
   crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
@@ -636,6 +652,26 @@ vorpal.command('create', 'creates tokens for an account').action(async function(
       callback()
     })
   }
+})
+
+// COMMAND TO CREATE TOKENS FOR A USER ACCOUNT ON THE NETWORK (TEST ONLY)
+vorpal.command('referral', 'creates a referral code for an account').action(async function(args, callback) {
+  const answers = await this.prompt({
+    type: 'input',
+    name: 'referralCode',
+    message: 'Enter the referral code to generate: ',
+  })
+  const tx = {
+    type: 'create_referral',
+    from: USER.address,
+    network,
+    referralHash: crypto.hash(answers.referralCode),
+    timestamp: Date.now(),
+  }
+  injectTx(tx).then(res => {
+    this.log(res)
+    callback()
+  })
 })
 
 // COMMAND TO TRANSFER TOKENS FROM ONE ACCOUNT TO ANOTHER

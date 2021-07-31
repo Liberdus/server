@@ -46,11 +46,26 @@ declare namespace Tx {
     nextDevWindows: Windows
   }
 
+  interface ApplyRootUser {
+    type: string
+    timestamp: number
+    network: string
+    account: string
+  }
+
   interface Create {
     type: string
     from: string
     to: string
     amount: number
+    timestamp: number
+  }
+
+  interface CreateReferral {
+    type: string
+    from: string
+    network: string
+    referralHash: string
     timestamp: number
   }
 
@@ -188,7 +203,10 @@ declare namespace Tx {
     type: string
     aliasHash: string
     from: string
+    network: string
     alias: string
+    code: string
+    referrer: string
     timestamp: number
     sign: Signature
   }
@@ -352,6 +370,8 @@ interface UserAccount {
     payments: DeveloperPayment[]
   }
   alias: string | null
+  referrals: string[]
+  codeHash: string
   emailHash: string | null
   verified: string | boolean
   lastMaintenance: number
@@ -399,6 +419,7 @@ interface NetworkAccount {
   devIssue: number
   developerFund: DeveloperPayment[]
   nextDeveloperFund: DeveloperPayment[]
+  rootUsers: string[] // The first N-users that were early adopters of the network
   hash: string
   timestamp: number
   snapshot?: object
