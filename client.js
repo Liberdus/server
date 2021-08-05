@@ -388,6 +388,16 @@ async function queryParameters() {
   }
 }
 
+// QUERY'S THE CURRENT NETWORK PARAMETERS
+async function queryReferrals() {
+  const res = await axios.get(`http://${HOST}/network/referrals`)
+  if (res.data.error) {
+    return res.data.error
+  } else {
+    return res.data.tree
+  }
+}
+
 // QUERY'S THE CURRENT PHASE OF THE DYNAMIC PARAMETER SYSTEM
 async function queryWindow() {
   const res = await axios.get(`http://${HOST}/network/windows/all`)
@@ -602,6 +612,7 @@ vorpal.command('register', 'registers a unique alias for your account').action(a
       default: network
     },
   ])
+  const address = await getAddress(answers.referrer)
   const tx = {
     type: 'register',
     aliasHash: crypto.hash(answers.alias),
@@ -609,7 +620,7 @@ vorpal.command('register', 'registers a unique alias for your account').action(a
     alias: answers.alias,
     network,
     code: answers.code,
-    referrer: answers.referrer,
+    referrer: address,
     timestamp: Date.now(),
   }
   crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
@@ -658,14 +669,14 @@ vorpal.command('create', 'creates tokens for an account').action(async function(
 vorpal.command('referral', 'creates a referral code for an account').action(async function(args, callback) {
   const answers = await this.prompt({
     type: 'input',
-    name: 'referralCode',
+    name: 'referralHash',
     message: 'Enter the referral code to generate: ',
   })
   const tx = {
     type: 'create_referral',
     from: USER.address,
     network,
-    referralHash: crypto.hash(answers.referralCode),
+    referralHash: crypto.hash(answers.referralHash),
     timestamp: Date.now(),
   }
   injectTx(tx).then(res => {
@@ -1292,10 +1303,34 @@ vorpal
     callback()
   })
 
+function printTree(tree, indent, last) {
+    this.log(indent + "+- " + tree.value)
+    indent += last ? "   " : "|  "
+
+    for (let i = 0; i < tree.children.length; i++) {
+      printTree(tree.children[i], indent, i == tree.children.length - 1);
+    }
+}
+
 // COMMAND TO LOG OUT QUERY'S FOR NETWORK DATA (ISSUES - PROPOSALS - DEV_PROPOSALS)
 // TODO ADD MORE query's HERE
 vorpal.command('get <type>', 'query the network for <type> account').action(async function(args, callback) {
   switch (args.type) {
+    case 'referrals': {
+      let that = this
+      function printTree(tree, indent, last) {
+        that.log(indent + '+- ' + tree.value)
+        indent += last ? '   ' : '|  '
+
+        for (let i = 0; i < tree.children.length; i++) {
+          printTree(tree.children[i], indent, i == tree.children.length - 1)
+        }
+      }
+      let tree = await queryReferrals()
+      // this.log(JSON.stringify(tree))
+      printTree(tree, "", true)
+      break
+    }
     case 'params': {
       this.log(await queryParameters())
       break

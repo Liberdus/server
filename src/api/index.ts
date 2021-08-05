@@ -11,6 +11,7 @@ export default (dapp: any) => {
 
   dapp.registerExternalGet('network/parameters', network.current(dapp))
   dapp.registerExternalGet('network/parameters/next', network.next(dapp))
+  dapp.registerExternalGet('network/referrals', network.referrals(dapp))
   dapp.registerExternalGet('network/windows/all', network.windows_all(dapp))
   dapp.registerExternalGet('network/windows', network.windows(dapp))
   dapp.registerExternalGet('network/windows/dev', network.windows_dev(dapp))

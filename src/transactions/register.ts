@@ -113,6 +113,7 @@ export const apply = (tx: Tx.Register, txId: string, wrappedStates, dapp) => {
       )
   } else {
     referrer.referrals.push(tx.from)
+    referrer.codeHash = null
     referrer.timestamp = tx.timestamp
   }
   alias.inbox = tx.alias

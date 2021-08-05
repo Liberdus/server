@@ -18,6 +18,11 @@ export const validate_fields = (tx: Tx.CreateReferral, response: Shardus.Incomin
     response.reason = 'ReferralHash" must be a string.'
     throw new Error(response.reason)
   }
+  if (tx.referralHash.length !== 64) {
+    response.success = false
+    response.reason = 'ReferralHash" must be 64 characters long.'
+    throw new Error(response.reason)
+  }
   return response
 }
 
@@ -27,10 +32,6 @@ export const validate = (tx: Tx.CreateReferral, wrappedStates: WrappedStates, re
     response.reason = "From account doesn't exist"
     return response
   }
-  if (tx.referralHash.length !== 64) {
-    response.reason = 'referralHash length needs to be 64 characters long'
-    return response
-  }
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
@@ -38,16 +39,16 @@ export const validate = (tx: Tx.CreateReferral, wrappedStates: WrappedStates, re
 
 export const apply = (tx: Tx.CreateReferral, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[tx.network].data
-  network.timestamp = tx.timestamp
+  // const network: NetworkAccount = wrappedStates[tx.network].data
+  from.codeHash = tx.referralHash
   from.timestamp = tx.timestamp
   // to.data.transactions.push({ ...tx, txId })
-  dapp.log('Applied create_referral tx', network)
+  dapp.log('Applied create_referral tx', from)
 }
 
-export const keys = (tx: Tx.Create, result: TransactionKeys) => {
+export const keys = (tx: Tx.CreateReferral, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.to]
+  result.targetKeys = []
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
