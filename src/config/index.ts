@@ -94,13 +94,13 @@ export const initConfigFromFile = () => {
     maxJoinedPerCycle: 8,
     maxSyncingPerCycle: 10,
     maxRotatedPerCycle: 0,
-    amountToGrow: 10,
-    amountToShrink: 2
+    amountToGrow: 16,
+    amountToShrink: 3
   })
   Prop.set(config, 'server.loadDetection', {
     queueLimit: 1000,
     desiredTxTime: 15,
-    highThreshold: 0.2,
+    highThreshold: 0.7,
     lowThreshold: 0.1,
   })
   const recipientCheck = config.server && config.server.reporting ? config.server.reporting.recipient : false
@@ -111,10 +111,10 @@ export const initConfigFromFile = () => {
   Prop.set(config, 'server.rateLimiting', {
     limitRate: true,
     loadLimit: {
-      internal: 0.5,
-      external: 0.4,
-      txTimeInQueue: 0.3,
-      queueLength: 0.2
+      internal: 0.8,
+      external: 0.8,
+      txTimeInQueue: 0.7,
+      queueLength: 0.8
     }
   })
   Prop.set(config, 'server.sharding', {
