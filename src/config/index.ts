@@ -95,12 +95,12 @@ export const initConfigFromFile = () => {
     maxSyncingPerCycle: 10,
     maxRotatedPerCycle: 0,
     amountToGrow: 10,
-    amountToShrink: 3
+    amountToShrink: 2
   })
   Prop.set(config, 'server.loadDetection', {
     queueLimit: 1000,
     desiredTxTime: 15,
-    highThreshold: 0.3,
+    highThreshold: 0.2,
     lowThreshold: 0.1,
   })
   const recipientCheck = config.server && config.server.reporting ? config.server.reporting.recipient : false
