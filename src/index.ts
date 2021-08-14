@@ -155,7 +155,6 @@ dapp.setup({
     }
     if(transactions[tx.type].transactionReceiptPass) transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
 
-    return applyResponse
   },
   getKeyFromTransaction(tx: any): ShardusTypes.TransactionKeys {
     const result: TransactionKeys = {
