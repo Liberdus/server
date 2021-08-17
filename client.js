@@ -510,7 +510,6 @@ vorpal.command('snapshot', 'submits the snapshot the ULT contract').action(funct
   this.log(snapshot)
   const tx = {
     type: 'snapshot',
-    network,
     from: USER.address,
     to: '0'.repeat(64),
     snapshot,
@@ -571,7 +570,6 @@ vorpal.command('verify', 'verifies your email address').action(async function(_,
   const tx = {
     type: 'verify',
     from: USER.address,
-    network,
     code: answer.code,
     timestamp: Date.now(),
   }
@@ -657,7 +655,6 @@ vorpal.command('transfer', 'transfers tokens to another account').action(async f
   const to = await getAddress(answers.target)
   const tx = {
     type: 'transfer',
-    network,
     from: USER.address,
     to,
     amount: answers.amount,
@@ -688,7 +685,6 @@ vorpal.command('distribute', 'distributes tokens to multiple accounts').action(a
   ])
   const tx = {
     type: 'distribute',
-    network,
     from: USER.address,
     recipients: answers.targets,
     amount: answers.amount,
@@ -747,7 +743,6 @@ vorpal.command('message', 'sends a message to another user').action(async functi
       const encryptedMsg = crypto.encrypt(message, crypto.convertSkToCurve(USER.keys.secretKey), crypto.convertPkToCurve(to))
       const tx = {
         type: 'message',
-        network,
         from: USER.address,
         to: to,
         chatId: crypto.hash([USER.address, to].sort((a, b) => a < b).join``),
@@ -775,7 +770,6 @@ vorpal.command('toll', 'sets a toll people must you in order to send you message
   })
   const tx = {
     type: 'toll',
-    network,
     from: USER.address,
     toll: answer.toll,
     timestamp: Date.now(),
@@ -801,7 +795,6 @@ vorpal.command('add friend', 'adds a friend to your account').action(async funct
   }
   const tx = {
     type: 'friend',
-    network,
     alias: answer.friend,
     from: USER.address,
     to: to,
@@ -828,7 +821,6 @@ vorpal.command('remove friend', 'removes a friend from your account').action(asy
   }
   const tx = {
     type: 'remove_friend',
-    network,
     from: USER.address,
     to: to,
     timestamp: Date.now(),
@@ -856,7 +848,6 @@ vorpal.command('stake', 'stakes tokens in order to operate a node').action(async
   if (answer.confirm) {
     const tx = {
       type: 'stake',
-      network,
       from: USER.address,
       stake: parameters.current.stakeRequired,
       timestamp: Date.now(),
@@ -877,7 +868,6 @@ vorpal.command('stake', 'stakes tokens in order to operate a node').action(async
 vorpal.command('claim', 'submits a claim transaction for the snapshot').action(function(_, callback) {
   const tx = {
     type: 'snapshot_claim',
-    network,
     from: USER.address,
     timestamp: Date.now(),
   }
@@ -989,7 +979,6 @@ vorpal.command('proposal', 'submits a proposal to change network parameters').ac
   const proposal = await getProposalCount()
   const tx = {
     type: 'proposal',
-    network,
     from: USER.address,
     proposal: crypto.hash(`issue-${issue}-proposal-${proposal + 1}`),
     issue: crypto.hash(`issue-${issue}`),
@@ -1078,7 +1067,6 @@ vorpal.command('dev proposal', 'submits a development proposal').action(async fu
   const count = await getDevProposalCount()
   const tx = {
     type: 'dev_proposal',
-    network,
     from: USER.address,
     devIssue: crypto.hash(`dev-issue-${latestIssue}`),
     devProposal: crypto.hash(`dev-issue-${latestIssue}-dev-proposal-${count + 1}`),
@@ -1134,7 +1122,6 @@ vorpal.command('vote', 'vote for a proposal').action(async function(args, callba
 
   const tx = {
     type: 'vote',
-    network,
     from: USER.address,
     issue: crypto.hash(`issue-${latest}`),
     proposal: crypto.hash(`issue-${latest}-proposal-${answers.proposal}`),
@@ -1194,7 +1181,6 @@ vorpal.command('vote dev', 'vote for a development proposal').action(async funct
 
   const tx = {
     type: 'dev_vote',
-    network,
     from: USER.address,
     devIssue: crypto.hash(`dev-issue-${latest}`),
     devProposal: crypto.hash(`dev-issue-${latest}-dev-proposal-${answers.proposal}`),

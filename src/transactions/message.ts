@@ -5,16 +5,6 @@ import create from '../accounts'
 import * as config from '../config'
 
 export const validate_fields = (tx: Tx.Message, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.network !== 'string') {
-    response.success = false
-    response.reason = 'tx "network" field must be a string.'
-    throw new Error(response.reason)
-  }
-  if (tx.network !== config.networkAccount) {
-    response.success = false
-    response.reason = 'tx "network" field must be: ' + config.networkAccount
-    throw new Error(response.reason)
-  }
   if (typeof tx.from !== 'string') {
     response.success = false
     response.reason = 'tx "from" field must be a string.'
@@ -45,7 +35,7 @@ export const validate_fields = (tx: Tx.Message, response: ShardusTypes.IncomingT
 
 export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const to: Accounts = wrappedStates[tx.to] && wrappedStates[tx.to].data
   if (tx.sign.owner !== tx.from) {
     response.reason = 'not signed by from account'
@@ -90,7 +80,7 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
 export const apply = (tx: Tx.Message, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const to: UserAccount = wrappedStates[tx.to].data
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const chat = wrappedStates[tx.chatId].data
   from.data.balance -= network.current.transactionFee
   if (!to.data.friends[from.id]) {
@@ -120,7 +110,7 @@ export const apply = (tx: Tx.Message, txId: string, wrappedStates: WrappedStates
 
 export const keys = (tx: Tx.Message, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.to, tx.chatId, tx.network]
+  result.targetKeys = [tx.to, tx.chatId, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }

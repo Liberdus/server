@@ -4,16 +4,6 @@ import * as config from '../config'
 import create from '../accounts'
 
 export const validate_fields = (tx: Tx.DevParameters, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.network !== 'string') {
-    response.success = false
-    response.reason = 'tx "network" field must be a string.'
-    throw new Error(response.reason)
-  }
-  if (tx.network !== config.networkAccount) {
-    response.success = false
-    response.reason = 'tx "network" field must be: ' + config.networkAccount
-    throw new Error(response.reason)
-  }
   if (typeof tx.nodeId !== 'string') {
     response.success = false
     response.reason = 'tx "nodeId" field must be a string.'
@@ -33,7 +23,7 @@ export const validate_fields = (tx: Tx.DevParameters, response: ShardusTypes.Inc
 }
 
 export const validate = (tx: Tx.DevParameters, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
 
   // let nodeInfo
@@ -78,7 +68,7 @@ export const validate = (tx: Tx.DevParameters, wrappedStates: WrappedStates, res
 
 export const apply = (tx: Tx.DevParameters, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: ShardusTypes.ApplyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
 
   const when = tx.timestamp + config.ONE_SECOND * 10
@@ -110,7 +100,7 @@ export const transactionReceiptPass = (tx: Tx.DevParameters, txId: string, wrapp
 
 export const keys = (tx: Tx.DevParameters, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.devIssue, tx.network]
+  result.targetKeys = [tx.devIssue, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }

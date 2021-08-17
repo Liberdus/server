@@ -5,16 +5,6 @@ import create from '../accounts'
 import * as config from '../config'
 
 export const validate_fields = (tx: Tx.ApplyParameters, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.network !== 'string') {
-    response.success = false
-    response.reason = 'tx "network" field must be a string.'
-    throw new Error(response.reason)
-  }
-  if (tx.network !== config.networkAccount) {
-    response.success = false
-    response.reason = 'tx "network" field must be: ' + config.networkAccount
-    throw new Error(response.reason)
-  }
   if (_.isEmpty(tx.current) || typeof tx.current !== 'object') {
     response.success = false
     response.reason = 'tx "current" field must not be a non empty object'
@@ -115,7 +105,7 @@ export const validate = (tx: Tx.ApplyParameters, wrappedStates: WrappedStates, r
 }
 
 export const apply = (tx: Tx.ApplyParameters, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.current = tx.current
   network.next = tx.next
   network.windows = tx.windows
@@ -126,7 +116,7 @@ export const apply = (tx: Tx.ApplyParameters, txId: string, wrappedStates: Wrapp
 }
 
 export const keys = (tx: Tx.ApplyParameters, result: TransactionKeys) => {
-  result.targetKeys = [tx.network]
+  result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }

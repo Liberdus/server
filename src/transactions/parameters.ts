@@ -3,16 +3,6 @@ import * as config from '../config'
 import create from '../accounts'
 
 export const validate_fields = (tx: Tx.Parameters, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.network !== 'string') {
-    response.success = false
-    response.reason = 'tx "network" field must be a string'
-    throw new Error(response.reason)
-  }
-  if (tx.network !== config.networkAccount) {
-    response.success = false
-    response.reason = 'tx "network" field must be: ' + config.networkAccount
-    throw new Error(response.reason)
-  }
   if (typeof tx.from !== 'string') {
     response.success = false
     response.reason = 'tx "from" field must be a string'
@@ -32,7 +22,7 @@ export const validate_fields = (tx: Tx.Parameters, response: ShardusTypes.Incomi
 }
 
 export const validate = (tx: Tx.Parameters, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const issue: IssueAccount = wrappedStates[tx.issue].data
 
   if (network.id !== config.networkAccount) {
@@ -58,7 +48,7 @@ export const validate = (tx: Tx.Parameters, wrappedStates: WrappedStates, respon
 
 export const apply = (tx: Tx.Parameters, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: ShardusTypes.ApplyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const issue: IssueAccount = wrappedStates[tx.issue].data
   
   const when = tx.timestamp + config.ONE_SECOND * 10
@@ -90,7 +80,7 @@ export const transactionReceiptPass = (tx: Tx.Tally, txId: string, wrappedStates
 
 export const keys = (tx: Tx.Parameters, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.network, tx.issue]
+  result.targetKeys = [config.networkAccount, tx.issue]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }

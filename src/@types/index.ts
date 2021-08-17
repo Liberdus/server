@@ -4,7 +4,6 @@ declare namespace Tx {
   interface ApplyParameters {
     type: string
     timestamp: number
-    network: string
     current: NetworkParameters
     next: {}
     windows: Windows
@@ -15,7 +14,6 @@ declare namespace Tx {
   interface ApplyDevParameters {
     type: string
     timestamp: number
-    network: string
     devWindows: DevWindows
     nextDevWindows: {}
     developerFund: DeveloperPayment[]
@@ -26,14 +24,12 @@ declare namespace Tx {
   interface ApplyDevPayment {
     type: string
     timestamp: number
-    network: string
     developerFund: DeveloperPayment[]
   }
 
   interface ApplyTally {
     type: string
     timestamp: number
-    network: string
     next: NetworkParameters
     nextWindows: Windows
   }
@@ -41,7 +37,6 @@ declare namespace Tx {
   interface ApplyDevTally {
     type: string
     timestamp: number
-    network: string
     nextDeveloperFund: DeveloperPayment[]
     nextDevWindows: Windows
   }
@@ -56,7 +51,6 @@ declare namespace Tx {
 
   interface Distribute {
     type: string
-    network: string
     from: string
     recipients: string[]
     amount: number
@@ -77,7 +71,6 @@ declare namespace Tx {
 
   interface Friend {
     type: string
-    network: string
     alias: string
     from: string
     to: string
@@ -97,13 +90,11 @@ declare namespace Tx {
 
   interface InitNetwork {
     type: string
-    network: string
     timestamp: number
   }
 
   interface Issue {
     type: string
-    network: string
     nodeId: string
     from: string
     issue: string
@@ -113,7 +104,6 @@ declare namespace Tx {
 
   interface DevIssue {
     type: string
-    network: string
     nodeId: string
     from: string
     devIssue: string
@@ -122,7 +112,6 @@ declare namespace Tx {
 
   interface Message {
     type: string
-    network: string
     from: string
     to: string
     chatId: string
@@ -133,7 +122,6 @@ declare namespace Tx {
 
   interface NodeReward {
     type: string
-    network: string
     nodeId: string
     from: string
     to: string
@@ -144,7 +132,6 @@ declare namespace Tx {
     type: string
     nodeId: string
     from: string
-    network: string
     issue: string
     timestamp: number
   }
@@ -153,14 +140,12 @@ declare namespace Tx {
     type: string
     nodeId: string
     from: string
-    network: string
     devIssue: string
     timestamp: number
   }
 
   interface Proposal {
     type: string
-    network: string
     from: string
     proposal: string
     issue: string
@@ -171,7 +156,6 @@ declare namespace Tx {
 
   interface DevProposal {
     type: string
-    network: string
     from: string
     devProposal: string
     devIssue: string
@@ -195,7 +179,6 @@ declare namespace Tx {
 
   interface RemoveFriend {
     type: string
-    network: string
     from: string
     to: string
     timestamp: number
@@ -204,7 +187,6 @@ declare namespace Tx {
 
   interface RemoveStakeRequest {
     type: string
-    network: string
     from: string
     stake: number
     timestamp: number
@@ -213,7 +195,6 @@ declare namespace Tx {
 
   interface RemoveStake {
     type: string
-    network: string
     from: string
     stake: number
     timestamp: number
@@ -222,7 +203,6 @@ declare namespace Tx {
 
   interface SnapshotClaim {
     type: string
-    network: string
     from: string
     timestamp: number
     sign: Signature
@@ -231,7 +211,6 @@ declare namespace Tx {
   interface Snapshot {
     type: string
     from: string
-    network: string
     snapshot: any
     timestamp: number
     sign: Signature
@@ -239,7 +218,6 @@ declare namespace Tx {
 
   interface Stake {
     type: string
-    network: string
     from: string
     stake: number
     timestamp: number
@@ -250,7 +228,6 @@ declare namespace Tx {
     type: string
     nodeId: string
     from: string
-    network: string
     issue: string
     proposals: string[]
     timestamp: number
@@ -260,7 +237,6 @@ declare namespace Tx {
     type: string
     nodeId: string
     from: string
-    network: string
     devIssue: string
     devProposals: string[]
     timestamp: number
@@ -268,7 +244,6 @@ declare namespace Tx {
 
   interface Toll {
     type: string
-    network: string
     from: string
     toll: number
     timestamp: number
@@ -277,7 +252,6 @@ declare namespace Tx {
 
   interface Transfer {
     type: string
-    network: string
     from: string
     to: string
     amount: number
@@ -288,7 +262,6 @@ declare namespace Tx {
   interface Verify {
     type: string
     from: string
-    network: string
     code: string
     timestamp: number
     sign: Signature
@@ -296,7 +269,6 @@ declare namespace Tx {
 
   interface Vote {
     type: string
-    network: string
     from: string
     issue: string
     proposal: string
@@ -307,7 +279,6 @@ declare namespace Tx {
 
   interface DevVote {
     type: string
-    network: string
     from: string
     devIssue: string
     devProposal: string
@@ -319,7 +290,6 @@ declare namespace Tx {
 
   interface DevPayment {
     type: string
-    network: string
     nodeId: string
     from: string
     developer: string

@@ -3,16 +3,6 @@ import create from '../accounts'
 import * as config from '../config'
 
 export const validate_fields = (tx: Tx.NodeReward, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.network !== 'string') {
-    response.success = false
-    response.reason = 'tx "network" field must be a string'
-    throw new Error(response.reason)
-  }
-  if (tx.network !== config.networkAccount) {
-    response.success = false
-    response.reason = 'tx "network" field must be: ' + config.networkAccount
-    throw new Error(response.reason)
-  }
   if (typeof tx.from !== 'string') {
     response.success = false
     response.reason = 'tx "from" field must be a string'
@@ -33,7 +23,7 @@ export const validate_fields = (tx: Tx.NodeReward, response: ShardusTypes.Incomi
 
 export const validate = (tx: Tx.NodeReward, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   let nodeInfo
   try {
     nodeInfo = dapp.getNode(tx.nodeId)
@@ -72,7 +62,7 @@ export const validate = (tx: Tx.NodeReward, wrappedStates: WrappedStates, respon
 export const apply = (tx: Tx.NodeReward, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: NodeAccount = wrappedStates[tx.from].data
   const to: UserAccount = wrappedStates[tx.to].data
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   //const nodeAccount: NodeAccount = to
   from.balance += network.current.nodeRewardAmount
   dapp.log(`Reward from ${tx.from} to ${tx.to}`)
@@ -95,7 +85,7 @@ export const apply = (tx: Tx.NodeReward, txId: string, wrappedStates: WrappedSta
 
 export const keys = (tx: Tx.NodeReward, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.to, tx.network]
+  result.targetKeys = [tx.to, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }

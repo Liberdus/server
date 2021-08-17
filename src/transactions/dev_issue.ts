@@ -5,16 +5,6 @@ import create from '../accounts'
 import * as config from '../config'
 
 export const validate_fields = (tx: Tx.DevIssue, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.network !== 'string') {
-    response.success = false
-    response.reason = 'tx "network" field must be a string.'
-    throw new Error(response.reason)
-  }
-  if (tx.network !== config.networkAccount) {
-    response.success = false
-    response.reason = 'tx "network" field must be: ' + config.networkAccount
-    throw new Error(response.reason)
-  }
   if (typeof tx.nodeId !== 'string') {
     response.success = false
     response.reason = 'tx "nodeId" field must be a string.'
@@ -34,7 +24,7 @@ export const validate_fields = (tx: Tx.DevIssue, response: ShardusTypes.Incoming
 }
 
 export const validate = (tx: Tx.DevIssue, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
   // let nodeInfo
   // try {
@@ -66,7 +56,7 @@ export const validate = (tx: Tx.DevIssue, wrappedStates: WrappedStates, response
 
 export const apply = (tx: Tx.DevIssue, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
 
   devIssue.number = network.devIssue
@@ -79,7 +69,7 @@ export const apply = (tx: Tx.DevIssue, txId: string, wrappedStates: WrappedState
 
 export const keys = (tx: Tx.DevIssue, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.devIssue, tx.network]
+  result.targetKeys = [tx.devIssue, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }

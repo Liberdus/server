@@ -5,16 +5,6 @@ import * as crypto from 'shardus-crypto-utils'
 import create from '../accounts'
 
 export const validate_fields = (tx: Tx.ApplyDevParameters, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.network !== 'string') {
-    response.success = false
-    response.reason = 'tx "network" field must be a string.'
-    throw new Error(response.reason)
-  }
-  if (tx.network !== config.networkAccount) {
-    response.success = false
-    response.reason = 'tx "network" field must be: ' + config.networkAccount
-    throw new Error(response.reason)
-  }
   if (typeof tx.devIssue !== 'number') {
     response.success = false
     response.reason = 'tx "devIssue" field must be a number.'
@@ -50,7 +40,7 @@ export const validate = (tx: Tx.ApplyDevParameters, wrappedStates: WrappedStates
 }
 
 export const apply = (tx: Tx.ApplyDevParameters, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.devWindows = tx.devWindows
   network.nextDevWindows = tx.nextDevWindows
   network.developerFund = tx.developerFund
@@ -60,7 +50,7 @@ export const apply = (tx: Tx.ApplyDevParameters, txId: string, wrappedStates: Wr
 }
 
 export const keys = (tx: Tx.ApplyDevParameters, result: TransactionKeys) => {
-  result.targetKeys = [tx.network]
+  result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }

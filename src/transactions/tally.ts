@@ -4,16 +4,6 @@ import * as config from '../config'
 import create from '../accounts'
 
 export const validate_fields = (tx: Tx.Tally, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.network !== 'string') {
-    response.success = false
-    response.reason = 'tx "network" field must be a string.'
-    throw new Error(response.reason)
-  }
-  if (tx.network !== config.networkAccount) {
-    response.success = false
-    response.reason = 'tx "network" field must be: ' + config.networkAccount
-    throw new Error(response.reason)
-  }
   if (typeof tx.nodeId !== 'string') {
     response.success = false
     response.reason = 'tx "nodeId" field must be a string.'
@@ -38,7 +28,7 @@ export const validate_fields = (tx: Tx.Tally, response: ShardusTypes.IncomingTra
 }
 
 export const validate = (tx: Tx.Tally, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
   const proposals: ProposalAccount[] = tx.proposals.map((id: string) => wrappedStates[id].data)
 
@@ -87,7 +77,7 @@ export const validate = (tx: Tx.Tally, wrappedStates: WrappedStates, response: S
 
 export const apply = (tx: Tx.Tally, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const issue: IssueAccount = wrappedStates[tx.issue].data
   const margin = 100 / (2 * (issue.proposalCount + 1)) / 100
 
@@ -159,7 +149,7 @@ export const transactionReceiptPass = (tx: Tx.Tally, txId: string, wrappedStates
 
 export const keys = (tx: Tx.Tally, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [...tx.proposals, tx.issue, tx.network]
+  result.targetKeys = [...tx.proposals, tx.issue, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }

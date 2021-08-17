@@ -25,7 +25,6 @@ export async function _sleep(ms = 0): Promise<NodeJS.Timeout> {
 export function nodeReward(address: string, nodeId: string, dapp: Shardus): void {
   const tx = {
     type: 'node_reward',
-    network: configs.networkAccount,
     nodeId: nodeId,
     from: address,
     to: process.env.PAY_ADDRESS || address,
@@ -41,7 +40,6 @@ export async function generateIssue(address: string, nodeId: string, dapp: Shard
   const network: NetworkAccount = account.data
   const tx = {
     type: 'issue',
-    network: configs.networkAccount,
     nodeId,
     from: address,
     issue: crypto.hash(`issue-${network.issue}`),
@@ -58,7 +56,6 @@ export async function generateDevIssue(address: string, nodeId: string, dapp: Sh
   const network: NetworkAccount = account.data
   const tx = {
     type: 'dev_issue',
-    network: configs.networkAccount,
     nodeId,
     from: address,
     devIssue: crypto.hash(`dev-issue-${network.devIssue}`),
@@ -83,7 +80,6 @@ export async function tallyVotes(address: string, nodeId: string, dapp: Shardus)
       type: 'tally',
       nodeId,
       from: address,
-      network: configs.networkAccount,
       issue: issue.id,
       proposals: issue.proposals,
       timestamp: Date.now(),
@@ -111,7 +107,6 @@ export async function tallyDevVotes(address: string, nodeId: string, dapp: Shard
       type: 'dev_tally',
       nodeId,
       from: address,
-      network: configs.networkAccount,
       devIssue: devIssue.id,
       devProposals: devIssue.devProposals,
       timestamp: Date.now(),
@@ -133,7 +128,6 @@ export async function applyParameters(address: string, nodeId: string, dapp: Sha
     type: 'parameters',
     nodeId,
     from: address,
-    network: configs.networkAccount,
     issue: crypto.hash(`issue-${network.issue}`),
     timestamp: Date.now(),
   }
@@ -149,7 +143,6 @@ export async function applyDevParameters(address: string, nodeId: string, dapp: 
     type: 'dev_parameters',
     nodeId,
     from: address,
-    network: configs.networkAccount,
     devIssue: crypto.hash(`dev-issue-${network.devIssue}`),
     timestamp: Date.now(),
   }
@@ -163,7 +156,6 @@ export function releaseDeveloperFunds(payment: DeveloperPayment, address: string
     type: 'developer_payment',
     nodeId,
     from: address,
-    network: configs.networkAccount,
     developer: payment.address,
     payment: payment,
     timestamp: Date.now(),

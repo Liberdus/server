@@ -4,21 +4,11 @@ import * as config from '../config'
 import create from '../accounts'
 
 export const validate_fields = (tx: Tx.InitNetwork, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.network !== 'string') {
-    response.success = false
-    response.reason = 'tx "network" field must be a string.'
-    throw new Error(response.reason)
-  }
-  if (tx.network !== config.networkAccount) {
-    response.success = false
-    response.reason = 'tx "network" field must be: ' + config.networkAccount
-    throw new Error(response.reason)
-  }
   return response
 }
 
 export const validate = (tx: Tx.InitNetwork, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
 
   if (network.id !== config.networkAccount) {
     response.reason = "Network account Id doesn't match the configuration"
@@ -31,7 +21,7 @@ export const validate = (tx: Tx.InitNetwork, wrappedStates: WrappedStates, respo
 }
 
 export const apply = (tx: Tx.InitNetwork, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.timestamp = tx.timestamp
   console.log(`init_network NETWORK_ACCOUNT: ${stringify(network)}`)
   // from.timestamp = tx.timestamp
@@ -40,7 +30,7 @@ export const apply = (tx: Tx.InitNetwork, txId: string, wrappedStates: WrappedSt
 
 export const keys = (tx: Tx.InitNetwork, result: TransactionKeys) => {
   // result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.network]
+  result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }

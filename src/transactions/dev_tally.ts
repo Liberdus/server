@@ -5,16 +5,6 @@ import stringify from 'fast-stable-stringify'
 import create from '../accounts'
 
 export const validate_fields = (tx: Tx.DevTally, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.network !== 'string') {
-    response.success = false
-    response.reason = 'tx "network" field must be a string.'
-    throw new Error(response.reason)
-  }
-  if (tx.network !== config.networkAccount) {
-    response.success = false
-    response.reason = 'tx "network" field must be: ' + config.networkAccount
-    throw new Error(response.reason)
-  }
   if (typeof tx.nodeId !== 'string') {
     response.success = false
     response.reason = 'tx "nodeId" field must be a string.'
@@ -39,7 +29,7 @@ export const validate_fields = (tx: Tx.DevTally, response: ShardusTypes.Incoming
 }
 
 export const validate = (tx: Tx.DevTally, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
   const devProposals: DevProposalAccount[] = tx.devProposals.map((id: string) => wrappedStates[id].data)
 
@@ -88,7 +78,7 @@ export const validate = (tx: Tx.DevTally, wrappedStates: WrappedStates, response
 
 export const apply = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
   const devProposals: DevProposalAccount[] = tx.devProposals.map((id: string) => wrappedStates[id].data)
   let nextDeveloperFund: DeveloperPayment[] = []
@@ -156,7 +146,7 @@ export const transactionReceiptPass = (tx: Tx.DevTally, txId: string, wrappedSta
 
 export const keys = (tx: Tx.DevTally, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [...tx.devProposals, tx.devIssue, tx.network]
+  result.targetKeys = [...tx.devProposals, tx.devIssue, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }

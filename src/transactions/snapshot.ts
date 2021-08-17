@@ -4,16 +4,6 @@ import * as config from '../config'
 import create from '../accounts'
 
 export const validate_fields = (tx: Tx.Snapshot, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.network !== 'string') {
-    response.success = false
-    response.reason = 'tx "network" field must be a string.'
-    throw new Error(response.reason)
-  }
-  if (tx.network !== config.networkAccount) {
-    response.success = false
-    response.reason = 'tx "network" field must be ' + config.networkAccount
-    throw new Error(response.reason)
-  }
   if (typeof tx.from !== 'string') {
     response.success = false
     response.reason = 'tx "from" field must be a string.'
@@ -42,7 +32,7 @@ export const validate = (tx: Tx.Snapshot, wrappedStates: WrappedStates, response
 }
 
 export const apply = (tx: Tx.Snapshot, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.snapshot = tx.snapshot
   network.timestamp = tx.timestamp
   dapp.log('Applied snapshot tx', network)
@@ -50,7 +40,7 @@ export const apply = (tx: Tx.Snapshot, txId: string, wrappedStates: WrappedState
 
 export const keys = (tx: Tx.Snapshot, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.network]
+  result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }

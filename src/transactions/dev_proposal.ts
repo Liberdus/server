@@ -7,16 +7,6 @@ import _ from 'lodash'
 import * as config from '../config'
 
 export const validate_fields = (tx: Tx.DevProposal, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.network !== 'string') {
-    response.success = false
-    response.reason = 'tx "network" field must be a string'
-    throw new Error(response.reason)
-  }
-  if (tx.network !== config.networkAccount) {
-    response.success = false
-    response.reason = 'tx "network" field must be: ' + config.networkAccount
-    throw new Error(response.reason)
-  }
   if (typeof tx.devIssue !== 'string') {
     response.success = false
     response.reason = 'tx "devIssue" field must be a string.'
@@ -92,7 +82,7 @@ export const validate_fields = (tx: Tx.DevProposal, response: ShardusTypes.Incom
 
 export const validate = (tx: Tx.DevProposal, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
 
   if (tx.sign.owner !== tx.from) {
@@ -138,7 +128,7 @@ export const validate = (tx: Tx.DevProposal, wrappedStates: WrappedStates, respo
 
 export const apply = (tx: Tx.DevProposal, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
   const devProposal: DevProposalAccount = wrappedStates[tx.devProposal].data
 
@@ -164,7 +154,7 @@ export const apply = (tx: Tx.DevProposal, txId: string, wrappedStates: WrappedSt
 
 export const keys = (tx: Tx.DevProposal, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.devIssue, tx.devProposal, tx.network]
+  result.targetKeys = [tx.devIssue, tx.devProposal, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }

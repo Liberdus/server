@@ -5,21 +5,6 @@ import * as config from '../config'
 import _ from 'lodash'
 
 export const validate_fields = (tx: Tx.ApplyDevTally, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.network !== 'string') {
-    response.success = false
-    response.reason = 'tx "network" field must be a string.'
-    throw new Error(response.reason)
-  }
-  if (tx.network !== config.networkAccount) {
-    response.success = false
-    response.reason = 'tx "network" field must be: ' + config.networkAccount
-    throw new Error(response.reason)
-  }
-  if (tx.network !== config.networkAccount) {
-    response.success = false
-    response.reason = 'tx "network" field must be ' + config.networkAccount
-    throw new Error(response.reason)
-  }
   if (!Array.isArray(tx.nextDeveloperFund)) {
     response.success = false
     response.reason = 'tx "nextDeveloperFund" field must be an array.'
@@ -40,7 +25,7 @@ export const validate = (tx: Tx.ApplyDevTally, wrappedStates: WrappedStates, res
 }
 
 export const apply = (tx: Tx.ApplyDevTally, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
-  const network: NetworkAccount = wrappedStates[tx.network].data
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.nextDeveloperFund = tx.nextDeveloperFund
   network.nextDevWindows = tx.nextDevWindows
   network.timestamp = tx.timestamp
@@ -48,7 +33,7 @@ export const apply = (tx: Tx.ApplyDevTally, txId: string, wrappedStates: Wrapped
 }
 
 export const keys = (tx: Tx.ApplyDevTally, result: TransactionKeys) => {
-  result.targetKeys = [tx.network]
+  result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
