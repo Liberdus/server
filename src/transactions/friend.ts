@@ -17,7 +17,7 @@ export const validate_fields = (tx: Tx.Friend, response: ShardusTypes.IncomingTr
   }
   if (typeof tx.alias !== 'string') {
     response.success = false
-    response.reason = 'tx "message" field must be a string.'
+    response.reason = 'tx "alias" field must be a string.'
     throw new Error(response.reason)
   }
   return response

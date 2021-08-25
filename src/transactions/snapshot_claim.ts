@@ -67,7 +67,7 @@ export const keys = (tx: Tx.SnapshotClaim, result: TransactionKeys) => {
   return result
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.RemoveStake, accountCreated = false) => {
+export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.SnapshotClaim, accountCreated = false) => {
   if (!account) {
     account = create.userAccount(accountId, tx.timestamp)
     accountCreated = true
