@@ -3,6 +3,7 @@ import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import * as crypto from '@shardus/crypto-utils'
 import create from '../accounts'
+import stringify from 'fast-stable-stringify'
 
 export const validate_fields = (tx: Tx.ApplyDevParameters, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.devIssue !== 'number') {
@@ -47,6 +48,7 @@ export const apply = (tx: Tx.ApplyDevParameters, txTimestamp: number, txId: stri
   network.nextDeveloperFund = tx.nextDeveloperFund
   network.devIssue = tx.devIssue
   network.timestamp = txTimestamp
+  dapp.log(`=== APPLIED DEV_PARAMETERS GLOBAL ${stringify(network)} ===`)
 }
 
 export const keys = (tx: Tx.ApplyDevParameters, result: TransactionKeys) => {
@@ -55,10 +57,9 @@ export const keys = (tx: Tx.ApplyDevParameters, result: TransactionKeys) => {
   return result
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: NodeAccount, accountId: string, tx: Tx.ApplyDevParameters, accountCreated = false) => {
+export const createRelevantAccount = (dapp: Shardus, account: NetworkAccount, accountId: string, tx: Tx.ApplyDevParameters, accountCreated = false) => {
   if (!account) {
-    account = create.nodeAccount(accountId)
-    accountCreated = true
+    throw new Error('Network Account must already exist for the apply_dev_parameters transaction')
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }

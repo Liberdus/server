@@ -95,7 +95,7 @@ export const createRelevantAccount = (dapp: Shardus, account: NodeAccount | User
     if (accountId === tx.nodeId) {
       account = create.nodeAccount(accountId)
     } else {
-      account = create.userAccount(accountId, tx.timestamp)
+      throw new Error('UserAccount must already exist for the node_reward transaction')
     }
     accountCreated = true
   }

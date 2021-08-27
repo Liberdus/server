@@ -47,7 +47,8 @@ export const validate = (tx: Tx.Parameters, wrappedStates: WrappedStates, respon
 }
 
 export const apply = (tx: Tx.Parameters, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: ShardusTypes.ApplyResponse) => {
-  const from: UserAccount = wrappedStates[tx.from].data
+  const from: NodeAccount = wrappedStates[tx.from].data
+
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const issue: IssueAccount = wrappedStates[tx.issue].data
 
@@ -86,7 +87,7 @@ export const keys = (tx: Tx.Parameters, result: TransactionKeys) => {
   return result
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: NodeAccount, accountId: string, tx: Tx.Parameters, accountCreated = false) => {
+export const createRelevantAccount = (dapp: Shardus, account: NodeAccount | IssueAccount, accountId: string, tx: Tx.Parameters, accountCreated = false) => {
   if (!account) {
     account = create.nodeAccount(accountId)
     accountCreated = true

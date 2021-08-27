@@ -76,7 +76,7 @@ export const validate = (tx: Tx.Tally, wrappedStates: WrappedStates, response: S
 }
 
 export const apply = (tx: Tx.Tally, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
-  const from: UserAccount = wrappedStates[tx.from].data
+  const from: NodeAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const issue: IssueAccount = wrappedStates[tx.issue].data
   const margin = 100 / (2 * (issue.proposalCount + 1)) / 100
@@ -155,7 +155,7 @@ export const keys = (tx: Tx.Tally, result: TransactionKeys) => {
   return result
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: NodeAccount, accountId: string, tx: Tx.Tally, accountCreated = false) => {
+export const createRelevantAccount = (dapp: Shardus, account: NodeAccount | IssueAccount, accountId: string, tx: Tx.Tally, accountCreated = false) => {
   if (!account) {
     account = create.nodeAccount(accountId)
     accountCreated = true

@@ -114,10 +114,13 @@ export const keys = (tx: Tx.DevVote, result: TransactionKeys) => {
   return result
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.DevVote, accountCreated = false) => {
+export const createRelevantAccount = (dapp: Shardus, account: UserAccount | DevProposalAccount, accountId: string, tx: Tx.DevVote, accountCreated = false) => {
   if (!account) {
-    account = create.userAccount(accountId, tx.timestamp)
-    accountCreated = true
+    if (accountId === tx.devProposal) {
+      throw Error('Dev Proposal Account must already exist for the dev_vote transaction')
+    } else {
+      throw Error('Account must already exist for the dev_vote transaction')
+    }
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }

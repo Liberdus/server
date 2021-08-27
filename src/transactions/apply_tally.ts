@@ -1,6 +1,7 @@
 import stringify from 'fast-stable-stringify'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
+
 import _ from 'lodash'
 import * as config from '../config'
 
@@ -103,10 +104,9 @@ export const keys = (tx: Tx.ApplyTally, result: TransactionKeys) => {
   return result
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: NodeAccount, accountId: string, tx: Tx.ApplyTally, accountCreated = false) => {
+export const createRelevantAccount = (dapp: Shardus, account: NetworkAccount, accountId: string, tx: Tx.ApplyTally, accountCreated = false) => {
   if (!account) {
-    account = create.nodeAccount(accountId)
-    accountCreated = true
+    throw new Error('Network Account must already exist for the apply_tally transaction')
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }

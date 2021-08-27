@@ -69,8 +69,7 @@ export const keys = (tx: Tx.SnapshotClaim, result: TransactionKeys) => {
 
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.SnapshotClaim, accountCreated = false) => {
   if (!account) {
-    account = create.userAccount(accountId, tx.timestamp)
-    accountCreated = true
+    throw new Error('Account must already exist for the snapshot_claim transaction')
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }

@@ -67,7 +67,8 @@ export const validate = (tx: Tx.Issue, wrappedStates: WrappedStates, response: S
 }
 
 export const apply = (tx: Tx.Issue, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
-  const from: UserAccount = wrappedStates[tx.from].data
+  const from: NodeAccount = wrappedStates[tx.from].data
+
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const issue: IssueAccount = wrappedStates[tx.issue].data
   const proposal: ProposalAccount = wrappedStates[tx.proposal].data

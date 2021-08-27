@@ -97,7 +97,8 @@ export const validate = (tx: Tx.DevPayment, wrappedStates: WrappedStates, respon
 }
 
 export const apply = (tx: Tx.DevPayment, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: ShardusTypes.ApplyResponse) => {
-  const from: UserAccount = wrappedStates[tx.from].data
+  const from: NodeAccount = wrappedStates[tx.from].data
+
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const developer: UserAccount = wrappedStates[tx.developer].data
   developer.data.payments.push(tx.payment)

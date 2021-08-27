@@ -77,7 +77,7 @@ export const validate = (tx: Tx.DevTally, wrappedStates: WrappedStates, response
 }
 
 export const apply = (tx: Tx.DevTally, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
-  const from: UserAccount = wrappedStates[tx.from].data
+  const from: NodeAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
   const devProposals: DevProposalAccount[] = tx.devProposals.map((id: string) => wrappedStates[id].data)

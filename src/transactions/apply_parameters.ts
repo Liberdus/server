@@ -121,10 +121,9 @@ export const keys = (tx: Tx.ApplyParameters, result: TransactionKeys) => {
   return result
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: NodeAccount, accountId: string, tx: Tx.ApplyParameters, accountCreated = false) => {
+export const createRelevantAccount = (dapp: Shardus, account: NetworkAccount, accountId: string, tx: Tx.ApplyParameters, accountCreated = false) => {
   if (!account) {
-    account = create.nodeAccount(accountId)
-    accountCreated = true
+    throw new Error('Network Account must already exist for the apply_parameters transaction')
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }
