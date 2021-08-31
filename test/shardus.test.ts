@@ -32,11 +32,12 @@ test('Start a new network successfully', async () => {
     execa.commandSync(`shardus-network create --no-log-rotation  ${START_NETWORK_SIZE * 2}`) // start 2 times of minNode
     const isNetworkActive = await utils.waitForNetworkToBeActive(START_NETWORK_SIZE)
     expect(isNetworkActive).toBe(true)
+    // await utils._sleep(90000) // wait 3 cycles
   }
 })
 
-test('Process txs at the rate of 5 txs per node/per second for 5 min', async () => {
-  console.log(utils.infoGreen('TEST: Process txs at the rate of 5 txs per node/per second for 5 min'))
+test('Process txs at the rate of 5 txs per node/per second for 1 min', async () => {
+  console.log(utils.infoGreen('TEST: Process txs at the rate of 5 txs per node/per second for 1 min'))
 
   const activeNodes = await utils.queryActiveNodes()
   const nodeCount = Object.keys(activeNodes).length
@@ -63,7 +64,7 @@ test('Process txs at the rate of 5 txs per node/per second for 5 min', async () 
 
 test('Auto scale up the network successfully', async () => {
   console.log(utils.infoGreen('TEST: Auto scale up the network successfully'))
-  let spamCommand = `spammer spam -t create -d 3600 -r ${START_NETWORK_SIZE * 6} -a ${START_NETWORK_SIZE * 60} -m http://localhost:3000/api/report`
+  let spamCommand = `spammer spam -t create -d 100 -r ${START_NETWORK_SIZE * 6} -a ${START_NETWORK_SIZE * 60} -m http://localhost:3000/api/report`
   let spamProcess = execa.command(spamCommand)
   let isLoadIncreased = await utils.waitForNetworkLoad('high', 0.2)
 
@@ -128,7 +129,7 @@ test('New archivers sync archived data successfully', async () => {
 
 test('Archivers store complete historical data without missing cycles', async () => {
   console.log(utils.infoGreen('TEST: Archivers store complete historical data without missing cycles'))
-  
+
   const dataFromArchiver_1 = await utils.queryArchivedCycles('localhost', 4000, 10)
   const dataFromArchiver_2 = await utils.queryArchivedCycles('localhost', 4001, 10)
   const latestRecord = await utils.queryLatestCycleRecordFromConsensor()
@@ -175,15 +176,16 @@ test('Check receipt of a transfer tx between 2 accounts', async () => {
   )
 
   await utils._sleep(8000)
-  let res = await axios.get(`http://${utils.HOST}/address/${crypto.hash(alias1)}`)
+  const seedNodes = await utils.getSeedNodes();
+  const target = seedNodes[Math.floor(Math.random() * seedNodes.length)].port
+  let res = await axios.get(`http://localhost:${target}/address/${crypto.hash(alias1)}`)
   expect(res.data.address).toBe(account1.address)
-  res = await axios.get(`http://${utils.HOST}/address/${crypto.hash(alias2)}`)
+  res = await axios.get(`http://localhost:${target}/address/${crypto.hash(alias2)}`)
   expect(res.data.address).toBe(account2.address)
 
   await utils.injectTx(
     {
       type: 'transfer',
-      network,
       from: account1.address,
       to: account2.address,
       amount: 1,
@@ -193,8 +195,8 @@ test('Check receipt of a transfer tx between 2 accounts', async () => {
   )
 
   await utils._sleep(10000)
-
-  const accountData1 = await utils.getAccountData(account1.address)
+  const result = await axios.get(`http://localhost:${target}/account/${account1.address}`)
+  const accountData1 = result.data.account
   const txs = accountData1.data.transactions
   expect(txs.length).toBe(1)
 
@@ -221,21 +223,24 @@ test('Recover stopped network without losing old data', async () => {
   console.log(utils.infoGreen('TEST: Recover stopped network without losing old data'))
 
   execa.commandSync('shardus-network start', { stdio: [0, 1, 2] })
-  await utils.waitForNetworkToBeActive(START_NETWORK_SIZE)
-  let isDataRecovered = true
-  for (let i = 0; i < Math.min(accounts.length, 10); i++) {
-    let account = accounts[i]
-    let recoveredAccount = await utils.queryAccountById(account.id)
-    if (!recoveredAccount) {
-      console.log(`Account: ${account.id} is not found in recovered network`)
-      isDataRecovered = false
-      break
+  let isDataRecovered = await utils.waitForNetworkToBeActive(START_NETWORK_SIZE)
+  if (isDataRecovered) {
+    for (let i = 0; i < Math.min(accounts.length, 10); i++) {
+      let account = accounts[i]
+      let recoveredAccount = await utils.queryAccountById(account.id)
+      if (!recoveredAccount) {
+        console.log(`Account: ${account.id} is not found in recovered network`)
+        isDataRecovered = false
+        break
+      }
     }
   }
   expect(isDataRecovered).toBe(true)
 })
 
 test('Cleans a network successfully', async () => {
+  execa.commandSync('shardus-network stop', { stdio: [0, 1, 2] })
+  await utils._sleep(3000)
   execa.commandSync('shardus-network clean', { stdio: [0, 1, 2] })
   await utils._sleep(2000)
   execa.commandSync('rm -rf instances')

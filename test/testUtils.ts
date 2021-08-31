@@ -29,7 +29,9 @@ export async function injectTx(tx, account, sign: boolean = true) {
     crypto.signObj(tx as any, account.keys.secretKey, account.keys.publicKey)
   }
   try {
-    const res = await axios.post(`http://${HOST}/inject`, tx)
+    const seedNodes = await getSeedNodes();
+    const target = seedNodes[Math.floor(Math.random() * seedNodes.length)].port
+    const res = await axios.post(`http://localhost:${target}/inject`, tx)
     console.log(warning(`"${tx.type}" transaction submitted ...`))
     console.log(success(`response: ${JSON.stringify(res.data)}`))
     expect(res.data.result.success).toBe(true)
@@ -125,9 +127,11 @@ export async function queryArchivedCycles(ip, port, count) {
 
 export async function waitForNetworkParameters() {
   let ready = false
+  await _sleep(60000) // wait for 1 minute
   while (!ready) {
     try {
       ready = (await queryParameters()).current !== undefined
+      if (!ready) await _sleep(5000) // wait for 5 seconds
     } catch {
       await _sleep(1000)
     }
@@ -137,6 +141,8 @@ export async function waitForNetworkParameters() {
 
 export async function waitForNetworkToBeActive(numberOfExpectedNodes) {
   let ready = false
+  await _sleep(60000) // wait for 1 minute
+  let attempt = 0
   while (!ready) {
     try {
       let activeNodes = await queryActiveNodes()
@@ -147,8 +153,12 @@ export async function waitForNetworkToBeActive(numberOfExpectedNodes) {
       console.log(e)
     }
     if (!ready) await _sleep(5000)
+    if(attempt === numberOfExpectedNodes){
+      break
+    }
+    attempt++
   }
-  return true
+  return ready
 }
 
 export async function waitForArchiverToJoin(ip, port) {
@@ -397,4 +407,13 @@ export function isIncreasingSequence(numbers) {
 
 export function isDecreasingSequence(numbers) {
   return numbers.every((number, i) => i === 0 || numbers[i - 1] - 1 === number)
+}
+
+export async function getSeedNodes() {
+  const result = await axios.get(`http://${ARCHIVER_HOST}/nodelist`)
+  let seedNodes = []
+  const nodelist = result.data.nodeList
+  if (nodelist !== null) seedNodes = nodelist
+  else console.log('No nodes list found')
+  return seedNodes
 }

@@ -13,7 +13,6 @@ const HOST = 'localhost:9001'
 const walletFile = resolve('./wallet.json')
 let walletEntries = {}
 
-const network = '0'.repeat(64)
 let networkParams: any
 
 const wallet1 = 'testWallet1'
@@ -117,7 +116,6 @@ export const transactionsTest = () =>
       await utils.injectTx(
         {
           type: 'proposal',
-          network,
           from: account1.address,
           proposal: crypto.hash(`issue-${1}-proposal-${2}`),
           issue: crypto.hash(`issue-${1}`),
@@ -162,7 +160,6 @@ export const transactionsTest = () =>
       await utils.injectTx(
         {
           type: 'proposal',
-          network,
           from: account2.address,
           proposal: crypto.hash(`issue-${1}-proposal-${3}`),
           issue: crypto.hash(`issue-${1}`),
@@ -209,7 +206,6 @@ export const transactionsTest = () =>
       utils.injectTx(
         {
           type: 'dev_proposal',
-          network,
           from: account1.address,
           devIssue: crypto.hash(`dev-issue-${1}`),
           devProposal: crypto.hash(`dev-issue-${1}-dev-proposal-${1}`),
@@ -249,7 +245,6 @@ export const transactionsTest = () =>
       utils.injectTx(
         {
           type: 'dev_proposal',
-          network,
           from: account2.address,
           devIssue: crypto.hash(`dev-issue-${1}`),
           devProposal: crypto.hash(`dev-issue-${1}-dev-proposal-${2}`),
@@ -296,7 +291,6 @@ export const transactionsTest = () =>
       await utils.injectTx(
         {
           type: 'transfer',
-          network,
           from: account1.address,
           to: account2.address,
           amount: 50,
@@ -314,7 +308,6 @@ export const transactionsTest = () =>
       await utils.injectTx(
         {
           type: 'transfer',
-          network,
           from: account2.address,
           to: account1.address,
           amount: 50,
@@ -334,7 +327,6 @@ export const transactionsTest = () =>
       await utils.injectTx(
         {
           type: 'toll',
-          network,
           from: account1.address,
           toll: 25,
           timestamp: Date.now(),
@@ -358,7 +350,6 @@ export const transactionsTest = () =>
       await utils.injectTx(
         {
           type: 'message',
-          network,
           from: account2.address,
           to: account1.address,
           chatId: crypto.hash([account2.address, account1.address].sort((a, b) => a - b).join('')),
@@ -379,7 +370,6 @@ export const transactionsTest = () =>
       await utils.injectTx(
         {
           type: 'friend',
-          network,
           alias: wallet2,
           from: account1.address,
           to: account2.address,
@@ -402,7 +392,6 @@ export const transactionsTest = () =>
       await utils.injectTx(
         {
           type: 'message',
-          network,
           from: account2.address,
           to: account1.address,
           chatId: crypto.hash([account2.address, account1.address].sort((a, b) => a - b).join('')),
@@ -424,7 +413,6 @@ export const transactionsTest = () =>
       await utils.injectTx(
         {
           type: 'remove_friend',
-          network,
           from: account1.address,
           to: account2.address,
           timestamp: Date.now(),
@@ -443,7 +431,6 @@ export const transactionsTest = () =>
       await utils.injectTx(
         {
           type: 'message',
-          network,
           from: account2.address,
           to: account1.address,
           chatId: crypto.hash([account2.address, account1.address].sort((a, b) => a - b).join('')),
@@ -467,7 +454,6 @@ export const transactionsTest = () =>
       await utils.injectTx(
         {
           type: 'stake',
-          network,
           from: account1.address,
           stake: networkParams.current.stakeRequired,
           timestamp: Date.now(),
@@ -503,7 +489,6 @@ export const transactionsTest = () =>
       await utils.injectTx(
         {
           type: 'vote',
-          network,
           from: account1.address,
           issue: crypto.hash(`issue-${1}`),
           proposal: crypto.hash(`issue-${1}-proposal-${2}`),
@@ -523,7 +508,6 @@ export const transactionsTest = () =>
       await utils.injectTx(
         {
           type: 'dev_vote',
-          network,
           from: account1.address,
           devIssue: crypto.hash(`dev-issue-${1}`),
           devProposal: crypto.hash(`dev-issue-${1}-dev-proposal-${1}`),
