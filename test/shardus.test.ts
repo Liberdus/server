@@ -120,7 +120,7 @@ test('New archivers sync archived data successfully', async () => {
     // TODO: need to neglect "count" field from archivedCycle['summary']['partitionBlobs']
     let isSame = JSON.stringify(data1) === JSON.stringify(data2)
     if (!isSame) {
-      hasSameData = false
+      hasSameData = utils.deepObjCheck(data1, data2, 'counter') // deep object checking where it neglects 'counter' field
       break
     }
   }

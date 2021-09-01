@@ -152,10 +152,8 @@ export async function waitForNetworkToBeActive(numberOfExpectedNodes) {
     } catch(e) {
       console.log(e)
     }
-    if (!ready) await _sleep(5000)
-    if(attempt === numberOfExpectedNodes){
-      break
-    }
+    if (!ready) await _sleep(10000)
+    if (attempt === numberOfExpectedNodes * 3)  break  // 3 attempts is in one cycle, total cycle is number of Nodes
     attempt++
   }
   return ready
@@ -416,4 +414,118 @@ export async function getSeedNodes() {
   if (nodelist !== null) seedNodes = nodelist
   else console.log('No nodes list found')
   return seedNodes
+}
+
+// Check if two objects are equal; comparing to the deep down
+export function deepObjCheck(obj1, obj2, keyToSkip = null) {
+  // Make sure an object to compare is provided
+  if (!obj2 || Object.prototype.toString.call(obj2) !== '[object Object]') {
+    return false
+  }
+
+  //  Check if two arrays are equal
+  var arraysMatch = function(arr1, arr2) {
+    // Check if the arrays are the same length
+    if (arr1.length !== arr2.length) {
+      return false
+    }
+
+    // Check if all items exist and are in the same order
+    for (var i = 0; i < arr1.length; i++) {
+      if (typeof arr1[i] === 'object' && typeof arr2[i] === 'object') shallowEqual(arr1[i], arr2[i])
+      else if (arr1[i] !== arr2[i]) return false
+    }
+
+    // Otherwise, return true
+    return true
+  }
+
+  //  Check if two objects are equal
+  var shallowEqual = function(object1, object2) {
+    const keys1 = Object.keys(object1)
+    const keys2 = Object.keys(object2)
+    if (keys1.length !== keys2.length) {
+      return false
+    }
+    for (let key of keys1) {
+      if (object1[key] !== object2[key]) {
+        return false
+      }
+    }
+    return true
+  }
+
+  //  Compare two items
+  var compare = function(item1, item2) {
+    // Get the object type
+    var type1 = Object.prototype.toString.call(item1)
+    var type2 = Object.prototype.toString.call(item2)
+
+    // If type2 is undefined it has been removed
+    if (type2 === '[object Undefined]') {
+      return false
+    }
+
+    // If items are different types
+    if (type1 !== type2) {
+      return false
+    }
+
+    // If an object, compare recursively
+    if (type1 === '[object Object]') {
+      var objDiff = deepObjCheck(item1, item2)
+      if (!objDiff) {
+        return false
+      }
+      return true
+    }
+
+    // If an array, compare
+    if (type1 === '[object Array]') {
+      if (!arraysMatch(item1, item2)) {
+        return false
+      }
+      return true
+    }
+
+    // Else if it's a function, convert to a string and compare
+    // Otherwise, just compare
+    if (type1 === '[object Function]') {
+      if (item1.toString() !== item2.toString()) {
+        return false
+      }
+    } else {
+      if (item1 !== item2) {
+        return false
+      }
+    }
+
+    return true
+  }
+
+  let status = true
+  let key
+
+  // Loop through the first object
+  for (key in obj1) {
+    if (obj1.hasOwnProperty(key)) {
+      if (keyToSkip && key !== keyToSkip) {
+        status = compare(obj1[key], obj2[key])
+      }
+      if (!status) {
+        return status
+      }
+    }
+  }
+
+  // Loop through the second object and find missing items
+  for (key in obj2) {
+    if (obj2.hasOwnProperty(key)) {
+      if (!obj1[key] && obj1[key] !== obj2[key]) {
+        return false
+      }
+    }
+  }
+
+  return status
 }
