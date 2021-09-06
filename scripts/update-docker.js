@@ -1,5 +1,5 @@
 const execa = require('execa')
-const { readFileSync } = require('fs')
+const { readFileSync, existsSync } = require('fs')
 const { join, parse } = require('path')
 
 // Set the resulting docker image's tag and Dockerfile based on passed arg
@@ -11,19 +11,12 @@ if (!tag) {
   process.exit(1)
 }
 
-let dockerfile
+const dockerfile = `./${tag}.Dockerfile`
 
-switch (tag) {
-  case 'latest':
-    dockerfile = './Dockerfile'
-    break
-  case 'dev':
-    dockerfile = './dev.Dockerfile'
-    break
-  default:
-    console.error('Error: Given an unknown tag')
-    console.error()
-    process.exit(1)
+if (existsSync(dockerfile) === false) {
+  console.error('Error: Given an unknown tag')
+  console.error()
+  process.exit(1)
 }
 
 // Don't package the shardus-global-server src into the docker image
