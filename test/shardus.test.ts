@@ -32,7 +32,6 @@ test('Start a new network successfully', async () => {
     execa.commandSync(`shardus-network create --no-log-rotation  ${START_NETWORK_SIZE * 2}`) // start 2 times of minNode
     const isNetworkActive = await utils.waitForNetworkToBeActive(START_NETWORK_SIZE)
     expect(isNetworkActive).toBe(true)
-    // await utils._sleep(90000) // wait 3 cycles
   }
 })
 
@@ -64,7 +63,7 @@ test('Process txs at the rate of 5 txs per node/per second for 1 min', async () 
 
 test('Auto scale up the network successfully', async () => {
   console.log(utils.infoGreen('TEST: Auto scale up the network successfully'))
-  let spamCommand = `spammer spam -t create -d 100 -r ${START_NETWORK_SIZE * 6} -a ${START_NETWORK_SIZE * 60} -m http://localhost:3000/api/report`
+  let spamCommand = `spammer spam -t create -d 3600 -r ${START_NETWORK_SIZE * 6} -a ${START_NETWORK_SIZE * 60} -q 10 -m http://localhost:3000/api/report`
   let spamProcess = execa.command(spamCommand)
   let isLoadIncreased = await utils.waitForNetworkLoad('high', 0.2)
 
@@ -109,7 +108,7 @@ test('Start new archivers successfully', async () => {
 
 test('New archivers sync archived data successfully', async () => {
   console.log(utils.infoGreen('TEST: New archivers sync archived data successfully'))
-  await utils._sleep(10000) // needs to wait while new archiver is syncing data
+  await utils._sleep(60000) // needs to wait while new archiver is syncing data
 
   const dataFromArchiver_1 = await utils.queryArchivedCycles('localhost', 4000, 10)
   const dataFromArchiver_2 = await utils.queryArchivedCycles('localhost', 4001, 10)
