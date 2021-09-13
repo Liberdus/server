@@ -28,4 +28,4 @@ COPY node_modules/shardus-global-server node_modules/shardus-global-server
 RUN npm run compile
 
 # Start a local network of 10 nodes
-CMD [ "sh", "-c", "npx shardus-network create --auto-ip --existing-archivers \"$server_p2p_existingArchivers\" --monitor-url \"$server_reporting_recipient\" 10" ]
+CMD [ "sh", "-c", "npx shardus-network create --auto-ip --existing-archivers \"$server_p2p_existingArchivers\" --monitor-url \"$server_reporting_recipient\" 10 && sleep infinity" ]
