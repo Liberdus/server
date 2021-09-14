@@ -93,10 +93,10 @@ export const initConfigFromFile = () => {
     cycleDuration: cycleDuration,
     existingArchivers,
     minNodesToAllowTxs: 1,
-    minNodes: 20,
-    maxNodes: 200,
+    minNodes: 1000,
+    maxNodes: 1000,
     maxJoinedPerCycle: 4,
-    maxSyncingPerCycle: 16,
+    maxSyncingPerCycle: 8,
     maxRotatedPerCycle: 0,
     amountToGrow: 10,
     amountToShrink: 2
