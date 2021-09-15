@@ -96,7 +96,7 @@ export const initConfigFromFile = () => {
     minNodes: 1000,
     maxNodes: 1000,
     maxJoinedPerCycle: 4,
-    maxSyncingPerCycle: 8,
+    maxSyncingPerCycle: 16,
     maxRotatedPerCycle: 0,
     amountToGrow: 10,
     amountToShrink: 2
