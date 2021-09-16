@@ -41,7 +41,7 @@ export const TIME_FOR_DEV_APPLY = ONE_MINUTE + ONE_SECOND * 30
 // export const TIME_FOR_DEV_APPLY = 2 * ONE_DAY
 
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
-export const cycleDuration = 30
+export const cycleDuration = 60
 
 // INITIAL NETWORK PARAMETERS FOR LIBERDUS
 export const INITIAL_PARAMETERS: NetworkParameters = {
