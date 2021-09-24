@@ -63,11 +63,11 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
 export const initConfigFromFile = () => {
   let config: any = {}
   let baseDir = process.env.BASE_DIR || '.'
-    // set by shardus-network tool when creating multiple instances
-    if (fs.existsSync(path.join(baseDir, 'config.json'))) {
-      config = JSON.parse(fs.readFileSync(path.join(baseDir, 'config.json')).toString())
-    }
-    if(process.env.BASE_DIR) Prop.set(config, 'server.baseDir', process.env.BASE_DIR)
+  // set by shardus-network tool when creating multiple instances
+  if (fs.existsSync(path.join(baseDir, 'config.json'))) {
+    config = JSON.parse(fs.readFileSync(path.join(baseDir, 'config.json')).toString())
+  }
+  if (process.env.BASE_DIR) Prop.set(config, 'server.baseDir', process.env.BASE_DIR)
 
   if (process.env.APP_IP) {
     // used by deploy-to-aws script to tell the node its IP addr
@@ -77,17 +77,21 @@ export const initConfigFromFile = () => {
     })
   }
 
-  // CONFIGURATION PARAMETERS PASSED INTO SHARDUS
+  // OVERRIDES FOR CONFIGURATION PARAMETERS PASSED INTO SHARDUS
+
+  const existingArchivers = Prop.has(config, 'server.p2p.existingArchivers')
+    ? config.server.p2p.existingArchivers
+    : [
+        {
+          ip: '127.0.0.1',
+          port: 4000,
+          publicKey: '758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3',
+        },
+      ]
+
   Prop.set(config, 'server.p2p', {
     cycleDuration: cycleDuration,
-    existingArchivers: [
-      // used by deploy-to-aws script to tell node Archiver IP
-      {
-        ip: '127.0.0.1',
-        port: 4000,
-        publicKey: '758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3',
-      },
-    ],
+    existingArchivers,
     minNodesToAllowTxs: 1,
     minNodes: 20,
     maxNodes: 200,
@@ -97,6 +101,7 @@ export const initConfigFromFile = () => {
     amountToGrow: 10,
     amountToShrink: 2
   })
+
   Prop.set(config, 'server.loadDetection', {
     queueLimit: 1000,
     desiredTxTime: 15,
@@ -114,8 +119,8 @@ export const initConfigFromFile = () => {
       internal: 0.8,
       external: 0.8,
       txTimeInQueue: 0.7,
-      queueLength: 0.8
-    }
+      queueLength: 0.8,
+    },
   })
   Prop.set(config, 'server.sharding', {
     nodesPerConsensusGroup: 5,
@@ -125,7 +130,7 @@ export const initConfigFromFile = () => {
     startInFatalsLogMode: true, //true setting good for big aws test with nodes joining under stress.
     fakeNetworkDelay:0
   })
-  
+
   Prop.set(config, 'logs', {
     dir: './logs',
     files: { main: '', fatal: '', net: '', app: '' },
@@ -194,7 +199,7 @@ export const initConfigFromFile = () => {
 }
 
 function replaceAll(str, find, replace) {
-  return str.replace(new RegExp(find, 'g'), replace);
+  return str.replace(new RegExp(find, 'g'), replace)
 }
 
 function createJointKey(keys) {
@@ -231,7 +236,7 @@ function setPropertyToJointKey(obj, jointKey, value) {
 }
 
 function overwriteFromEnvOrArgs(jointKey, overwriteInfo) {
-  let {config, env, args} = overwriteInfo
+  let { config, env, args } = overwriteInfo
   // Override config from ENV variable
   overwriteConfig(jointKey, config, env)
   const parsedArgs = minimist(args.slice(2))
@@ -253,11 +258,11 @@ function overwriteConfig(jointKey, config, overWriteObj) {
       case 'object': {
         try {
           var parameterStr = overWriteObj[jointKey]
-          if(parameterStr) {
+          if (parameterStr) {
             let parameterObj = JSON.parse(parameterStr)
             setPropertyToJointKey(config, jointKey, parameterObj)
           }
-        } catch(e) {
+        } catch (e) {
           console.log(e)
           console.log('Unable to JSON parse', overWriteObj[jointKey])
         }
@@ -273,19 +278,15 @@ function overwriteConfig(jointKey, config, overWriteObj) {
   }
 }
 
-export function overrideDefaultConfig(
-  defaultConfig,
-  env: NodeJS.ProcessEnv,
-  args: string[]
-) {
+export function overrideDefaultConfig(defaultConfig, env: NodeJS.ProcessEnv, args: string[]) {
   let config = JSON.parse(JSON.stringify(defaultConfig))
-  let overwriteInfo = {config, env, args}
+  let overwriteInfo = { config, env, args }
   for (const key1 in config) {
     if (typeof config[key1] === 'object' && Object.keys(config[key1]).length > 0) {
       for (const key2 in config[key1]) {
         if (typeof config[key1][key2] === 'object' && Object.keys(config[key1][key2]).length > 0) {
           for (const key3 in config[key1][key2]) {
-            overwriteFromEnvOrArgs(createJointKey([key1, key2, key3]),overwriteInfo)
+            overwriteFromEnvOrArgs(createJointKey([key1, key2, key3]), overwriteInfo)
           }
         } else {
           overwriteFromEnvOrArgs(createJointKey([key1, key2]), overwriteInfo)
