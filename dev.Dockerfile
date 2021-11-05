@@ -8,7 +8,7 @@
 # Useful for development, but don't ship it. Use 'Dockerfile' instead.
 
 # Node.js LTS 12.x.x from Docker Hub
-FROM node:12
+FROM node:16
 
 # Create app directory
 WORKDIR /usr/src/app
