@@ -65,6 +65,7 @@
     "jest": "^26.6.3",
     "liberdus-web-client": "git+https://gitlab.com/liberdus/web-client/liberdus-web-client.git#node-v16",
     "monitor-server": "git+https://gitlab.com/shardus/monitor-server.git#semver:^2.0.0",
+    "shardus-net": "git+https://gitlab.com/shardus/shardus-net.git#rust-impl",
     "pm2": "^4.1.2",
     "prettier": "^1.19.1",
     "shardus": "^4.2.0",
