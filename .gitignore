@@ -11,3 +11,4 @@ statistics.tsv
 .vscode/
 instances*/
 spam-test.json
+.dockersecret

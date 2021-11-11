@@ -7,3 +7,4 @@ wallet.json
 dist/
 notes/
 statistics.tsv
+.dockersecret

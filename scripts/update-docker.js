@@ -19,6 +19,7 @@ if (existsSync(dockerfile) === false) {
   process.exit(1)
 }
 
+/*
 // Don't package the shardus-global-server src into the docker image
 const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json')))
 if (packageJson.dependencies['shardus-global-server']) {
@@ -61,18 +62,21 @@ if (distPackageJson.name !== 'shardus-global-server-dist') {
   console.error()
   process.exit(1)
 }
+*/
 
 // Build the docker image and push it to the gitlab registry
+const dockerBuildCmd = `DOCKER_BUILDKIT=1 docker build --secret id=mysecret,src=.dockersecret -t registry.gitlab.com/liberdus/server:${tag} -f ${dockerfile} .`
 try {
-  execa.commandSync(`docker build -t registry.gitlab.com/liberdus/server:${tag} -f ${dockerfile} .`, { stdio: [0, 1, 2] })
+  execa.commandSync(dockerBuildCmd, { stdio: [0, 1, 2] })
 } catch (err) {
-  execa.commandSync(`sudo docker build -t registry.gitlab.com/liberdus/server:${tag} -f ${dockerfile} .`, { stdio: [0, 1, 2] })
+  execa.commandSync('sudo ' + dockerBuildCmd, { stdio: [0, 1, 2] })
 }
 
 execa.commandSync(`docker login registry.gitlab.com`, { stdio: [0, 1, 2] })
 
+const dockerPushCmd = `docker push registry.gitlab.com/liberdus/server:${tag}`
 try {
-  execa.commandSync(`docker push registry.gitlab.com/liberdus/server:${tag}`, { stdio: [0, 1, 2] })
+  execa.commandSync(dockerPushCmd, { stdio: [0, 1, 2] })
 } catch (err) {
-  execa.commandSync(`sudo docker push registry.gitlab.com/liberdus/server:${tag}`, { stdio: [0, 1, 2] })
+  execa.commandSync('sudo ' + dockerPushCmd, { stdio: [0, 1, 2] })
 }
