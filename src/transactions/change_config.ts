@@ -8,6 +8,11 @@ export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.Inco
     response.reason = 'tx "from" field must be a string'
     throw new Error(response.reason)
   }
+  if (typeof tx.cycle !== 'number') {
+    response.success = false
+    response.reason = 'tx "cycle" field must be a number'
+    throw new Error(response.reason)
+  }
   if (typeof tx.config !== 'string') {
     response.success = false
     response.reason = 'tx "config" field must be a string'
@@ -28,6 +33,7 @@ export const validate = (tx: Tx.ChangeConfig, wrappedStates: WrappedStates, resp
     dapp.log(parsed)
     console.log(parsed)
   } catch (err) {
+    dapp.log(err.message)
     response.reason = err.message
   }
   response.success = true
@@ -38,13 +44,22 @@ export const validate = (tx: Tx.ChangeConfig, wrappedStates: WrappedStates, resp
 export const apply = (tx: Tx.ChangeConfig, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: ShardusTypes.ApplyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
+  let changeOnCycle
+  let cycleData: ShardusTypes.Cycle
+
+  if (tx.cycle === -1) {
+    ;[cycleData] = dapp.getLatestCycles()
+    changeOnCycle = cycleData.counter + 3
+  } else {
+    changeOnCycle = tx.cycle
+  }
 
   const when = tx.timestamp + config.ONE_SECOND * 10
   let value = {
     type: 'apply_change_config',
     timestamp: when,
     network: config.networkAccount,
-    change: { cycle: 3, change: JSON.parse(tx.config) },
+    change: { cycle: changeOnCycle, change: JSON.parse(tx.config) },
   }
 
   applyResponse.appDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }

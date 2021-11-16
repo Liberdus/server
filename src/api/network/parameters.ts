@@ -16,6 +16,7 @@ export const current = dapp => async (req, res): Promise<void> => {
         nextDevWindows: network.nextDevWindows,
         issue: network.issue,
         devIssue: network.devIssue,
+        listOfChanges: network.listOfChanges,
       },
     })
   } catch (error) {

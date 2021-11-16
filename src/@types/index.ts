@@ -139,6 +139,7 @@ declare namespace Tx {
   interface ChangeConfig {
     type: string
     from: string
+    cycle: number
     config: string
     timestamp: number
   }
