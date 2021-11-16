@@ -601,7 +601,7 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
       type: 'change_config',
       from: USER.address,
       cycle: answers.cycle,
-      config: JSON.stringify(testConfig),
+      config: answers.config,
       timestamp: Date.now(),
     }
     crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
