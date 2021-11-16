@@ -610,7 +610,7 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
       callback()
     })
   } catch (err) {
-    this.log(err.message)
+    this.log(err.message, 'Using backup Json config file instead of the input that was given')
     const tx = {
       type: 'change_config',
       from: USER.address,
