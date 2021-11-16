@@ -522,6 +522,25 @@ vorpal.command('snapshot', 'submits the snapshot the ULT contract').action(funct
   })
 })
 
+vorpal.command('change config', 'Send a stringified JSON config object to be updated by shardus').action(async function(args, callback) {
+  const answer = await this.prompt({
+    type: 'input',
+    name: 'config',
+    message: 'Paste the stringified config: ',
+  })
+  const tx = {
+    type: 'change_config',
+    from: USER.address,
+    config: answer.config,
+    timestamp: Date.now(),
+  }
+  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  injectTx(tx).then(res => {
+    this.log(res)
+    callback()
+  })
+})
+
 vorpal.command('email', 'registers your email address to the network').action(async function(_, callback) {
   const answer = await this.prompt({
     type: 'input',

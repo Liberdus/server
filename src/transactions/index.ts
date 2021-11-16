@@ -32,6 +32,8 @@ import * as dev_parameters from './dev_parameters'
 import * as apply_dev_parameters from './apply_dev_parameters'
 import * as developer_payment from './developer_payment'
 import * as apply_developer_payment from './apply_developer_payment'
+import * as change_config from './change_config'
+import * as apply_change_config from './apply_change_config'
 
 export default {
   init_network,
@@ -68,4 +70,6 @@ export default {
   apply_dev_parameters,
   developer_payment,
   apply_developer_payment,
+  change_config,
+  apply_change_config,
 }

@@ -136,6 +136,19 @@ declare namespace Tx {
     timestamp: number
   }
 
+  interface ChangeConfig {
+    type: string
+    from: string
+    config: string
+    timestamp: number
+  }
+
+  interface ApplyChangeConfig {
+    type: string
+    change: any
+    timestamp: number
+  }
+
   interface DevParameters {
     type: string
     nodeId: string
@@ -359,6 +372,10 @@ interface AliasAccount {
 interface NetworkAccount {
   id: string
   type: string
+  listOfChanges: Array<{
+    cycle: number
+    change: any
+  }>
   current: NetworkParameters
   next: NetworkParameters | {}
   windows: Windows
