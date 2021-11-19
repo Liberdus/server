@@ -94,7 +94,7 @@ export const initConfigFromFile = () => {
     existingArchivers,
     minNodesToAllowTxs: 1,
     minNodes: 2000,
-    maxNodes: 2000,
+    maxNodes: 10000,
     maxJoinedPerCycle: 6,
     maxSyncingPerCycle: 12,
     maxRotatedPerCycle: 0,
@@ -130,9 +130,11 @@ export const initConfigFromFile = () => {
   Prop.set(config, 'server.mode', 'debug')
   
   Prop.set(config, 'server.debug', {
-    startInFatalsLogMode: false, //true setting good for big aws test with nodes joining under stress.
+    startInFatalsLogMode: true, //true setting good for big aws test with nodes joining under stress.
+    startInErrorLogMode: false,
     fakeNetworkDelay:0,
     disableSnapshots: true,
+    countEndpointStart: -1
   })
 
   Prop.set(config, 'logs', {
