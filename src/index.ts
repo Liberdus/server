@@ -48,7 +48,13 @@ dapp.setup({
 
       const nodeId = dapp.getNodeId()
       const address = dapp.getNode(nodeId).address
-      const when = Date.now() + configs.ONE_SECOND * 10
+      /**
+       * [NOTE] [AS] Not sure why we're adding 10 secs to the timestamp but it
+       * caused the network to not form up when the tx processing pipeline was
+       * fixed to check timestamps properly
+       */
+      // const when = Date.now() + configs.ONE_SECOND * 10
+      const when = Date.now()
       const existingNetworkAccount = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
       if (existingNetworkAccount) {
         dapp.log('NETWORK_ACCOUNT ALREADY EXISTED: ', existingNetworkAccount)
