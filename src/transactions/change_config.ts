@@ -62,7 +62,7 @@ export const apply = (tx: Tx.ChangeConfig, txId: string, wrappedStates: WrappedS
     change: { cycle: changeOnCycle, change: JSON.parse(tx.config) },
   }
 
-  applyResponse.appDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
+  applyResponse.appDefinedData['globalMsg'] = { address: config.networkAccount, value, when, source: config.networkAccount }
 
   from.timestamp = tx.timestamp
   dapp.log('Applied change_config tx')

@@ -50,7 +50,7 @@ export const apply = (tx: Tx.Parameters, txId: string, wrappedStates: WrappedSta
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const issue: IssueAccount = wrappedStates[tx.issue].data
-  
+
   const when = tx.timestamp + config.ONE_SECOND * 10
   let value = {
     type: 'apply_parameters',
@@ -63,7 +63,7 @@ export const apply = (tx: Tx.Parameters, txId: string, wrappedStates: WrappedSta
     issue: network.issue + 1,
   }
 
-  applyResponse.appDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
+  applyResponse.appDefinedData['globalMsg'] = { address: config.networkAccount, value, when, source: config.networkAccount }
 
   issue.active = false
 

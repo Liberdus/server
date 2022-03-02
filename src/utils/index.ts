@@ -37,7 +37,7 @@ export function nodeReward(address: string, nodeId: string, dapp: Shardus): void
 // ISSUE TRANSACTION FUNCTION
 export async function generateIssue(address: string, nodeId: string, dapp: Shardus): Promise<void> {
   const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-  const network: NetworkAccount = account.data
+  const network = account.data as NetworkAccount
   const tx = {
     type: 'issue',
     nodeId,
@@ -53,7 +53,7 @@ export async function generateIssue(address: string, nodeId: string, dapp: Shard
 // DEV_ISSUE TRANSACTION FUNCTION
 export async function generateDevIssue(address: string, nodeId: string, dapp: Shardus): Promise<void> {
   const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-  const network: NetworkAccount = account.data
+  const network = account.data as NetworkAccount
   const tx = {
     type: 'dev_issue',
     nodeId,
@@ -70,12 +70,13 @@ export async function tallyVotes(address: string, nodeId: string, dapp: Shardus)
   console.log(`GOT TO TALLY_VOTES FN ${address} ${nodeId}`)
   try {
     const network = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${network.data.issue}`))
+    const networkAccount = network.data as NetworkAccount
+    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${networkAccount.issue}`))
     if (!account) {
       await _sleep(500)
       return tallyVotes(address, nodeId, dapp)
     }
-    const issue: IssueAccount = account.data
+    const issue = account.data as IssueAccount
     const tx = {
       type: 'tally',
       nodeId,
@@ -97,12 +98,13 @@ export async function tallyVotes(address: string, nodeId: string, dapp: Shardus)
 export async function tallyDevVotes(address: string, nodeId: string, dapp: Shardus): Promise<void> {
   try {
     const network = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${network.data.devIssue}`))
+    const networkAccount = network.data as NetworkAccount
+    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${networkAccount.devIssue}`))
     if (!account) {
       await _sleep(500)
       return tallyDevVotes(address, nodeId, dapp)
     }
-    const devIssue: DevIssueAccount = account.data
+    const devIssue = account.data as DevIssueAccount
     const tx = {
       type: 'dev_tally',
       nodeId,
@@ -123,7 +125,7 @@ export async function tallyDevVotes(address: string, nodeId: string, dapp: Shard
 // APPLY_PARAMETERS TRANSACTION FUNCTION
 export async function applyParameters(address: string, nodeId: string, dapp: Shardus): Promise<void> {
   const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-  const network: NetworkAccount = account.data
+  const network = account.data as NetworkAccount
   const tx = {
     type: 'parameters',
     nodeId,
@@ -138,7 +140,7 @@ export async function applyParameters(address: string, nodeId: string, dapp: Sha
 // APPLY_DEV_PARAMETERS TRANSACTION FUNCTION
 export async function applyDevParameters(address: string, nodeId: string, dapp: Shardus): Promise<void> {
   const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-  const network: NetworkAccount = account.data
+  const network = account.data as NetworkAccount
   const tx = {
     type: 'dev_parameters',
     nodeId,

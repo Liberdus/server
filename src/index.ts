@@ -110,12 +110,11 @@ dapp.setup({
     return transactions[tx.type].validate(tx, wrappedStates, response, dapp)
   },
   // THIS NEEDS TO BE FAST, BUT PROVIDES BETTER RESPONSE IF SOMETHING GOES WRONG
-  validateTxnFields(tx: any): ShardusTypes.IncomingTransactionResult {
+  validate(tx: any): ShardusTypes.IncomingTransactionResult {
     // Validate tx fields here
     const response: ShardusTypes.IncomingTransactionResult = {
       success: true,
       reason: 'This transaction is valid!',
-      txnTimestamp: tx.timestamp,
     }
 
     if (typeof tx.type !== 'string') {
@@ -131,6 +130,21 @@ dapp.setup({
     }
 
     return transactions[tx.type].validate_fields(tx, response)
+  },
+  crack(tx: any): KeyResult {
+    const result = {
+      sourceKeys: [],
+      targetKeys: [],
+      allKeys: [],
+      timestamp: tx.timestamp
+    } as TransactionKeys
+    const keys = transactions[tx.type].keys(tx, result)
+    const keyResult = {
+      id: crypto.hashObj(tx),
+      timestamp: tx.timestamp,
+      keys
+    }
+    return keyResult
   },
   apply(tx: any, wrappedStates: { [id: string]: WrappedAccount }) {
     const { success, reason } = this.validateTransaction(tx, wrappedStates)
@@ -161,16 +175,6 @@ dapp.setup({
     }
     if(transactions[tx.type].transactionReceiptPass) transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
 
-  },
-  getKeyFromTransaction(tx: any): ShardusTypes.TransactionKeys {
-    const result: TransactionKeys = {
-      sourceKeys: [],
-      targetKeys: [],
-      allKeys: [],
-      timestamp: tx.timestamp,
-    }
-
-    return transactions[tx.type].keys(tx, result)
   },
   getStateId(accountAddress: string, mustExist = true): string {
     const account = accounts[accountAddress]
@@ -214,7 +218,7 @@ dapp.setup({
   updateAccountFull(wrappedData, localCache, applyResponse): void {
     const accountId = wrappedData.accountId
     const accountCreated = wrappedData.accountCreated
-    const updatedAccount = wrappedData.data
+    const updatedAccount = wrappedData.data as Accounts
     // Update hash
     const hashBefore = updatedAccount.hash
     updatedAccount.hash = '' // DON'T THINK THIS IS NECESSARY
@@ -317,7 +321,7 @@ dapp.setup({
     results.sort((a, b) => parseInt(a.accountId, 16) - parseInt(b.accountId, 16))
     return results
   },
-  calculateAccountHash(account): string {
+  calculateAccountHash(account: any): string {
     account.hash = '' // Not sure this is really necessary
     account.hash = crypto.hashObj(account)
     return account.hash
@@ -510,7 +514,7 @@ dapp.registerExceptionHandler()
 
     try {
       const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-      network = account.data
+      network = account.data as NetworkAccount
       ;[cycleData] = dapp.getLatestCycles()
       luckyNodes = dapp.getClosestNodes(cycleData.previous, 3)
       nodeId = dapp.getNodeId()

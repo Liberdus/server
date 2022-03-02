@@ -123,7 +123,7 @@ export const apply = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedState
 
   const when = tx.timestamp + config.ONE_SECOND * 10
 
-  let value =   {
+  let value = {
     type: 'apply_dev_tally',
     timestamp: when,
     network: config.networkAccount,
@@ -131,7 +131,7 @@ export const apply = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedState
     nextDevWindows,
   }
 
-  applyResponse.appDefinedData.globalMsg = {address:config.networkAccount, value, when, source: config.networkAccount}
+  applyResponse.appDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
 
   from.timestamp = tx.timestamp
   devIssue.timestamp = tx.timestamp

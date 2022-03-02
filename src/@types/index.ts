@@ -527,3 +527,16 @@ interface WrappedAccount {
 interface WrappedStates {
   [id: string]: WrappedAccount
 }
+
+type KeyResult = {
+  id: string
+  timestamp: number
+  keys: TransactionKeys
+}
+
+interface globalMsg {
+  address: string
+  value: any
+  when: number
+  source: string
+}

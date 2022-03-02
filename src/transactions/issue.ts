@@ -53,9 +53,8 @@ export const validate = (tx: Tx.Issue, wrappedStates: WrappedStates, response: S
   }
   const networkProposalHash = crypto.hash(`issue-${network.issue}-proposal-1`)
   if (tx.proposal !== networkProposalHash) {
-    response.reason = `proposalHash (${
-      tx.proposal
-    }) does not match the current default network proposal (${networkProposalHash}) --- networkAccount: ${JSON.stringify(network)}`
+    response.reason = `proposalHash (${tx.proposal
+      }) does not match the current default network proposal (${networkProposalHash}) --- networkAccount: ${JSON.stringify(network)}`
     return response
   }
   if (tx.timestamp < network.windows.proposalWindow[0] || tx.timestamp > network.windows.proposalWindow[1]) {

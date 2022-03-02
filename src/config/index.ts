@@ -200,7 +200,7 @@ export const initConfigFromFile = () => {
       },
     },
   })
-  config.username = 'test'
+  // config.username = 'test'
   return config
 }
 
