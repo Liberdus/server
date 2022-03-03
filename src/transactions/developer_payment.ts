@@ -112,7 +112,9 @@ export const apply = (tx: Tx.DevPayment, txId: string, wrappedStates: WrappedSta
     developerFund: network.developerFund.filter((payment: DeveloperPayment) => payment.id !== tx.payment.id),
   }
 
-  applyResponse.appDefinedData['globalMsg'] = { address: config.networkAccount, value, when, source: config.networkAccount }
+  let ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
+  
   developer.timestamp = tx.timestamp
   from.timestamp = tx.timestamp
   dapp.log('Applied developer_payment tx', from, developer, tx.payment)

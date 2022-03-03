@@ -131,7 +131,8 @@ export const apply = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedState
     nextDevWindows,
   }
 
-  applyResponse.appDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
+  let ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
 
   from.timestamp = tx.timestamp
   devIssue.timestamp = tx.timestamp

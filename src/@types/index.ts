@@ -534,9 +534,11 @@ type KeyResult = {
   keys: TransactionKeys
 }
 
-interface globalMsg {
-  address: string
-  value: any
-  when: number
-  source: string
+interface OurAppDefinedData {
+  globalMsg: {
+    address: string
+    value: any
+    when: number,
+    source: string
+  }
 }

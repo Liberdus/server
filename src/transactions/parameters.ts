@@ -63,7 +63,8 @@ export const apply = (tx: Tx.Parameters, txId: string, wrappedStates: WrappedSta
     issue: network.issue + 1,
   }
 
-  applyResponse.appDefinedData['globalMsg'] = { address: config.networkAccount, value, when, source: config.networkAccount }
+  let ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
 
   issue.active = false
 

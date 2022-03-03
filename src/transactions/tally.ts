@@ -127,7 +127,8 @@ export const apply = (tx: Tx.Tally, txId: string, wrappedStates: WrappedStates, 
     nextWindows,
   }
 
-  applyResponse.appDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
+  let ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
 
   issue.winnerId = winner.id
 
