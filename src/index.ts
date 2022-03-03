@@ -1,5 +1,5 @@
-import {shardusFactory, ShardusTypes} from 'shardus-global-server'
-import * as crypto from 'shardus-crypto-utils'
+import { shardusFactory, ShardusTypes } from '@shardus/core'
+import * as crypto from '@shardus/crypto-utils'
 import * as configs from './config'
 import * as utils from './utils'
 import stringify = require('fast-stable-stringify')

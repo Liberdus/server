@@ -1,4 +1,4 @@
-import * as crypto from 'shardus-crypto-utils'
+import * as crypto from '@shardus/crypto-utils'
 import * as config from '../config'
 
 export const networkAccount = (accountId: string, timestamp: number) => {

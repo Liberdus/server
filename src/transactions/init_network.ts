@@ -1,5 +1,5 @@
 import stringify from 'fast-stable-stringify'
-import { Shardus, ShardusTypes } from 'shardus-global-server'
+import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import create from '../accounts'
 

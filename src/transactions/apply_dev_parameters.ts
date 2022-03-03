@@ -1,7 +1,7 @@
 import _ from 'lodash';
-import { Shardus, ShardusTypes } from 'shardus-global-server'
+import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
-import * as crypto from 'shardus-crypto-utils'
+import * as crypto from '@shardus/crypto-utils'
 import create from '../accounts'
 
 export const validate_fields = (tx: Tx.ApplyDevParameters, response: ShardusTypes.IncomingTransactionResult) => {

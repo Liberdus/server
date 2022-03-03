@@ -1,5 +1,5 @@
-import { Shardus, ShardusTypes } from 'shardus-global-server'
-import * as crypto from 'shardus-crypto-utils'
+import { Shardus, ShardusTypes } from '@shardus/core'
+import * as crypto from '@shardus/crypto-utils'
 import * as config from '../config'
 import create from '../accounts'
 

@@ -1,6 +1,6 @@
 import execa from 'execa'
 import { resolve } from 'path'
-import * as crypto from 'shardus-crypto-utils'
+import * as crypto from '@shardus/crypto-utils'
 import fs from 'fs'
 import axios from 'axios'
 import chalkPipe from 'chalk-pipe'
@@ -103,7 +103,7 @@ export async function getAccountData(id) {
 
 // Waits until there's only 60 seconds left within a chosen window
 export async function waitForWindow(name: string) {
-console.log(info(`Waiting for ${name} window to become available`))
+  console.log(info(`Waiting for ${name} window to become available`))
   switch (name) {
     case 'proposals':
       while (!((await queryWindow()).window?.proposals < 50)) await _sleep(1000)

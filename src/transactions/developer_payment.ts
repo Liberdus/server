@@ -1,5 +1,5 @@
-import * as crypto from 'shardus-crypto-utils'
-import { Shardus, ShardusTypes } from 'shardus-global-server'
+import * as crypto from '@shardus/crypto-utils'
+import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import stringify from 'fast-stable-stringify'
 import create from '../accounts'
@@ -114,7 +114,7 @@ export const apply = (tx: Tx.DevPayment, txId: string, wrappedStates: WrappedSta
 
   let ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
   ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
-  
+
   developer.timestamp = tx.timestamp
   from.timestamp = tx.timestamp
   dapp.log('Applied developer_payment tx', from, developer, tx.payment)

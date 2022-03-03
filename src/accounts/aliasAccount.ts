@@ -1,4 +1,4 @@
-import * as crypto from 'shardus-crypto-utils'
+import * as crypto from '@shardus/crypto-utils'
 
 export const aliasAccount = (accountId: string): AliasAccount => {
   const alias: AliasAccount = {

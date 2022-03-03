@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import Prop from 'dot-prop'
-import * as crypto from 'shardus-crypto-utils'
+import * as crypto from '@shardus/crypto-utils'
 import merge from 'deepmerge'
 import minimist from 'minimist'
 import { join } from 'lodash'
@@ -82,12 +82,12 @@ export const initConfigFromFile = () => {
   const existingArchivers = Prop.has(config, 'server.p2p.existingArchivers')
     ? config.server.p2p.existingArchivers
     : [
-        {
-          ip: '127.0.0.1',
-          port: 4000,
-          publicKey: '758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3',
-        },
-      ]
+      {
+        ip: '127.0.0.1',
+        port: 4000,
+        publicKey: '758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3',
+      },
+    ]
 
   Prop.set(config, 'server.p2p', {
     cycleDuration: cycleDuration,
@@ -128,11 +128,11 @@ export const initConfigFromFile = () => {
   })
 
   Prop.set(config, 'server.mode', 'debug')
-  
+
   Prop.set(config, 'server.debug', {
     startInFatalsLogMode: true, //true setting good for big aws test with nodes joining under stress.
     startInErrorLogMode: false,
-    fakeNetworkDelay:0,
+    fakeNetworkDelay: 0,
     disableSnapshots: true,
     countEndpointStart: -1
   })

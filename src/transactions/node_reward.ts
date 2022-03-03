@@ -1,4 +1,4 @@
-import { Shardus, ShardusTypes } from 'shardus-global-server'
+import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import * as config from '../config'
 

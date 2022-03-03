@@ -1,5 +1,5 @@
 import * as configs from '../../config'
-import * as crypto from 'shardus-crypto-utils'
+import * as crypto from '@shardus/crypto-utils'
 
 export const latest = dapp => async (req, res): Promise<void> => {
   try {
