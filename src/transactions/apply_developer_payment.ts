@@ -18,10 +18,10 @@ export const validate = (tx: Tx.ApplyDevPayment, wrappedStates: WrappedStates, r
   return response
 }
 
-export const apply = (tx: Tx.ApplyDevPayment, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.ApplyDevPayment, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.developerFund = tx.developerFund
-  network.timestamp = tx.timestamp
+  network.timestamp = txTimestamp
   dapp.log(`=== APPLIED DEV_PAYMENT GLOBAL ${stringify(network)} ===`)
 }
 

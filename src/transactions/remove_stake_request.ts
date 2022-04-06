@@ -45,7 +45,7 @@ export const validate = (tx: Tx.RemoveStakeRequest, wrappedStates: WrappedStates
   return response
 }
 
-export const apply = (tx: Tx.RemoveStakeRequest, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.RemoveStakeRequest, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   from.data.remove_stake_request = Date.now()

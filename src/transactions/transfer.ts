@@ -52,17 +52,17 @@ export const validate = (tx: Tx.Transfer, wrappedStates: WrappedStates, response
   return response
 }
 
-export const apply = (tx: Tx.Transfer, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.Transfer, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from = wrappedStates[tx.from].data
   const to: UserAccount = wrappedStates[tx.to].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   from.data.balance -= tx.amount + network.current.transactionFee
-  from.data.balance -= utils.maintenanceAmount(tx.timestamp, from, network)
+  from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
   to.data.balance += tx.amount
   from.data.transactions.push({ ...tx, txId })
   to.data.transactions.push({ ...tx, txId })
-  from.timestamp = tx.timestamp
-  to.timestamp = tx.timestamp
+  from.timestamp = txTimestamp
+  to.timestamp = txTimestamp
   dapp.log('Applied transfer tx', from, to)
 }
 

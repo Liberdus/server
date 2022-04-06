@@ -41,10 +41,10 @@ export const validate = (tx: Tx.RemoveFriend, wrappedStates: WrappedStates, resp
   return response
 }
 
-export const apply = (tx: Tx.RemoveFriend, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.RemoveFriend, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
   delete from.data.friends[tx.to]
-  from.timestamp = tx.timestamp
+  from.timestamp = txTimestamp
   // from.data.transactions.push({ ...tx, txId })
   dapp.log('Applied remove_friend tx', from)
 }

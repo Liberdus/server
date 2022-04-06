@@ -64,17 +64,17 @@ export const validate = (tx: Tx.Register, wrappedStates: WrappedStates, response
   return response
 }
 
-export const apply = (tx: Tx.Register, txId: string, wrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.Register, txTimestamp: number, txId: string, wrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const alias: AliasAccount = wrappedStates[tx.aliasHash].data
   // from.data.balance -= network.current.transactionFee
-  // from.data.balance -= maintenanceAmount(tx.timestamp, from)
+  // from.data.balance -= maintenanceAmount(txTimestamp, from)
   alias.inbox = tx.alias
   from.alias = tx.alias
   alias.address = tx.from
   // from.data.transactions.push({ ...tx, txId })
-  alias.timestamp = tx.timestamp
-  from.timestamp = tx.timestamp
+  alias.timestamp = txTimestamp
+  from.timestamp = txTimestamp
   dapp.log('Applied register tx', from, alias)
 }
 

@@ -126,7 +126,7 @@ export const validate = (tx: Tx.DevProposal, wrappedStates: WrappedStates, respo
   return response
 }
 
-export const apply = (tx: Tx.DevProposal, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.DevProposal, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
@@ -134,7 +134,7 @@ export const apply = (tx: Tx.DevProposal, txId: string, wrappedStates: WrappedSt
 
   from.data.balance -= network.current.devProposalFee
   from.data.balance -= network.current.transactionFee
-  from.data.balance -= utils.maintenanceAmount(tx.timestamp, from, network)
+  from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
 
   devProposal.totalAmount = tx.totalAmount
   devProposal.payAddress = tx.payAddress
@@ -146,9 +146,9 @@ export const apply = (tx: Tx.DevProposal, txId: string, wrappedStates: WrappedSt
   devIssue.devProposals.push(devProposal.id)
 
   from.data.transactions.push({ ...tx, txId })
-  from.timestamp = tx.timestamp
-  devIssue.timestamp = tx.timestamp
-  devProposal.timestamp = tx.timestamp
+  from.timestamp = txTimestamp
+  devIssue.timestamp = txTimestamp
+  devProposal.timestamp = txTimestamp
   dapp.log('Applied dev_proposal tx', from, devIssue, devProposal)
 }
 

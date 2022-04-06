@@ -46,12 +46,12 @@ export const validate = (tx: Tx.Parameters, wrappedStates: WrappedStates, respon
   return response
 }
 
-export const apply = (tx: Tx.Parameters, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: ShardusTypes.ApplyResponse) => {
+export const apply = (tx: Tx.Parameters, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: ShardusTypes.ApplyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const issue: IssueAccount = wrappedStates[tx.issue].data
 
-  const when = tx.timestamp + config.ONE_SECOND * 10
+  const when = txTimestamp + config.ONE_SECOND * 10
   let value = {
     type: 'apply_parameters',
     timestamp: when,
@@ -68,8 +68,8 @@ export const apply = (tx: Tx.Parameters, txId: string, wrappedStates: WrappedSta
 
   issue.active = false
 
-  from.timestamp = tx.timestamp
-  issue.timestamp = tx.timestamp
+  from.timestamp = txTimestamp
+  issue.timestamp = txTimestamp
   dapp.log('Applied parameters tx', issue)
 }
 

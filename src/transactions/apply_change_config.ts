@@ -14,10 +14,10 @@ export const validate = (tx: Tx.ApplyChangeConfig, wrappedStates: WrappedStates,
   return response
 }
 
-export const apply = (tx: Tx.ApplyChangeConfig, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.ApplyChangeConfig, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.listOfChanges.push(tx.change)
-  network.timestamp = tx.timestamp
+  network.timestamp = txTimestamp
   dapp.log(`=== APPLIED CHANGE_CONFIG GLOBAL ${stringify(network)} ===`)
 }
 

@@ -49,14 +49,14 @@ export const validate = (tx: Tx.RemoveStake, wrappedStates: WrappedStates, respo
   return response
 }
 
-export const apply = (tx: Tx.RemoveStake, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.RemoveStake, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const shouldRemoveState = from.data.remove_stake_request && from.data.remove_stake_request + 2 * network.current.nodeRewardInterval <= Date.now()
   if (shouldRemoveState) {
     from.data.balance += network.current.stakeRequired
     from.data.stake = 0
-    from.timestamp = tx.timestamp
+    from.timestamp = txTimestamp
     from.data.remove_stake_request = null
     from.data.transactions.push({ ...tx, txId })
     dapp.log('Applied remove_stake tx', from)

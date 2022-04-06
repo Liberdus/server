@@ -59,7 +59,7 @@ export const validate = (tx: Tx.NodeReward, wrappedStates: WrappedStates, respon
   return response
 }
 
-export const apply = (tx: Tx.NodeReward, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.NodeReward, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: NodeAccount = wrappedStates[tx.from].data
   const to: UserAccount = wrappedStates[tx.to].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
@@ -73,11 +73,11 @@ export const apply = (tx: Tx.NodeReward, txId: string, wrappedStates: WrappedSta
       to.data.balance += from.balance
       if (to.data.remove_stake_request) to.data.remove_stake_request = null
       from.balance = 0
-      to.timestamp = tx.timestamp
+      to.timestamp = txTimestamp
     }
   }
-  from.nodeRewardTime = tx.timestamp
-  from.timestamp = tx.timestamp
+  from.nodeRewardTime = txTimestamp
+  from.timestamp = txTimestamp
   //NodeAccount does not have transactions
   //to.data.transactions.push({ ...tx, txId })
   dapp.log('Applied node_reward tx', from, to)

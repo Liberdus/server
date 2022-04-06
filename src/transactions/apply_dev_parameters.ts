@@ -39,14 +39,14 @@ export const validate = (tx: Tx.ApplyDevParameters, wrappedStates: WrappedStates
   return response
 }
 
-export const apply = (tx: Tx.ApplyDevParameters, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.ApplyDevParameters, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.devWindows = tx.devWindows
   network.nextDevWindows = tx.nextDevWindows
   network.developerFund = tx.developerFund
   network.nextDeveloperFund = tx.nextDeveloperFund
   network.devIssue = tx.devIssue
-  network.timestamp = tx.timestamp
+  network.timestamp = txTimestamp
 }
 
 export const keys = (tx: Tx.ApplyDevParameters, result: TransactionKeys) => {

@@ -76,7 +76,7 @@ export const validate = (tx: Tx.DevTally, wrappedStates: WrappedStates, response
   return response
 }
 
-export const apply = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
+export const apply = (tx: Tx.DevTally, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
@@ -89,7 +89,7 @@ export const apply = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedState
       const payments = []
       for (const payment of devProposal.payments) {
         payments.push({
-          timestamp: tx.timestamp + config.TIME_FOR_DEV_GRACE + payment.delay,
+          timestamp: txTimestamp + config.TIME_FOR_DEV_GRACE + payment.delay,
           delay: payment.delay,
           amount: payment.amount * devProposal.totalAmount,
           address: devProposal.payAddress,
@@ -97,11 +97,11 @@ export const apply = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedState
         })
       }
       nextDeveloperFund = [...nextDeveloperFund, ...payments]
-      devProposal.timestamp = tx.timestamp
+      devProposal.timestamp = txTimestamp
       devIssue.winners.push(devProposal.id)
     } else {
       devProposal.approved = false
-      devProposal.timestamp = tx.timestamp
+      devProposal.timestamp = txTimestamp
     }
   }
 
@@ -121,7 +121,7 @@ export const apply = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedState
     ],
   }
 
-  const when = tx.timestamp + config.ONE_SECOND * 10
+  const when = txTimestamp + config.ONE_SECOND * 10
 
   let value = {
     type: 'apply_dev_tally',
@@ -134,8 +134,8 @@ export const apply = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedState
   let ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
   ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
 
-  from.timestamp = tx.timestamp
-  devIssue.timestamp = tx.timestamp
+  from.timestamp = txTimestamp
+  devIssue.timestamp = txTimestamp
   dapp.log('Applied dev_tally tx', devIssue, devProposals)
 }
 

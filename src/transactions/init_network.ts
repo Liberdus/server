@@ -20,11 +20,11 @@ export const validate = (tx: Tx.InitNetwork, wrappedStates: WrappedStates, respo
   return response
 }
 
-export const apply = (tx: Tx.InitNetwork, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.InitNetwork, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
-  network.timestamp = tx.timestamp
+  network.timestamp = txTimestamp
   console.log(`init_network NETWORK_ACCOUNT: ${stringify(network)}`)
-  // from.timestamp = tx.timestamp
+  // from.timestamp = txTimestamp
   dapp.log('Applied init_network transaction', network)
 }
 

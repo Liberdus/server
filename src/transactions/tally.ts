@@ -75,7 +75,7 @@ export const validate = (tx: Tx.Tally, wrappedStates: WrappedStates, response: S
   return response
 }
 
-export const apply = (tx: Tx.Tally, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
+export const apply = (tx: Tx.Tally, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const issue: IssueAccount = wrappedStates[tx.issue].data
@@ -118,7 +118,7 @@ export const apply = (tx: Tx.Tally, txId: string, wrappedStates: WrappedStates, 
     ],
   }
 
-  const when = tx.timestamp + config.ONE_SECOND * 10
+  const when = txTimestamp + config.ONE_SECOND * 10
   let value = {
     type: 'apply_tally',
     timestamp: when,
@@ -132,9 +132,9 @@ export const apply = (tx: Tx.Tally, txId: string, wrappedStates: WrappedStates, 
 
   issue.winnerId = winner.id
 
-  from.timestamp = tx.timestamp
-  issue.timestamp = tx.timestamp
-  winner.timestamp = tx.timestamp
+  from.timestamp = txTimestamp
+  issue.timestamp = txTimestamp
+  winner.timestamp = txTimestamp
   dapp.log('Applied tally tx', issue, winner)
 }
 

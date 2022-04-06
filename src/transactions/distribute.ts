@@ -56,7 +56,7 @@ export const validate = (tx: Tx.Distribute, wrappedStates: WrappedStates, respon
   return response
 }
 
-export const apply = (tx: Tx.Distribute, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.Distribute, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const recipients: UserAccount[] = tx.recipients.map((id: string) => wrappedStates[id].data)
@@ -67,7 +67,7 @@ export const apply = (tx: Tx.Distribute, txId: string, wrappedStates: WrappedSta
     user.data.balance += tx.amount
     user.data.transactions.push({ ...tx, txId })
   }
-  from.data.balance -= utils.maintenanceAmount(tx.timestamp, from, network)
+  from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
   dapp.log('Applied distribute transaction', from, recipients)
 }
 

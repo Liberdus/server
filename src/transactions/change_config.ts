@@ -41,7 +41,7 @@ export const validate = (tx: Tx.ChangeConfig, wrappedStates: WrappedStates, resp
   return response
 }
 
-export const apply = (tx: Tx.ChangeConfig, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: ShardusTypes.ApplyResponse) => {
+export const apply = (tx: Tx.ChangeConfig, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: ShardusTypes.ApplyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   let changeOnCycle
@@ -54,7 +54,7 @@ export const apply = (tx: Tx.ChangeConfig, txId: string, wrappedStates: WrappedS
     changeOnCycle = tx.cycle
   }
 
-  const when = tx.timestamp + config.ONE_SECOND * 10
+  const when = txTimestamp + config.ONE_SECOND * 10
   let value = {
     type: 'apply_change_config',
     timestamp: when,

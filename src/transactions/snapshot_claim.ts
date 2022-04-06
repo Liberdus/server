@@ -48,15 +48,15 @@ export const validate = (tx: Tx.SnapshotClaim, wrappedStates: WrappedStates, res
   return response
 }
 
-export const apply = (tx: Tx.SnapshotClaim, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.SnapshotClaim, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   from.data.balance += network.snapshot[tx.from]
   network.snapshot[tx.from] = 0
   // from.data.transactions.push({ ...tx, txId })
   from.claimedSnapshot = true
-  from.timestamp = tx.timestamp
-  network.timestamp = tx.timestamp
+  from.timestamp = txTimestamp
+  network.timestamp = txTimestamp
   dapp.log('Applied snapshot_claim tx', from, network)
 }
 

@@ -89,11 +89,11 @@ export const validate = (tx: Tx.ApplyTally, wrappedStates: WrappedStates, respon
   return response
 }
 
-export const apply = (tx: Tx.ApplyTally, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.ApplyTally, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.next = tx.next
   network.nextWindows = tx.nextWindows
-  network.timestamp = tx.timestamp
+  network.timestamp = txTimestamp
   dapp.log(`APPLIED TALLY GLOBAL ${stringify(network)} ===`)
 }
 

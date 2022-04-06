@@ -77,7 +77,7 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
   return response
 }
 
-export const apply = (tx: Tx.Message, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.Message, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const to: UserAccount = wrappedStates[tx.to].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
@@ -92,7 +92,7 @@ export const apply = (tx: Tx.Message, txId: string, wrappedStates: WrappedStates
       to.data.balance += to.data.toll
     }
   }
-  from.data.balance -= utils.maintenanceAmount(tx.timestamp, from, network)
+  from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
 
   if (!from.data.chats[tx.to]) from.data.chats[tx.to] = tx.chatId
   if (!to.data.chats[tx.from]) to.data.chats[tx.from] = tx.chatId
@@ -101,9 +101,9 @@ export const apply = (tx: Tx.Message, txId: string, wrappedStates: WrappedStates
   from.data.transactions.push({ ...tx, txId })
   to.data.transactions.push({ ...tx, txId })
 
-  chat.timestamp = tx.timestamp
-  from.timestamp = tx.timestamp
-  to.timestamp = tx.timestamp
+  chat.timestamp = txTimestamp
+  from.timestamp = txTimestamp
+  to.timestamp = txTimestamp
 
   dapp.log('Applied message tx', chat, from, to)
 }

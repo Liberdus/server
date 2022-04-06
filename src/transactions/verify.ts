@@ -54,12 +54,12 @@ export const validate = (tx: Tx.Verify, wrappedStates: WrappedStates, response: 
   return response
 }
 
-export const apply = (tx: Tx.Verify, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.Verify, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   from.verified = true
   from.data.balance += network.current.faucetAmount
-  from.timestamp = tx.timestamp
+  from.timestamp = txTimestamp
   dapp.log('Applied verify tx', from)
 }
 

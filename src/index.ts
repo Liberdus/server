@@ -101,6 +101,7 @@ dapp.setup({
     }
   },
   validateTransaction(tx: any, wrappedStates: { [id: string]: WrappedAccount }): ShardusTypes.IncomingTransactionResult {
+    console.log('validateTransaction', tx)
     const response: ShardusTypes.IncomingTransactionResult = {
       success: false,
       reason: 'Transaction is not valid.',
@@ -110,11 +111,21 @@ dapp.setup({
     return transactions[tx.type].validate(tx, wrappedStates, response, dapp)
   },
   // THIS NEEDS TO BE FAST, BUT PROVIDES BETTER RESPONSE IF SOMETHING GOES WRONG
-  validate(tx: any): ShardusTypes.IncomingTransactionResult {
+  validate(timestampedTx: any): ShardusTypes.IncomingTransactionResult {
+    console.log('validate', timestampedTx)
+    let { tx } = timestampedTx
+    let txnTimestamp: number = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
+
     // Validate tx fields here
     const response: ShardusTypes.IncomingTransactionResult = {
       success: true,
       reason: 'This transaction is valid!',
+    }
+
+    if (!txnTimestamp) {
+      response.success = false
+      response.reason = 'Invalid transaction timestamp'
+      throw new Error(response.reason)
     }
 
     if (typeof tx.type !== 'string') {
@@ -123,30 +134,37 @@ dapp.setup({
       throw new Error(response.reason)
     }
 
-    if (typeof tx.timestamp !== 'number') {
+    if (typeof txnTimestamp !== 'number') {
       response.success = false
       response.reason = 'Tx "timestamp" field must be a number.'
       throw new Error(response.reason)
     }
-
+    console.log()
     return transactions[tx.type].validate_fields(tx, response)
   },
-  crack(tx: any): KeyResult {
+  getTimestampFromTransaction(tx: any) {
+    return tx.timestamp ? tx.timestamp : 0
+  },
+  crack(timestampedTx: any): KeyResult {
+    let { tx } = timestampedTx
+    let txnTimestamp: number = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
     const result = {
       sourceKeys: [],
       targetKeys: [],
       allKeys: [],
-      timestamp: tx.timestamp
+      timestamp: txnTimestamp
     } as TransactionKeys
     const keys = transactions[tx.type].keys(tx, result)
     const keyResult = {
       id: crypto.hashObj(tx),
-      timestamp: tx.timestamp,
+      timestamp: txnTimestamp,
       keys
     }
     return keyResult
   },
-  apply(tx: any, wrappedStates: { [id: string]: WrappedAccount }) {
+  apply(timestampedTx: any, wrappedStates: { [id: string]: WrappedAccount }) {
+    let { tx } = timestampedTx
+    const txTimestamp = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
     const { success, reason } = this.validateTransaction(tx, wrappedStates)
 
     if (success !== true) {
@@ -160,20 +178,21 @@ dapp.setup({
     } else {
       txId = crypto.hashObj(tx, true) // compute from tx
     }
-    const applyResponse: ShardusTypes.ApplyResponse = dapp.createApplyResponse(txId, tx.timestamp)
+    const applyResponse: ShardusTypes.ApplyResponse = dapp.createApplyResponse(txId, txTimestamp)
 
-    transactions[tx.type].apply(tx, txId, wrappedStates, dapp, applyResponse)
+    transactions[tx.type].apply(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse)
 
     return applyResponse
   },
   transactionReceiptPass(tx: any, wrappedStates: { [id: string]: WrappedAccount }, applyResponse: ShardusTypes.ApplyResponse) {
+    console.log('tx tx', tx)
     let txId: string
     if (!tx.sign) {
       txId = crypto.hashObj(tx)
     } else {
       txId = crypto.hashObj(tx, true) // compute from tx
     }
-    if(transactions[tx.type].transactionReceiptPass) transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
+    if(transactions[tx.tx.type].transactionReceiptPass) transactions[tx.tx.type].transactionReceiptPass(tx.tx, txId, wrappedStates, dapp, applyResponse)
 
   },
   getStateId(accountAddress: string, mustExist = true): string {
@@ -210,7 +229,8 @@ dapp.setup({
       accounts[account.id] = account
     }
   },
-  getRelevantData(accountId: string, tx: any): ShardusTypes.WrappedResponse {
+  getRelevantData(accountId: string, timestampedTx: any): ShardusTypes.WrappedResponse {
+    let { tx, timestampReceipt } = timestampedTx
     let account = accounts[accountId]
     let accountCreated = false
     return transactions[tx.type].createRelevantAccount(dapp, account, accountId, tx, accountCreated)

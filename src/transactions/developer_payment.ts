@@ -96,7 +96,7 @@ export const validate = (tx: Tx.DevPayment, wrappedStates: WrappedStates, respon
   return response
 }
 
-export const apply = (tx: Tx.DevPayment, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: ShardusTypes.ApplyResponse) => {
+export const apply = (tx: Tx.DevPayment, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: ShardusTypes.ApplyResponse) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const developer: UserAccount = wrappedStates[tx.developer].data
@@ -104,7 +104,7 @@ export const apply = (tx: Tx.DevPayment, txId: string, wrappedStates: WrappedSta
   developer.data.balance += tx.payment.amount
   developer.data.transactions.push({ ...tx, txId })
 
-  const when = tx.timestamp + config.ONE_SECOND * 10
+  const when = txTimestamp + config.ONE_SECOND * 10
   let value = {
     type: 'apply_developer_payment',
     timestamp: when,
@@ -115,8 +115,8 @@ export const apply = (tx: Tx.DevPayment, txId: string, wrappedStates: WrappedSta
   let ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
   ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
 
-  developer.timestamp = tx.timestamp
-  from.timestamp = tx.timestamp
+  developer.timestamp = txTimestamp
+  from.timestamp = txTimestamp
   dapp.log('Applied developer_payment tx', from, developer, tx.payment)
 }
 

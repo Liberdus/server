@@ -37,12 +37,12 @@ export const validate = (tx: Tx.GossipEmailHash, wrappedStates: WrappedStates, r
   return response
 }
 
-export const apply = (tx: Tx.GossipEmailHash, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.GossipEmailHash, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   // const targets = tx.targets.map(target => wrappedStates[target].data)
   const account: UserAccount = wrappedStates[tx.account].data
   account.emailHash = tx.emailHash
   account.verified = tx.verified
-  account.timestamp = tx.timestamp
+  account.timestamp = txTimestamp
   dapp.log('Applied gossip_email_hash tx', account)
 }
 

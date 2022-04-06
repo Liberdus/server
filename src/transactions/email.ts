@@ -71,7 +71,7 @@ export const validate = (tx: Tx.Email, wrappedStates: WrappedStates, response: S
   return response
 }
 
-export const apply = (tx: Tx.Email, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.Email, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const source: UserAccount = wrappedStates[tx.signedTx.from].data
   const nodeId = dapp.getNodeId()
   const { address } = dapp.getNode(nodeId)

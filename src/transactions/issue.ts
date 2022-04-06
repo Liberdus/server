@@ -66,7 +66,7 @@ export const validate = (tx: Tx.Issue, wrappedStates: WrappedStates, response: S
   return response
 }
 
-export const apply = (tx: Tx.Issue, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.Issue, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const issue: IssueAccount = wrappedStates[tx.issue].data
@@ -82,9 +82,9 @@ export const apply = (tx: Tx.Issue, txId: string, wrappedStates: WrappedStates, 
   issue.proposals.push(proposal.id)
   issue.proposalCount++
 
-  from.timestamp = tx.timestamp
-  issue.timestamp = tx.timestamp
-  proposal.timestamp = tx.timestamp
+  from.timestamp = txTimestamp
+  issue.timestamp = txTimestamp
+  proposal.timestamp = txTimestamp
   dapp.log('Applied issue tx', issue, proposal)
 }
 

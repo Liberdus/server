@@ -36,10 +36,10 @@ export const validate = (tx: Tx.Create, wrappedStates: WrappedStates, response: 
   return response
 }
 
-export const apply = (tx: Tx.Create, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.Create, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const to: UserAccount = wrappedStates[tx.to].data
   to.data.balance += tx.amount
-  to.timestamp = tx.timestamp
+  to.timestamp = txTimestamp
   // to.data.transactions.push({ ...tx, txId })
   dapp.log('Applied create tx', to)
 }

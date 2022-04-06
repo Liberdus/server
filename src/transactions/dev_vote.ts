@@ -85,14 +85,14 @@ export const validate = (tx: Tx.DevVote, wrappedStates: WrappedStates, response:
   return response
 }
 
-export const apply = (tx: Tx.DevVote, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.DevVote, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devProposal: DevProposalAccount = wrappedStates[tx.devProposal].data
 
   from.data.balance -= tx.amount
   from.data.balance -= network.current.transactionFee
-  from.data.balance -= utils.maintenanceAmount(tx.timestamp, from, network)
+  from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
 
   if (tx.approve) {
     devProposal.approve += tx.amount
@@ -102,8 +102,8 @@ export const apply = (tx: Tx.DevVote, txId: string, wrappedStates: WrappedStates
 
   devProposal.totalVotes++
   from.data.transactions.push({ ...tx, txId })
-  from.timestamp = tx.timestamp
-  devProposal.timestamp = tx.timestamp
+  from.timestamp = txTimestamp
+  devProposal.timestamp = txTimestamp
   dapp.log('Applied dev_vote tx', from, devProposal)
 }
 

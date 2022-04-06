@@ -31,10 +31,10 @@ export const validate = (tx: Tx.Snapshot, wrappedStates: WrappedStates, response
   return response
 }
 
-export const apply = (tx: Tx.Snapshot, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.Snapshot, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.snapshot = tx.snapshot
-  network.timestamp = tx.timestamp
+  network.timestamp = txTimestamp
   dapp.log('Applied snapshot tx', network)
 }
 

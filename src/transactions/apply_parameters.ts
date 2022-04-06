@@ -104,14 +104,14 @@ export const validate = (tx: Tx.ApplyParameters, wrappedStates: WrappedStates, r
   return response
 }
 
-export const apply = (tx: Tx.ApplyParameters, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.ApplyParameters, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.current = tx.current
   network.next = tx.next
   network.windows = tx.windows
   network.nextWindows = tx.nextWindows
   network.issue = tx.issue
-  network.timestamp = tx.timestamp
+  network.timestamp = txTimestamp
   dapp.log(`=== APPLIED PARAMETERS GLOBAL ${stringify(network)} ===`)
 }
 
