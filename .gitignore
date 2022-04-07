@@ -12,3 +12,4 @@ statistics.tsv
 instances*/
 spam-test.json
 .dockersecret
+coverage

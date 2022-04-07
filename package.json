@@ -10,7 +10,7 @@
     "stop-client": "shardus pm2 stop npm",
     "start": "(shardus clean || true) && npm run build-client && shardus start 10 && npm run start-client && echo \"\nmonitor:    http://localhost:3000\nweb-client: http://localhost:3333\nexplorer:   http://localhost:4444\"",
     "stop": "npm run stop-client && shardus stop",
-    "test": "jest",
+    "test": "jest --coverage",
     "update-template": "node scripts/update-template.js",
     "update-docker": "node scripts/update-docker.js",
     "check": "gts check",
@@ -25,7 +25,7 @@
   "author": "Kyle Shifflett",
   "license": "ISC",
   "dependencies": {
-    "@shardus/core": "^2.5.8",
+    "@shardus/core": "^2.5.9",
     "@shardus/crypto-utils": "^4.0.4",
     "chalk-pipe": "^3.0.0",
     "decimal.js": "^10.2.0",

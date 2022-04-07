@@ -287,116 +287,33 @@ export async function waitForWindow(name: string) {
   return
 }
 
-
-function mode(list) {
-  const arr = [...list]
-  return arr
-      .sort(
-          (a, b) =>
-              arr.filter(v => v === a).length - arr.filter(v => v === b).length
-      )
-      .pop()
-}
-
-const checkNodeSyncedState = function (partitionMatrix, cycleCounter) {
-  console.log('checkNodeSyncedState', arguments)
-  if (!cycleCounter || !partitionMatrix[cycleCounter]) return false
-  let nodeSyncState = {}
-  let nodeList = Object.keys(partitionMatrix[cycleCounter])
-  nodeList = nodeList.sort()
-  let syncedObj = {}
-  for (let nodeId of nodeList) {
-    const partitionReport = partitionMatrix[cycleCounter][nodeId].res
-    for (let i in partitionReport) {
-      const index = partitionReport[i].i
-      let hash = partitionReport[i].h
-      hash = hash.split('0').join('')
-      hash = hash.split('x').join('')
-      // collect to syncedObj to decide synced status of nodes later
-      if (!syncedObj[index]) {
-        syncedObj[index] = []
-      } else {
-        syncedObj[index].push({
-          nodeId,
-          hash
-        })
-      }
-    }
-    let syncedPenaltyObj = {}
-    for (let nodeId of nodeList) {
-      syncedPenaltyObj[nodeId] = 0
-    }
-    for (let index in syncedObj) {
-      let hashArr = syncedObj[index].map(obj => obj.hash)
-      let mostCommonHash = mode(hashArr)
-      syncedObj[index].forEach(obj => {
-        if (obj.hash !== mostCommonHash) {
-          syncedPenaltyObj[obj.nodeId] += 1
-        }
-      })
-    }
-    for (let nodeId in syncedPenaltyObj) {
-      if (syncedPenaltyObj[nodeId] === 0) {
-        nodeSyncState[nodeId] = 0
-      } else if (syncedPenaltyObj[nodeId] <= 3) {
-        nodeSyncState[nodeId] = 1
-      } else if (syncedPenaltyObj[nodeId] > 3) {
-        nodeSyncState[nodeId] = 2
+export async function getInsyncAll() {
+  const activeNodes = await queryActiveNodes()
+  const activeNodeList : any = Object.values(activeNodes)
+  const host = activeNodeList[0].nodeIpInfo.externalIp + ':' + activeNodeList[0].nodeIpInfo.externalPort
+  let result = await axios.get(`http://${host}/get-tree-last-insync-all`)
+  let lines = result.data.split('\n')
+  let in_sync = 0
+  let out_sync = 0
+  let outOfSyncNodes = []
+  for (let line of lines) {
+    line = line.trim()
+    if (line.includes('inSync')) {
+      let isInSync = line.split(' ')[1] === 'true'
+      let host = line.split(' ')[3]
+      if (isInSync)
+        in_sync += 1
+      else {
+        out_sync += 1
+        outOfSyncNodes.push(host)
       }
     }
   }
-  let areAllNodeSynced = true
-  for (let nodeId in nodeSyncState) {
-    if (nodeSyncState[nodeId] !== 0) {
-      areAllNodeSynced = false
-      break
-    }
+  return {
+    in_sync,
+    out_sync,
+    outOfSyncNodes
   }
-  console.log("nodeSyncState", cycleCounter, areAllNodeSynced)
-  return areAllNodeSynced
-}
-
-export async function checkPartitionMatrix() {
-  let partitionMatrix = {}
-  let syncTracker = {}
-  let ready = false
-  let isCriteriaMet = false
-  while (!ready) {
-    const activeNodes = await queryActiveNodes()
-    const activeCount = Object.keys(activeNodes).length
-    let cycleCounter
-    for (let nodeId in activeNodes) {
-      const partitionReport = activeNodes[nodeId].partitionReport
-      cycleCounter = activeNodes[nodeId].cycleCounter
-      if (partitionReport && partitionReport.hasOwnProperty('res')) {
-        if (!partitionMatrix[cycleCounter]) {
-          partitionMatrix[cycleCounter] = {}
-          partitionMatrix[cycleCounter][nodeId] = partitionReport
-        } else {
-          partitionMatrix[cycleCounter][nodeId] = partitionReport
-        }
-      }
-    }
-    if (Object.keys(partitionMatrix).length > 0) {
-      const currentCycleCounter = Math.max(...Object.keys(partitionMatrix).map(x => parseInt(x)))
-      const receivedReport = Object.keys(partitionMatrix[currentCycleCounter]).length
-      if (!syncTracker[currentCycleCounter] && receivedReport === activeCount) {
-        const isSynced = checkNodeSyncedState(partitionMatrix, currentCycleCounter)
-        syncTracker[currentCycleCounter] = isSynced
-        if (isSynced) {
-          isCriteriaMet = true
-          break
-        }
-      }
-    }
-    if (Object.keys(syncTracker).length >= 3) {
-      console.log("criteria is not met within 3 cycles")
-      break
-    }
-    if (!ready) _sleep(2000)
-  }
-  console.log('isCriteriaMet', isCriteriaMet)
-  return isCriteriaMet
 }
 
 export function isIncreasingSequence(numbers) {

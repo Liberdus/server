@@ -17,6 +17,7 @@ export const apiTest = () =>
         current: expect.any(Object),
         next: expect.any(Object),
         developerFund: expect.any(Array),
+        listOfChanges: expect.any(Array),
         nextDeveloperFund: expect.any(Array),
         windows: {
           proposalWindow: [expect.any(Number), expect.any(Number)],

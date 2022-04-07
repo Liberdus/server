@@ -5,7 +5,7 @@ import fs from 'fs'
 import axios from 'axios'
 import * as utils from './testUtils'
 import { util } from 'prettier'
-import { spawn,exec } from 'child_process'
+import { spawn, exec } from 'child_process'
 
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
@@ -23,13 +23,13 @@ test('Start a new network successfully', async () => {
     expect(Object.keys(activeNodes).length).toBe(START_NETWORK_SIZE)
   } else {
     try {
-      execa.commandSync('shardus-network stop', { stdio: [0, 1, 2] })
+      execa.commandSync('shardus stop', { stdio: [0, 1, 2] })
       await utils._sleep(3000)
       execa.commandSync('rm -rf instances')
     } catch (e) {
       console.log('Unable to remove instances folder')
     }
-    execa.commandSync(`shardus-network create --no-log-rotation  ${START_NETWORK_SIZE * 2}`) // start 2 times of minNode
+    execa.commandSync(`shardus create --no-log-rotation  ${START_NETWORK_SIZE * 2}`, { stdio: [0, 1, 2] }) // start 2 times of minNode
     const isNetworkActive = await utils.waitForNetworkToBeActive(START_NETWORK_SIZE)
     expect(isNetworkActive).toBe(true)
   }
@@ -89,15 +89,18 @@ test('Auto scale down the network successfully', async () => {
 
 test('Data is correctly synced across the nodes after network scaled down', async () => {
   console.log(utils.infoGreen('TEST: Data is correctly synced across the nodes after network scaled down'))
-  let isPartitionMatirxCorrect = await utils.checkPartitionMatrix()
-  expect(isPartitionMatirxCorrect).toBe(true)
+  let result = await utils.getInsyncAll()
+  const in_sync = result.in_sync === START_NETWORK_SIZE
+  const out_sync = result.out_sync === 0
+  expect(in_sync).toBe(true)
+  expect(out_sync).toBe(true)
 })
 
 test('Start new archivers successfully', async () => {
   console.log(utils.infoGreen('TEST: Start new archivers successfully'))
 
   try {
-    execa.commandSync('shardus-network start --archivers 1')
+    execa.commandSync('shardus start --archivers 1')
   } catch (e) {
     console.log(utils.warning(e))
   }
@@ -129,8 +132,8 @@ test('New archivers sync archived data successfully', async () => {
 test('Archivers store complete historical data without missing cycles', async () => {
   console.log(utils.infoGreen('TEST: Archivers store complete historical data without missing cycles'))
 
-  const dataFromArchiver_1 = await utils.queryArchivedCycles('localhost', 4000, 10)
-  const dataFromArchiver_2 = await utils.queryArchivedCycles('localhost', 4001, 10)
+  const dataFromArchiver_1 = await utils.queryArchivedCycles('localhost', 4000, 5)
+  const dataFromArchiver_2 = await utils.queryArchivedCycles('localhost', 4001, 5)
   const latestRecord = await utils.queryLatestCycleRecordFromConsensor()
 
   const countersFromData1 = dataFromArchiver_1.map(a => a.cycleRecord.counter)
@@ -199,7 +202,7 @@ test('Check receipt of a transfer tx between 2 accounts', async () => {
   const txs = accountData1.data.transactions
   expect(txs.length).toBe(1)
 
-  await utils._sleep(90000) // wait 3 cycles to make sure archiver and explorer have archived data
+  await utils._sleep(90000) // wait 3 cycles to make sure archiver and explorer have archived data 
 
   const transferTx = txs[0]
   res = await axios.post(`http://localhost:4444/api/tx/status`, {
@@ -213,7 +216,7 @@ test('Check receipt of a transfer tx between 2 accounts', async () => {
 
 test('Stops a network successfully', async () => {
   console.log(utils.infoGreen('TEST: Stops a network successfully'))
-  execa.commandSync('shardus-network stop', { stdio: [0, 1, 2] })
+  execa.commandSync('shardus stop', { stdio: [0, 1, 2] })
   await utils._sleep(3000)
   expect(true).toBe(true)
 })
@@ -221,7 +224,7 @@ test('Stops a network successfully', async () => {
 test('Recover stopped network without losing old data', async () => {
   console.log(utils.infoGreen('TEST: Recover stopped network without losing old data'))
 
-  execa.commandSync('shardus-network start', { stdio: [0, 1, 2] })
+  execa.commandSync('shardus start', { stdio: [0, 1, 2] })
   let isDataRecovered = await utils.waitForNetworkToBeActive(START_NETWORK_SIZE)
   if (isDataRecovered) {
     for (let i = 0; i < Math.min(accounts.length, 10); i++) {
@@ -238,9 +241,9 @@ test('Recover stopped network without losing old data', async () => {
 })
 
 test('Cleans a network successfully', async () => {
-  execa.commandSync('shardus-network stop', { stdio: [0, 1, 2] })
+  execa.commandSync('shardus stop', { stdio: [0, 1, 2] })
   await utils._sleep(3000)
-  execa.commandSync('shardus-network clean', { stdio: [0, 1, 2] })
+  execa.commandSync('shardus clean', { stdio: [0, 1, 2] })
   await utils._sleep(2000)
   execa.commandSync('rm -rf instances')
   expect(true).toBe(true)

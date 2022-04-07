@@ -101,7 +101,6 @@ dapp.setup({
     }
   },
   validateTransaction(tx: any, wrappedStates: { [id: string]: WrappedAccount }): ShardusTypes.IncomingTransactionResult {
-    console.log('validateTransaction', tx)
     const response: ShardusTypes.IncomingTransactionResult = {
       success: false,
       reason: 'Transaction is not valid.',
@@ -112,7 +111,6 @@ dapp.setup({
   },
   // THIS NEEDS TO BE FAST, BUT PROVIDES BETTER RESPONSE IF SOMETHING GOES WRONG
   validate(timestampedTx: any): ShardusTypes.IncomingTransactionResult {
-    console.log('validate', timestampedTx)
     let { tx } = timestampedTx
     let txnTimestamp: number = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
 
@@ -184,15 +182,15 @@ dapp.setup({
 
     return applyResponse
   },
-  transactionReceiptPass(tx: any, wrappedStates: { [id: string]: WrappedAccount }, applyResponse: ShardusTypes.ApplyResponse) {
-    console.log('tx tx', tx)
+  transactionReceiptPass(timestampedTx: any, wrappedStates: { [id: string]: WrappedAccount }, applyResponse: ShardusTypes.ApplyResponse) {
+    let { tx } = timestampedTx
     let txId: string
     if (!tx.sign) {
       txId = crypto.hashObj(tx)
     } else {
       txId = crypto.hashObj(tx, true) // compute from tx
     }
-    if(transactions[tx.tx.type].transactionReceiptPass) transactions[tx.tx.type].transactionReceiptPass(tx.tx, txId, wrappedStates, dapp, applyResponse)
+    if(transactions[tx.type].transactionReceiptPass) transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
 
   },
   getStateId(accountAddress: string, mustExist = true): string {

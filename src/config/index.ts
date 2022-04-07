@@ -41,7 +41,7 @@ export const TIME_FOR_DEV_APPLY = ONE_MINUTE + ONE_SECOND * 30
 // export const TIME_FOR_DEV_APPLY = 2 * ONE_DAY
 
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
-export const cycleDuration = 60
+export const cycleDuration = 30
 
 // INITIAL NETWORK PARAMETERS FOR LIBERDUS
 export const INITIAL_PARAMETERS: NetworkParameters = {
@@ -93,7 +93,7 @@ export const initConfigFromFile = () => {
     cycleDuration: cycleDuration,
     existingArchivers,
     minNodesToAllowTxs: 1,
-    minNodes: 2000,
+    minNodes: 5,
     maxNodes: 10000,
     maxJoinedPerCycle: 6,
     maxSyncingPerCycle: 12,
