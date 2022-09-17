@@ -15,17 +15,18 @@ For more info, please checkout our [Whitepaper](https://liberdus.com/Liberdus-Wh
 ### For demos, testing, etc.
 
 1. Clone this repository with `git clone https://gitlab.com/liberdus/server.git`
-2. Checkout the `dist` branch with `git checkout dist`
-3. Install dependencies with `npm install`
+2. Install dependencies with `npm install`
 
 ### For Liberdus/Shardus development:
 
 1. Ensure you have access to [`shardus-global-server`](https://gitlab.com/shardus/global/shardus-global-server)
-2. Make sure your git installation is set to cache credentials with `git config --global credential.helper cache`
-3. Force git to prompt for credentials by cloning [`shardus-global-server`](https://gitlab.com/shardus/global/shardus-global-server):  
+2. Clone `@shardus/core` repo on local directory from [`shardus-global-server`](https://gitlab.com/shardus/global/shardus-global-server):  
    `git clone https://gitlab.com/shardus/global/shardus-global-server.git`
-4. In another directory, clone this repository with `git clone https://gitlab.com/liberdus/server.git`
-5. Install dependencies with `npm install`
+3. Run `npm install` to install dependencies.
+4. In order to link the `@shardus/core` repo to the liberdus repo, run `npm link` and `npm run build:dev`
+5. In another directory, clone this repository with `git clone https://gitlab.com/liberdus/server.git`
+6. Install dependencies with `npm install`
+7. Run `npm link @shardus/core` and `npm run prepare` to link with local `@shardus/core`.
 
 ## Usage
 
