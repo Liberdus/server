@@ -23,10 +23,10 @@ For more info, please checkout our [Whitepaper](https://liberdus.com/Liberdus-Wh
 2. Clone `@shardus/core` repo on local directory from [`shardus-global-server`](https://gitlab.com/shardus/global/shardus-global-server):  
    `git clone https://gitlab.com/shardus/global/shardus-global-server.git`
 3. Run `npm install` to install dependencies.
-4. In order to link the `@shardus/core` repo to the liberdus repo, run `npm link` and `npm run build:dev`
+4. In order to link the `@shardus/core` repo to the liberdus server, run `npm link` and `npm run build:dev`
 5. In another directory, clone this repository with `git clone https://gitlab.com/liberdus/server.git`
 6. Install dependencies with `npm install`
-7. Run `npm link @shardus/core` and `npm run prepare` to link with local `@shardus/core`.
+7. Run `npm link @shardus/core` to link with local `@shardus/core`. Compile the dependencies by `npm run prepare`.
 
 ## Usage
 
