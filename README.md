@@ -29,10 +29,15 @@ For more info, please checkout our [Whitepaper](https://liberdus.com/Liberdus-Wh
 
 ## Usage
 
-`npm start` will start a network of local Liberdus nodes and apps to interact with the nodes:
+`shardus create {# of nodes}` will start a network of local Liberdus nodes and apps to interact with the nodes:
+`shardus stop` will stop all nodes and apps.
+`shadrus clean` cleans the residual files and folders left by archiver and monitor-server.
 
-[Shardus Monitor](https://gitlab.com/shardus/monitor-server) - http://localhost:3000  
-[Liberdus Client](https://gitlab.com/liberdus/web-client/liberdus-web-client) - http://localhost:3333  
+After running a network, and `instances` folder will be created. To run a new network, you must run `rm -rf instances` to delete this folder.
+
+[Shardus Monitor](https://gitlab.com/shardus/monitor-server) - http://localhost:3000
+[Liberdus Client](https://gitlab.com/liberdus/web-client/liberdus-web-client) - http://localhost:3333
+[Archive Server](https://gitlab.com/shardus/archive/archive-server) - http://localhost:4000
 [Liberdus Explorer](https://gitlab.com/liberdus/explorer-server) - http://localhost:4444    
 
-`npm stop` will stop all nodes and apps.
+
