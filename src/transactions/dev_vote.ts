@@ -3,6 +3,7 @@ import { Shardus, ShardusTypes } from '@shardus/core'
 import * as utils from '../utils'
 import create from '../accounts'
 import * as config from '../config'
+import {Accounts, UserAccount, NetworkAccount, DevProposalAccount, DevIssueAccount, WrappedStates, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.DevVote, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {

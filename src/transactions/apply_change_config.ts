@@ -3,6 +3,7 @@ import _ from 'lodash'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import * as config from '../config'
+import {NetworkAccount, NodeAccount, WrappedStates, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.ApplyChangeConfig, response: ShardusTypes.IncomingTransactionResult) => {
   return response

@@ -4,6 +4,7 @@ import * as config from '../config'
 import * as crypto from '@shardus/crypto-utils'
 import create from '../accounts'
 import stringify from 'fast-stable-stringify'
+import {Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.ApplyDevParameters, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.devIssue !== 'number') {

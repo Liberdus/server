@@ -1,8 +1,8 @@
 import * as crypto from '@shardus/crypto-utils'
-import _ from 'lodash'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import * as config from '../config'
+import {DevIssueAccount, NodeAccount, NetworkAccount, WrappedStates, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.DevIssue, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.nodeId !== 'string') {

@@ -1,25 +1,26 @@
-import { shardusFactory, ShardusTypes } from '@shardus/core'
+import {shardusFactory, ShardusTypes} from '@shardus/core'
+import {P2P} from '@shardus/types'
 import * as crypto from '@shardus/crypto-utils'
 import * as configs from './config'
 import * as utils from './utils'
-import stringify = require('fast-stable-stringify')
-import './@types'
-import _ from 'lodash'
+import * as LiberdusTypes from './@types'
 import dotenv from 'dotenv'
 import transactions from './transactions'
 import registerAPI from './api'
-//import {logFlags} from 'shardus-global-server/build/src/logger'
+import stringify = require('fast-stable-stringify');
+import config, { Config } from './config'
 
 dotenv.config()
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 // THE ENTIRE APP STATE FOR THIS NODE
-let accounts: { [id: string]: Accounts } = {}
+let accounts: { [id: string]: LiberdusTypes.Accounts } = {}
 
 const env = process.env
 const args = process.argv
-let defaultConfig = configs.initConfigFromFile()
-let config = configs.overrideDefaultConfig(defaultConfig, env, args)
+
+// let defaultConfig = configs.initConfigFromFile()
+// let config = configs.overrideDefaultConfig(defaultConfig, env, args)
 
 const dapp = shardusFactory(config)
 
@@ -53,7 +54,7 @@ dapp.setup({
        * caused the network to not form up when the tx processing pipeline was
        * fixed to check timestamps properly
        */
-      // const when = Date.now() + configs.ONE_SECOND * 10
+        // const when = Date.now() + configs.ONE_SECOND * 10
       const when = Date.now()
       const existingNetworkAccount = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
       if (existingNetworkAccount) {
@@ -68,7 +69,7 @@ dapp.setup({
             network: configs.networkAccount,
           },
           when,
-          configs.networkAccount,
+          configs.networkAccount
         )
 
         dapp.log(`node ${nodeId} GENERATED_A_NEW_NETWORK_ACCOUNT: `)
@@ -100,7 +101,7 @@ dapp.setup({
       }
     }
   },
-  validateTransaction(tx: any, wrappedStates: { [id: string]: WrappedAccount }): ShardusTypes.IncomingTransactionResult {
+  validateTransaction(tx: any, wrappedStates: { [id: string]: LiberdusTypes.WrappedAccount }): ShardusTypes.IncomingTransactionResult {
     const response: ShardusTypes.IncomingTransactionResult = {
       success: false,
       reason: 'Transaction is not valid.',
@@ -110,8 +111,8 @@ dapp.setup({
     return transactions[tx.type].validate(tx, wrappedStates, response, dapp)
   },
   // THIS NEEDS TO BE FAST, BUT PROVIDES BETTER RESPONSE IF SOMETHING GOES WRONG
-  validate(timestampedTx: any): ShardusTypes.IncomingTransactionResult {
-    let { tx } = timestampedTx
+  validate(timestampedTx: any, appData: any): { success: boolean; reason: string; status: number } {
+    let {tx} = timestampedTx
     let txnTimestamp: number = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
 
     // Validate tx fields here
@@ -143,92 +144,89 @@ dapp.setup({
   getTimestampFromTransaction(tx: any) {
     return tx.timestamp ? tx.timestamp : 0
   },
-  crack(timestampedTx: any): KeyResult {
-    let { tx } = timestampedTx
+  crack(timestampedTx: any, appData: any): LiberdusTypes.KeyResult {
+    let {tx} = timestampedTx
     let txnTimestamp: number = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
     const result = {
       sourceKeys: [],
       targetKeys: [],
       allKeys: [],
       timestamp: txnTimestamp
-    } as TransactionKeys
+    } as LiberdusTypes.TransactionKeys
     const keys = transactions[tx.type].keys(tx, result)
-    const keyResult = {
+    return {
       id: crypto.hashObj(tx),
       timestamp: txnTimestamp,
-      keys
+      keys,
+      shardusMemoryPatterns: {
+        ro: [],
+        rw: [],
+        wo: [],
+        on: [],
+        ri: [],
+      }
     }
-    return keyResult
   },
-  apply(timestampedTx: any, wrappedStates: { [id: string]: WrappedAccount }) {
-    let { tx } = timestampedTx
+  async apply(timestampedTx: ShardusTypes.OpaqueTransaction, wrappedStates: { [id: string]: LiberdusTypes.WrappedAccount }) {
+    //@ts-ignore
+    let {tx} = timestampedTx
     const txTimestamp = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
-    const { success, reason } = this.validateTransaction(tx, wrappedStates)
+    const {success, reason} = this.validateTransaction(tx, wrappedStates)
 
     if (success !== true) {
       throw new Error(`invalid transaction, reason: ${reason}. tx: ${stringify(tx)}`)
     }
 
     // Create an applyResponse which will be used to tell Shardus that the tx has been applied
-    let txId: string
-    if (!tx.sign) {
-      txId = crypto.hashObj(tx)
-    } else {
-      txId = crypto.hashObj(tx, true) // compute from tx
-    }
+    let txId: string = utils.generateTxId(tx)
+
     const applyResponse: ShardusTypes.ApplyResponse = dapp.createApplyResponse(txId, txTimestamp)
 
     transactions[tx.type].apply(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse)
 
     return applyResponse
   },
-  transactionReceiptPass(timestampedTx: any, wrappedStates: { [id: string]: WrappedAccount }, applyResponse: ShardusTypes.ApplyResponse) {
-    let { tx } = timestampedTx
-    let txId: string
-    if (!tx.sign) {
-      txId = crypto.hashObj(tx)
-    } else {
-      txId = crypto.hashObj(tx, true) // compute from tx
-    }
-    if(transactions[tx.type].transactionReceiptPass) transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
+  transactionReceiptPass(timestampedTx: any, wrappedStates: { [id: string]: LiberdusTypes.WrappedAccount }, applyResponse: ShardusTypes.ApplyResponse) {
+    let {tx} = timestampedTx
+    let txId: string = utils.generateTxId(tx)
+    if (transactions[tx.type].transactionReceiptPass)
+      transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
 
   },
-  getStateId(accountAddress: string, mustExist = true): string {
+  async getStateId(accountAddress: string, mustExist = true): Promise<string> {
     const account = accounts[accountAddress]
     if ((typeof account === 'undefined' || account === null) && mustExist === true) {
       throw new Error('Could not get stateId for account ' + accountAddress)
     }
-    const stateId = account.hash
-    return stateId
+    return account.hash
   },
-  getAccountTimestamp(accountAddress: string, mustExist = true): number {
+  async getAccountTimestamp(accountAddress: string, mustExist = true): Promise<number> {
     const account = accounts[accountAddress]
     if ((typeof account === 'undefined' || account === null) && mustExist === true) {
       throw new Error('Could not get getAccountTimestamp for account ' + accountAddress)
     }
-    const timestamp = account.timestamp
-    return timestamp
+    return account.timestamp
   },
   getTimestampAndHashFromAccount(accountData: any): { timestamp: number; hash: string } {
-    const account: Accounts = accountData as Accounts
+    const account: LiberdusTypes.Accounts = accountData as LiberdusTypes.Accounts
     // if ((typeof account === 'undefined' || account === null)) {
     //   throw new Error(`Could not get getAccountInfo for account ${stringify(accountData)} `)
     // }
     const timestamp = account.timestamp
     const hash = account.hash
-    return { timestamp, hash }
+    return {timestamp, hash}
   },
-  deleteLocalAccountData(): void {
+  async deleteLocalAccountData(): Promise<void> {
     accounts = {}
   },
-  setAccountData(accountRecords: Accounts[]): void {
+  async setAccountData(accountRecords: LiberdusTypes.Accounts[]): Promise<void> {
     for (const account of accountRecords) {
       // possibly need to clone this so others lose their ref
       accounts[account.id] = account
     }
   },
-  getRelevantData(accountId: string, timestampedTx: any): ShardusTypes.WrappedResponse {
-    let { tx, timestampReceipt } = timestampedTx
+  async getRelevantData(accountId: string, timestampedTx: any): Promise<ShardusTypes.WrappedResponse> {
+    let {tx} = timestampedTx
     let account = accounts[accountId]
     let accountCreated = false
     return transactions[tx.type].createRelevantAccount(dapp, account, accountId, tx, accountCreated)
@@ -236,7 +234,7 @@ dapp.setup({
   updateAccountFull(wrappedData, localCache, applyResponse): void {
     const accountId = wrappedData.accountId
     const accountCreated = wrappedData.accountCreated
-    const updatedAccount = wrappedData.data as Accounts
+    const updatedAccount = wrappedData.data as LiberdusTypes.Accounts
     // Update hash
     const hashBefore = updatedAccount.hash
     updatedAccount.hash = '' // DON'T THINK THIS IS NECESSARY
@@ -254,25 +252,27 @@ dapp.setup({
       applyResponse.txTimestamp,
       hashBefore,
       hashAfter,
-      accountCreated,
+      accountCreated
     )
   },
   // TODO: This might be useful in making some optimizations
   updateAccountPartial(wrappedData, localCache, applyResponse) {
     this.updateAccountFull(wrappedData, localCache, applyResponse)
   },
-  getAccountDataByRange(accountStart, accountEnd, tsStart, tsEnd, maxRecords): WrappedAccount[] {
-    const results: WrappedAccount[] = []
+  async getAccountDataByRange(accountStart, accountEnd, tsStart, tsEnd, maxRecords): Promise<LiberdusTypes.WrappedAccount[]> {
+    const results: LiberdusTypes.WrappedAccount[] = []
     const start = parseInt(accountStart, 16)
     const end = parseInt(accountEnd, 16)
     // Loop all accounts
     for (const account of Object.values(accounts)) {
       // Skip if not in account id range
       const id = parseInt(account.id, 16)
-      if (id < start || id > end) continue
+      if (id < start || id > end)
+        continue
       // Skip if not in timestamp range
       const timestamp = account.timestamp
-      if (timestamp < tsStart || timestamp > tsEnd) continue
+      if (timestamp < tsStart || timestamp > tsEnd)
+        continue
       // Add to results
       const wrapped = {
         accountId: account.id,
@@ -291,19 +291,18 @@ dapp.setup({
     }
     results.sort((a, b) => a.timestamp - b.timestamp)
 
-    let finalResults = results.slice(0, maxRecords)
-
-    return finalResults
+    return results.slice(0, maxRecords)
   },
-  getAccountData(accountStart, accountEnd, maxRecords): WrappedAccount[] {
-    const results: WrappedAccount[] = []
+  async getAccountData(accountStart, accountEnd, maxRecords): Promise<LiberdusTypes.WrappedAccount[]> {
+    const results: LiberdusTypes.WrappedAccount[] = []
     const start = parseInt(accountStart, 16)
     const end = parseInt(accountEnd, 16)
     // Loop all accounts
     for (const account of Object.values(accounts)) {
       // Skip if not in account id range
       const id = parseInt(account.id, 16)
-      if (id < start || id > end) continue
+      if (id < start || id > end)
+        continue
 
       // Add to results
       const wrapped = {
@@ -322,8 +321,8 @@ dapp.setup({
     results.sort((a, b) => a.timestamp - b.timestamp)
     return results
   },
-  getAccountDataByList(addressList: string[]): WrappedAccount[] {
-    const results: WrappedAccount[] = []
+  async getAccountDataByList(addressList: string[]): Promise<LiberdusTypes.WrappedAccount[]> {
+    const results: LiberdusTypes.WrappedAccount[] = []
     for (const address of addressList) {
       const account = accounts[address]
       if (account) {
@@ -346,8 +345,8 @@ dapp.setup({
   },
   resetAccountData(accountBackupCopies: any[]): void {
     for (const recordData of accountBackupCopies) {
-      const accountData: Accounts = recordData.data
-      accounts[accountData.id] = { ...accountData }
+      const accountData: LiberdusTypes.Accounts = recordData.data
+      accounts[accountData.id] = {...accountData}
     }
   },
   deleteAccountData(addressList: string[]): void {
@@ -356,14 +355,12 @@ dapp.setup({
       delete accounts[address]
     }
   },
-  getAccountDebugValue(wrappedAccount: WrappedAccount): string {
+  getAccountDebugValue(wrappedAccount: LiberdusTypes.WrappedAccount): string {
     return `${stringify(wrappedAccount)}`
   },
   canDebugDropTx(tx: any) {
-    if(tx.type === 'create'){
-      return true
-    }
-    return false
+    return tx.type === 'create';
+
   },
   close(): void {
     dapp.log('Shutting down server...')
@@ -405,15 +402,18 @@ dapp.setup({
         let accountBalance = accountData.data.balance
         let totalBalance = blobBalanceBefore + accountBalance
 
-        if(statsDebugLogs) dapp.log(`stats balance init ${blobBalanceBefore}+${accountBalance}=${totalBalance}  ${stringify(accountData?.id)}`)
+        if (statsDebugLogs)
+          dapp.log(`stats balance init ${blobBalanceBefore}+${accountBalance}=${totalBalance}  ${stringify(accountData.id)}`)
 
         if (totalBalance != null) {
           blob.totalBalance = totalBalance
         } else {
-          if(statsDebugLogs) dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 1 ${accountData?.data.balance} ${stringify(accountData?.id)}`)
+          if (statsDebugLogs)
+            dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 1 ${accountData.data.balance} ${stringify(accountData.id)}`)
         }
       } else {
-        if(statsDebugLogs) dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 2 ${accountData?.data.balance} ${stringify(accountData?.id)}`)
+        if (statsDebugLogs)
+          dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 2 ${accountData.data.balance} ${stringify(accountData.id)}`)
       }
     }
     if (accType == 'NodeAccount') {
@@ -422,10 +422,12 @@ dapp.setup({
         if (totalBalance != null) {
           blob.totalBalance = totalBalance
         } else {
-          if(statsDebugLogs) dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 1 ${accountData?.balance} ${stringify(accountData?.id)}`)
+          if (statsDebugLogs)
+            dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 1 ${accountData.balance} ${stringify(accountData.id)}`)
         }
       } else {
-        if(statsDebugLogs) dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 2 ${accountData?.balance} ${stringify(accountData?.id)}`)
+        if (statsDebugLogs)
+          dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 2 ${accountData.balance} ${stringify(accountData.id)}`)
       }
     }
   },
@@ -442,58 +444,113 @@ dapp.setup({
 
     if (accType == 'UserAccount') {
       let blobBalanceBefore = blob.totalBalance
-      let accountBalanceBefore = accountDataBefore?.data?.balance
-      let accountBalanceAfter = accountDataAfter?.data?.balance
-      let balanceChange = accountDataAfter?.data?.balance - accountDataBefore?.data?.balance
+      let accountBalanceBefore = accountDataBefore.data.balance
+      let accountBalanceAfter = accountDataAfter.data.balance
+      let balanceChange = accountDataAfter.data.balance - accountDataBefore.data.balance
 
       let totalBalance = blob.totalBalance + balanceChange
-      if(statsDebugLogs) dapp.log(
-        `stats balance update ${blobBalanceBefore}+${balanceChange}(${accountBalanceAfter}-${accountBalanceBefore})=${totalBalance}  ${stringify(
-          accountDataAfter?.id,
-        )}`,
-      )
+      if (statsDebugLogs)
+        dapp.log(
+          `stats balance update ${blobBalanceBefore}+${balanceChange}(${accountBalanceAfter}-${accountBalanceBefore})=${totalBalance}  ${stringify(
+            accountDataAfter.id
+          )}`
+        )
 
       if (balanceChange != null) {
         totalBalance = blob.totalBalance + balanceChange
         if (totalBalance != null) {
           blob.totalBalance = totalBalance
         } else {
-          if(statsDebugLogs) dapp.log(
-            `error: null balance attempt. dataSummaryUpdate UserAccount 1 ${accountDataAfter?.data?.balance} ${stringify(accountDataAfter?.id)} ${
-              accountDataBefore?.data?.balance
-            } ${stringify(accountDataBefore?.id)}`,
-          )
+          if (statsDebugLogs)
+            dapp.log(
+              `error: null balance attempt. dataSummaryUpdate UserAccount 1 ${accountDataAfter.data.balance} ${stringify(accountDataAfter.id)} ${accountDataBefore.data.balance} ${stringify(accountDataBefore.id)}`
+            )
         }
       } else {
-        if(statsDebugLogs) dapp.log(
-          `error: null balance attempt. dataSummaryUpdate UserAccount 2 ${accountDataAfter?.data?.balance} ${stringify(accountDataAfter?.id)} ${
-            accountDataBefore?.data?.balance
-          } ${stringify(accountDataBefore?.id)}`,
-        )
+        if (statsDebugLogs)
+          dapp.log(
+            `error: null balance attempt. dataSummaryUpdate UserAccount 2 ${accountDataAfter.data.balance} ${stringify(accountDataAfter.id)} ${accountDataBefore.data.balance} ${stringify(accountDataBefore.id)}`
+          )
       }
     }
     if (accType == 'NodeAccount') {
-      let balanceChange = accountDataAfter?.balance - accountDataBefore?.balance
+      let balanceChange = accountDataAfter.balance - accountDataBefore.balance
       if (balanceChange != null) {
         let totalBalance = blob.totalBalance + balanceChange
         if (totalBalance != null) {
           blob.totalBalance = totalBalance
         } else {
-          if(statsDebugLogs) dapp.log(
-            `error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter?.balance} ${stringify(accountDataAfter?.id)} ${
-              accountDataBefore?.balance
-            } ${stringify(accountDataBefore?.id)}`,
-          )
+          if (statsDebugLogs)
+            dapp.log(
+              `error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter.balance} ${stringify(accountDataAfter.id)} ${accountDataBefore.balance} ${stringify(accountDataBefore.id)}`
+            )
         }
       } else {
-        if(statsDebugLogs) dapp.log(
-          `error: null balance attempt. dataSummaryUpdate NodeAccount 2 ${accountDataAfter?.balance} ${stringify(accountDataAfter?.id)} ${
-            accountDataBefore?.balance
-          } ${stringify(accountDataBefore?.id)}`,
-        )
+        if (statsDebugLogs)
+          dapp.log(
+            `error: null balance attempt. dataSummaryUpdate NodeAccount 2 ${accountDataAfter.balance} ${stringify(accountDataAfter.id)} ${accountDataBefore.balance} ${stringify(accountDataBefore.id)}`
+          )
       }
     }
   },
+  injectTxToConsensor(validatorDetails: any[], tx) {
+    return utils.InjectTxToConsensor(validatorDetails, tx)
+  },
+  getNonceFromTx: function (tx: ShardusTypes.OpaqueTransaction): bigint {
+    return BigInt(-1)
+  },
+  getAccountNonce: function (accountId: string, wrappedData?: ShardusTypes.WrappedData): Promise<bigint> {
+    return new Promise(resolve => resolve(BigInt(-1)))
+  },
+  // todo: consider a base liberdus tx type
+  getTxSenderAddress: function (tx: any): string {
+    const result = {
+      sourceKeys: [],
+      targetKeys: [],
+      allKeys: [],
+      timestamp: tx.timestamp
+    } as LiberdusTypes.TransactionKeys
+    const keys = transactions[tx.type].keys(tx, result)
+    return keys[0]
+  },
+  isInternalTx: function (tx: ShardusTypes.OpaqueTransaction): boolean {
+    // todo: decide what is internal and what is external
+    return true
+  },
+  txPreCrackData: function (tx: ShardusTypes.OpaqueTransaction, appData: any): Promise<{ status: boolean; reason: string }> {
+    return new Promise(resolve => resolve({status: true, reason: 'pass'}))
+  },
+  calculateTxId(tx: ShardusTypes.OpaqueTransaction) {
+    return utils.generateTxId(tx)
+  },
+  getCachedRIAccountData: function (addressList: string[]): Promise<ShardusTypes.WrappedData[]> {
+    console.log(`Not implemented getCachedRIAccountData`)
+    return null
+  },
+  setCachedRIAccountData: function (accountRecords: unknown[]): Promise<void> {
+    console.log(`Not implemented setCachedRIAccountData`)
+    return null
+  },
+  async getNetworkAccount(): Promise<ShardusTypes.WrappedData> {
+    const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+    return account
+  },
+  async isReadyToJoin(
+    latestCycle: ShardusTypes.Cycle,
+    publicKey: string,
+    activeNodes: P2P.P2PTypes.Node[],
+    mode: P2P.ModesTypes.Record['mode'] | null
+  ): Promise<boolean> {
+    return true
+  },
+  canStayOnStandby(joinInfo: any): { canStay: boolean; reason: string } {
+    return { canStay: true, reason: '' }
+  },
+  binarySerializeObject: null,
+  binaryDeserializeObject: null,
+  verifyMultiSigs: function (rawPayload: object, sigs: ShardusTypes.Sign[], allowedPubkeys: { [pubkey: string]: ShardusTypes.DevSecurityLevel }, minSigRequired: number, requiredSecurityLevel: ShardusTypes.DevSecurityLevel): boolean {
+    return false
+  }
 })
 
 dapp.registerExceptionHandler()
@@ -502,7 +559,7 @@ dapp.registerExceptionHandler()
 ;(async (): Promise<void> => {
   const cycleInterval = configs.cycleDuration * configs.ONE_SECOND
 
-  let network: NetworkAccount
+  let network: LiberdusTypes.NetworkAccount
 
   let issueGenerated = false
   let tallyGenerated = false
@@ -526,13 +583,13 @@ dapp.registerExceptionHandler()
 
   // THIS CODE IS CALLED ON EVERY NODE ON EVERY CYCLE
   async function networkMaintenance(): Promise<NodeJS.Timeout> {
-    dapp.log('New maintainence cycle has started')
+    dapp.log('New maintenance cycle has started')
     drift = Date.now() - expected
     currentTime = Date.now()
 
     try {
       const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-      network = account.data as NetworkAccount
+      network = account.data as LiberdusTypes.NetworkAccount
       ;[cycleData] = dapp.getLatestCycles()
       luckyNodes = dapp.getClosestNodes(cycleData.previous, 3)
       nodeId = dapp.getNodeId()
@@ -656,7 +713,7 @@ dapp.registerExceptionHandler()
     dapp.log('devTallyGenerated: ', devTallyGenerated)
     dapp.log('devApplyGenerated: ', devApplyGenerated)
 
-    dapp.log('Maintainence cycle has ended')
+    dapp.log('Maintenance cycle has ended')
 
     expected += cycleInterval
     return setTimeout(networkMaintenance, Math.max(0, cycleInterval - drift))

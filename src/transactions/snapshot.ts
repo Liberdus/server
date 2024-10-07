@@ -2,6 +2,7 @@ import * as crypto from '@shardus/crypto-utils'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import create from '../accounts'
+import {Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.Snapshot, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {

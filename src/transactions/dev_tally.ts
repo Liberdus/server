@@ -3,6 +3,7 @@ import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import stringify from 'fast-stable-stringify'
 import create from '../accounts'
+import {DevIssueAccount, DevProposalAccount, NodeAccount, OurAppDefinedData, DevWindows, DeveloperPayment, NetworkAccount, WrappedStates, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.DevTally, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.nodeId !== 'string') {
