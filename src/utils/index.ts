@@ -1,7 +1,8 @@
-import '../@types'
+import {UserAccount, NetworkAccount, IssueAccount, DevIssueAccount, DeveloperPayment, InjectTxResponse, ValidatorError} from '../@types'
 import * as crypto from '@shardus/crypto-utils'
 import * as configs from '../config'
-import { Shardus, ShardusTypes } from '@shardus/core'
+import { Shardus,  ShardusTypes } from '@shardus/core'
+import {shardusPostToNode} from './request'
 
 export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): number => {
   let amount: number
@@ -16,8 +17,81 @@ export const maintenanceAmount = (timestamp: number, account: UserAccount, netwo
   else return 0
 }
 
+export function generateTxId(tx: any): string {
+  let txId: string
+  if (!tx.sign) {
+    txId = crypto.hashObj(tx)
+  } else {
+    txId = crypto.hashObj(tx, true) // compute from tx
+  }
+  return txId
+}
+
+export async function InjectTxToConsensor(
+  randomConsensusNodes: ShardusTypes.ValidatorNodeDetails[],
+  tx: ShardusTypes.OpaqueTransaction // Sign Object
+): Promise<InjectTxResponse | ValidatorError> {
+  const promises = []
+  try {
+    for (const randomConsensusNode of randomConsensusNodes) {
+      const promise = shardusPostToNode<any>(randomConsensusNode, `/inject`, tx) // eslint-disable-line
+      // @typescript-eslint/no-explicit-any
+      promises.push(promise)
+    }
+    const res = await raceForSuccess(promises, 5000)
+    if (!res.data.success) {
+      return { success: false, reason: res.data.reason }
+    }
+    return res.data as InjectTxResponse
+  } catch (error) {
+    return { success: false, reason: (error as Error).message }
+  }
+}
+
+async function raceForSuccess<
+  T extends {
+    data: {
+      success: boolean
+      reason?: string
+    }
+  }
+>(promises: Promise<T>[], timeoutMs: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let unresolvedCount = promises.length
+    const timer = setTimeout(() => {
+      reject(new Error('Timeout: Operation did not complete within the allowed time.'))
+    }, timeoutMs)
+
+    for (const promise of promises) {
+      promise
+        .then((response) => {
+          if (response.data.success) {
+            clearTimeout(timer)
+            resolve(response)
+          } else {
+            unresolvedCount--
+            if (unresolvedCount === 0) {
+              clearTimeout(timer)
+              //reject(new Error('All promises failed or returned unsuccessful responses.'))
+              resolve(response)
+            }
+          }
+        })
+        .catch((error) => {
+          unresolvedCount--
+          if (unresolvedCount === 0) {
+            clearTimeout(timer)
+            //reject(new Error('All promises failed or returned unsuccessful responses: ' + error))
+            reject(error)
+          }
+        })
+    }
+  })
+}
+
 // HELPER METHOD TO WAIT
 export async function _sleep(ms = 0): Promise<NodeJS.Timeout> {
+  // @ts-ignore
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 

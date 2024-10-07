@@ -5,6 +5,7 @@ import * as utils from '../utils'
 import create from '../accounts'
 import _ from 'lodash'
 import * as config from '../config'
+import {Accounts, UserAccount, NetworkAccount, DevIssueAccount, WrappedStates, DeveloperPayment,  DevProposalAccount, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.DevProposal, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.devIssue !== 'string') {
