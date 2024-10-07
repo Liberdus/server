@@ -1,4 +1,5 @@
 import * as crypto from '@shardus/crypto-utils'
+import {DevProposalAccount} from '../@types'
 
 export const devProposalAccount = (accountId: string) => {
   const devProposal: DevProposalAccount = {

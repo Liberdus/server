@@ -260,28 +260,28 @@ export async function waitForWindow(name: string) {
   console.log(info(`Waiting for ${name} window to become available`))
   switch (name) {
     case 'proposals':
-      while (!((await queryWindow()).window?.proposals < 50)) await _sleep(1000)
+      while (!((await queryWindow()).window.proposals < 50)) await _sleep(1000)
       break
     case 'devProposals':
-      while (!((await queryWindow()).devWindow?.devProposals < 60)) await _sleep(1000)
+      while (!((await queryWindow()).devWindow.devProposals < 60)) await _sleep(1000)
       break
     case 'voting':
-      while (!((await queryWindow()).window?.voting < 60)) await _sleep(1000)
+      while (!((await queryWindow()).window.voting < 60)) await _sleep(1000)
       break
     case 'devVoting':
-      while (!((await queryWindow()).devWindow?.devVoting < 60)) await _sleep(1000)
+      while (!((await queryWindow()).devWindow.devVoting < 60)) await _sleep(1000)
       break
     case 'grace':
-      while (!((await queryWindow()).window?.grace < 50)) await _sleep(1000)
+      while (!((await queryWindow()).window.grace < 50)) await _sleep(1000)
       break
     case 'devGrace':
-      while (!((await queryWindow()).devWindow?.devGrace < 50)) await _sleep(1000)
+      while (!((await queryWindow()).devWindow.devGrace < 50)) await _sleep(1000)
       break
     case 'apply':
-      while (!((await queryWindow()).window?.apply < 50)) await _sleep(1000)
+      while (!((await queryWindow()).window.apply < 50)) await _sleep(1000)
       break
     case 'devApply':
-      while (!((await queryWindow()).devWindow?.devApply < 50)) await _sleep(1000)
+      while (!((await queryWindow()).devWindow.devApply < 50)) await _sleep(1000)
       break
   }
   return

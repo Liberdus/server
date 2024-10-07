@@ -1,7 +1,12 @@
-// ---------------------- TRANSACTION INTERFACES ------------------
+// ---------------------- TRANSACTION export interfaceS ------------------
 
-declare namespace Tx {
-  interface ApplyParameters {
+import {shardusFactory, ShardusTypes} from '@shardus/core'
+export interface BaseLiberdusTx {
+  timestamp: number
+  type: string
+}
+export namespace Tx {
+  export interface ApplyParameters {
     type: string
     timestamp: number
     current: NetworkParameters
@@ -11,7 +16,7 @@ declare namespace Tx {
     issue: number
   }
 
-  interface ApplyDevParameters {
+  export interface ApplyDevParameters {
     type: string
     timestamp: number
     devWindows: DevWindows
@@ -21,27 +26,27 @@ declare namespace Tx {
     devIssue: number
   }
 
-  interface ApplyDevPayment {
+  export interface ApplyDevPayment {
     type: string
     timestamp: number
     developerFund: DeveloperPayment[]
   }
 
-  interface ApplyTally {
+  export interface ApplyTally {
     type: string
     timestamp: number
     next: NetworkParameters
     nextWindows: Windows
   }
 
-  interface ApplyDevTally {
+  export interface ApplyDevTally {
     type: string
     timestamp: number
     nextDeveloperFund: DeveloperPayment[]
     nextDevWindows: Windows
   }
 
-  interface Create {
+  export interface Create {
     type: string
     from: string
     to: string
@@ -49,7 +54,7 @@ declare namespace Tx {
     timestamp: number
   }
 
-  interface Distribute {
+  export interface Distribute {
     type: string
     from: string
     recipients: string[]
@@ -58,7 +63,7 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface Email {
+  export interface Email {
     type: string
     signedTx: {
       emailHash: string
@@ -69,7 +74,7 @@ declare namespace Tx {
     timestamp: number
   }
 
-  interface Friend {
+  export interface Friend {
     type: string
     alias: string
     from: string
@@ -78,7 +83,7 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface GossipEmailHash {
+  export interface GossipEmailHash {
     type: string
     nodeId: string
     account: string
@@ -88,12 +93,12 @@ declare namespace Tx {
     timestamp: number
   }
 
-  interface InitNetwork {
+  export interface InitNetwork {
     type: string
     timestamp: number
   }
 
-  interface Issue {
+  export interface Issue {
     type: string
     nodeId: string
     from: string
@@ -102,7 +107,7 @@ declare namespace Tx {
     timestamp: number
   }
 
-  interface DevIssue {
+  export interface DevIssue {
     type: string
     nodeId: string
     from: string
@@ -110,7 +115,7 @@ declare namespace Tx {
     timestamp: number
   }
 
-  interface Message {
+  export interface Message {
     type: string
     from: string
     to: string
@@ -120,7 +125,7 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface NodeReward {
+  export interface NodeReward {
     type: string
     nodeId: string
     from: string
@@ -128,7 +133,7 @@ declare namespace Tx {
     timestamp: number
   }
 
-  interface Parameters {
+  export interface Parameters {
     type: string
     nodeId: string
     from: string
@@ -136,7 +141,7 @@ declare namespace Tx {
     timestamp: number
   }
 
-  interface ChangeConfig {
+  export interface ChangeConfig {
     type: string
     from: string
     cycle: number
@@ -144,13 +149,13 @@ declare namespace Tx {
     timestamp: number
   }
 
-  interface ApplyChangeConfig {
+  export interface ApplyChangeConfig {
     type: string
     change: any
     timestamp: number
   }
 
-  interface DevParameters {
+  export interface DevParameters {
     type: string
     nodeId: string
     from: string
@@ -158,7 +163,7 @@ declare namespace Tx {
     timestamp: number
   }
 
-  interface Proposal {
+  export interface Proposal {
     type: string
     from: string
     proposal: string
@@ -168,7 +173,7 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface DevProposal {
+  export interface DevProposal {
     type: string
     from: string
     devProposal: string
@@ -182,7 +187,7 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface Register {
+  export interface Register {
     type: string
     aliasHash: string
     from: string
@@ -191,7 +196,7 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface RemoveFriend {
+  export interface RemoveFriend {
     type: string
     from: string
     to: string
@@ -199,7 +204,7 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface RemoveStakeRequest {
+  export interface RemoveStakeRequest {
     type: string
     from: string
     stake: number
@@ -207,7 +212,7 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface RemoveStake {
+  export interface RemoveStake {
     type: string
     from: string
     stake: number
@@ -215,14 +220,14 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface SnapshotClaim {
+  export interface SnapshotClaim {
     type: string
     from: string
     timestamp: number
     sign: Signature
   }
 
-  interface Snapshot {
+  export interface Snapshot {
     type: string
     from: string
     snapshot: any
@@ -230,7 +235,7 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface Stake {
+  export interface Stake {
     type: string
     from: string
     stake: number
@@ -238,7 +243,7 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface Tally {
+  export interface Tally {
     type: string
     nodeId: string
     from: string
@@ -247,7 +252,7 @@ declare namespace Tx {
     timestamp: number
   }
 
-  interface DevTally {
+  export interface DevTally {
     type: string
     nodeId: string
     from: string
@@ -256,7 +261,7 @@ declare namespace Tx {
     timestamp: number
   }
 
-  interface Toll {
+  export interface Toll {
     type: string
     from: string
     toll: number
@@ -264,7 +269,7 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface Transfer {
+  export interface Transfer {
     type: string
     from: string
     to: string
@@ -273,7 +278,7 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface Verify {
+  export interface Verify {
     type: string
     from: string
     code: string
@@ -281,7 +286,7 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface Vote {
+  export interface Vote {
     type: string
     from: string
     issue: string
@@ -291,7 +296,7 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface DevVote {
+  export interface DevVote {
     type: string
     from: string
     devIssue: string
@@ -302,7 +307,7 @@ declare namespace Tx {
     sign: Signature
   }
 
-  interface DevPayment {
+  export interface DevPayment {
     type: string
     nodeId: string
     from: string
@@ -313,16 +318,16 @@ declare namespace Tx {
   }
 }
 
-interface Signature {
+export interface Signature {
   owner: string
   sig: string
 }
 
 /**
- * ---------------------- ACCOUNT INTERFACES ----------------------
+ * ---------------------- ACCOUNT export interfaceS ----------------------
  */
 
-interface UserAccount {
+export interface UserAccount {
   id: string
   type: string
   data: {
@@ -344,7 +349,7 @@ interface UserAccount {
   hash: string
 }
 
-interface NodeAccount {
+export interface NodeAccount {
   id: string
   type: string
   balance: number
@@ -353,7 +358,7 @@ interface NodeAccount {
   timestamp: number
 }
 
-interface ChatAccount {
+export interface ChatAccount {
   id: string
   type: string
   messages: unknown[]
@@ -361,7 +366,7 @@ interface ChatAccount {
   hash: string
 }
 
-interface AliasAccount {
+export interface AliasAccount {
   id: string
   type: string
   hash: string
@@ -370,7 +375,7 @@ interface AliasAccount {
   timestamp: number
 }
 
-interface NetworkAccount {
+export interface NetworkAccount {
   id: string
   type: string
   listOfChanges: Array<{
@@ -392,7 +397,7 @@ interface NetworkAccount {
   snapshot?: object
 }
 
-interface IssueAccount {
+export interface IssueAccount {
   id: string
   type: string
   active: boolean | null
@@ -404,7 +409,7 @@ interface IssueAccount {
   timestamp: number
 }
 
-interface DevIssueAccount {
+export interface DevIssueAccount {
   id: string
   type: string
   devProposals: string[]
@@ -416,7 +421,7 @@ interface DevIssueAccount {
   timestamp: number
 }
 
-interface ProposalAccount {
+export interface ProposalAccount {
   id: string
   type: string
   power: number
@@ -428,7 +433,7 @@ interface ProposalAccount {
   timestamp: number
 }
 
-interface DevProposalAccount {
+export interface DevProposalAccount {
   id: string
   type: string
   approve: number
@@ -445,14 +450,14 @@ interface DevProposalAccount {
   timestamp: number
 }
 
-type Accounts = NetworkAccount & IssueAccount & DevIssueAccount & UserAccount & AliasAccount & ProposalAccount & DevProposalAccount & NodeAccount & ChatAccount
+export type Accounts = NetworkAccount & IssueAccount & DevIssueAccount & UserAccount & AliasAccount & ProposalAccount & DevProposalAccount & NodeAccount & ChatAccount
 // type Account = NetworkAccount | IssueAccount | DevIssueAccount | UserAccount | AliasAccount | ProposalAccount | DevProposalAccount | NodeAccount | ChatAccount
 
 /**
- * ---------------------- NETWORK DATA INTERFACES ----------------------
+ * ---------------------- NETWORK DATA export interfaceS ----------------------
  */
 
-interface NetworkParameters {
+export interface NetworkParameters {
   title: string
   description: string
   nodeRewardInterval: number
@@ -468,21 +473,21 @@ interface NetworkParameters {
   defaultToll: number
 }
 
-interface Windows {
+export interface Windows {
   proposalWindow: number[]
   votingWindow: number[]
   graceWindow: number[]
   applyWindow: number[]
 }
 
-interface DevWindows {
+export interface DevWindows {
   devProposalWindow: number[]
   devVotingWindow: number[]
   devGraceWindow: number[]
   devApplyWindow: number[]
 }
 
-interface DeveloperPayment {
+export interface DeveloperPayment {
   id: string
   address: string
   amount: number
@@ -491,17 +496,17 @@ interface DeveloperPayment {
 }
 
 /**
- * ---------------------- SDK DATA INTERFACES ----------------------
+ * ---------------------- SDK DATA export interfaceS ----------------------
  */
 
-interface TransactionKeys {
+export interface TransactionKeys {
   sourceKeys: string[]
   targetKeys: string[]
   allKeys: string[]
   timestamp: number
 }
 
-interface WrappedResponse {
+export interface WrappedResponse {
   accountId: string
   accountCreated: boolean
   isPartial: boolean
@@ -510,13 +515,13 @@ interface WrappedResponse {
   data: never
 }
 
-interface ValidationResponse {
+export interface ValidationResponse {
   result: string
   reason: string
   txnTimestamp?: number
 }
 
-interface WrappedAccount {
+export interface WrappedAccount {
   accountId: string
   stateId: string
   data: Accounts
@@ -524,21 +529,32 @@ interface WrappedAccount {
   accountCreated?: boolean
 }
 
-interface WrappedStates {
+export interface WrappedStates {
   [id: string]: WrappedAccount
 }
 
-type KeyResult = {
-  id: string
+export type KeyResult = {
   timestamp: number
+  id: string
   keys: TransactionKeys
+  shardusMemoryPatterns: ShardusTypes.ShardusMemoryPatternsInput
 }
 
-interface OurAppDefinedData {
+export interface OurAppDefinedData {
   globalMsg: {
     address: string
     value: any
     when: number,
     source: string
   }
+}
+
+export interface InjectTxResponse {
+  success: boolean
+  reason?: string
+}
+
+export interface ValidatorError {
+  success: boolean
+  reason: string
 }

@@ -1,6 +1,7 @@
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import create from '../accounts'
+import {Accounts, UserAccount, NetworkAccount, NodeAccount, WrappedStates, OurAppDefinedData, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {

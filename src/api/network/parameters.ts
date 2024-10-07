@@ -1,4 +1,5 @@
 import * as configs from '../../config'
+import {NetworkAccount} from '../../@types'
 
 export const current = dapp => async (req, res): Promise<void> => {
   try {
