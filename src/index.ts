@@ -44,6 +44,7 @@ dapp.registerExternalGet(
 // SDK SETUP FUNCTIONS
 dapp.setup({
   async sync(): Promise<void> {
+    dapp.useAccountWrites()
     if (dapp.p2p.isFirstSeed) {
       await utils._sleep(configs.ONE_SECOND * 5)
 
@@ -167,7 +168,7 @@ dapp.setup({
       }
     }
   },
-  async apply(timestampedTx: ShardusTypes.OpaqueTransaction, wrappedStates: { [id: string]: LiberdusTypes.WrappedAccount }) {
+  async apply(timestampedTx: ShardusTypes.OpaqueTransaction, wrappedStates ) {
     //@ts-ignore
     let {tx} = timestampedTx
     const txTimestamp = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
@@ -183,6 +184,10 @@ dapp.setup({
     const applyResponse: ShardusTypes.ApplyResponse = dapp.createApplyResponse(txId, txTimestamp)
 
     transactions[tx.type].apply(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse)
+
+    for (const accountId in wrappedStates) {
+      dapp.applyResponseAddChangedAccount(applyResponse, accountId, wrappedStates[accountId] as ShardusTypes.WrappedResponse, txId, txTimestamp)
+    }
 
     return applyResponse
   },
@@ -511,7 +516,7 @@ dapp.setup({
       timestamp: tx.timestamp
     } as LiberdusTypes.TransactionKeys
     const keys = transactions[tx.type].keys(tx, result)
-    return keys[0]
+    return keys.allKeys[0]
   },
   isInternalTx: function (tx: ShardusTypes.OpaqueTransaction): boolean {
     // todo: decide what is internal and what is external
