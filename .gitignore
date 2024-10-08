@@ -13,3 +13,4 @@ instances*/
 spam-test.json
 .dockersecret
 coverage
+.idea
