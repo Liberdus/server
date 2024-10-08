@@ -5,7 +5,7 @@ const fs = require('fs')
 const { resolve } = require('path')
 const path = require('path')
 const vorpal = require('vorpal')()
-const crypto = require('shardus-crypto-utils')
+const crypto = require('@shardus/crypto-utils')
 const stringify = require('fast-stable-stringify')
 const axios = require('axios')
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
@@ -241,6 +241,7 @@ function buildTx({ type, from = {}, to, handle, id, amount, message, toll }) {
         id,
         timestamp: Date.now(),
       }
+      console.log(actualTx)
       break
     }
     case 'create': {
@@ -304,6 +305,7 @@ function buildTx({ type, from = {}, to, handle, id, amount, message, toll }) {
   } else {
     crypto.signObj(actualTx, to.keys.secretKey, to.keys.publicKey)
   }
+  console.log(`actual tx`, actualTx)
   return actualTx
 }
 
@@ -699,6 +701,7 @@ vorpal.command('register', 'registers a unique alias for your account').action(a
     timestamp: Date.now(),
   }
   crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  console.log(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
@@ -844,7 +847,8 @@ vorpal.command('message', 'sends a message to another user').action(async functi
         handle,
         timestamp: Date.now(),
       })
-      const encryptedMsg = crypto.encrypt(message, crypto.convertSkToCurve(USER.keys.secretKey), crypto.convertPkToCurve(to))
+      // const encryptedMsg = crypto.encrypt(message, crypto.convertSkToCurve(USER.keys.secretKey), crypto.convertPkToCurve(to))
+      const encryptedMsg = message
       const tx = {
         type: 'message',
         from: USER.address,
@@ -1303,7 +1307,7 @@ vorpal.command('vote dev', 'vote for a development proposal').action(async funct
 vorpal.command('message poll <to>', 'gets messages between you and <to>').action(async function(args, callback) {
   const to = await getAddress(args.to)
   let messages = await queryMessages(USER.address, to)
-  messages = messages.map(message => JSON.parse(crypto.decrypt(message, crypto.convertSkToCurve(USER.keys.secretKey), crypto.convertPkToCurve(to)).message))
+  // messages = messages.map(message => JSON.parse(crypto.decrypt(message, crypto.convertSkToCurve(USER.keys.secretKey), crypto.convertPkToCurve(to)).message))
   this.log(messages)
   callback()
 })
