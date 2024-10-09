@@ -9,6 +9,7 @@ import transactions from './transactions'
 import registerAPI from './api'
 import stringify = require('fast-stable-stringify');
 import config, { Config } from './config'
+import { TXTypes } from './transactions'
 
 dotenv.config()
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
@@ -186,7 +187,27 @@ dapp.setup({
     transactions[tx.type].apply(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse)
 
     for (const accountId in wrappedStates) {
-      dapp.applyResponseAddChangedAccount(applyResponse, accountId, wrappedStates[accountId] as ShardusTypes.WrappedResponse, txId, txTimestamp)
+      // only add the accounts that have changed
+      if (wrappedStates[accountId].data?.['timestamp'] === txTimestamp) {
+        // Update the stateId by calculating the hash for the update accounts for the global txs
+        // TODO: This is a hack, we might want to add the change of calling calculateAccountHash() on shardus core for global txs
+        // For normal txs, shardus core takes care of account stateId updates, see: https://github.com/shardeum/shardus-core/blob/8dd4807e952ff5424dfd2e322284e0d55f84b3a8/src/state-manager/TransactionConsensus.ts#L3574
+        const wrappedChangedAccount = wrappedStates[accountId] as ShardusTypes.WrappedResponse
+        if (
+          tx.type === TXTypes.init_network ||
+          tx.type === TXTypes.apply_change_config ||
+          tx.type === TXTypes.apply_dev_parameters ||
+          tx.type === TXTypes.apply_dev_tally ||
+          tx.type === TXTypes.apply_developer_payment ||
+          tx.type === TXTypes.apply_parameters ||
+          tx.type === TXTypes.apply_tally
+        ) {
+          const hashAfter = this.calculateAccountHash(wrappedStates[accountId].data)
+          wrappedChangedAccount.stateId = hashAfter
+          wrappedChangedAccount.timestamp = txTimestamp
+        }
+        dapp.applyResponseAddChangedAccount(applyResponse, accountId, wrappedChangedAccount, txId, txTimestamp)
+      }
     }
 
     return applyResponse
@@ -365,7 +386,6 @@ dapp.setup({
   },
   canDebugDropTx(tx: any) {
     return tx.type === 'create';
-
   },
   close(): void {
     dapp.log('Shutting down server...')
