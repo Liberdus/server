@@ -134,13 +134,16 @@ dapp.setup({
       response.reason = 'Tx "type" field must be a string.'
       throw new Error(response.reason)
     }
+    if (transactions[tx.type] == undefined) {
+      response.success = false
+      response.reason = `The tx type ${tx.type} does not exist in the network.`
+    }
 
     if (typeof txnTimestamp !== 'number') {
       response.success = false
       response.reason = 'Tx "timestamp" field must be a number.'
       throw new Error(response.reason)
     }
-    console.log()
     return transactions[tx.type].validate_fields(tx, response)
   },
   getTimestampFromTransaction(tx: any) {
@@ -590,7 +593,10 @@ dapp.setup({
   binaryDeserializeObject: null,
   verifyMultiSigs: function (rawPayload: object, sigs: ShardusTypes.Sign[], allowedPubkeys: { [pubkey: string]: ShardusTypes.DevSecurityLevel }, minSigRequired: number, requiredSecurityLevel: ShardusTypes.DevSecurityLevel): boolean {
     return false
-  }
+  },
+  beforeStateAccountFilter(account: ShardusTypes.WrappedData) {
+    return false
+  },
 })
 
 dapp.registerExceptionHandler()
