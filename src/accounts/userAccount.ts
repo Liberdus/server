@@ -12,7 +12,6 @@ export const userAccount = (accountId: string, timestamp: number) => {
       toll: null,
       chats: {},
       friends: {},
-      transactions: [],
       payments: [],
     },
     alias: null,
