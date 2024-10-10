@@ -54,7 +54,7 @@ export const apply = (tx: Tx.Stake, txTimestamp: number, txId: string, wrappedSt
   from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
   from.data.stake = network.current.stakeRequired
   from.timestamp = txTimestamp
-  from.data.transactions.push({ ...tx, txId })
+  // from.data.transactions.push({ ...tx, txId })
   dapp.log('Applied stake tx', from)
 }
 

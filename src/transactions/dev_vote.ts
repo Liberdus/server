@@ -102,7 +102,7 @@ export const apply = (tx: Tx.DevVote, txTimestamp: number, txId: string, wrapped
   }
 
   devProposal.totalVotes++
-  from.data.transactions.push({ ...tx, txId })
+  // from.data.transactions.push({ ...tx, txId })
   from.timestamp = txTimestamp
   devProposal.timestamp = txTimestamp
   dapp.log('Applied dev_vote tx', from, devProposal)
