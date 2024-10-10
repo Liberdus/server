@@ -538,9 +538,24 @@ dapp.setup({
     const keys = transactions[tx.type].keys(tx, result)
     return keys.allKeys[0]
   },
-  isInternalTx: function (tx: ShardusTypes.OpaqueTransaction): boolean {
+  isInternalTx: function (tx: LiberdusTypes.BaseLiberdusTx): boolean {
     // todo: decide what is internal and what is external
+    const internalTxTypes = [
+      TXTypes.init_network,
+      TXTypes.issue,
+      TXTypes.dev_issue,
+      TXTypes.apply_parameters,
+      TXTypes.apply_tally,
+      TXTypes.apply_change_config,
+      TXTypes.apply_developer_payment,
+      TXTypes.apply_dev_parameters,
+      TXTypes.apply_dev_tally,
+      TXTypes.node_reward
+    ]
+    if (internalTxTypes.includes(tx.type)) {
     return true
+    }
+    return false
   },
   txPreCrackData: function (tx: ShardusTypes.OpaqueTransaction, appData: any): Promise<{ status: boolean; reason: string }> {
     return new Promise(resolve => resolve({status: true, reason: 'pass'}))
