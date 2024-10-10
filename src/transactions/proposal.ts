@@ -207,7 +207,7 @@ export const apply = (tx: Tx.Proposal, txTimestamp: number, txId: string, wrappe
   proposal.number = issue.proposalCount
   issue.proposals.push(proposal.id)
 
-  from.data.transactions.push({ ...tx, txId })
+  // from.data.transactions.push({ ...tx, txId })
   from.timestamp = txTimestamp
   issue.timestamp = txTimestamp
   proposal.timestamp = txTimestamp

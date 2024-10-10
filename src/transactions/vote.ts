@@ -91,7 +91,7 @@ export const apply = (tx: Tx.Vote, txTimestamp: number, txId: string, wrappedSta
   proposal.power += tx.amount
   proposal.totalVotes++
 
-  from.data.transactions.push({ ...tx, txId })
+  // from.data.transactions.push({ ...tx, txId })
   from.timestamp = txTimestamp
   proposal.timestamp = txTimestamp
   dapp.log('Applied vote tx', from, proposal)

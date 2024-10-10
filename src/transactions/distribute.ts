@@ -62,11 +62,11 @@ export const apply = (tx: Tx.Distribute, txTimestamp: number, txId: string, wrap
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const recipients: UserAccount[] = tx.recipients.map((id: string) => wrappedStates[id].data)
   from.data.balance -= network.current.transactionFee
-  from.data.transactions.push({ ...tx, txId })
+  // from.data.transactions.push({ ...tx, txId })
   for (const user of recipients) {
     from.data.balance -= tx.amount
     user.data.balance += tx.amount
-    user.data.transactions.push({ ...tx, txId })
+    // user.data.transactions.push({ ...tx, txId })
   }
   from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
   dapp.log('Applied distribute transaction', from, recipients)

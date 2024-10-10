@@ -337,7 +337,7 @@ export interface UserAccount {
     friends: object
     stake?: number
     remove_stake_request: number | null
-    transactions: object[]
+    // transactions: object[]
     payments: DeveloperPayment[]
   }
   alias: string | null
