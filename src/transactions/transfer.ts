@@ -60,8 +60,8 @@ export const apply = (tx: Tx.Transfer, txTimestamp: number, txId: string, wrappe
   from.data.balance -= tx.amount + network.current.transactionFee
   from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
   to.data.balance += tx.amount
-  from.data.transactions.push({ ...tx, txId })
-  to.data.transactions.push({ ...tx, txId })
+  // from.data.transactions.push({ ...tx, txId })
+  // to.data.transactions.push({ ...tx, txId })
   from.timestamp = txTimestamp
   to.timestamp = txTimestamp
   dapp.log('Applied transfer tx', from, to)

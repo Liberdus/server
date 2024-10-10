@@ -59,7 +59,7 @@ export const apply = (tx: Tx.RemoveStake, txTimestamp: number, txId: string, wra
     from.data.stake = 0
     from.timestamp = txTimestamp
     from.data.remove_stake_request = null
-    from.data.transactions.push({ ...tx, txId })
+    // from.data.transactions.push({ ...tx, txId })
     dapp.log('Applied remove_stake tx', from)
   } else {
     dapp.log('Cancelled remove_stake tx because `remove_stake_request` is null or earlier than 2 * nodeRewardInterval', from)
