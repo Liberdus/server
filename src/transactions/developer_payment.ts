@@ -104,7 +104,7 @@ export const apply = (tx: Tx.DevPayment, txTimestamp: number, txId: string, wrap
   const developer: UserAccount = wrappedStates[tx.developer].data
   developer.data.payments.push(tx.payment)
   developer.data.balance += tx.payment.amount
-  developer.data.transactions.push({ ...tx, txId })
+  // developer.data.transactions.push({ ...tx, txId })
 
   const when = txTimestamp + config.ONE_SECOND * 10
   let value = {

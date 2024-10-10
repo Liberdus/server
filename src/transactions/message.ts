@@ -99,8 +99,8 @@ export const apply = (tx: Tx.Message, txTimestamp: number, txId: string, wrapped
   if (!to.data.chats[tx.from]) to.data.chats[tx.from] = tx.chatId
 
   chat.messages.push(tx.message)
-  from.data.transactions.push({ ...tx, txId })
-  to.data.transactions.push({ ...tx, txId })
+  // from.data.transactions.push({ ...tx, txId })
+  // to.data.transactions.push({ ...tx, txId })
 
   chat.timestamp = txTimestamp
   from.timestamp = txTimestamp
