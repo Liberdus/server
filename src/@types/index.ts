@@ -1,180 +1,140 @@
 // ---------------------- TRANSACTION export interfaceS ------------------
 
 import {shardusFactory, ShardusTypes} from '@shardus/core'
+import  {TXTypes} from '../transactions'
 export interface BaseLiberdusTx {
   timestamp: number
-  type: string
+  type: TXTypes
+  sign: Signature
 }
 export namespace Tx {
-  export interface ApplyParameters {
-    type: string
-    timestamp: number
+  export interface ApplyParameters extends BaseLiberdusTx {
     current: NetworkParameters
     next: {}
     windows: Windows
     nextWindows: {}
-    issue: number
+    issue: number,
   }
 
-  export interface ApplyDevParameters {
-    type: string
+  export interface ApplyDevParameters extends BaseLiberdusTx {
     timestamp: number
     devWindows: DevWindows
     nextDevWindows: {}
     developerFund: DeveloperPayment[]
     nextDeveloperFund: DeveloperPayment[]
-    devIssue: number
+    devIssue: number,
   }
 
-  export interface ApplyDevPayment {
-    type: string
-    timestamp: number
-    developerFund: DeveloperPayment[]
+  export interface ApplyDevPayment extends BaseLiberdusTx {
+    developerFund: DeveloperPayment[],
   }
 
-  export interface ApplyTally {
-    type: string
-    timestamp: number
+  export interface ApplyTally extends BaseLiberdusTx {
     next: NetworkParameters
     nextWindows: Windows
   }
 
-  export interface ApplyDevTally {
-    type: string
-    timestamp: number
+  export interface ApplyDevTally extends BaseLiberdusTx {
     nextDeveloperFund: DeveloperPayment[]
     nextDevWindows: Windows
   }
 
-  export interface Create {
-    type: string
+  export interface Create extends BaseLiberdusTx {
     from: string
     to: string
     amount: number
-    timestamp: number
   }
 
-  export interface Distribute {
-    type: string
+  export interface Distribute extends BaseLiberdusTx {
     from: string
     recipients: string[]
     amount: number
-    timestamp: number
-    sign: Signature
   }
 
-  export interface Email {
-    type: string
+  export interface Email extends BaseLiberdusTx {
     signedTx: {
       emailHash: string
       from: string
       sign: Signature
     }
     email: string
-    timestamp: number
   }
 
-  export interface Friend {
-    type: string
+  export interface Friend extends BaseLiberdusTx {
     alias: string
     from: string
     to: string
-    timestamp: number
-    sign: Signature
   }
 
-  export interface GossipEmailHash {
-    type: string
+  export interface GossipEmailHash extends BaseLiberdusTx {
     nodeId: string
     account: string
     from: string
     emailHash: string
     verified: string
+  }
+
+  export interface InitNetwork extends BaseLiberdusTx {
+    type: TXTypes
     timestamp: number
   }
 
-  export interface InitNetwork {
-    type: string
-    timestamp: number
-  }
-
-  export interface Issue {
-    type: string
+  export interface Issue extends BaseLiberdusTx {
     nodeId: string
     from: string
     issue: string
     proposal: string
-    timestamp: number
   }
 
-  export interface DevIssue {
-    type: string
+  export interface DevIssue extends BaseLiberdusTx {
     nodeId: string
     from: string
     devIssue: string
-    timestamp: number
   }
 
-  export interface Message {
-    type: string
+  export interface Message extends BaseLiberdusTx {
     from: string
     to: string
     chatId: string
     message: string
-    timestamp: number
-    sign: Signature
   }
 
-  export interface NodeReward {
-    type: string
+  export interface NodeReward extends BaseLiberdusTx {
     nodeId: string
     from: string
     to: string
-    timestamp: number
   }
 
-  export interface Parameters {
-    type: string
+  export interface Parameters extends BaseLiberdusTx {
     nodeId: string
     from: string
     issue: string
-    timestamp: number
   }
 
-  export interface ChangeConfig {
-    type: string
+  export interface ChangeConfig extends BaseLiberdusTx {
     from: string
     cycle: number
     config: string
-    timestamp: number
   }
 
-  export interface ApplyChangeConfig {
-    type: string
+  export interface ApplyChangeConfig extends BaseLiberdusTx {
     change: any
-    timestamp: number
   }
 
-  export interface DevParameters {
-    type: string
+  export interface DevParameters extends BaseLiberdusTx {
     nodeId: string
     from: string
     devIssue: string
-    timestamp: number
   }
 
-  export interface Proposal {
-    type: string
+  export interface Proposal extends BaseLiberdusTx {
     from: string
     proposal: string
     issue: string
     parameters: NetworkParameters
-    timestamp: number
-    sign: Signature
   }
 
-  export interface DevProposal {
-    type: string
+  export interface DevProposal extends BaseLiberdusTx {
     from: string
     devProposal: string
     devIssue: string
@@ -183,138 +143,93 @@ export namespace Tx {
     title: string
     description: string
     payAddress: string
-    timestamp: number
-    sign: Signature
   }
 
-  export interface Register {
-    type: string
+  export interface Register extends BaseLiberdusTx {
     aliasHash: string
     from: string
     alias: string
-    timestamp: number
-    sign: Signature
   }
 
-  export interface RemoveFriend {
-    type: string
+  export interface RemoveFriend extends BaseLiberdusTx {
     from: string
     to: string
-    timestamp: number
-    sign: Signature
   }
 
-  export interface RemoveStakeRequest {
-    type: string
+  export interface RemoveStakeRequest extends BaseLiberdusTx {
     from: string
     stake: number
-    timestamp: number
-    sign: Signature
   }
 
-  export interface RemoveStake {
-    type: string
+  export interface RemoveStake extends BaseLiberdusTx {
     from: string
     stake: number
-    timestamp: number
-    sign: Signature
   }
 
-  export interface SnapshotClaim {
-    type: string
+  export interface SnapshotClaim extends BaseLiberdusTx {
     from: string
-    timestamp: number
-    sign: Signature
   }
 
-  export interface Snapshot {
-    type: string
+  export interface Snapshot extends BaseLiberdusTx {
     from: string
     snapshot: any
-    timestamp: number
-    sign: Signature
   }
 
-  export interface Stake {
-    type: string
+  export interface Stake extends BaseLiberdusTx {
     from: string
     stake: number
-    timestamp: number
-    sign: Signature
   }
 
-  export interface Tally {
-    type: string
+  export interface Tally extends BaseLiberdusTx {
     nodeId: string
     from: string
     issue: string
     proposals: string[]
-    timestamp: number
   }
 
-  export interface DevTally {
-    type: string
+  export interface DevTally extends BaseLiberdusTx {
     nodeId: string
     from: string
     devIssue: string
     devProposals: string[]
-    timestamp: number
   }
 
-  export interface Toll {
-    type: string
+  export interface Toll extends BaseLiberdusTx {
     from: string
     toll: number
-    timestamp: number
-    sign: Signature
   }
 
-  export interface Transfer {
-    type: string
+  export interface Transfer extends BaseLiberdusTx {
     from: string
     to: string
     amount: number
-    timestamp: number
-    sign: Signature
   }
 
-  export interface Verify {
-    type: string
+  export interface Verify extends BaseLiberdusTx {
     from: string
     code: string
-    timestamp: number
-    sign: Signature
   }
 
-  export interface Vote {
-    type: string
+  export interface Vote extends BaseLiberdusTx {
     from: string
     issue: string
     proposal: string
     amount: number
-    timestamp: number
-    sign: Signature
   }
 
-  export interface DevVote {
-    type: string
+  export interface DevVote extends BaseLiberdusTx {
     from: string
     devIssue: string
     devProposal: string
     approve: boolean
     amount: number
-    timestamp: number
-    sign: Signature
   }
 
-  export interface DevPayment {
-    type: string
+  export interface DevPayment extends BaseLiberdusTx {
     nodeId: string
     from: string
     developer: string
     payment: DeveloperPayment
-    timestamp: number
-    sign: Signature
   }
 }
 
