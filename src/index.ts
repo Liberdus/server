@@ -8,14 +8,14 @@ import dotenv from 'dotenv'
 import transactions from './transactions'
 import registerAPI from './api'
 import stringify = require('fast-stable-stringify');
-import config, { Config } from './config'
+import config, { FilePaths, LiberdusFlags } from './config'
 import { TXTypes } from './transactions'
+import * as AccountsStorage from './storage/accountStorage'
 
 dotenv.config()
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 // THE ENTIRE APP STATE FOR THIS NODE
-let accounts: { [id: string]: LiberdusTypes.Accounts } = {}
 
 const env = process.env
 const args = process.argv
@@ -25,22 +25,23 @@ const args = process.argv
 
 const dapp = shardusFactory(config)
 
+if (LiberdusFlags.UseDBForAccounts === true) {
+  AccountsStorage.init(config.server.baseDir, `${FilePaths.LIBERDUS_DB}`)
+}
+
 // let logFlags = {}
 // if(dapp.getLogFlags){
 //   logFlags = dapp.getLogFlags()
 // }
 let statsDebugLogs = false
 
-
 // API
 registerAPI(dapp)
 
-dapp.registerExternalGet(
-  'accounts',
-  async (req, res): Promise<void> => {
-    res.json({ accounts })
-  },
-)
+dapp.registerExternalGet('accounts', async (req, res): Promise<void> => {
+  const accounts = await AccountsStorage.debugGetAllAccounts()
+  res.json({ accounts })
+})
 
 // SDK SETUP FUNCTIONS
 dapp.setup({
@@ -223,14 +224,14 @@ dapp.setup({
 
   },
   async getStateId(accountAddress: string, mustExist = true): Promise<string> {
-    const account = accounts[accountAddress]
+    const account = await AccountsStorage.getAccount(accountAddress)
     if ((typeof account === 'undefined' || account === null) && mustExist === true) {
       throw new Error('Could not get stateId for account ' + accountAddress)
     }
     return account.hash
   },
   async getAccountTimestamp(accountAddress: string, mustExist = true): Promise<number> {
-    const account = accounts[accountAddress]
+    const account = await AccountsStorage.getAccount(accountAddress)
     if ((typeof account === 'undefined' || account === null) && mustExist === true) {
       throw new Error('Could not get getAccountTimestamp for account ' + accountAddress)
     }
@@ -246,31 +247,29 @@ dapp.setup({
     return {timestamp, hash}
   },
   async deleteLocalAccountData(): Promise<void> {
-    accounts = {}
+    await AccountsStorage.clearAccounts()
   },
   async setAccountData(accountRecords: LiberdusTypes.Accounts[]): Promise<void> {
     for (const account of accountRecords) {
       // possibly need to clone this so others lose their ref
-      accounts[account.id] = account
+      await AccountsStorage.setAccount(account.id,account)
     }
   },
   async getRelevantData(accountId: string, timestampedTx: any): Promise<ShardusTypes.WrappedResponse> {
     let {tx} = timestampedTx
-    let account = accounts[accountId]
+    const account = await AccountsStorage.getAccount(accountId)
     let accountCreated = false
     return transactions[tx.type].createRelevantAccount(dapp, account, accountId, tx, accountCreated)
   },
-  updateAccountFull(wrappedData, localCache, applyResponse): void {
+  async updateAccountFull(wrappedData, localCache, applyResponse): Promise<void> {
     const accountId = wrappedData.accountId
     const accountCreated = wrappedData.accountCreated
     const updatedAccount = wrappedData.data as LiberdusTypes.Accounts
     // Update hash
     const hashBefore = updatedAccount.hash
-    updatedAccount.hash = '' // DON'T THINK THIS IS NECESSARY
-    const hashAfter = crypto.hashObj(updatedAccount)
-    updatedAccount.hash = hashAfter
+    const hashAfter = this.calculateAccountHash(updatedAccount)
     // Save updatedAccount to db / persistent storage
-    accounts[accountId] = updatedAccount
+    await AccountsStorage.setAccount(accountId, updatedAccount)
     // Add data to our required response object
     dapp.applyResponseAddState(
       applyResponse,
@@ -288,50 +287,133 @@ dapp.setup({
   updateAccountPartial(wrappedData, localCache, applyResponse) {
     this.updateAccountFull(wrappedData, localCache, applyResponse)
   },
-  async getAccountDataByRange(accountStart, accountEnd, tsStart, tsEnd, maxRecords): Promise<LiberdusTypes.WrappedAccount[]> {
-    const results: LiberdusTypes.WrappedAccount[] = []
+  async getAccountDataByRange(accountStart, accountEnd, tsStart, tsEnd, maxRecords, offset = 0, accountOffset = ''): Promise<ShardusTypes.WrappedData[]> {
     const start = parseInt(accountStart, 16)
     const end = parseInt(accountEnd, 16)
+
+    const finalResults: ShardusTypes.WrappedData[] = []
+
+    if (LiberdusFlags.UseDBForAccounts === true) {
+      //direct DB query
+      const dbResults = await AccountsStorage.queryAccountsEntryByRanges2(accountStart, accountEnd, tsStart, tsEnd, maxRecords, offset, accountOffset)
+
+      for (const account of dbResults) {
+        // Process and add to finalResults
+        const wrapped = {
+          accountId: account.id,
+          data: account,
+          stateId: account.hash,
+          timestamp: account.timestamp,
+        }
+        finalResults.push(wrapped)
+      }
+      return finalResults
+    }
+
+    const accounts = AccountsStorage.accounts
+    const results: LiberdusTypes.Accounts[] = []
     // Loop all accounts
-    for (const account of Object.values(accounts)) {
+    for (const addressStr in accounts) {
+      const account = accounts[addressStr] // eslint-disable-line security/detect-object-injection
       // Skip if not in account id range
-      const id = parseInt(account.id, 16)
-      if (id < start || id > end)
-        continue
+      const id = parseInt(addressStr, 16)
+      if (id < start || id > end) continue
       // Skip if not in timestamp range
       const timestamp = account.timestamp
-      if (timestamp < tsStart || timestamp > tsEnd)
-        continue
-      // Add to results
+      if (timestamp < tsStart || timestamp > tsEnd) continue
+
+      // // Add to results
+      results.push(account)
+      // we can't exit early. this is hard on perf
+      // This data needs to eventually live in a DB and then the sort and max records will be natural.
+
+      // Return results early if maxRecords reached
+      // if (results.length >= maxRecords) return results
+    }
+    //critical to sort by timestamp before we cull max records
+    results.sort((a, b) => a.timestamp - b.timestamp)
+
+    //let cappedResults = results.slice(0, maxRecords)
+
+    const cappedResults = []
+    let count = 0
+    const extra = 0
+    // let startTS = results[0].timestamp
+    // let sameTS = true
+
+    if (results.length > 0) {
+      //start at offset!
+      for (let i = offset; i < results.length; i++) {
+        const account = results[i] // eslint-disable-line security/detect-object-injection
+        // if(startTS === account.timestamp){
+        //   sameTS = true
+        // }
+        // if(sameTS){
+        //   if(startTS != account.timestamp){
+        //     sameTS = false
+        //   }
+        // } else {
+        //   if(count > maxRecords){
+        //     break
+        //   }
+        // }
+        if (count > maxRecords) {
+          // if(lastTS != account.timestamp){
+          //   break
+          // } else {
+          //   extra++
+          // }
+
+          break //no extras allowed
+        }
+        count++
+        cappedResults.push(account)
+      }
+    }
+
+    /* prettier-ignore */ dapp.log( `getAccountDataByRange: extra:${extra} ${JSON.stringify({ accountStart, accountEnd, tsStart, tsEnd, maxRecords, offset, })}` )
+
+    for (const account of cappedResults) {
+      // Process and add to finalResults
       const wrapped = {
         accountId: account.id,
         stateId: account.hash,
         data: account,
         timestamp: account.timestamp,
       }
-      results.push(wrapped)
-
-      // oof, much slower to do this but making it up to standard with how a DB needs to sort first.
-      // Return results early if maxRecords reached
-      // if (results.length >= maxRecords) {
-      //   results.sort((a, b) => a.timestamp - b.timestamp)
-      //   return results
-      // }
+      finalResults.push(wrapped)
     }
-    results.sort((a, b) => a.timestamp - b.timestamp)
 
-    return results.slice(0, maxRecords)
+    return finalResults
   },
   async getAccountData(accountStart, accountEnd, maxRecords): Promise<LiberdusTypes.WrappedAccount[]> {
     const results: LiberdusTypes.WrappedAccount[] = []
     const start = parseInt(accountStart, 16)
     const end = parseInt(accountEnd, 16)
+
+    if (LiberdusFlags.UseDBForAccounts === true) {
+      //direct DB query
+      const dbResults = await AccountsStorage.queryAccountsEntryByRanges(accountStart, accountEnd, maxRecords)
+
+      for (const account of dbResults) {
+        const wrapped = {
+          accountId: account.id,
+          stateId: account.hash,
+          data: account,
+          timestamp: account.timestamp,
+        }
+        results.push(wrapped)
+      }
+      return results
+    }
+
+    const accounts = AccountsStorage.accounts
+
     // Loop all accounts
     for (const account of Object.values(accounts)) {
       // Skip if not in account id range
       const id = parseInt(account.id, 16)
-      if (id < start || id > end)
-        continue
+      if (id < start || id > end) continue
 
       // Add to results
       const wrapped = {
@@ -353,7 +435,7 @@ dapp.setup({
   async getAccountDataByList(addressList: string[]): Promise<LiberdusTypes.WrappedAccount[]> {
     const results: LiberdusTypes.WrappedAccount[] = []
     for (const address of addressList) {
-      const account = accounts[address]
+      const account = await AccountsStorage.getAccount(address)
       if (account) {
         const wrapped = {
           accountId: account.id,
@@ -372,16 +454,19 @@ dapp.setup({
     account.hash = crypto.hashObj(account)
     return account.hash
   },
-  resetAccountData(accountBackupCopies: any[]): void {
+  // TODO:Seems we don't use resetAccountData and deleteAccountData anymore
+  async resetAccountData(accountBackupCopies: any[]): Promise<void> {
     for (const recordData of accountBackupCopies) {
       const accountData: LiberdusTypes.Accounts = recordData.data
-      accounts[accountData.id] = {...accountData}
+      await AccountsStorage.setAccount(accountData.id, { ...accountData })
     }
   },
   deleteAccountData(addressList: string[]): void {
     stringify('DELETE_ACCOUNT_DATA', stringify(addressList))
     for (const address of addressList) {
-      delete accounts[address]
+      // delete accounts[address]
+      console.log(`Deleting account ${address}... - which is not implemented`)
+      // await AccountsStorage.deleteAccount(address) // TODO: Add deleteAccount function in AccountsStorage
     }
   },
   getAccountDebugValue(wrappedAccount: LiberdusTypes.WrappedAccount): string {
