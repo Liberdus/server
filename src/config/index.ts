@@ -10,7 +10,7 @@ import {DevSecurityLevel} from '@shardus/core'
 
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
-export const networkAccount = '1000000000000000000000000000000000000000000000000000000000000001'
+export const networkAccount = '0'.repeat(64)
 
 // HELPFUL TIME CONSTANTS IN MILLISECONDS
 export const ONE_SECOND = 1000
@@ -44,7 +44,7 @@ export const TIME_FOR_DEV_APPLY = ONE_MINUTE + ONE_SECOND * 30
 
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
 export const cycleDuration = 60
-const reduceTimeFromTxTimestamp = cycleDuration * ONE_MINUTE
+const reduceTimeFromTxTimestamp = cycleDuration * ONE_SECOND
 
 // INITIAL NETWORK PARAMETERS FOR LIBERDUS
 export const INITIAL_PARAMETERS: NetworkParameters = {
