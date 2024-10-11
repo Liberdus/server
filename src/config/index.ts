@@ -164,7 +164,7 @@ export function overrideDefaultConfig(defaultConfig, env: NodeJS.ProcessEnv, arg
   return config
 }
 
-const enum FilePaths {
+export const enum FilePaths {
   LIBERDUS_DB = 'db/liberdus.sqlite',
   DB = 'db.sqlite',
   HISTORY_DB = 'history.sqlite',
@@ -172,6 +172,18 @@ const enum FilePaths {
   CONFIG = 'config.json',
   CLI_PACKAGE = '/home/node/app/cli/package.json',
   GUI_PACKAGE = '/home/node/app/gui/package.json',
+}
+
+interface LiberdusFlags {
+  NewStorageIndex: boolean
+  UseDBForAccounts: boolean //Use Sql to store in memory accounts instead of simple accounts object map
+  enableRIAccountsCache: boolean
+}
+
+export const LiberdusFlags: LiberdusFlags = {
+  NewStorageIndex: true,
+  UseDBForAccounts: true,
+  enableRIAccountsCache: true,
 }
 
 const overwriteMerge = (target: any[], source: any[]): any[] => source // eslint-disable-line @typescript-eslint/no-explicit-any

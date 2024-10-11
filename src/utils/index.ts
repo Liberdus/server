@@ -295,3 +295,13 @@ export function getInjectedOrGeneratedTimestamp(timestampedTx: any, dapp: Shardu
   }
   return txnTimestamp
 }
+
+export const isObject = (val): boolean => {
+  if (val === null) {
+    return false
+  }
+  if (Array.isArray(val)) {
+    return false
+  }
+  return typeof val === 'function' || typeof val === 'object'
+}
