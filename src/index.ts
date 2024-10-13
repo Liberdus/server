@@ -1,5 +1,5 @@
 import {shardusFactory, ShardusTypes} from '@shardus/core'
-import {P2P} from '@shardus/types'
+import {P2P, Utils } from '@shardus/types'
 import * as crypto from '@shardus/crypto-utils'
 import * as configs from './config'
 import * as utils from './utils'
@@ -674,8 +674,27 @@ dapp.setup({
   canStayOnStandby(joinInfo: any): { canStay: boolean; reason: string } {
     return { canStay: true, reason: '' }
   },
-  binarySerializeObject: null,
-  binaryDeserializeObject: null,
+  binarySerializeObject(identifier: string, obj): Buffer {
+    console.log("TEMP:", identifier, obj);
+    try {
+      switch (identifier) {
+        default:
+          return Buffer.from(Utils.safeStringify(obj), 'utf8')
+      }
+    } catch (e) {
+      return Buffer.from(Utils.safeStringify(obj), 'utf8')
+    }
+  },
+  binaryDeserializeObject(identifier: string, buffer: Buffer) {
+    try {
+      switch (identifier) {
+        default:
+          return Utils.safeJsonParse(buffer.toString('utf8'))
+      }
+    } catch (e) {
+      return Utils.safeJsonParse(buffer.toString('utf8'))
+    }
+  },
   verifyMultiSigs: function (rawPayload: object, sigs: ShardusTypes.Sign[], allowedPubkeys: { [pubkey: string]: ShardusTypes.DevSecurityLevel }, minSigRequired: number, requiredSecurityLevel: ShardusTypes.DevSecurityLevel): boolean {
     return false
   },
