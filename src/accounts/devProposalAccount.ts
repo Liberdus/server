@@ -25,6 +25,23 @@ export const devProposalAccount = (accountId: string) => {
 
 }
 
+// export interface DevProposalAccount {
+//   id: string
+//   type: string
+//   approve: number
+//   reject: number
+//   title: string | null
+//   description: string | null
+//   totalVotes: number
+//   totalAmount: number | null
+//   payAddress: string
+//   payments: DeveloperPayment[]
+//   approved: boolean | null
+//   number: number | null
+//   hash: string
+//   timestamp: number
+// }
+
 export const serializeDevProposalAccount = (stream: VectorBufferStream, inp: DevProposalAccount, root = false) => {
   if(root){
     stream.writeUInt16(SerdeTypeIdent.DevProposalAccount)
@@ -32,22 +49,31 @@ export const serializeDevProposalAccount = (stream: VectorBufferStream, inp: Dev
 
   stream.writeString(inp.id)
   stream.writeString(inp.type)
+  stream.writeUInt32(inp.approve)
+  stream.writeUInt32(inp.reject)
 
-  stream.writeUInt8(inp.title ? 1 : 0)
-  if(inp.title){
+  if(inp.title !== null){
+    stream.writeUInt8(1)
     stream.writeString(inp.title)
+  }else{
+    stream.writeUInt8(0)
   }
 
-  stream.writeUInt8(inp.description ? 1 : 0)
-  if(inp.description){
+  if(inp.description !== null){
+    stream.writeUInt8(1)
     stream.writeString(inp.description)
+  }else{
+    stream.writeUInt8(0)
   }
+
 
   stream.writeUInt32(inp.totalVotes)
 
-  stream.writeUInt8(inp.totalAmount ? 1 : 0)
-  if(inp.totalAmount){
+  if(inp.totalAmount !== null){
+    stream.writeUInt8(1)
     stream.writeUInt32(inp.totalAmount)
+  }else{
+    stream.writeUInt8(0)
   }
 
   stream.writeString(inp.payAddress)
@@ -57,12 +83,18 @@ export const serializeDevProposalAccount = (stream: VectorBufferStream, inp: Dev
     serializeDeveloperPayment(stream, inp.payments[i])
   }
 
-  stream.writeUInt8(inp.approved ? 1 : 0)
+  if(inp.approved !== null){
+    stream.writeUInt8(1)
+    stream.writeUInt8((inp.approved === true) ? 1 : 0)
+  }else{
+    stream.writeUInt8(0)
+  }
 
-  stream.writeUInt8(inp.number ? 1 : 0)
-
-  if(inp.number){
+  if(inp.number !== null){
+    stream.writeUInt8(1)
     stream.writeUInt32(inp.number)
+  }else{
+    stream.writeUInt8(0)
   }
 
   stream.writeString(inp.hash)
@@ -71,32 +103,51 @@ export const serializeDevProposalAccount = (stream: VectorBufferStream, inp: Dev
 
 }
 
-export const deserializeDevProposalAccount = (stream: VectorBufferStream, root = false) => {
+export const deserializeDevProposalAccount = (stream: VectorBufferStream, root = false): DevProposalAccount => {
   
     if(root && (stream.readUInt16() !== SerdeTypeIdent.DevProposalAccount)){
       throw new Error("Unexpected bufferstream for DevProposalAccount type");
     }
-  
+
     const id = stream.readString()
     const type = stream.readString()
-    const title = stream.readUInt8() ? stream.readString() : null
-    const description = stream.readUInt8() ? stream.readString() : null
+    const approve = stream.readUInt32()
+    const reject = stream.readUInt32()
+
+    let title = null
+    if(stream.readUInt8() === 1){
+      title = stream.readString()
+    }
+    let description = null
+    if(stream.readUInt8() === 1){
+      description = stream.readString()
+    }
     const totalVotes = stream.readUInt32()
-    const totalAmount = stream.readUInt8() ? stream.readUInt32() : null
+    let totalAmount = null
+    if(stream.readUInt8() === 1){
+      totalAmount = stream.readUInt32()
+    }
     const payAddress = stream.readString()
     const payments = []
-    const paymentsLength = stream.readUInt32()
-    for(let i = 0; i < paymentsLength; i++){
+    for(let i = 0; i < stream.readUInt32(); i++){
       payments.push(deserializeDeveloperPayment(stream))
     }
-    const approved = stream.readUInt8() ? true : null
-    const number = stream.readUInt8() ? stream.readUInt32() : null
+    let approved = null
+    if(stream.readUInt8() === 1){
+      approved = (stream.readUInt8() === 1) ? true : false
+    }
+    let number = null
+    if(stream.readUInt8() === 1){
+      number = stream.readUInt32()
+    }
     const hash = stream.readString()
     const timestamp = Number(stream.readBigUInt64())
-  
+
     return {
       id,
       type,
+      approve,
+      reject,
       title,
       description,
       totalVotes,
@@ -106,6 +157,7 @@ export const deserializeDevProposalAccount = (stream: VectorBufferStream, root =
       approved,
       number,
       hash,
-      timestamp,
+      timestamp
     }
+  
   }
