@@ -1,13 +1,7 @@
-<<<<<<< HEAD
 import { shardusFactory, ShardusTypes, nestedCountersInstance, DevSecurityLevel } from '@shardus/core'
 import account from "./accounts"
 import { P2P, Utils } from '@shardus/types'
 import * as crypto from './crypto'
-=======
-import {shardusFactory, ShardusTypes} from '@shardus/core'
-import {P2P, Utils } from '@shardus/types'
-import * as crypto from '@shardus/crypto-utils'
->>>>>>> ded729fc (wip: serialisation of appdata (accounts))
 import * as configs from './config'
 import { networkAccount, TOTAL_DAO_DURATION } from './config'
 import * as utils from './utils'
@@ -33,6 +27,7 @@ import { onActiveVersionChange } from './versioning/index'
 import genesis from './config/genesis.json'
 
 const { version } = require('./../package.json')
+import { deserializeAccounts, serializeAccounts } from './accounts'
 
 dotenv.config()
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
@@ -1842,9 +1837,10 @@ dapp.setup({
     requiredSecurityLevel: ShardusTypes.DevSecurityLevel,
   ): boolean { return false },  
   binarySerializeObject(identifier: string, obj): Buffer {
-    console.log("TEMP:", identifier, obj);
     try {
       switch (identifier) {
+        case "AppData":
+          return serializeAccounts(obj).getBuffer()
         default:
           return Buffer.from(Utils.safeStringify(obj), 'utf8')
       }
@@ -1855,6 +1851,8 @@ dapp.setup({
   binaryDeserializeObject(identifier: string, buffer: Buffer) {
     try {
       switch (identifier) {
+        case "AppData":
+          return deserializeAccounts(buffer)
         default:
           return Utils.safeJsonParse(buffer.toString('utf8'))
       }

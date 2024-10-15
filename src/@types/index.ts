@@ -472,6 +472,7 @@ export interface DevProposalAccount {
   timestamp: number
 }
 
+<<<<<<< HEAD
 export type Accounts = NetworkAccount &
   IssueAccount &
   DevIssueAccount &
@@ -482,6 +483,10 @@ export type Accounts = NetworkAccount &
   NodeAccount &
   ChatAccount
 // type Account = NetworkAccount | IssueAccount | DevIssueAccount | UserAccount | AliasAccount | ProposalAccount | DevProposalAccount | NodeAccount | ChatAccount
+=======
+export type Accounts = NetworkAccount & IssueAccount & DevIssueAccount & UserAccount & AliasAccount & ProposalAccount & DevProposalAccount & NodeAccount & ChatAccount
+export type AccountVariant = NetworkAccount | IssueAccount | DevIssueAccount | UserAccount | AliasAccount | ProposalAccount | DevProposalAccount | NodeAccount | ChatAccount
+>>>>>>> c77df8d0 (feat: serailizers for account types)
 
 /**
  * ---------------------- NETWORK DATA export interfaceS ----------------------
