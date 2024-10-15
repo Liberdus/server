@@ -14,6 +14,8 @@ export namespace Tx {
     windows: Windows
     nextWindows: {}
     issue: number,
+    devWindows?: DevWindows
+    nextDevWindows?: DevWindows
   }
 
   export interface ApplyDevParameters extends BaseLiberdusTx {
@@ -77,6 +79,13 @@ export namespace Tx {
   export interface InitNetwork extends BaseLiberdusTx {
     type: TXTypes
     timestamp: number
+  }
+
+  export interface NetworkWindows extends BaseLiberdusTx {
+    type: TXTypes
+    timestamp: number
+    from: string
+    nodeId: string
   }
 
   export interface Issue extends BaseLiberdusTx {

@@ -26,9 +26,10 @@ export const validate_fields = (tx: Tx.Message, response: ShardusTypes.IncomingT
     response.reason = 'tx "message" field must be a string.'
     throw new Error(response.reason)
   }
-  if (tx.message.length > 5000) {
+  const messageSizeInKb = Buffer.byteLength(tx.message, 'utf8') / 1024
+  if (messageSizeInKb > 5) {
     response.success = false
-    response.reason = 'tx "message" length must be less than 5000 characters.'
+    response.reason = 'tx "message" size must be less than 5kb.'
     throw new Error(response.reason)
   }
   return response
