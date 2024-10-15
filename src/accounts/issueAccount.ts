@@ -35,15 +35,26 @@ export const serializeIssueAccount = (stream: VectorBufferStream, inp: IssueAcco
 
   stream.writeUInt32(inp.proposalCount)
   
-  stream.writeUInt8(inp.active ? 1 : 0)
-
-  stream.writeUInt8(inp.number ? 1 : 0)
-
-  if(inp.number){
-    stream.writeUInt32(inp.number)
+  if(inp.active !== null){
+    stream.writeUInt8(1)
+    stream.writeUInt8((inp.active === true) ? 1 : 0)
+  }else{
+    stream.writeUInt8(0)
   }
 
-  stream.writeString(inp.winnerId)
+  if(inp.number !== null){
+    stream.writeUInt8(1)
+    stream.writeUInt32(inp.number)
+  }else{
+    stream.writeUInt8(0)
+  }
+
+  if(inp.winnerId !== null){
+    stream.writeUInt8(1)
+    stream.writeString(inp.winnerId)
+  }else{
+    stream.writeUInt8(0)
+  }
   stream.writeString(inp.hash)
   stream.writeBigUInt64(BigInt(inp.timestamp))
 }
@@ -54,15 +65,36 @@ export const deserializeIssueAccount = (stream: VectorBufferStream, root = false
     throw new Error("Unexpected bufferstream for IssueAccount type");
   }
 
+  let id = stream.readString()
+  let type = stream.readString()
+  let proposals = []
+  for(let i = 0; i < stream.readUInt32(); i++){
+    proposals.push(stream.readString())
+  }
+  let proposalCount = stream.readUInt32()
+  let active = null
+  if(stream.readUInt8() === 1){
+    active = (stream.readUInt8() === 1) ? true : false
+  }
+  let number = null
+  if(stream.readUInt8() === 1){
+    number = stream.readUInt32()
+  }
+  let winnerId = null
+  if(stream.readUInt8() === 1){
+    winnerId = stream.readString()
+  }
+  let hash = stream.readString()
+  let timestamp = Number(stream.readBigUInt64())
   return {
-    id: stream.readString(),
-    type: stream.readString(),
-    proposals: Array.from({length: stream.readUInt32()}, () => stream.readString()),
-    proposalCount: stream.readUInt32(),
-    active: stream.readUInt8() === 1 ? true : false,
-    number: stream.readUInt8() === 1 ? stream.readUInt32() : null,
-    winnerId: stream.readString(),
-    hash: stream.readString(),
-    timestamp: Number(stream.readBigUInt64())
+    id,
+    type,
+    proposals,
+    proposalCount,
+    active,
+    number,
+    winnerId,
+    hash,
+    timestamp
   }
 }
