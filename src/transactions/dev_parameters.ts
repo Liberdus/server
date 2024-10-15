@@ -91,13 +91,13 @@ export const apply = (tx: Tx.DevParameters, txTimestamp: number, txId: string, w
 
   from.timestamp = txTimestamp
   devIssue.timestamp = txTimestamp
-  dapp.log('Applied dev_parameters tx', from, devIssue)
+  dapp.log('Applied dev_parameters tx', from, devIssue, value)
 }
 
 export const transactionReceiptPass = (tx: Tx.DevParameters, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
   let { address, value, when, source } = applyResponse.appDefinedData.globalMsg
   dapp.setGlobal(address, value, when, source)
-  dapp.log('PostApplied dev_parameters tx')
+  dapp.log('PostApplied dev_parameters tx', tx, value)
 }
 
 export const keys = (tx: Tx.DevParameters, result: TransactionKeys) => {

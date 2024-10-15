@@ -3,6 +3,7 @@ import * as crypto from '@shardus/crypto-utils'
 import * as configs from '../config'
 import { Shardus,  ShardusTypes } from '@shardus/core'
 import {shardusPostToNode} from './request'
+import {TXTypes} from '../transactions'
 
 export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): number => {
   let amount: number
@@ -108,59 +109,75 @@ export function nodeReward(address: string, nodeId: string, dapp: Shardus): void
   dapp.log('GENERATED_NODE_REWARD: ', nodeId)
 }
 
-// ISSUE TRANSACTION FUNCTION
-export async function generateIssue(address: string, nodeId: string, dapp: Shardus): Promise<void> {
+// START NETWORK DAO WINDOWS
+export async function startNetworkWindows(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
   const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
-    type: 'issue',
+    type: TXTypes.network_windows,
     nodeId,
     from: address,
-    issue: crypto.hash(`issue-${network.issue}`),
+    timestamp: Date.now(),
+  }
+  const resp = await dapp.put(tx,  set)
+  dapp.log('start network windows tx', tx, resp)
+}
+
+// ISSUE TRANSACTION FUNCTION
+export async function generateIssue(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
+  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+  const network = account.data as NetworkAccount
+  const tx = {
+    type: TXTypes.issue,
+    nodeId,
+    from: address,
+    issue: calculateIssueId(network.issue),
     proposal: crypto.hash(`issue-${network.issue}-proposal-1`),
     timestamp: Date.now(),
   }
-  dapp.put(tx)
-  dapp.log('GENERATED_ISSUE: ', nodeId)
+  dapp.put(tx,  set)
+  dapp.log('GENERATED_ISSUE: ', nodeId, tx)
 }
 
 // DEV_ISSUE TRANSACTION FUNCTION
-export async function generateDevIssue(address: string, nodeId: string, dapp: Shardus): Promise<void> {
+export async function generateDevIssue(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
   const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
-    type: 'dev_issue',
+    type: TXTypes.dev_issue,
     nodeId,
     from: address,
-    devIssue: crypto.hash(`dev-issue-${network.devIssue}`),
+    devIssue: calculateDevIssueId(network.devIssue),
     timestamp: Date.now(),
   }
-  dapp.put(tx)
-  dapp.log('GENERATED_DEV_ISSUE: ', nodeId)
+  dapp.put(tx,  set)
+  dapp.log('GENERATED_DEV_ISSUE: ', nodeId, tx)
 }
 
 // TALLY TRANSACTION FUNCTION
-export async function tallyVotes(address: string, nodeId: string, dapp: Shardus): Promise<void> {
+export async function tallyVotes(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
   console.log(`GOT TO TALLY_VOTES FN ${address} ${nodeId}`)
   try {
     const network = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
     const networkAccount = network.data as NetworkAccount
     const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${networkAccount.issue}`))
     if (!account) {
+      dapp.log(`No account found for issue-${networkAccount.issue}`)
       await _sleep(500)
       return tallyVotes(address, nodeId, dapp)
     }
     const issue = account.data as IssueAccount
     const tx = {
-      type: 'tally',
+      type: TXTypes.tally,
       nodeId,
       from: address,
       issue: issue.id,
       proposals: issue.proposals,
       timestamp: Date.now(),
     }
-    dapp.put(tx)
-    dapp.log('GENERATED_TALLY: ', nodeId)
+    // todo: why is this not signed by the node?
+    dapp.put(tx,  set)
+    dapp.log('GENERATED_TALLY: ', nodeId, tx)
   } catch (err) {
     dapp.log('ERR: ', err)
     await _sleep(1000)
@@ -169,7 +186,7 @@ export async function tallyVotes(address: string, nodeId: string, dapp: Shardus)
 }
 
 // DEV_TALLY TRANSACTION FUNCTION
-export async function tallyDevVotes(address: string, nodeId: string, dapp: Shardus): Promise<void> {
+export async function tallyDevVotes(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
   try {
     const network = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
     const networkAccount = network.data as NetworkAccount
@@ -180,15 +197,15 @@ export async function tallyDevVotes(address: string, nodeId: string, dapp: Shard
     }
     const devIssue = account.data as DevIssueAccount
     const tx = {
-      type: 'dev_tally',
+      type: TXTypes.dev_tally,
       nodeId,
       from: address,
       devIssue: devIssue.id,
       devProposals: devIssue.devProposals,
       timestamp: Date.now(),
     }
-    dapp.put(tx)
-    dapp.log('GENERATED_DEV_TALLY: ', nodeId)
+    dapp.put(tx,  set)
+    dapp.log('GENERATED_DEV_TALLY: ', nodeId, tx)
   } catch (err) {
     dapp.log('ERR: ', err)
     await _sleep(1000)
@@ -196,48 +213,86 @@ export async function tallyDevVotes(address: string, nodeId: string, dapp: Shard
   }
 }
 
-// APPLY_PARAMETERS TRANSACTION FUNCTION
-export async function applyParameters(address: string, nodeId: string, dapp: Shardus): Promise<void> {
+// Inject "parameters" transaction to the network
+export async function injectParameterTx(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
   const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
-    type: 'parameters',
+    type: TXTypes.parameters,
     nodeId,
     from: address,
     issue: crypto.hash(`issue-${network.issue}`),
     timestamp: Date.now(),
   }
-  dapp.put(tx)
-  dapp.log('GENERATED_APPLY: ', nodeId)
+  const response = await dapp.put(tx)
+  dapp.log('GENERATED_PARAMETER: ', nodeId, tx, response)
 }
 
-// APPLY_DEV_PARAMETERS TRANSACTION FUNCTION
-export async function applyDevParameters(address: string, nodeId: string, dapp: Shardus): Promise<void> {
+// Inject "dev_parameters" transaction to the network
+export async function injectDevParameters(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
   const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
-    type: 'dev_parameters',
+    type: TXTypes.dev_parameters,
+    nodeId,
+    from: address,
+    devIssue: crypto.hash(`dev-issue-${network.devIssue}`),
+    timestamp: Date.now(),
+  }
+  dapp.put(tx,  set)
+  dapp.log('GENERATED_DEV_PARAMETER: ', nodeId, tx)
+}
+
+// APPLY_PARAMETERS TRANSACTION FUNCTION
+export async function applyParameters(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
+  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+  const network = account.data as NetworkAccount
+  const tx = {
+    type: TXTypes.apply_parameters,
+    nodeId,
+    from: address,
+    issue: crypto.hash(`issue-${network.issue}`),
+    timestamp: Date.now(),
+  }
+  dapp.put(tx,  set)
+  dapp.log('GENERATED_APPLY: ', nodeId, tx)
+}
+
+// APPLY_DEV_PARAMETERS TRANSACTION FUNCTION
+export async function applyDevParameters(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
+  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+  const network = account.data as NetworkAccount
+  const tx = {
+    type: TXTypes.apply_dev_parameters,
     nodeId,
     from: address,
     devIssue: crypto.hash(`dev-issue-${network.devIssue}`),
     timestamp: Date.now(),
   }
   dapp.put(tx)
-  dapp.log('GENERATED_DEV_APPLY: ', nodeId)
+  dapp.log('GENERATED_DEV_APPLY: ', nodeId, tx)
 }
 
 // RELEASE DEVELOPER FUNDS FOR A PAYMENT
-export function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeId: string, dapp: Shardus): void {
+export function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeId: string, dapp: Shardus, set = false): void {
   const tx = {
-    type: 'developer_payment',
+    type: TXTypes.developer_payment,
     nodeId,
     from: address,
     developer: payment.address,
     payment: payment,
     timestamp: Date.now(),
   }
-  dapp.put(tx)
+  dapp.put(tx,  set)
   dapp.log('GENERATED_DEV_PAYMENT: ', nodeId)
+}
+
+export function calculateIssueId(issueNumber: number): string {
+  return crypto.hash(`issue-${issueNumber}`)
+}
+
+export function calculateDevIssueId(issueNumber: number): string {
+  return crypto.hash(`dev-issue-${issueNumber}`)
 }
 
 export function getAccountType(data) {

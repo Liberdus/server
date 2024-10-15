@@ -78,23 +78,24 @@ dapp.setup({
         dapp.log(`node ${nodeId} GENERATED_A_NEW_NETWORK_ACCOUNT: `)
         await utils._sleep(configs.ONE_SECOND * 10)
 
-        dapp.set({
-          type: 'issue',
-          network: configs.networkAccount,
-          nodeId,
-          from: address,
-          issue: crypto.hash(`issue-${1}`),
-          proposal: crypto.hash(`issue-${1}-proposal-1`),
-          timestamp: Date.now(),
-        })
-        dapp.set({
-          type: 'dev_issue',
-          network: configs.networkAccount,
-          nodeId,
-          from: address,
-          devIssue: crypto.hash(`dev-issue-${1}`),
-          timestamp: Date.now(),
-        })
+        // WE SHOULD NOT DO THIS WHILE THE NETWORK IS FORMING
+        // dapp.set({
+        //   type: 'issue',
+        //   network: configs.networkAccount,
+        //   nodeId,
+        //   from: address,
+        //   issue: crypto.hash(`issue-${1}`),
+        //   proposal: crypto.hash(`issue-${1}-proposal-1`),
+        //   timestamp: Date.now(),
+        // })
+        // dapp.set({
+        //   type: 'dev_issue',
+        //   network: configs.networkAccount,
+        //   nodeId,
+        //   from: address,
+        //   devIssue: crypto.hash(`dev-issue-${1}`),
+        //   timestamp: Date.now(),
+        // })
         await utils._sleep(configs.ONE_SECOND * 10)
       }
     } else {
@@ -200,11 +201,13 @@ dapp.setup({
         if (
           tx.type === TXTypes.init_network ||
           tx.type === TXTypes.apply_change_config ||
-          tx.type === TXTypes.apply_dev_parameters ||
+          tx.type === TXTypes.apply_tally ||
           tx.type === TXTypes.apply_dev_tally ||
-          tx.type === TXTypes.apply_developer_payment ||
+          tx.type === TXTypes.parameters ||
           tx.type === TXTypes.apply_parameters ||
-          tx.type === TXTypes.apply_tally
+          tx.type === TXTypes.dev_parameters ||
+          tx.type === TXTypes.apply_dev_parameters ||
+          tx.type === TXTypes.apply_developer_payment
         ) {
           const hashAfter = this.calculateAccountHash(wrappedStates[accountId].data)
           wrappedChangedAccount.stateId = hashAfter
@@ -632,16 +635,20 @@ dapp.setup({
       TXTypes.init_network,
       TXTypes.issue,
       TXTypes.dev_issue,
-      TXTypes.apply_parameters,
+      TXTypes.tally,
       TXTypes.apply_tally,
+      TXTypes.dev_tally,
+      TXTypes.apply_dev_tally,
+      TXTypes.parameters,
+      TXTypes.apply_parameters,
+      TXTypes.dev_parameters,
+      TXTypes.apply_dev_parameters,
       TXTypes.apply_change_config,
       TXTypes.apply_developer_payment,
-      TXTypes.apply_dev_parameters,
-      TXTypes.apply_dev_tally,
       TXTypes.node_reward
     ]
     if (internalTxTypes.includes(tx.type)) {
-    return true
+      return true
     }
     return false
   },
@@ -722,7 +729,7 @@ dapp.registerExceptionHandler()
       const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
       network = account.data as LiberdusTypes.NetworkAccount
       ;[cycleData] = dapp.getLatestCycles()
-      luckyNodes = dapp.getClosestNodes(cycleData.previous, 3)
+      luckyNodes = dapp.getClosestNodes(cycleData.previous, LiberdusFlags.numberOfLuckyNodes)
       nodeId = dapp.getNodeId()
       node = dapp.getNode(nodeId)
       nodeAddress = node.address
@@ -732,6 +739,8 @@ dapp.registerExceptionHandler()
       return setTimeout(networkMaintenance, 100)
     }
 
+    const driftFromCycleStart = (currentTime - cycleData.start * 1000) % cycleInterval
+    dapp.log('driftFromCycleStart: ', driftFromCycleStart, currentTime, cycleData.start * 1000)
     dapp.log('payAddress: ', process.env.PAY_ADDRESS)
     dapp.log('cycleData: ', cycleData)
     dapp.log('luckyNode: ', luckyNodes)
@@ -748,90 +757,139 @@ dapp.registerExceptionHandler()
     dapp.log('issue: ', network.issue)
     dapp.log('devIssue: ', network.devIssue)
 
-    // THIS IS FOR NODE_REWARD
-    if (currentTime - lastReward > network.current.nodeRewardInterval) {
-      utils.nodeReward(nodeAddress, nodeId, dapp)
-      lastReward = currentTime
+    const isProcessingMode = cycleData.mode === 'processing'
+    if (network.windows == null) {
+      if (isProcessingMode && luckyNodes.includes(nodeId)) {
+        // start network DAO time windows
+        dapp.log('Starting network windows', luckyNodes, nodeId)
+        await utils.startNetworkWindows(nodeAddress, nodeId, dapp)
+      }
+
+      expected += cycleInterval
+      let nextMaintenanceWait = Math.max(0, cycleInterval - drift)
+      if (nextMaintenanceWait <= 0) nextMaintenanceWait = cycleInterval
+      let nextMaintenanceCycleStart = nextMaintenanceWait - driftFromCycleStart
+      dapp.log(`Maintenance cycle has ended. Next maintenance in ${nextMaintenanceCycleStart} ms`)
+      return setTimeout(networkMaintenance, nextMaintenanceCycleStart)
     }
 
-    // ISSUE
-    if (currentTime >= network.windows.proposalWindow[0] && currentTime <= network.windows.proposalWindow[1]) {
-      if (!issueGenerated && network.issue > 1) {
-        if (luckyNodes.includes(nodeId)) {
-          await utils.generateIssue(nodeAddress, nodeId, dapp)
-        }
+    const isInProposalWindow = currentTime >= network.windows.proposalWindow[0] && currentTime <= network.windows.proposalWindow[1]
+    const isInDevProposalWindow = currentTime >= network.devWindows.devProposalWindow[0] && currentTime <= network.devWindows.devProposalWindow[1]
+
+    const isInGraceWindow = currentTime >= network.windows.graceWindow[0] && currentTime <= network.windows.graceWindow[1]
+    const isInDevGraceWindow = currentTime >= network.devWindows.devGraceWindow[0] && currentTime <= network.devWindows.devGraceWindow[1]
+
+    const isInApplyWindow = currentTime >= network.windows.applyWindow[0] && currentTime <= network.windows.applyWindow[1]
+    const isInDevApplyWindow = currentTime >= network.devWindows.devApplyWindow[0] && currentTime <= network.devWindows.devApplyWindow[1]
+    const skipConsensus =  cycleData.active === 1
+
+    dapp.log(`Cycle: ${cycleData.counter}, isInProposalWindow: ${isInProposalWindow}, isInDevProposalWindow: ${isInDevProposalWindow}, isInGraceWindow: ${isInGraceWindow}, isInDevGraceWindow: ${isInDevGraceWindow}, isInApplyWindow: ${isInApplyWindow}, isProcessingMode: ${isProcessingMode}`)
+
+    if (isProcessingMode === false || luckyNodes.includes(nodeId) === false) {
+      expected += cycleInterval
+      let nextMaintenanceWait = Math.max(0, cycleInterval - drift)
+      if (nextMaintenanceWait <= 0) nextMaintenanceWait = cycleInterval
+      let nextMaintenanceCycleStart = nextMaintenanceWait - driftFromCycleStart
+      dapp.log(`Maintenance cycle has ended. We are not lucky nodes. Next maintenance in ${nextMaintenanceCycleStart} ms`)
+      return setTimeout(networkMaintenance, nextMaintenanceCycleStart)
+    }
+
+    // from this point, we are lucky node and in processing mode
+    const issueAccountId =  utils.calculateIssueId(network.issue)
+    const issueAccount = await dapp.getLocalOrRemoteAccount(issueAccountId)
+
+    const devIssueAccountId =  utils.calculateDevIssueId(network.devIssue)
+    const devIssueAccount = await dapp.getLocalOrRemoteAccount(devIssueAccountId)
+
+    dapp.log('latest issueAccount: ', issueAccountId, issueAccount?.data)
+    dapp.log('latest devIssueAccount: ', devIssueAccountId, devIssueAccount?.data)
+
+    // ISSUE: create a new issue so that people can submit proposals/votes
+    if (isInProposalWindow) {
+      if (issueAccount == null) {
+        dapp.log(`issueAccount is null, we need to submit a new issue for issue: ${network.issue}`)
+        await utils.generateIssue(nodeAddress, nodeId, dapp, skipConsensus)
         issueGenerated = true
         tallyGenerated = false
         applyGenerated = false
       }
     }
 
-    // DEV_ISSUE
-    if (currentTime >= network.devWindows.devProposalWindow[0] && currentTime <= network.devWindows.devProposalWindow[1]) {
-      if (!devIssueGenerated && network.devIssue > 1) {
-        if (luckyNodes.includes(nodeId)) {
-          await utils.generateDevIssue(nodeAddress, nodeId, dapp)
-        }
+    // DEV_ISSUE: create new funding issue so that developers can request funds/votes
+    if (isInDevProposalWindow) {
+      if (devIssueAccount == null) {
+        dapp.log(`devIssueAccount is null, we need to submit a new dev issue for devIssue: ${network.devIssue}`)
+        await utils._sleep(3000) // this is to wait a moment for above issue tx to be processed
+        await utils.generateDevIssue(nodeAddress, nodeId, dapp, skipConsensus)
         devIssueGenerated = true
         devTallyGenerated = false
         devApplyGenerated = false
       }
     }
 
-    // TALLY
-    if (currentTime >= network.windows.graceWindow[0] && currentTime <= network.windows.graceWindow[1]) {
-      if (!tallyGenerated) {
-        if (luckyNodes.includes(nodeId)) {
-          await utils.tallyVotes(nodeAddress, nodeId, dapp)
-        }
+    // TALLY: count the votes for the proposals (network params)
+    // todo: we may not want to tally as soon as the grace window starts
+    if (isInGraceWindow) {
+      // @ts-ignore
+      const issueWinner = issueAccount?.data?.winnerId
+      if (issueWinner == null) {
+        dapp.log(`issueWinner is null, we need to tally the votes for issue: ${network.issue}`)
+        await utils.tallyVotes(nodeAddress, nodeId, dapp, skipConsensus)
         issueGenerated = false
         tallyGenerated = true
         applyGenerated = false
       }
     }
 
-    // APPLY
-    if (currentTime >= network.windows.applyWindow[0] && currentTime <= network.windows.applyWindow[1]) {
-      if (!applyGenerated) {
-        if (luckyNodes.includes(nodeId)) {
-          await utils.applyParameters(nodeAddress, nodeId, dapp)
-        }
-        issueGenerated = false
-        tallyGenerated = false
-        applyGenerated = true
-      }
-    }
-
-    // DEV_TALLY
-    if (currentTime >= network.devWindows.devGraceWindow[0] && currentTime <= network.devWindows.devGraceWindow[1]) {
-      if (!devTallyGenerated) {
-        if (luckyNodes.includes(nodeId)) {
-          await utils.tallyDevVotes(nodeAddress, nodeId, dapp)
-        }
+    // DEV_TALLY: count the votes for the dev proposals (developer fund)
+    if (isInDevGraceWindow) {
+      // @ts-ignore
+      const devIssueWinners = devIssueAccount?.data?.winners
+      if (devIssueWinners == null || devIssueWinners.length === 0) {
+        dapp.log(`devIssueWinners is null, we need to tally the votes for devIssue: ${network.devIssue}`)
+        await utils._sleep(3000) // this is to wait a moment for above tally tx to be processed
+        await utils.tallyDevVotes(nodeAddress, nodeId, dapp, skipConsensus)
         devIssueGenerated = false
         devTallyGenerated = true
         devApplyGenerated = false
       }
     }
 
-    // DEV_APPLY
-    if (currentTime >= network.devWindows.devApplyWindow[0] && currentTime <= network.devWindows.devApplyWindow[1]) {
-      if (!devApplyGenerated) {
-        if (luckyNodes.includes(nodeId)) {
-          await utils.applyDevParameters(nodeAddress, nodeId, dapp)
-        }
+    // PARAMETER tx should initiate apply_parameters tx (i.e. apply the winning network parameters)
+    if (isInApplyWindow) {
+      // @ts-ignore
+      const isIssueActive = issueAccount?.data?.active
+      if (isIssueActive) { // still active means it has not been applied the parameters
+        dapp.log(`issueAccount is still active in applyWindows, we need to apply the parameters for issue: ${network.issue}`)
+        await utils.injectParameterTx(nodeAddress, nodeId, dapp, skipConsensus)
+        issueGenerated = false
+        tallyGenerated = false
+        applyGenerated = true
+      }
+    }
+
+    // DEV_PARAMETER tx should initiate apply_dev_parameters tx (i.e. apply the winning fundings)
+    if (isInDevApplyWindow) {
+      // @ts-ignore
+      const isDevIssueActive = devIssueAccount?.data?.active
+      if (isDevIssueActive) { // still active means it has not been applied the dev parameters
+        dapp.log(`devIssueAccount is still active in devApplyWindows, we need to apply the dev parameters for devIssue: ${network.devIssue}`)
+        await utils._sleep(3000) // this is to wait a moment for above parameter tx to be processed
+        await utils.injectDevParameters(nodeAddress, nodeId, dapp, skipConsensus)
         devIssueGenerated = false
         devTallyGenerated = false
         devApplyGenerated = true
       }
     }
 
-    // LOOP THROUGH IN-MEMORY DEVELOPER_FUND
-    for (const payment of network.developerFund) {
-      // PAY DEVELOPER IF THE network.current TIME IS GREATER THAN THE PAYMENT TIME
-      if (currentTime >= payment.timestamp) {
-        if (luckyNodes.includes(nodeId)) {
-          utils.releaseDeveloperFunds(payment, nodeAddress, nodeId, dapp)
+    if (isProcessingMode) {
+      // LOOP THROUGH IN-MEMORY DEVELOPER_FUND
+      for (const payment of network.developerFund) {
+        // PAY DEVELOPER IF THE network.current TIME IS GREATER THAN THE PAYMENT TIME
+        if (currentTime >= payment.timestamp) {
+          if (luckyNodes.includes(nodeId)) {
+            utils.releaseDeveloperFunds(payment, nodeAddress, nodeId, dapp)
+          }
         }
       }
     }
@@ -844,10 +902,12 @@ dapp.registerExceptionHandler()
     dapp.log('devTallyGenerated: ', devTallyGenerated)
     dapp.log('devApplyGenerated: ', devApplyGenerated)
 
-    dapp.log('Maintenance cycle has ended')
-
     expected += cycleInterval
-    return setTimeout(networkMaintenance, Math.max(0, cycleInterval - drift))
+    let nextMaintenanceWait = Math.max(0, cycleInterval - drift)
+    if (nextMaintenanceWait <= 0) nextMaintenanceWait = cycleInterval
+    let nextMaintenanceCycleStart = nextMaintenanceWait - driftFromCycleStart
+    dapp.log(`Maintenance cycle has ended. Next maintenance in ${nextMaintenanceCycleStart} ms`)
+    return setTimeout(networkMaintenance, nextMaintenanceCycleStart)
   }
 
   dapp.on(
@@ -856,8 +916,20 @@ dapp.registerExceptionHandler()
       if (dapp.p2p.isFirstSeed) {
         await utils._sleep(configs.ONE_SECOND * configs.cycleDuration * 2)
       }
+      const currentTime = Date.now()
+      let currentCycle: ShardusTypes.Cycle
+      ;[currentCycle] = dapp.getLatestCycles()
+      let currentCycleStartMs = currentCycle.start * 1000
+      let waitTime = 0
+      if (currentTime < currentCycleStartMs + cycleInterval) {
+        // wait till this cycle end
+        waitTime = currentCycleStartMs + cycleInterval - currentTime
+      } else {
+        // or wait till next cycle end
+        waitTime = currentCycleStartMs + 2*cycleInterval - currentTime
+      }
       lastReward = Date.now()
-      return setTimeout(networkMaintenance, cycleInterval)
+      return setTimeout(networkMaintenance, waitTime)
     },
   )
 })()

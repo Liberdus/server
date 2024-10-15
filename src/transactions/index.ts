@@ -1,4 +1,5 @@
 import * as init_network from './init_network'
+import * as network_windows from './networkWindows'
 import * as snapshot from './snapshot'
 import * as email from './email'
 import * as gossip_email_hash from './gossip_email_hash'
@@ -37,6 +38,7 @@ import * as apply_change_config from './apply_change_config'
 
 export default {
   init_network,
+  network_windows,
   snapshot,
   email,
   gossip_email_hash,
@@ -76,6 +78,7 @@ export default {
 
 export enum TXTypes {
   init_network = 'init_network',
+  network_windows = 'network_windows',
   snapshot = 'snapshot',
   email = 'email',
   gossip_email_hash = 'gossip_email_hash',

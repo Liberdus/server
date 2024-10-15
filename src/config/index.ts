@@ -20,16 +20,20 @@ export const ONE_DAY = 24 * ONE_HOUR
 // export const ONE_WEEK = 7 * ONE_DAY
 // export const ONE_YEAR = 365 * ONE_DAY
 
-// DEV SETTINGS
-export const TIME_FOR_PROPOSALS = ONE_MINUTE + ONE_SECOND * 30
-export const TIME_FOR_VOTING = ONE_MINUTE + ONE_SECOND * 30
-export const TIME_FOR_GRACE = ONE_MINUTE + ONE_SECOND * 30
-export const TIME_FOR_APPLY = ONE_MINUTE + ONE_SECOND * 30
+// MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
+export const cycleDuration = 60
+const reduceTimeFromTxTimestamp = cycleDuration * ONE_SECOND
 
-export const TIME_FOR_DEV_PROPOSALS = ONE_MINUTE + ONE_SECOND * 30
-export const TIME_FOR_DEV_VOTING = ONE_MINUTE + ONE_SECOND * 30
-export const TIME_FOR_DEV_GRACE = ONE_MINUTE + ONE_SECOND * 30
-export const TIME_FOR_DEV_APPLY = ONE_MINUTE + ONE_SECOND * 30
+// DEV SETTINGS
+export const TIME_FOR_PROPOSALS = (2 * cycleDuration * 1000) + ONE_SECOND * 30
+export const TIME_FOR_VOTING = (2 * cycleDuration * 1000) + ONE_SECOND * 30
+export const TIME_FOR_GRACE = (2 * cycleDuration * 1000) + ONE_SECOND * 30
+export const TIME_FOR_APPLY = (2 * cycleDuration * 1000) + ONE_SECOND * 30
+
+export const TIME_FOR_DEV_PROPOSALS = (2 * cycleDuration * 1000) + ONE_SECOND * 30
+export const TIME_FOR_DEV_VOTING = (2 * cycleDuration * 1000) + ONE_SECOND * 30
+export const TIME_FOR_DEV_GRACE = (2 * cycleDuration * 1000) + ONE_SECOND * 30
+export const TIME_FOR_DEV_APPLY = (2 * cycleDuration * 1000) + ONE_SECOND * 30
 
 // PROD SETTINGS
 // export const TIME_FOR_PROPOSALS = ONE_DAY
@@ -41,10 +45,6 @@ export const TIME_FOR_DEV_APPLY = ONE_MINUTE + ONE_SECOND * 30
 // export const TIME_FOR_DEV_VOTING = 3 * ONE_DAY
 // export const TIME_FOR_DEV_GRACE = ONE_DAY
 // export const TIME_FOR_DEV_APPLY = 2 * ONE_DAY
-
-// MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
-export const cycleDuration = 60
-const reduceTimeFromTxTimestamp = cycleDuration * ONE_SECOND
 
 // INITIAL NETWORK PARAMETERS FOR LIBERDUS
 export const INITIAL_PARAMETERS: NetworkParameters = {
@@ -178,12 +178,14 @@ interface LiberdusFlags {
   NewStorageIndex: boolean
   UseDBForAccounts: boolean //Use Sql to store in memory accounts instead of simple accounts object map
   enableRIAccountsCache: boolean
+  numberOfLuckyNodes: number
 }
 
 export const LiberdusFlags: LiberdusFlags = {
   NewStorageIndex: true,
   UseDBForAccounts: true,
   enableRIAccountsCache: true,
+  numberOfLuckyNodes: 1
 }
 
 const overwriteMerge = (target: any[], source: any[]): any[] => source // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -314,8 +316,8 @@ config = merge(config, {
     p2p: {
       cycleDuration: cycleDuration,
       minNodesToAllowTxs: 1, // to allow single node networks
-      baselineNodes: process.env.baselineNodes ? parseInt(process.env.baselineNodes) : 300, // config used for baseline for entering recovery, restore, and safety. Should be equivalient to minNodes on network startup
-      minNodes: process.env.minNodes ? parseInt(process.env.minNodes) : 300,
+      baselineNodes: process.env.baselineNodes ? parseInt(process.env.baselineNodes) : 10, // config used for baseline for entering recovery, restore, and safety. Should be equivalient to minNodes on network startup
+      minNodes: process.env.minNodes ? parseInt(process.env.minNodes) : 10,
       maxNodes: process.env.maxNodes ? parseInt(process.env.maxNodes) : 1100,
       maxJoinedPerCycle: 10,
       maxSyncingPerCycle: 10,
@@ -447,7 +449,7 @@ config = merge(config, {
     sharding: {
       nodesPerConsensusGroup: process.env.nodesPerConsensusGroup
         ? parseInt(process.env.nodesPerConsensusGroup)
-        : 32, //128 is the final goal
+        : 10, //128 is the final goal
       nodesPerEdge: process.env.nodesPerEdge ? parseInt(process.env.nodesPerEdge) : 5,
       executeInOneShard: true,
     },
@@ -458,8 +460,8 @@ config = merge(config, {
 
       forwardToLuckyNodes: false, // 1.11.0 we seem to have more issues with this on.  can turn off for local testing
 
-      removeStuckTxsFromQueue: true,
-      removeStuckTxsFromQueue3: true,
+      removeStuckTxsFromQueue: false,
+      removeStuckTxsFromQueue3: false,
 
       removeStuckChallengedTXs: false,
 

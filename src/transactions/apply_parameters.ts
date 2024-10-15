@@ -112,8 +112,10 @@ export const apply = (tx: Tx.ApplyParameters, txTimestamp: number, txId: string,
   network.windows = tx.windows
   network.nextWindows = tx.nextWindows
   network.issue = tx.issue
+  if (tx.devWindows) network.devWindows = tx.devWindows
+  if (tx.nextDevWindows) network.nextDevWindows = tx.nextDevWindows
   network.timestamp = txTimestamp
-  dapp.log(`=== APPLIED PARAMETERS GLOBAL ${stringify(network)} ===`)
+  dapp.log(`Applied apply_parameters tx ${txId}`, tx, network)
 }
 
 export const keys = (tx: Tx.ApplyParameters, result: TransactionKeys) => {
