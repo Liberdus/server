@@ -1,5 +1,5 @@
 import {shardusFactory, ShardusTypes} from '@shardus/core'
-import {P2P} from '@shardus/types'
+import {P2P, Utils } from '@shardus/types'
 import * as crypto from '@shardus/crypto-utils'
 import * as configs from './config'
 import * as utils from './utils'
@@ -11,6 +11,7 @@ import stringify = require('fast-stable-stringify');
 import config, { FilePaths, LiberdusFlags } from './config'
 import { TXTypes } from './transactions'
 import * as AccountsStorage from './storage/accountStorage'
+import { deserializeAccounts, serializeAccounts } from './accounts'
 
 dotenv.config()
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
@@ -674,8 +675,30 @@ dapp.setup({
   canStayOnStandby(joinInfo: any): { canStay: boolean; reason: string } {
     return { canStay: true, reason: '' }
   },
-  binarySerializeObject: null,
-  binaryDeserializeObject: null,
+  binarySerializeObject(identifier: string, obj): Buffer {
+    try {
+      switch (identifier) {
+        case "AppData":
+          return serializeAccounts(obj).getBuffer()
+        default:
+          return Buffer.from(Utils.safeStringify(obj), 'utf8')
+      }
+    } catch (e) {
+      return Buffer.from(Utils.safeStringify(obj), 'utf8')
+    }
+  },
+  binaryDeserializeObject(identifier: string, buffer: Buffer) {
+    try {
+      switch (identifier) {
+        case "AppData":
+          return deserializeAccounts(buffer)
+        default:
+          return Utils.safeJsonParse(buffer.toString('utf8'))
+      }
+    } catch (e) {
+      return Utils.safeJsonParse(buffer.toString('utf8'))
+    }
+  },
   verifyMultiSigs: function (rawPayload: object, sigs: ShardusTypes.Sign[], allowedPubkeys: { [pubkey: string]: ShardusTypes.DevSecurityLevel }, minSigRequired: number, requiredSecurityLevel: ShardusTypes.DevSecurityLevel): boolean {
     return false
   },

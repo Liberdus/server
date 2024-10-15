@@ -366,7 +366,7 @@ export interface DevProposalAccount {
 }
 
 export type Accounts = NetworkAccount & IssueAccount & DevIssueAccount & UserAccount & AliasAccount & ProposalAccount & DevProposalAccount & NodeAccount & ChatAccount
-// type Account = NetworkAccount | IssueAccount | DevIssueAccount | UserAccount | AliasAccount | ProposalAccount | DevProposalAccount | NodeAccount | ChatAccount
+export type AccountVariant = NetworkAccount | IssueAccount | DevIssueAccount | UserAccount | AliasAccount | ProposalAccount | DevProposalAccount | NodeAccount | ChatAccount
 
 /**
  * ---------------------- NETWORK DATA export interfaceS ----------------------
