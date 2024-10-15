@@ -136,17 +136,24 @@ export const apply = (tx: Tx.Tally, txTimestamp: number, txId: string, wrappedSt
   from.timestamp = txTimestamp
   issue.timestamp = txTimestamp
   winner.timestamp = txTimestamp
-  dapp.log('Applied tally tx', issue, winner)
+  dapp.log('Applied tally tx', txId, issue, winner, ourAppDefinedData)
 }
 
 export const transactionReceiptPass = (tx: Tx.Tally, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
+  // we should be careful, "wrappedStates" is only accountWrites at this point
   const issue: IssueAccount = wrappedStates[tx.issue].data
-  const defaultProposal: ProposalAccount = wrappedStates[crypto.hash(`issue-${issue.number}-proposal-1`)].data
-  let winner = defaultProposal
+  const winnerId = issue.winnerId
+  const winnerProposal: ProposalAccount = wrappedStates[winnerId]?.data
+  let winner = winnerProposal
+
+  if (winner == null) {
+    dapp.log('ERROR: No winner proposal found for issue', issue, winnerId, wrappedStates)
+    return
+  }
 
   let { address, value, when, source } = applyResponse.appDefinedData.globalMsg
   dapp.setGlobal(address, value, when, source)
-  dapp.log('PostApplied tally tx', issue, winner)
+  dapp.log('PostApplied tally tx', issue, winner, value)
 }
 
 export const keys = (tx: Tx.Tally, result: TransactionKeys) => {

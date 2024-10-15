@@ -64,7 +64,7 @@ export const apply = (tx: Tx.DevIssue, txTimestamp: number, txId: string, wrappe
 
   from.timestamp = txTimestamp
   devIssue.timestamp = txTimestamp
-  dapp.log('Applied dev_issue tx', devIssue)
+  dapp.log('Applied dev_issue tx', txId, devIssue)
 }
 
 export const keys = (tx: Tx.DevIssue, result: TransactionKeys) => {
@@ -78,7 +78,7 @@ export const createRelevantAccount = (dapp: Shardus, account: NodeAccount | DevI
   if (!account) {
     if (accountId === tx.devIssue) {
       account = create.devIssueAccount(accountId)
-    } else {
+    } else if (accountId === tx.from) {
       account = create.nodeAccount(accountId)
     }
     accountCreated = true
