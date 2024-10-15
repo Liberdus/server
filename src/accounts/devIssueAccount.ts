@@ -41,13 +41,20 @@ export const serializeDevIssueAccount = (stream: VectorBufferStream, inp: DevIss
     stream.writeString(inp.winners[i])
   }
 
-  stream.writeUInt8(inp.active ? 1 : 0)
-
-  stream.writeUInt8(inp.number ? 1 : 0)
-
-  if(inp.number){
-    stream.writeUInt32(inp.number)
+  if(inp.active !== null){
+    stream.writeUInt8(1)
+    stream.writeUInt8((inp.active === true) ? 1 : 0)
+  }else{
+    stream.writeUInt8(0)
   }
+
+  if(inp.number !== null){
+    stream.writeUInt8(1)
+    stream.writeUInt32(inp.number)
+  }else{
+    stream.writeUInt8(0)
+  }
+
 
   stream.writeString(inp.hash)
   stream.writeBigUInt64(BigInt(inp.timestamp))
@@ -77,15 +84,18 @@ export const deserializeDevIssueAccount = (stream: VectorBufferStream, root = fa
     winners.push(stream.readString())
   }
 
-  const active = stream.readUInt8() === 1 ? true : false
+  let active = null
+  if(stream.readUInt8() === 1){
+    active = stream.readUInt8() === 1 ? true : false
+  }
 
   let number = null
-  if(stream.readUInt8){
+  if(stream.readUInt8() === 1){
     number = stream.readUInt32()
   }
 
   const hash = stream.readString()
-  const timestamp = Number(stream.readBigUInt64)
+  const timestamp = Number(stream.readBigUInt64())
 
   return {
     id,

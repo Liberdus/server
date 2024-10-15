@@ -37,7 +37,10 @@ export const serializeUserAccount = (stream: VectorBufferStream, inp: UserAccoun
   stream.writeString(inp.id)
   stream.writeString(inp.type)
   stream.writeUInt32(inp.data.balance)
+
+
   stream.writeUInt8(inp.data.toll ? 1 : 0)
+
   if(inp.data.toll){
     stream.writeUInt32(inp.data.toll)
   }
@@ -46,23 +49,37 @@ export const serializeUserAccount = (stream: VectorBufferStream, inp: UserAccoun
     stream.writeString(key)
     stream.writeString(inp.data.chats[key])
   }
+
+
   stream.writeUInt32(Object.keys(inp.data.friends).length)
   for(const key in inp.data.friends){
     stream.writeString(key)
     stream.writeString(inp.data.friends[key])
   }
-  stream.writeUInt8(inp.data.stake ? 1 : 0)
-  if(inp.data.stake){
+
+  if(inp.data.stake !== null){
+    stream.writeUInt8(1)
     stream.writeUInt32(inp.data.stake)
+  }else{
+    stream.writeUInt8(0)
   }
-  stream.writeUInt8(inp.data.remove_stake_request ? 1 : 0)
-  if(inp.data.remove_stake_request){
+
+    
+  if(inp.data.remove_stake_request !== null){
+    stream.writeUInt8(1)
     stream.writeUInt32(inp.data.remove_stake_request)
+  }else{
+    stream.writeUInt8(0)
   }
+
+
+
   stream.writeUInt32(inp.data.payments.length)
   for(let i = 0; i < inp.data.payments.length; i++){
     serializeDeveloperPayment(stream, inp.data.payments[i])
   }
+
+
   stream.writeUInt8(inp.alias ? 1 : 0)
   if(inp.alias){
     stream.writeString(inp.alias)
@@ -71,43 +88,76 @@ export const serializeUserAccount = (stream: VectorBufferStream, inp: UserAccoun
   if(inp.emailHash){
     stream.writeString(inp.emailHash)
   }
+
+
   stream.writeUInt8(inp.verified ? 1 : 0)
   stream.writeUInt32(inp.lastMaintenance)
   stream.writeUInt8(inp.claimedSnapshot ? 1 : 0)
-  stream.writeBigUInt64(BigInt(inp.timestamp))
+  stream.writeUInt32(inp.timestamp)
   stream.writeString(inp.hash)
 }
 
 
 export const deserializeUserAccount = (stream: VectorBufferStream, root = false): UserAccount => {
   if(root && (stream.readUInt16() !== SerdeTypeIdent.UserAccount)){
-    throw new Error("Unexpected bufferstream for UserAccount type");
+      throw new Error("Unexpected type identifier for UserAccount type")
   }
+
 
   const id = stream.readString()
   const type = stream.readString()
   const balance = stream.readUInt32()
-  const toll = stream.readUInt8() ? stream.readUInt32() : null
+
+  let toll =  null
+  if(stream.readUInt8() === 1){
+    toll = stream.readUInt32()
+  }
+
   const chats = {}
   for(let i = 0; i < stream.readUInt32(); i++){
     chats[stream.readString()] = stream.readString()
   }
+
   const friends = {}
   for(let i = 0; i < stream.readUInt32(); i++){
     friends[stream.readString()] = stream.readString()
   }
-  const stake = stream.readUInt8() ? stream.readUInt32() : null
-  const remove_stake_request = stream.readUInt8() ? stream.readUInt32() : null
+
+
+  let stake = null
+  if(stream.readUInt8() === 1){
+    stake = stream.readUInt32() 
+  }
+
+
+  let  remove_stake_request = null 
+  if(stream.readUInt8() === 1){
+    remove_stake_request = stream.readUInt32()
+  }
+
+
   const payments = []
   for(let i = 0; i < stream.readUInt32(); i++){
     payments.push(deserializeDeveloperPayment(stream))
   }
-  const alias = stream.readUInt8() ? stream.readString() : null
-  const emailHash = stream.readUInt8() ? stream.readString() : null
+
+  
+  let alias = null
+  if(stream.readUInt8() === 1){
+    alias = stream.readString()
+  }
+
+  let emailHash =  null
+  if(stream.readUInt8() === 1){
+    emailHash = stream.readString()
+  }
+
+
   const verified = stream.readUInt8() === 1 ? true : false
   const lastMaintenance = stream.readUInt32()
   const claimedSnapshot = stream.readUInt8() === 1 ? true : false
-  const timestamp = Number(stream.readBigUInt64())
+
+  const timestamp = stream.readUInt32()
   const hash = stream.readString()
   return {
     id,
