@@ -26,7 +26,7 @@
   "license": "ISC",
   "dependencies": {
     "@shardus/archiver-discovery": "1.1.0",
-    "@shardus/core": "2.13.3-9",
+    "@shardus/core": "2.13.3",
     "@shardus/crypto-utils": "4.1.4",
     "@shardus/net": "1.4.0",
     "@shardus/types": "1.2.21-1",

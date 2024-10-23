@@ -6,9 +6,10 @@
 # However, the resulting image size is very large (~1.25GB).
 #
 # Useful for development, but don't ship it. Use 'Dockerfile' instead.
+FROM node:18.16.1
 
-# Node.js LTS 12.x.x from Docker Hub
-FROM node:16
+# Link this Dockerfile to the image in the GHCR
+LABEL "org.opencontainers.image.source"="https://github.com/liberdus/server"
 
 # Create app directory
 WORKDIR /usr/src/app
@@ -16,36 +17,15 @@ WORKDIR /usr/src/app
 # Bundle app source
 COPY . .
 
-### Install packages for rust building ###
-
-# Update default packages
-RUN apt-get update
-
-# Get Ubuntu packages
-RUN apt-get install -y \
+# Install Rust build chain for modules
+RUN apt-get update && apt-get install -y \
     build-essential \
     curl
-
-# Update new packages
-RUN apt-get update
-
-# Get Rust
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
-
-# Add to path
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-###
-
-# Workaround for git permissions when installing shardus-global-server with npm
-RUN --mount=type=secret,id=mysecret git config --global credential.helper "$(cat /run/secrets/mysecret)"
-
 # Install node_modules
-RUN npm set unsafe-perm true
 RUN npm install
-
-# Undo git workaround
-RUN git config --global credential.helper cache
 
 # Define run command
 CMD [ "node", "dist/index.js" ]
