@@ -1,14 +1,11 @@
 {
   "server": {
     "baseDir": ".",
-    "p2p": {
-      "seedList": "http://localhost:4000/api/seednodes"
-    },
     "ip": {
       "externalIp": "127.0.0.1",
-      "externalPort": 9009,
+      "externalPort": 9007,
       "internalIp": "127.0.0.1",
-      "internalPort": 10009
+      "internalPort": 10007
     },
     "reporting": {
       "report": true,
