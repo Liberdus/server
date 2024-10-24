@@ -35,6 +35,8 @@ export const TIME_FOR_DEV_VOTING = (2 * cycleDuration * 1000) + ONE_SECOND * 30
 export const TIME_FOR_DEV_GRACE = (2 * cycleDuration * 1000) + ONE_SECOND * 30
 export const TIME_FOR_DEV_APPLY = (2 * cycleDuration * 1000) + ONE_SECOND * 30
 
+export const TOTAL_DAO_DURATION = TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE + TIME_FOR_APPLY
+
 // PROD SETTINGS
 // export const TIME_FOR_PROPOSALS = ONE_DAY
 // export const TIME_FOR_VOTING = 3 * ONE_DAY
@@ -509,7 +511,7 @@ config = merge(
           // These are production keys.  Use 'git apply use_test_key.patch' for unsafe local test keys
           // Never merge a commit with changes to these lines without approval.
           // always prefix with prettier ignore
-          /* prettier-ignore */ '': DevSecurityLevel.High,
+          /* prettier-ignore */ '899de21e0c47a29be4319376a9207f5e63d8e5b7d296b8a6391e301e1f14cd32': DevSecurityLevel.High,
         },
         multisigKeys: {
           // always prefix with prettier ignore
