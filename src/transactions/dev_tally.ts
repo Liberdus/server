@@ -137,7 +137,7 @@ export const apply = (tx: Tx.DevTally, txTimestamp: number, txId: string, wrappe
 
   from.timestamp = txTimestamp
   devIssue.timestamp = txTimestamp
-  dapp.log('Applied dev_tally tx', devIssue, devProposals)
+  dapp.log('Applied dev_tally tx', devIssue, devProposals, value)
 }
 
 export const transactionReceiptPass = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {

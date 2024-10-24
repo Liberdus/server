@@ -1,7 +1,8 @@
-import {shardusFactory, ShardusTypes} from '@shardus/core'
+import {shardusFactory, ShardusTypes, nestedCountersInstance} from '@shardus/core'
 import {P2P} from '@shardus/types'
 import * as crypto from '@shardus/crypto-utils'
 import * as configs from './config'
+import {TOTAL_DAO_DURATION} from './config'
 import * as utils from './utils'
 import * as LiberdusTypes from './@types'
 import dotenv from 'dotenv'
@@ -11,6 +12,8 @@ import stringify = require('fast-stable-stringify');
 import config, { FilePaths, LiberdusFlags } from './config'
 import { TXTypes } from './transactions'
 import * as AccountsStorage from './storage/accountStorage'
+const {version} = require('../package.json')
+
 
 dotenv.config()
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
@@ -678,6 +681,36 @@ dapp.setup({
   ): Promise<boolean> {
     return true
   },
+  getJoinData() {
+    const joinData = {
+      version,
+      stakeCert: '',
+      adminCert: '',
+      mustUseAdminCert: false,
+    }
+    return joinData
+  },
+  getNodeInfoAppData() {
+    let minVersion = ''
+    let activeVersion = ''
+    let latestVersion = ''
+    // const cachedNetworkAccount = AccountsStorage.cachedNetworkAccount
+    // if (cachedNetworkAccount) {
+    //   minVersion = cachedNetworkAccount.current.minVersion
+    //   activeVersion = cachedNetworkAccount.current.activeVersion
+    //   latestVersion = cachedNetworkAccount.current.latestVersion
+    // }
+    const shardeumNodeInfo: any = {
+      // const shardeumNodeInfo: NodeInfoAppData = {
+      liberdusVersion: version,
+      minVersion,
+      activeVersion,
+      latestVersion,
+      operatorCLIVersion: '',
+      operatorGUIVersion: '',
+    }
+    return shardeumNodeInfo
+  },
   canStayOnStandby(joinInfo: any): { canStay: boolean; reason: string } {
     return { canStay: true, reason: '' }
   },
@@ -763,6 +796,23 @@ dapp.registerExceptionHandler()
         // start network DAO time windows
         dapp.log('Starting network windows', luckyNodes, nodeId)
         await utils.startNetworkWindows(nodeAddress, nodeId, dapp)
+        nestedCountersInstance.countEvent('liberdus', 'start_network_windows')
+      }
+
+      expected += cycleInterval
+      let nextMaintenanceWait = Math.max(0, cycleInterval - drift)
+      if (nextMaintenanceWait <= 0) nextMaintenanceWait = cycleInterval
+      let nextMaintenanceCycleStart = nextMaintenanceWait - driftFromCycleStart
+      dapp.log(`Maintenance cycle has ended. Next maintenance in ${nextMaintenanceCycleStart} ms`)
+      return setTimeout(networkMaintenance, nextMaintenanceCycleStart)
+    }
+
+    // reset the DAO windows if it has been too long
+    if (currentTime > network.windows.proposalWindow[0] && currentTime - network.windows.proposalWindow[0] > TOTAL_DAO_DURATION * 3) {
+      if (isProcessingMode && luckyNodes.includes(nodeId)) {
+        dapp.log('Resetting network windows', luckyNodes, nodeId)
+        await utils.startNetworkWindows(nodeAddress, nodeId, dapp)
+        nestedCountersInstance.countEvent('liberdus', 'reset_network_windows')
       }
 
       expected += cycleInterval
