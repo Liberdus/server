@@ -225,9 +225,12 @@ dapp.setup({
   transactionReceiptPass(timestampedTx: any, wrappedStates: { [id: string]: LiberdusTypes.WrappedAccount }, applyResponse: ShardusTypes.ApplyResponse) {
     let {tx} = timestampedTx
     let txId: string = utils.generateTxId(tx)
-    if (transactions[tx.type].transactionReceiptPass)
-      transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
-
+    try {
+      if (transactions[tx.type].transactionReceiptPass)
+        transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
+    } catch (e) {
+      console.log(`Error in transactionReceiptPass: ${e.message}`)
+    }
   },
   async getStateId(accountAddress: string, mustExist = true): Promise<string> {
     const account = await AccountsStorage.getAccount(accountAddress)
