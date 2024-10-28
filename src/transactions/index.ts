@@ -35,6 +35,14 @@ import * as developer_payment from './developer_payment'
 import * as apply_developer_payment from './apply_developer_payment'
 import * as change_config from './change_config'
 import * as apply_change_config from './apply_change_config'
+import * as deposit_stake from './staking/deposit_stake'
+import * as withdraw_stake from './staking/withdraw_stake'
+import * as set_cert_time from './staking/set_cert_time'
+import * as query_certificate from './staking/query_certificate'
+import * as init_reward from './staking/init_reward'
+import * as claim_reward from './staking/claim_reward'
+import * as apply_penalty from './staking/apply_penalty'
+import * as admin_certificate from './admin_certificate'
 
 export default {
   init_network,
@@ -74,6 +82,14 @@ export default {
   apply_developer_payment,
   change_config,
   apply_change_config,
+  deposit_stake,
+  withdraw_stake,
+  set_cert_time,
+  query_certificate,
+  init_reward,
+  claim_reward,
+  apply_penalty,
+  admin_certificate,
 }
 
 export enum TXTypes {
@@ -114,4 +130,11 @@ export enum TXTypes {
   apply_developer_payment = 'apply_developer_payment',
   change_config = 'change_config',
   apply_change_config = 'apply_change_config',
+  deposit_stake = 'deposit_stake',
+  withdraw_stake = 'withdraw_stake',
+  set_cert_time = 'set_cert_time',
+  query_certificate = 'query_certificate',
+  init_reward = 'init_reward',
+  claim_reward = 'claim_reward',
+  apply_penalty = 'apply_penalty',
 }

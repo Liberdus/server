@@ -1,14 +1,11 @@
 import fs from 'fs'
 import path from 'path'
 import Prop from 'dot-prop'
-import * as crypto from '@shardus/crypto-utils'
 import merge from 'deepmerge'
 import minimist from 'minimist'
-import {NetworkParameters} from '../@types'
-import {Utils} from '@shardus/types'
-import {DevSecurityLevel} from '@shardus/core'
-
-crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
+import { NetworkParameters } from '../@types'
+import { Utils } from '@shardus/types'
+import { DevSecurityLevel } from '@shardus/core'
 
 export const networkAccount = '0'.repeat(64)
 
@@ -25,15 +22,15 @@ export const cycleDuration = 60
 const reduceTimeFromTxTimestamp = cycleDuration * ONE_SECOND
 
 // DEV SETTINGS
-export const TIME_FOR_PROPOSALS = (2 * cycleDuration * 1000) + ONE_SECOND * 30
-export const TIME_FOR_VOTING = (2 * cycleDuration * 1000) + ONE_SECOND * 30
-export const TIME_FOR_GRACE = (2 * cycleDuration * 1000) + ONE_SECOND * 30
-export const TIME_FOR_APPLY = (2 * cycleDuration * 1000) + ONE_SECOND * 30
+export const TIME_FOR_PROPOSALS = 2 * cycleDuration * 1000 + ONE_SECOND * 30
+export const TIME_FOR_VOTING = 2 * cycleDuration * 1000 + ONE_SECOND * 30
+export const TIME_FOR_GRACE = 2 * cycleDuration * 1000 + ONE_SECOND * 30
+export const TIME_FOR_APPLY = 2 * cycleDuration * 1000 + ONE_SECOND * 30
 
-export const TIME_FOR_DEV_PROPOSALS = (2 * cycleDuration * 1000) + ONE_SECOND * 30
-export const TIME_FOR_DEV_VOTING = (2 * cycleDuration * 1000) + ONE_SECOND * 30
-export const TIME_FOR_DEV_GRACE = (2 * cycleDuration * 1000) + ONE_SECOND * 30
-export const TIME_FOR_DEV_APPLY = (2 * cycleDuration * 1000) + ONE_SECOND * 30
+export const TIME_FOR_DEV_PROPOSALS = 2 * cycleDuration * 1000 + ONE_SECOND * 30
+export const TIME_FOR_DEV_VOTING = 2 * cycleDuration * 1000 + ONE_SECOND * 30
+export const TIME_FOR_DEV_GRACE = 2 * cycleDuration * 1000 + ONE_SECOND * 30
+export const TIME_FOR_DEV_APPLY = 2 * cycleDuration * 1000 + ONE_SECOND * 30
 
 export const TOTAL_DAO_DURATION = TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE + TIME_FOR_APPLY
 
@@ -53,16 +50,38 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   title: 'Initial parameters',
   description: 'These are the initial network parameters liberdus started with',
   nodeRewardInterval: ONE_HOUR, //ONE_HOUR,
-  nodeRewardAmount: 1,
-  nodePenalty: 10,
-  transactionFee: 0.001,
-  stakeRequired: 5,
+  nodeRewardAmountUsd: BigInt(1),
+  nodePenaltyUsd: BigInt(10),
+  stakeRequiredUsd: BigInt(10),
+  restakeCooldown: 30 * ONE_MINUTE,
+  transactionFee: BigInt(1),
   maintenanceInterval: ONE_DAY,
-  maintenanceFee: 0,
-  proposalFee: 50,
-  devProposalFee: 50,
-  faucetAmount: 10,
-  defaultToll: 1,
+  maintenanceFee: BigInt(0),
+  proposalFee: BigInt(50),
+  devProposalFee: BigInt(50),
+  faucetAmount: BigInt(10),
+  defaultToll: BigInt(1),
+  minVersion: '2.3.1',
+  activeVersion: '2.3.1',
+  latestVersion: '2.3.1',
+  archiver: {
+    minVersion: '3.5.6',
+    activeVersion: '3.5.6',
+    latestVersion: '3.5.6',
+  },
+  stabilityScaleMul: 1000,
+  stabilityScaleDiv: 1000,
+  txPause: false,
+  certCycleDuration: 30,
+  enableNodeSlashing: false,
+  slashing: {
+    enableLeftNetworkEarlySlashing: false,
+    enableSyncTimeoutSlashing: false,
+    enableNodeRefutedSlashing: false,
+    leftNetworkEarlyPenaltyPercent: 0.2,
+    syncTimeoutPenaltyPercent: 0.2,
+    nodeRefutedPenaltyPercent: 0.2,
+  },
 }
 
 function replaceAll(str, find, replace) {
@@ -169,25 +188,41 @@ export function overrideDefaultConfig(defaultConfig, env: NodeJS.ProcessEnv, arg
 export const enum FilePaths {
   LIBERDUS_DB = 'db/liberdus.sqlite',
   DB = 'db.sqlite',
-  HISTORY_DB = 'history.sqlite',
-  ACCOUNT_EXPORT = 'account-export.json',
   CONFIG = 'config.json',
   CLI_PACKAGE = '/home/node/app/cli/package.json',
   GUI_PACKAGE = '/home/node/app/gui/package.json',
 }
 
 interface LiberdusFlags {
+  VerboseLogs: boolean
   NewStorageIndex: boolean
   UseDBForAccounts: boolean //Use Sql to store in memory accounts instead of simple accounts object map
-  enableRIAccountsCache: boolean
   numberOfLuckyNodes: number
+  ModeEnabled: boolean
+  StakingEnabled: boolean
+  AdminCertEnabled: boolean
+  minActiveNodesForStaking: number
+  MinStakeCertSig: number
+  FullCertChecksEnabled: boolean // do we run all of the cert checks when signing.  This config may go away soon after testing.
+  certCycleDuration: number
+  lowStakePercent: number
+  allowForceUnstake: boolean
 }
 
 export const LiberdusFlags: LiberdusFlags = {
   NewStorageIndex: true,
   UseDBForAccounts: true,
-  enableRIAccountsCache: true,
-  numberOfLuckyNodes: 1
+  numberOfLuckyNodes: 1,
+  VerboseLogs: true,
+  AdminCertEnabled: true,
+  StakingEnabled: true,
+  ModeEnabled: true,
+  minActiveNodesForStaking: 5,
+  MinStakeCertSig: 1, // this is the minimum amount of signature required for stake certification. will move to network param in future.
+  FullCertChecksEnabled: true,
+  certCycleDuration: 30,
+  lowStakePercent: 0.2,
+  allowForceUnstake: true,
 }
 
 const overwriteMerge = (target: any[], source: any[]): any[] => source // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -225,10 +260,8 @@ let config: Config = {
 // eslint-disable-next-line security/detect-non-literal-fs-filename
 if (fs.existsSync(path.join(process.cwd(), FilePaths.CONFIG))) {
   // eslint-disable-next-line security/detect-non-literal-fs-filename
-  const fileConfig = Utils.safeJsonParse(
-    fs.readFileSync(path.join(process.cwd(), FilePaths.CONFIG)).toString()
-  )
-  config = merge(config, fileConfig, {arrayMerge: overwriteMerge})
+  const fileConfig = Utils.safeJsonParse(fs.readFileSync(path.join(process.cwd(), FilePaths.CONFIG)).toString())
+  config = merge(config, fileConfig, { arrayMerge: overwriteMerge })
 }
 
 if (process.env.BASE_DIR) {
@@ -240,7 +273,7 @@ if (process.env.BASE_DIR) {
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     baseDirFileConfig = Utils.safeJsonParse(fs.readFileSync(path.join(baseDir, FilePaths.CONFIG)).toString())
   }
-  config = merge(config, baseDirFileConfig, {arrayMerge: overwriteMerge})
+  config = merge(config, baseDirFileConfig, { arrayMerge: overwriteMerge })
   config.server.baseDir = process.env.BASE_DIR
 }
 
@@ -254,15 +287,13 @@ if (process.env.APP_SEEDLIST) {
             {
               ip: process.env.APP_SEEDLIST,
               port: process.env.APP_SEEDLIST_PORT || 4000,
-              publicKey:
-                process.env.APP_SEEDLIST_PUBLIC_KEY ||
-                '758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3',
+              publicKey: process.env.APP_SEEDLIST_PUBLIC_KEY || '758b1c119412298802cd28dbfa394cdfeecc4074492d60844cc192d632d84de3',
             },
           ],
         },
       },
     },
-    {arrayMerge: overwriteMerge}
+    { arrayMerge: overwriteMerge },
   )
 }
 
@@ -279,7 +310,7 @@ if (process.env.EXISTING_ARCHIVERS) {
           },
         },
       },
-      {arrayMerge: overwriteMerge}
+      { arrayMerge: overwriteMerge },
     )
   }
 }
@@ -294,7 +325,7 @@ if (process.env.APP_MONITOR) {
         },
       },
     },
-    {arrayMerge: overwriteMerge}
+    { arrayMerge: overwriteMerge },
   )
 }
 
@@ -309,7 +340,7 @@ if (process.env.APP_IP) {
         },
       },
     },
-    {arrayMerge: overwriteMerge}
+    { arrayMerge: overwriteMerge },
   )
 }
 
@@ -449,9 +480,7 @@ config = merge(config, {
 config = merge(config, {
   server: {
     sharding: {
-      nodesPerConsensusGroup: process.env.nodesPerConsensusGroup
-        ? parseInt(process.env.nodesPerConsensusGroup)
-        : 10, //128 is the final goal
+      nodesPerConsensusGroup: process.env.nodesPerConsensusGroup ? parseInt(process.env.nodesPerConsensusGroup) : 10, //128 is the final goal
       nodesPerEdge: process.env.nodesPerEdge ? parseInt(process.env.nodesPerEdge) : 5,
       executeInOneShard: true,
     },
@@ -512,6 +541,11 @@ config = merge(
           // Never merge a commit with changes to these lines without approval.
           // always prefix with prettier ignore
           /* prettier-ignore */ '899de21e0c47a29be4319376a9207f5e63d8e5b7d296b8a6391e301e1f14cd32': DevSecurityLevel.High,
+          '235a87986ef232e204d5672a5bc0d15201ad502f99ecf879109c53751deb8fca': DevSecurityLevel.High,
+          '4f4559259253943837268209775c4c8731a24aac11ef923f616ea543bae9355a': DevSecurityLevel.High,
+          '6128f995fd46a9be1af049d84d89424384770b0df3471b2eff4ddf476e399dd4': DevSecurityLevel.High,
+          '0ad2caeba527f230f6b703fb6b50ad284968065c522eed42774107965dc0a1a7': DevSecurityLevel.High,
+          '4561289434eff9b547250911ed0f75e38c16572c926c60f7a8a45c384d088835': DevSecurityLevel.High,
         },
         multisigKeys: {
           // always prefix with prettier ignore
@@ -526,7 +560,7 @@ config = merge(
       },
     },
   },
-  {arrayMerge: overwriteMerge}
+  { arrayMerge: overwriteMerge },
 )
 
 export default config

@@ -3,7 +3,7 @@ import { Shardus, ShardusTypes } from '@shardus/core'
 import * as utils from '../utils'
 import create from '../accounts'
 import * as config from '../config'
-import {Accounts, NetworkParameters, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Accounts, NetworkParameters, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.Proposal, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -41,22 +41,22 @@ export const validate_fields = (tx: Tx.Proposal, response: ShardusTypes.Incoming
     response.reason = 'tx "parameter nodeRewardInterval" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.parameters.nodeRewardAmount !== 'number') {
+  if (typeof tx.parameters.nodeRewardAmountUsd !== 'bigint') {
     response.success = false
     response.reason = 'tx "parameter nodeRewardAmount" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.parameters.nodePenalty !== 'number') {
+  if (typeof tx.parameters.nodePenaltyUsd !== 'number') {
     response.success = false
     response.reason = 'tx "parameter nodePenalty" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.parameters.transactionFee !== 'number') {
+  if (typeof tx.parameters.transactionFee !== 'bigint') {
     response.success = false
     response.reason = 'tx "parameter transactionFee" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.parameters.stakeRequired !== 'number') {
+  if (typeof tx.parameters.stakeRequiredUsd !== 'number') {
     response.success = false
     response.reason = 'tx "parameter stakeRequired" field must be a number.'
     throw new Error(response.reason)
@@ -86,7 +86,7 @@ export const validate_fields = (tx: Tx.Proposal, response: ShardusTypes.Incoming
     response.reason = 'tx "parameter faucetAmount" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.parameters.transactionFee !== 'number') {
+  if (typeof tx.parameters.transactionFee !== 'bigint') {
     response.success = false
     response.reason = 'tx "parameter defaultToll" field must be a number.'
     throw new Error(response.reason)
@@ -159,11 +159,11 @@ export const validate = (tx: Tx.Proposal, wrappedStates: WrappedStates, response
     response.reason = 'Max nodeRewardInterval fee permitted is 900000000000'
     return response
   }
-  if (parameters.nodeRewardAmount < 0) {
+  if (parameters.nodeRewardAmountUsd < 0) {
     response.reason = 'Min nodeRewardAmount permitted is 0 tokens'
     return response
   }
-  if (parameters.nodeRewardAmount > 1000000000) {
+  if (parameters.nodeRewardAmountUsd > 1000000000) {
     response.reason = 'Max nodeRewardAmount permitted is 1000000000'
     return response
   }
@@ -213,7 +213,6 @@ export const apply = (tx: Tx.Proposal, txTimestamp: number, txId: string, wrappe
   proposal.timestamp = txTimestamp
   dapp.log('Applied proposal tx', from, issue, proposal)
 }
-
 
 export const transactionReceiptPass = (tx: Tx.Proposal, txId: string, wrappedStates: WrappedStates, dapp: any, applyResponse: ShardusTypes.ApplyResponse) => {
   dapp.log('PostApplied proposal tx')

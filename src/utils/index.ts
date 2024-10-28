@@ -1,21 +1,30 @@
-import {UserAccount, NetworkAccount, IssueAccount, DevIssueAccount, DeveloperPayment, InjectTxResponse, ValidatorError} from '../@types'
+import { UserAccount, NetworkAccount, IssueAccount, DevIssueAccount, DeveloperPayment, InjectTxResponse, ValidatorError } from '../@types'
 import * as crypto from '@shardus/crypto-utils'
 import * as configs from '../config'
-import { Shardus,  ShardusTypes } from '@shardus/core'
-import {shardusPostToNode} from './request'
-import {TXTypes} from '../transactions'
+import { Shardus, ShardusTypes } from '@shardus/core'
+import { shardusPostToNode } from './request'
+import { Utils } from '@shardus/types'
+import { getLocalOrRemoteAccount } from './../index'
+import { TXTypes } from '../transactions'
 
-export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): number => {
-  let amount: number
+export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): bigint => {
+  let amount: bigint
   if (timestamp - account.lastMaintenance < network.current.maintenanceInterval) {
-    amount = 0
+    amount = BigInt(0)
   } else {
-    amount =
-      account.data.balance * (1 - Math.pow(1 - network.current.maintenanceFee, (timestamp - account.lastMaintenance) / network.current.maintenanceInterval))
+    const maintenanceFee = 1 - Math.pow(1 - Number(network.current.maintenanceFee), (timestamp - account.lastMaintenance) / network.current.maintenanceInterval)
+    amount = account.data.balance * BigInt(maintenanceFee)
     account.lastMaintenance = timestamp
   }
-  if (typeof amount === 'number') return amount
-  else return 0
+  if (typeof amount === 'bigint') return amount
+  else return BigInt(0)
+}
+
+// convert obj with __BigInt__ to BigInt
+export function fixBigIntLiteralsToBigInt(obj): any {
+  const jsonString = Utils.safeStringify(obj)
+  const parsedStruct = Utils.safeJsonParse(jsonString)
+  return parsedStruct
 }
 
 export function generateTxId(tx: any): string {
@@ -30,20 +39,22 @@ export function generateTxId(tx: any): string {
 
 export async function InjectTxToConsensor(
   randomConsensusNodes: ShardusTypes.ValidatorNodeDetails[],
-  tx: ShardusTypes.OpaqueTransaction // Sign Object
+  tx: ShardusTypes.OpaqueTransaction, // Sign Object
 ): Promise<InjectTxResponse | ValidatorError> {
+  const stringifyTx = Utils.safeStringify(tx)
   const promises = []
   try {
     for (const randomConsensusNode of randomConsensusNodes) {
-      const promise = shardusPostToNode<any>(randomConsensusNode, `/inject`, tx) // eslint-disable-line
+      const promise = shardusPostToNode<any>(randomConsensusNode, `/inject`, { tx: stringifyTx }) // eslint-disable-line
       // @typescript-eslint/no-explicit-any
       promises.push(promise)
     }
     const res = await raceForSuccess(promises, 5000)
-    if (!res.data.success) {
-      return { success: false, reason: res.data.reason }
+    console.log('res', res)
+    if (res.data.error) {
+      return { success: false, reason: res.data.error }
     }
-    return res.data as InjectTxResponse
+    return res.data.result as InjectTxResponse
   } catch (error) {
     return { success: false, reason: (error as Error).message }
   }
@@ -52,10 +63,13 @@ export async function InjectTxToConsensor(
 async function raceForSuccess<
   T extends {
     data: {
-      success: boolean
-      reason?: string
+      result?: {
+        success: boolean
+        reason?: string
+      }
+      error?: string
     }
-  }
+  },
 >(promises: Promise<T>[], timeoutMs: number): Promise<T> {
   return new Promise((resolve, reject) => {
     let unresolvedCount = promises.length
@@ -66,7 +80,7 @@ async function raceForSuccess<
     for (const promise of promises) {
       promise
         .then((response) => {
-          if (response.data.success) {
+          if (response.data) {
             clearTimeout(timer)
             resolve(response)
           } else {
@@ -93,7 +107,7 @@ async function raceForSuccess<
 // HELPER METHOD TO WAIT
 export async function _sleep(ms = 0): Promise<NodeJS.Timeout> {
   // @ts-ignore
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 // NODE_REWARD TRANSACTION FUNCTION
@@ -109,9 +123,10 @@ export function nodeReward(address: string, nodeId: string, dapp: Shardus): void
   dapp.log('GENERATED_NODE_REWARD: ', nodeId)
 }
 
+
 // START NETWORK DAO WINDOWS
 export async function startNetworkWindows(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+  const account = await getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
     type: TXTypes.network_windows,
@@ -125,7 +140,7 @@ export async function startNetworkWindows(address: string, nodeId: string, dapp:
 
 // ISSUE TRANSACTION FUNCTION
 export async function generateIssue(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+  const account = await getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
     type: TXTypes.issue,
@@ -141,7 +156,7 @@ export async function generateIssue(address: string, nodeId: string, dapp: Shard
 
 // DEV_ISSUE TRANSACTION FUNCTION
 export async function generateDevIssue(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+  const account = await getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
     type: TXTypes.dev_issue,
@@ -158,9 +173,9 @@ export async function generateDevIssue(address: string, nodeId: string, dapp: Sh
 export async function tallyVotes(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
   console.log(`GOT TO TALLY_VOTES FN ${address} ${nodeId}`)
   try {
-    const network = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+    const network = await getLocalOrRemoteAccount(configs.networkAccount)
     const networkAccount = network.data as NetworkAccount
-    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${networkAccount.issue}`))
+    const account = await getLocalOrRemoteAccount(crypto.hash(`issue-${networkAccount.issue}`))
     if (!account) {
       dapp.log(`No account found for issue-${networkAccount.issue}`)
       await _sleep(500)
@@ -188,9 +203,9 @@ export async function tallyVotes(address: string, nodeId: string, dapp: Shardus,
 // DEV_TALLY TRANSACTION FUNCTION
 export async function tallyDevVotes(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
   try {
-    const network = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+    const network = await getLocalOrRemoteAccount(configs.networkAccount)
     const networkAccount = network.data as NetworkAccount
-    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${networkAccount.devIssue}`))
+    const account = await getLocalOrRemoteAccount(crypto.hash(`dev-issue-${networkAccount.devIssue}`))
     if (!account) {
       await _sleep(500)
       return tallyDevVotes(address, nodeId, dapp)
@@ -215,7 +230,7 @@ export async function tallyDevVotes(address: string, nodeId: string, dapp: Shard
 
 // Inject "parameters" transaction to the network
 export async function injectParameterTx(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+  const account = await getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
     type: TXTypes.parameters,
@@ -230,7 +245,7 @@ export async function injectParameterTx(address: string, nodeId: string, dapp: S
 
 // Inject "dev_parameters" transaction to the network
 export async function injectDevParameters(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+  const account = await getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
     type: TXTypes.dev_parameters,
@@ -245,7 +260,7 @@ export async function injectDevParameters(address: string, nodeId: string, dapp:
 
 // APPLY_PARAMETERS TRANSACTION FUNCTION
 export async function applyParameters(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+  const account = await getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
     type: TXTypes.apply_parameters,
@@ -260,7 +275,7 @@ export async function applyParameters(address: string, nodeId: string, dapp: Sha
 
 // APPLY_DEV_PARAMETERS TRANSACTION FUNCTION
 export async function applyDevParameters(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+  const account = await getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
     type: TXTypes.apply_dev_parameters,
@@ -359,4 +374,74 @@ export const isObject = (val): boolean => {
     return false
   }
   return typeof val === 'function' || typeof val === 'object'
+}
+
+export const isValidAddress = (address: string): boolean => {
+  return address.length === 64
+}
+
+// From: https://stackoverflow.com/a/19270021
+export function getRandom<T>(arr: T[], n: number): T[] {
+  let len = arr.length
+  const taken = new Array(len)
+  if (n > len) {
+    n = len
+  }
+  const result = new Array(n)
+  /* eslint-disable security/detect-object-injection */
+  while (n--) {
+    const x = Math.floor(Math.random() * len)
+    result[n] = arr[x in taken ? taken[x] : x]
+    taken[x] = --len in taken ? taken[len] : len
+  }
+  /* eslint-enable security/detect-object-injection */
+  return result
+}
+
+/**
+ * Check if the test version is equal or newer than the min version
+ * @param minimumVersion
+ * @param testVersion
+ * @returns
+ */
+export function isEqualOrNewerVersion(minimumVersion: string, testVersion: string): boolean {
+  if (minimumVersion === testVersion) {
+    return true
+  }
+
+  const minVerParts = minimumVersion.split('.')
+  const testVerParts = testVersion.split('.')
+  /* eslint-disable security/detect-object-injection */
+  for (let i = 0; i < testVerParts.length; i++) {
+    const testV = ~~testVerParts[i] // parse int
+    const minV = ~~minVerParts[i] // parse int
+    if (testV > minV) return true
+    if (testV < minV) return false
+  }
+  /* eslint-enable security/detect-object-injection */
+  return false
+}
+
+/**
+ * Check if the test version is equal or older than the max version
+ * can also think of this as checking if testVersion is an earlier
+ * version than maximumVersion
+ * @param maximumVersion
+ * @param testVersion
+ * @returns
+ */
+export function isEqualOrOlderVersion(maximumVersion: string, testVersion: string): boolean {
+  return isEqualOrNewerVersion(testVersion, maximumVersion)
+}
+
+export function isValidVersion(minimumVersion: string, latestVersion: string, testVersion: string): boolean {
+  const equalOrNewer = isEqualOrNewerVersion(minimumVersion, testVersion)
+  const equalOrOlder = isEqualOrOlderVersion(latestVersion, testVersion)
+  return equalOrNewer && equalOrOlder
+}
+
+export function scaleByStabilityFactor(input: bigint, networkAccount: NetworkAccount): bigint {
+  const stabilityScaleMult = BigInt(networkAccount.current.stabilityScaleMul)
+  const stabilityScaleDiv = BigInt(networkAccount.current.stabilityScaleDiv)
+  return (input * stabilityScaleMult) / stabilityScaleDiv
 }

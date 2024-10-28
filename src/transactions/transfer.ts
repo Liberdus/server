@@ -16,7 +16,7 @@ export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.Incoming
     response.reason = 'tx "to" field must be a string.'
     throw new Error(response.reason)
   }
-  if (typeof tx.amount !== 'number' || tx.amount <= 0) {
+  if (typeof tx.amount !== 'bigint' || tx.amount <= BigInt(0)) {
     response.success = false
     response.reason = 'tx "amount" field must be a positive number.'
     throw new Error(response.reason)

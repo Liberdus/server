@@ -1,4 +1,4 @@
-import stringify from 'fast-stable-stringify'
+import { Utils } from '@shardus/types'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import * as config from '../config'
@@ -23,7 +23,7 @@ export const apply = (tx: Tx.ApplyDevPayment, txTimestamp: number, txId: string,
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.developerFund = tx.developerFund
   network.timestamp = txTimestamp
-  dapp.log(`=== APPLIED DEV_PAYMENT GLOBAL ${stringify(network)} ===`)
+  dapp.log(`=== APPLIED DEV_PAYMENT GLOBAL ${Utils.safeStringify(network)} ===`)
 }
 
 export const keys = (tx: Tx.ApplyDevPayment, result: TransactionKeys) => {

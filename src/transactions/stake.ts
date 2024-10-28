@@ -1,9 +1,8 @@
 import * as crypto from '@shardus/crypto-utils'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as utils from '../utils'
-import create from '../accounts'
 import * as config from '../config'
-import {Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, WrappedStates, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.Stake, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -34,12 +33,12 @@ export const validate = (tx: Tx.Stake, wrappedStates: WrappedStates, response: S
     response.reason = 'incorrect signing'
     return response
   }
-  if (from.data.balance < network.current.stakeRequired) {
-    response.reason = `From account has insufficient balance, the cost required to receive node rewards is ${network.current.stakeRequired}`
+  if (from.data.balance < network.current.stakeRequiredUsd) {
+    response.reason = `From account has insufficient balance, the cost required to receive node rewards is ${network.current.stakeRequiredUsd}`
     return response
   }
-  if (tx.stake < network.current.stakeRequired) {
-    response.reason = `Stake amount sent: ${tx.stake} is less than the cost required to operate a node: ${network.current.stakeRequired}`
+  if (tx.stake < network.current.stakeRequiredUsd) {
+    response.reason = `Stake amount sent: ${tx.stake} is less than the cost required to operate a node: ${network.current.stakeRequiredUsd}`
     return response
   }
   response.success = true
@@ -50,9 +49,9 @@ export const validate = (tx: Tx.Stake, wrappedStates: WrappedStates, response: S
 export const apply = (tx: Tx.Stake, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
-  from.data.balance -= network.current.stakeRequired
+  from.data.balance -= network.current.stakeRequiredUsd
   from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
-  from.data.stake = network.current.stakeRequired
+  from.data.stake = network.current.stakeRequiredUsd
   from.timestamp = txTimestamp
   // from.data.transactions.push({ ...tx, txId })
   dapp.log('Applied stake tx', from)

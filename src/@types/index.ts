@@ -1,7 +1,9 @@
 // ---------------------- TRANSACTION export interfaceS ------------------
 
-import {shardusFactory, ShardusTypes} from '@shardus/core'
-import  {TXTypes} from '../transactions'
+import { shardusFactory, ShardusTypes } from '@shardus/core'
+import { TXTypes } from '../transactions'
+import { StakeCert } from '../transactions/staking/query_certificate'
+import { AdminCert } from '../transactions/admin_certificate'
 export interface BaseLiberdusTx {
   timestamp: number
   type: TXTypes
@@ -24,11 +26,11 @@ export namespace Tx {
     nextDevWindows: {}
     developerFund: DeveloperPayment[]
     nextDeveloperFund: DeveloperPayment[]
-    devIssue: number,
+    devIssue: number
   }
 
   export interface ApplyDevPayment extends BaseLiberdusTx {
-    developerFund: DeveloperPayment[],
+    developerFund: DeveloperPayment[]
   }
 
   export interface ApplyTally extends BaseLiberdusTx {
@@ -44,13 +46,13 @@ export namespace Tx {
   export interface Create extends BaseLiberdusTx {
     from: string
     to: string
-    amount: number
+    amount: bigint
   }
 
   export interface Distribute extends BaseLiberdusTx {
     from: string
     recipients: string[]
-    amount: number
+    amount: bigint
   }
 
   export interface Email extends BaseLiberdusTx {
@@ -147,7 +149,7 @@ export namespace Tx {
     from: string
     devProposal: string
     devIssue: string
-    totalAmount: number
+    totalAmount: bigint
     payments: DeveloperPayment[]
     title: string
     description: string
@@ -167,12 +169,12 @@ export namespace Tx {
 
   export interface RemoveStakeRequest extends BaseLiberdusTx {
     from: string
-    stake: number
+    stake: bigint
   }
 
   export interface RemoveStake extends BaseLiberdusTx {
     from: string
-    stake: number
+    stake: bigint
   }
 
   export interface SnapshotClaim extends BaseLiberdusTx {
@@ -186,7 +188,7 @@ export namespace Tx {
 
   export interface Stake extends BaseLiberdusTx {
     from: string
-    stake: number
+    stake: bigint
   }
 
   export interface Tally extends BaseLiberdusTx {
@@ -205,13 +207,13 @@ export namespace Tx {
 
   export interface Toll extends BaseLiberdusTx {
     from: string
-    toll: number
+    toll: bigint
   }
 
   export interface Transfer extends BaseLiberdusTx {
     from: string
     to: string
-    amount: number
+    amount: bigint
   }
 
   export interface Verify extends BaseLiberdusTx {
@@ -223,7 +225,7 @@ export namespace Tx {
     from: string
     issue: string
     proposal: string
-    amount: number
+    amount: bigint
   }
 
   export interface DevVote extends BaseLiberdusTx {
@@ -231,7 +233,7 @@ export namespace Tx {
     devIssue: string
     devProposal: string
     approve: boolean
-    amount: number
+    amount: bigint
   }
 
   export interface DevPayment extends BaseLiberdusTx {
@@ -239,6 +241,44 @@ export namespace Tx {
     from: string
     developer: string
     payment: DeveloperPayment
+  }
+
+  export interface SetCertTime extends BaseLiberdusTx {
+    nominee: string
+    nominator: string
+    duration: number
+  }
+
+  export interface DepositStake extends BaseLiberdusTx {
+    nominee: string
+    nominator: string
+    stake: bigint
+  }
+
+  export interface WithdrawStake extends BaseLiberdusTx {
+    nominee: string
+    nominator: string
+    force: boolean
+  }
+
+  export interface InitRewardTX extends BaseLiberdusTx {
+    nominee: string
+    nodeActivatedTime: number
+  }
+
+  export interface ClaimRewardTX extends BaseLiberdusTx {
+    nominee: string
+    nominator: string
+    deactivatedNodeId: string
+    nodeDeactivatedTime: number
+  }
+
+  export interface PenaltyTX extends BaseLiberdusTx {
+    reportedNodeId: string
+    reportedNodePublickKey: string
+    operatorEVMAddress: string
+    violationType: ViolationType
+    violationData: LeftNetworkEarlyViolationData | SyncingTimeoutViolationData | NodeRefutedViolationData
   }
 }
 
@@ -255,11 +295,11 @@ export interface UserAccount {
   id: string
   type: string
   data: {
-    balance: number
-    toll: number | null
+    balance: bigint
+    toll: bigint | null
     chats: object
     friends: object
-    stake?: number
+    stake?: bigint
     remove_stake_request: number | null
     // transactions: object[]
     payments: DeveloperPayment[]
@@ -271,15 +311,58 @@ export interface UserAccount {
   claimedSnapshot: boolean
   timestamp: number
   hash: string
+  operatorAccountInfo?: OperatorAccountInfo
+}
+
+export interface OperatorAccountInfo {
+  stake: bigint
+  nominee: string
+  certExp: number
+  operatorStats: OperatorStats
+}
+
+export interface OperatorStats {
+  //update when node is rewarded/penalized (exits)
+  totalNodeReward: bigint
+  totalNodePenalty: bigint
+  totalNodeTime: number
+  //push begin and end times when rewarded
+  history: { b: number; e: number }[]
+
+  //update then unstaked
+  totalUnstakeReward: bigint
+  unstakeCount: number
+
+  lastStakedNodeKey: string
 }
 
 export interface NodeAccount {
   id: string
   type: string
-  balance: number
-  nodeRewardTime: number
+  balance: bigint
+  nodeRewardTime: number // TODO: remove
   hash: string
   timestamp: number
+  nominator: string | null
+  stakeLock: bigint //amount of coins in
+  stakeTimestamp: number
+  reward: bigint
+  rewardStartTime: number
+  rewardEndTime: number
+  penalty: bigint
+  nodeAccountStats: NodeAccountStats
+  rewarded: boolean
+  rewardRate: bigint
+}
+
+export interface NodeAccountStats {
+  //update when node is rewarded/penalized (exits)
+  totalReward: bigint
+  totalPenalty: bigint
+  //push begin and end times when rewarded
+  history: { b: number; e: number }[]
+  lastPenaltyTime: number
+  penaltyHistory: { type: ViolationType; amount: bigint; timestamp: number }[]
 }
 
 export interface ChatAccount {
@@ -305,6 +388,7 @@ export interface NetworkAccount {
   listOfChanges: Array<{
     cycle: number
     change: any
+    appData: any
   }>
   current: NetworkParameters
   next: NetworkParameters | {}
@@ -360,12 +444,12 @@ export interface ProposalAccount {
 export interface DevProposalAccount {
   id: string
   type: string
-  approve: number
-  reject: number
+  approve: bigint
+  reject: bigint
   title: string | null
   description: string | null
   totalVotes: number
-  totalAmount: number | null
+  totalAmount: bigint | null
   payAddress: string
   payments: DeveloperPayment[]
   approved: boolean | null
@@ -374,7 +458,15 @@ export interface DevProposalAccount {
   timestamp: number
 }
 
-export type Accounts = NetworkAccount & IssueAccount & DevIssueAccount & UserAccount & AliasAccount & ProposalAccount & DevProposalAccount & NodeAccount & ChatAccount
+export type Accounts = NetworkAccount &
+  IssueAccount &
+  DevIssueAccount &
+  UserAccount &
+  AliasAccount &
+  ProposalAccount &
+  DevProposalAccount &
+  NodeAccount &
+  ChatAccount
 // type Account = NetworkAccount | IssueAccount | DevIssueAccount | UserAccount | AliasAccount | ProposalAccount | DevProposalAccount | NodeAccount | ChatAccount
 
 /**
@@ -385,16 +477,38 @@ export interface NetworkParameters {
   title: string
   description: string
   nodeRewardInterval: number
-  nodeRewardAmount: number
-  nodePenalty: number
-  transactionFee: number
-  stakeRequired: number
+  transactionFee: bigint
   maintenanceInterval: number
-  maintenanceFee: number
-  proposalFee: number
-  devProposalFee: number
-  faucetAmount: number
-  defaultToll: number
+  maintenanceFee: bigint
+  proposalFee: bigint
+  devProposalFee: bigint
+  faucetAmount: bigint
+  defaultToll: bigint
+  nodeRewardAmountUsd: bigint
+  nodePenaltyUsd: bigint
+  stakeRequiredUsd: bigint
+  restakeCooldown: number
+  stabilityScaleMul: number
+  stabilityScaleDiv: number
+  minVersion: string
+  activeVersion: string
+  latestVersion: string
+  archiver: {
+    minVersion: string
+    activeVersion: string
+    latestVersion: string
+  }
+  txPause: boolean
+  certCycleDuration: number
+  enableNodeSlashing: boolean
+  slashing: {
+    enableLeftNetworkEarlySlashing: boolean
+    enableSyncTimeoutSlashing: boolean
+    enableNodeRefutedSlashing: boolean
+    leftNetworkEarlyPenaltyPercent: number
+    syncTimeoutPenaltyPercent: number
+    nodeRefutedPenaltyPercent: number
+  }
 }
 
 export interface Windows {
@@ -414,7 +528,7 @@ export interface DevWindows {
 export interface DeveloperPayment {
   id: string
   address: string
-  amount: number
+  amount: bigint
   delay: number
   timestamp: number
 }
@@ -468,7 +582,7 @@ export interface OurAppDefinedData {
   globalMsg: {
     address: string
     value: any
-    when: number,
+    when: number
     source: string
   }
 }
@@ -481,4 +595,86 @@ export interface InjectTxResponse {
 export interface ValidatorError {
   success: boolean
   reason: string
+}
+
+export interface AccountAxiosResponse {
+  account: Accounts
+  error: string
+}
+
+export interface AccountQueryResponse {
+  success: boolean
+  account?: Accounts
+}
+
+export interface InjectTxResponse {
+  success: boolean
+  reason?: string
+}
+
+export interface NodeInfoAppData {
+  appVersion: string
+  minVersion: string
+  activeVersion: string
+  latestVersion: string
+  operatorCLIVersion: string
+  operatorGUIVersion: string
+}
+
+export interface AppJoinData {
+  version: string
+  stakeCert: StakeCert
+  adminCert: AdminCert
+  mustUseAdminCert: boolean
+}
+
+export interface NodeRewardTxData {
+  publicKey: string
+  nodeId: string
+  start: number
+  end: number
+  endTime: number
+}
+
+export interface SignedNodeRewardTxData extends NodeRewardTxData {
+  sign: ShardusTypes.Sign
+}
+
+export interface NodeInitTxData {
+  publicKey: string
+  nodeId: string
+  startTime: number
+}
+
+export interface SignedNodeInitTxData extends NodeInitTxData {
+  sign: ShardusTypes.Sign
+}
+
+export enum ViolationType {
+  ShardusCoreMaxID = 999,
+  LiberdusMinID = 1000,
+  // 0-999 reserved for shardus core
+  LeftNetworkEarly = 1000,
+  SyncingTooLong = 1001,
+  DoubleVote = 1002,
+  NodeRefuted = 1003,
+  //..others tbd
+
+  LiberdusMaxID = 2000,
+}
+
+export interface SyncingTimeoutViolationData {
+  nodeLostCycle: number
+  nodeDroppedTime: number
+}
+
+export interface LeftNetworkEarlyViolationData {
+  nodeLostCycle: number
+  nodeDroppedCycle: number
+  nodeDroppedTime: number
+}
+
+export interface NodeRefutedViolationData {
+  nodeRefutedCycle: number
+  nodeRefutedTime: number
 }
