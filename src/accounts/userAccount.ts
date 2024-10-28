@@ -1,13 +1,13 @@
 import * as crypto from '@shardus/crypto-utils'
-import {UserAccount} from '../@types'
+import { UserAccount } from '../@types'
 
 export const userAccount = (accountId: string, timestamp: number) => {
   const account: UserAccount = {
     id: accountId,
     type: 'UserAccount',
     data: {
-      balance: 50,
-      stake: 0,
+      balance: BigInt(50),
+      stake: BigInt(0),
       remove_stake_request: null,
       toll: null,
       chats: {},

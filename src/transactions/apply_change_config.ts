@@ -1,4 +1,4 @@
-import stringify from 'fast-stable-stringify'
+import { Utils } from '@shardus/types'
 import _ from 'lodash'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
@@ -19,7 +19,7 @@ export const apply = (tx: Tx.ApplyChangeConfig, txTimestamp: number, txId: strin
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.listOfChanges.push(tx.change)
   network.timestamp = txTimestamp
-  dapp.log(`=== APPLIED CHANGE_CONFIG GLOBAL ${stringify(network)} ===`)
+  dapp.log(`=== APPLIED CHANGE_CONFIG GLOBAL ${Utils.safeStringify(network)} ===`)
 }
 
 export const keys = (tx: Tx.ApplyChangeConfig, result: TransactionKeys) => {

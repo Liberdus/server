@@ -1,5 +1,5 @@
-import {shardusFactory, ShardusTypes, nestedCountersInstance} from '@shardus/core'
-import {P2P} from '@shardus/types'
+import { shardusFactory, ShardusTypes, nestedCountersInstance, DevSecurityLevel } from '@shardus/core'
+import { P2P, Utils } from '@shardus/types'
 import * as crypto from '@shardus/crypto-utils'
 import * as configs from './config'
 import {TOTAL_DAO_DURATION} from './config'
@@ -8,15 +8,24 @@ import * as LiberdusTypes from './@types'
 import dotenv from 'dotenv'
 import transactions from './transactions'
 import registerAPI from './api'
-import stringify = require('fast-stable-stringify');
 import config, { FilePaths, LiberdusFlags } from './config'
 import { TXTypes } from './transactions'
 import * as AccountsStorage from './storage/accountStorage'
-const {version} = require('../package.json')
-
+import { logFlags } from '@shardus/core/dist/logger'
+import { AdminCert } from './transactions/admin_certificate'
+import { RemoveNodeCert, StakeCert } from './transactions/staking/query_certificate'
+import * as SetCertTime from './transactions/staking/set_cert_time'
+import * as QueryCertificate from './transactions/staking/query_certificate'
+import * as InitReward from './transactions/staking/init_reward'
+import * as ClaimReward from './transactions/staking/claim_reward'
+import * as ApplyPenalty from './transactions/staking/apply_penalty'
+import { configShardusNetworkTransactions } from './transactions/networkTransaction/networkTransaction'
+import { readOperatorVersions, operatorCLIVersion, operatorGUIVersion } from './utils/versions'
+const { version } = require('./../package.json')
 
 dotenv.config()
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
+crypto.setCustomStringifier(Utils.safeStringify, 'shardus_safeStringify')
 
 // THE ENTIRE APP STATE FOR THIS NODE
 
@@ -26,7 +35,12 @@ const args = process.argv
 // let defaultConfig = configs.initConfigFromFile()
 // let config = configs.overrideDefaultConfig(defaultConfig, env, args)
 
-const dapp = shardusFactory(config)
+export const dapp = shardusFactory(config)
+
+const shardusConfig = dapp.config
+
+// Read the CLI and GUI versions and save them in memory
+readOperatorVersions()
 
 if (LiberdusFlags.UseDBForAccounts === true) {
   AccountsStorage.init(config.server.baseDir, `${FilePaths.LIBERDUS_DB}`)
@@ -37,14 +51,43 @@ if (LiberdusFlags.UseDBForAccounts === true) {
 //   logFlags = dapp.getLogFlags()
 // }
 let statsDebugLogs = false
+let lastCertTimeTxTimestamp = 0
+let lastCertTimeTxCycle: number | null = null
+
+export let adminCert: AdminCert = null
+
+let isReadyToJoinLatestValue = false
+let mustUseAdminCert = false
+
+export async function getLocalOrRemoteAccount(id: string): Promise<(ShardusTypes.WrappedData & { data: LiberdusTypes.Accounts }) | null> {
+  try {
+    const account = (await dapp.getLocalOrRemoteAccount(id)) as ShardusTypes.WrappedData & { data: LiberdusTypes.Accounts }
+    if (account) return utils.fixBigIntLiteralsToBigInt(account)
+    return account
+  } catch (error) {
+    dapp.log('Failed to get local or remote account', error)
+    return null
+  }
+}
 
 // API
 registerAPI(dapp)
+
+configShardusNetworkTransactions(dapp)
 
 dapp.registerExternalGet('accounts', async (req, res): Promise<void> => {
   const accounts = await AccountsStorage.debugGetAllAccounts()
   res.json({ accounts })
 })
+
+function getNodeCountForCertSignatures(): number {
+  let latestCycle: ShardusTypes.Cycle
+  const latestCycles: ShardusTypes.Cycle[] = dapp.getLatestCycles()
+  if (latestCycles && latestCycles.length > 0) [latestCycle] = latestCycles
+  const activeNodeCount = latestCycle ? latestCycle.active : 1
+  if (LiberdusFlags.VerboseLogs) console.log(`Active node count computed for cert signs ${activeNodeCount}`)
+  return Math.min(LiberdusFlags.MinStakeCertSig, activeNodeCount)
+}
 
 // SDK SETUP FUNCTIONS
 dapp.setup({
@@ -60,9 +103,9 @@ dapp.setup({
        * caused the network to not form up when the tx processing pipeline was
        * fixed to check timestamps properly
        */
-        // const when = Date.now() + configs.ONE_SECOND * 10
+      // const when = Date.now() + configs.ONE_SECOND * 10
       const when = Date.now()
-      const existingNetworkAccount = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+      const existingNetworkAccount = await getLocalOrRemoteAccount(configs.networkAccount)
       if (existingNetworkAccount) {
         dapp.log('NETWORK_ACCOUNT ALREADY EXISTED: ', existingNetworkAccount)
         await utils._sleep(configs.ONE_SECOND * 5)
@@ -75,7 +118,7 @@ dapp.setup({
             network: configs.networkAccount,
           },
           when,
-          configs.networkAccount
+          configs.networkAccount,
         )
 
         dapp.log(`node ${nodeId} GENERATED_A_NEW_NETWORK_ACCOUNT: `)
@@ -102,7 +145,7 @@ dapp.setup({
         await utils._sleep(configs.ONE_SECOND * 10)
       }
     } else {
-      while (!(await dapp.getLocalOrRemoteAccount(configs.networkAccount))) {
+      while (!(await getLocalOrRemoteAccount(configs.networkAccount))) {
         console.log('waiting..')
         await utils._sleep(1000)
       }
@@ -119,7 +162,7 @@ dapp.setup({
   },
   // THIS NEEDS TO BE FAST, BUT PROVIDES BETTER RESPONSE IF SOMETHING GOES WRONG
   validate(timestampedTx: any, appData: any): { success: boolean; reason: string; status: number } {
-    let {tx} = timestampedTx
+    let { tx } = timestampedTx
     let txnTimestamp: number = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
 
     // Validate tx fields here
@@ -155,13 +198,13 @@ dapp.setup({
     return tx.timestamp ? tx.timestamp : 0
   },
   crack(timestampedTx: any, appData: any): LiberdusTypes.KeyResult {
-    let {tx} = timestampedTx
+    let { tx } = timestampedTx
     let txnTimestamp: number = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
     const result = {
       sourceKeys: [],
       targetKeys: [],
       allKeys: [],
-      timestamp: txnTimestamp
+      timestamp: txnTimestamp,
     } as LiberdusTypes.TransactionKeys
     const keys = transactions[tx.type].keys(tx, result)
     return {
@@ -174,17 +217,17 @@ dapp.setup({
         wo: [],
         on: [],
         ri: [],
-      }
+      },
     }
   },
-  async apply(timestampedTx: ShardusTypes.OpaqueTransaction, wrappedStates ) {
+  async apply(timestampedTx: ShardusTypes.OpaqueTransaction, wrappedStates) {
     //@ts-ignore
-    let {tx} = timestampedTx
+    let { tx } = timestampedTx
     const txTimestamp = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
-    const {success, reason} = this.validateTransaction(tx, wrappedStates)
+    const { success, reason } = this.validateTransaction(tx, wrappedStates)
 
     if (success !== true) {
-      throw new Error(`invalid transaction, reason: ${reason}. tx: ${stringify(tx)}`)
+      throw new Error(`invalid transaction, reason: ${reason}. tx: ${Utils.safeStringify(tx)}`)
     }
 
     // Create an applyResponse which will be used to tell Shardus that the tx has been applied
@@ -223,7 +266,7 @@ dapp.setup({
     return applyResponse
   },
   transactionReceiptPass(timestampedTx: any, wrappedStates: { [id: string]: LiberdusTypes.WrappedAccount }, applyResponse: ShardusTypes.ApplyResponse) {
-    let {tx} = timestampedTx
+    let { tx } = timestampedTx
     let txId: string = utils.generateTxId(tx)
     try {
       if (transactions[tx.type].transactionReceiptPass)
@@ -249,11 +292,11 @@ dapp.setup({
   getTimestampAndHashFromAccount(accountData: any): { timestamp: number; hash: string } {
     const account: LiberdusTypes.Accounts = accountData as LiberdusTypes.Accounts
     // if ((typeof account === 'undefined' || account === null)) {
-    //   throw new Error(`Could not get getAccountInfo for account ${stringify(accountData)} `)
+    //   throw new Error(`Could not get getAccountInfo for account ${Utils.safeStringify(accountData)} `)
     // }
     const timestamp = account.timestamp
     const hash = account.hash
-    return {timestamp, hash}
+    return { timestamp, hash }
   },
   async deleteLocalAccountData(): Promise<void> {
     await AccountsStorage.clearAccounts()
@@ -261,11 +304,11 @@ dapp.setup({
   async setAccountData(accountRecords: LiberdusTypes.Accounts[]): Promise<void> {
     for (const account of accountRecords) {
       // possibly need to clone this so others lose their ref
-      await AccountsStorage.setAccount(account.id,account)
+      await AccountsStorage.setAccount(account.id, account)
     }
   },
   async getRelevantData(accountId: string, timestampedTx: any): Promise<ShardusTypes.WrappedResponse> {
-    let {tx} = timestampedTx
+    let { tx } = timestampedTx
     const account = await AccountsStorage.getAccount(accountId)
     let accountCreated = false
     return transactions[tx.type].createRelevantAccount(dapp, account, accountId, tx, accountCreated)
@@ -289,7 +332,7 @@ dapp.setup({
       applyResponse.txTimestamp,
       hashBefore,
       hashAfter,
-      accountCreated
+      accountCreated,
     )
   },
   // TODO: This might be useful in making some optimizations
@@ -380,7 +423,7 @@ dapp.setup({
       }
     }
 
-    /* prettier-ignore */ dapp.log( `getAccountDataByRange: extra:${extra} ${JSON.stringify({ accountStart, accountEnd, tsStart, tsEnd, maxRecords, offset, })}` )
+    /* prettier-ignore */ dapp.log( `getAccountDataByRange: extra:${extra} ${Utils.safeStringify({ accountStart, accountEnd, tsStart, tsEnd, maxRecords, offset, })}` )
 
     for (const account of cappedResults) {
       // Process and add to finalResults
@@ -471,7 +514,7 @@ dapp.setup({
     }
   },
   deleteAccountData(addressList: string[]): void {
-    stringify('DELETE_ACCOUNT_DATA', stringify(addressList))
+    console.log('DELETE_ACCOUNT_DATA', Utils.safeStringify(addressList))
     for (const address of addressList) {
       // delete accounts[address]
       console.log(`Deleting account ${address}... - which is not implemented`)
@@ -479,10 +522,10 @@ dapp.setup({
     }
   },
   getAccountDebugValue(wrappedAccount: LiberdusTypes.WrappedAccount): string {
-    return `${stringify(wrappedAccount)}`
+    return `${Utils.safeStringify(wrappedAccount)}`
   },
   canDebugDropTx(tx: any) {
-    return tx.type === 'create';
+    return tx.type === 'create'
   },
   close(): void {
     dapp.log('Shutting down server...')
@@ -524,18 +567,17 @@ dapp.setup({
         let accountBalance = accountData.data.balance
         let totalBalance = blobBalanceBefore + accountBalance
 
-        if (statsDebugLogs)
-          dapp.log(`stats balance init ${blobBalanceBefore}+${accountBalance}=${totalBalance}  ${stringify(accountData.id)}`)
+        if (statsDebugLogs) dapp.log(`stats balance init ${blobBalanceBefore}+${accountBalance}=${totalBalance}  ${Utils.safeStringify(accountData.id)}`)
 
         if (totalBalance != null) {
           blob.totalBalance = totalBalance
         } else {
           if (statsDebugLogs)
-            dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 1 ${accountData.data.balance} ${stringify(accountData.id)}`)
+            dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 1 ${accountData.data.balance} ${Utils.safeStringify(accountData.id)}`)
         }
       } else {
         if (statsDebugLogs)
-          dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 2 ${accountData.data.balance} ${stringify(accountData.id)}`)
+          dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 2 ${accountData.data.balance} ${Utils.safeStringify(accountData.id)}`)
       }
     }
     if (accType == 'NodeAccount') {
@@ -545,11 +587,10 @@ dapp.setup({
           blob.totalBalance = totalBalance
         } else {
           if (statsDebugLogs)
-            dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 1 ${accountData.balance} ${stringify(accountData.id)}`)
+            dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 1 ${accountData.balance} ${Utils.safeStringify(accountData.id)}`)
         }
       } else {
-        if (statsDebugLogs)
-          dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 2 ${accountData.balance} ${stringify(accountData.id)}`)
+        if (statsDebugLogs) dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 2 ${accountData.balance} ${Utils.safeStringify(accountData.id)}`)
       }
     }
   },
@@ -573,9 +614,9 @@ dapp.setup({
       let totalBalance = blob.totalBalance + balanceChange
       if (statsDebugLogs)
         dapp.log(
-          `stats balance update ${blobBalanceBefore}+${balanceChange}(${accountBalanceAfter}-${accountBalanceBefore})=${totalBalance}  ${stringify(
-            accountDataAfter.id
-          )}`
+          `stats balance update ${blobBalanceBefore}+${balanceChange}(${accountBalanceAfter}-${accountBalanceBefore})=${totalBalance}  ${Utils.safeStringify(
+            accountDataAfter.id,
+          )}`,
         )
 
       if (balanceChange != null) {
@@ -585,13 +626,17 @@ dapp.setup({
         } else {
           if (statsDebugLogs)
             dapp.log(
-              `error: null balance attempt. dataSummaryUpdate UserAccount 1 ${accountDataAfter.data.balance} ${stringify(accountDataAfter.id)} ${accountDataBefore.data.balance} ${stringify(accountDataBefore.id)}`
+              `error: null balance attempt. dataSummaryUpdate UserAccount 1 ${accountDataAfter.data.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
+                accountDataBefore.data.balance
+              } ${Utils.safeStringify(accountDataBefore.id)}`,
             )
         }
       } else {
         if (statsDebugLogs)
           dapp.log(
-            `error: null balance attempt. dataSummaryUpdate UserAccount 2 ${accountDataAfter.data.balance} ${stringify(accountDataAfter.id)} ${accountDataBefore.data.balance} ${stringify(accountDataBefore.id)}`
+            `error: null balance attempt. dataSummaryUpdate UserAccount 2 ${accountDataAfter.data.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
+              accountDataBefore.data.balance
+            } ${Utils.safeStringify(accountDataBefore.id)}`,
           )
       }
     }
@@ -604,13 +649,17 @@ dapp.setup({
         } else {
           if (statsDebugLogs)
             dapp.log(
-              `error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter.balance} ${stringify(accountDataAfter.id)} ${accountDataBefore.balance} ${stringify(accountDataBefore.id)}`
+              `error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
+                accountDataBefore.balance
+              } ${Utils.safeStringify(accountDataBefore.id)}`,
             )
         }
       } else {
         if (statsDebugLogs)
           dapp.log(
-            `error: null balance attempt. dataSummaryUpdate NodeAccount 2 ${accountDataAfter.balance} ${stringify(accountDataAfter.id)} ${accountDataBefore.balance} ${stringify(accountDataBefore.id)}`
+            `error: null balance attempt. dataSummaryUpdate NodeAccount 2 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
+              accountDataBefore.balance
+            } ${Utils.safeStringify(accountDataBefore.id)}`,
           )
       }
     }
@@ -622,7 +671,7 @@ dapp.setup({
     return BigInt(-1)
   },
   getAccountNonce: function (accountId: string, wrappedData?: ShardusTypes.WrappedData): Promise<bigint> {
-    return new Promise(resolve => resolve(BigInt(-1)))
+    return new Promise((resolve) => resolve(BigInt(-1)))
   },
   // todo: consider a base liberdus tx type
   getTxSenderAddress: function (tx: any): string {
@@ -630,7 +679,7 @@ dapp.setup({
       sourceKeys: [],
       targetKeys: [],
       allKeys: [],
-      timestamp: tx.timestamp
+      timestamp: tx.timestamp,
     } as LiberdusTypes.TransactionKeys
     const keys = transactions[tx.type].keys(tx, result)
     return keys.allKeys[0]
@@ -651,7 +700,11 @@ dapp.setup({
       TXTypes.apply_dev_parameters,
       TXTypes.apply_change_config,
       TXTypes.apply_developer_payment,
-      TXTypes.node_reward
+      TXTypes.node_reward,
+      TXTypes.set_cert_time,
+      TXTypes.query_certificate,
+      TXTypes.init_network,
+      TXTypes.claim_reward,
     ]
     if (internalTxTypes.includes(tx.type)) {
       return true
@@ -659,7 +712,7 @@ dapp.setup({
     return false
   },
   txPreCrackData: function (tx: ShardusTypes.OpaqueTransaction, appData: any): Promise<{ status: boolean; reason: string }> {
-    return new Promise(resolve => resolve({status: true, reason: 'pass'}))
+    return new Promise((resolve) => resolve({ status: true, reason: 'pass' }))
   },
   calculateTxId(tx: ShardusTypes.OpaqueTransaction) {
     return utils.generateTxId(tx)
@@ -673,53 +726,979 @@ dapp.setup({
     return null
   },
   async getNetworkAccount(): Promise<ShardusTypes.WrappedData> {
-    const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+    const account = await getLocalOrRemoteAccount(configs.networkAccount)
     return account
+  },
+  async signAppData(type: string, hash: string, nodesToSign: number, originalAppData: any): Promise<ShardusTypes.SignAppDataResult> {
+    nestedCountersInstance.countEvent('liberdus-staking', 'calling signAppData')
+    const appData = originalAppData
+    const fail: ShardusTypes.SignAppDataResult = { success: false, signature: null }
+    try {
+      /* prettier-ignore */ if (logFlags.dapp_verbose) console.log('Running signAppData', type, hash, nodesToSign, appData)
+
+      if (type === 'sign-stake-cert') {
+        if (nodesToSign != 5) return fail
+        const stakeCert = appData as StakeCert
+        if (!stakeCert.nominator || !stakeCert.nominee || !stakeCert.stake || !stakeCert.certExp) {
+          nestedCountersInstance.countEvent('liberdus-staking', 'signAppData format failed')
+          /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`signAppData format failed ${type} ${Utils.safeStringify(stakeCert)} `)
+          return fail
+        }
+        const currentTimestamp = dapp.shardusGetTime()
+        if (stakeCert.certExp < currentTimestamp) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'signAppData cert expired')
+          /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`signAppData cert expired ${type} ${Utils.safeStringify(stakeCert)} `)
+          return fail
+        }
+        const minStakeRequiredUsd = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
+        const minStakeRequired = utils.scaleByStabilityFactor(minStakeRequiredUsd, AccountsStorage.cachedNetworkAccount)
+        const stakeAmount = stakeCert.stake
+        if (stakeAmount < minStakeRequired) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'signAppData stake amount lower than required')
+          /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`signAppData stake amount lower than required ${type} ${Utils.safeStringify(stakeCert)} `)
+          return fail
+        }
+        if (LiberdusFlags.FullCertChecksEnabled) {
+          const nominatorAccount = await getLocalOrRemoteAccount(stakeCert.nominator)
+          if (!nominatorAccount) {
+            /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'could not find nominator account')
+            /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`could not find nominator account ${type} ${Utils.safeStringify(stakeCert)} `)
+            return fail
+          }
+          const nominatorUserAccount = nominatorAccount.data as LiberdusTypes.UserAccount
+          if (!nominatorUserAccount.operatorAccountInfo) {
+            /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'operatorAccountInfo missing from nominator')
+            /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`operatorAccountInfo missing from nominator ${type} ${Utils.safeStringify(stakeCert)} `)
+            return fail
+          }
+          if (stakeCert.stake != nominatorUserAccount.operatorAccountInfo.stake) {
+            /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'operatorAccountInfo missing from nominator')
+            /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`stake amount in cert and operator account does not match ${type} ${Utils.safeStringify(stakeCert)} ${Utils.safeStringify(nominatorUserAccount)} `)
+            return fail
+          }
+          if (stakeCert.nominee != nominatorUserAccount.operatorAccountInfo.nominee) {
+            /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'nominee in cert and operator account does not match')
+            /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`nominee in cert and operator account does not match ${type} ${Utils.safeStringify(stakeCert)} ${Utils.safeStringify(nominatorUserAccount)} `)
+            return fail
+          }
+        }
+        delete stakeCert.sign
+        delete stakeCert.signs
+        const signedCert: StakeCert = dapp.signAsNode(stakeCert)
+        const result: ShardusTypes.SignAppDataResult = { success: true, signature: signedCert.sign }
+        if (LiberdusFlags.VerboseLogs) console.log(`signAppData passed ${type} ${Utils.safeStringify(stakeCert)}`)
+        nestedCountersInstance.countEvent('liberdus-staking', 'sign-stake-cert - passed')
+        return result
+      } else if (type === 'sign-remove-node-cert') {
+        if (nodesToSign != 5) return fail
+        const removeNodeCert = appData as RemoveNodeCert
+        if (!removeNodeCert.nodePublicKey || !removeNodeCert.cycle) {
+          nestedCountersInstance.countEvent('liberdus-remove-node', 'signAppData format failed')
+          /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`signAppData format failed ${type} ${Utils.safeStringify(removeNodeCert)} `)
+          return fail
+        }
+        const latestCycles = dapp.getLatestCycles()
+        const currentCycle = latestCycles[0]
+        if (!currentCycle) {
+          /* prettier-ignore */ if (logFlags.error) console.log('No cycle records found', latestCycles)
+          return fail
+        }
+        if (removeNodeCert.cycle !== currentCycle.counter) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-remove-node', 'cycle in cert does not match current cycle')
+          /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`cycle in cert does not match current cycle ${type} ${Utils.safeStringify(removeNodeCert)}, current: ${currentCycle.counter}`)
+          return fail
+        }
+
+        const nodeAccount = await getLocalOrRemoteAccount(removeNodeCert.nodePublicKey)
+        // TODO: validate the account is actually a node account
+        const nodeAccountData = nodeAccount.data as LiberdusTypes.NodeAccount
+        if (ApplyPenalty.isLowStake(nodeAccountData) === false) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-remove-node', 'node locked stake is not below minStakeRequired')
+          /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`node locked stake is not below minStakeRequired ${type} ${Utils.safeStringify(removeNodeCert)}, cachedNetworkAccount: ${Utils.safeStringify(AccountsStorage.cachedNetworkAccount)} `)
+          return fail
+        }
+
+        const signedCert: RemoveNodeCert = dapp.signAsNode(removeNodeCert)
+        const result: ShardusTypes.SignAppDataResult = { success: true, signature: signedCert.sign }
+        if (LiberdusFlags.VerboseLogs) console.log(`signAppData passed ${type} ${Utils.safeStringify(removeNodeCert)}`)
+        nestedCountersInstance.countEvent('liberdus-staking', 'sign-stake-cert - passed')
+        return result
+      }
+    } catch (e) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`signAppData failed: ${type} ${Utils.safeStringify(QueryCertificate.stakeCert)}, error: ${Utils.safeStringify(e)}`)
+      nestedCountersInstance.countEvent('liberdus-staking', 'sign-stake-cert - fail uncaught')
+    }
+    return fail
+  },
+  getJoinData() {
+    nestedCountersInstance.countEvent('liberdus-staking', 'calling getJoinData')
+    const joinData: LiberdusTypes.AppJoinData = {
+      version,
+      stakeCert: QueryCertificate.stakeCert,
+      adminCert,
+      mustUseAdminCert,
+    }
+    return joinData
+  },
+  validateJoinRequest(data, mode: P2P.ModesTypes.Record['mode'] | null, latestCycle: ShardusTypes.Cycle, minNodes: number) {
+    /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest minNodes: ${minNodes}, active: ${latestCycle.active}, syncing ${latestCycle.syncing}, mode: ${mode}, flag: ${LiberdusFlags.AdminCertEnabled}`)
+
+    try {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest ${Utils.safeStringify(data)}`)
+      if (!data.appJoinData) {
+        /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: !data.appJoinData`)
+        return {
+          success: false,
+          reason: `Join request node doesn't provide the app join data.`,
+          fatal: true,
+        }
+      }
+
+      const appJoinData = data.appJoinData as LiberdusTypes.AppJoinData
+
+      const minVersion = AccountsStorage.cachedNetworkAccount.current.minVersion
+      if (!utils.isEqualOrNewerVersion(minVersion, appJoinData.version)) {
+        /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: old version`)
+        return {
+          success: false,
+          reason: `version number is old. minVersion is ${minVersion}. Join request node app version is ${appJoinData.version}`,
+          fatal: true,
+        }
+      }
+
+      const latestVersion = AccountsStorage.cachedNetworkAccount.current.latestVersion
+
+      if (latestVersion && appJoinData.version && !utils.isEqualOrOlderVersion(latestVersion, appJoinData.version)) {
+        /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: version number is newer than latest`)
+        return {
+          success: false,
+          reason: `version number is newer than latest. The latest allowed app version is ${latestVersion}. Join request node app version is ${appJoinData.version}`,
+          fatal: true,
+        }
+      }
+
+      const numActiveNodes = latestCycle.active
+      const numTotalNodes = latestCycle.active + latestCycle.syncing // total number of nodes in the network
+
+      // Staking is only enabled when flag is on and
+      const stakingEnabled = LiberdusFlags.StakingEnabled && numActiveNodes >= LiberdusFlags.minActiveNodesForStaking
+
+      //Checks for golden ticket
+      if (appJoinData.adminCert?.goldenTicket === true) {
+        const adminCert: AdminCert = appJoinData.adminCert
+        /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest: Golden ticket is enabled, node about to enter processing check')
+
+        const currentTimestamp = Date.now()
+        if (!adminCert || adminCert.certExp < currentTimestamp) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: !adminCert || adminCert.certExp < currentTimestamp')
+          return {
+            success: false,
+            reason: 'No admin cert found in mode: ' + mode,
+            fatal: false,
+          }
+        }
+        /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest: adminCert ${Utils. safeStringify(adminCert)}`)
+
+        // check for adminCert nominee
+        const nodeAcc = data.sign.owner
+        if (nodeAcc !== adminCert.nominee) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: nodeAcc !== adminCert.nominee')
+          return {
+            success: false,
+            reason: 'Nominator mismatch',
+            fatal: true,
+          }
+        }
+        const pkClearance = dapp.getDevPublicKey(adminCert.sign.owner)
+        // check for invalid signature for AdminCert
+        if (pkClearance == null) {
+          return {
+            success: false,
+            reason: 'Unauthorized! no getDevPublicKey defined',
+            fatal: true,
+          }
+        }
+        if (pkClearance && (!dapp.crypto.verify(adminCert, pkClearance) || dapp.ensureKeySecurity(pkClearance, DevSecurityLevel.High) === false)) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: !shardus.crypto.verify(adminCert, shardus.getDevPublicKeyMaxLevel())')
+          return {
+            success: false,
+            reason: 'Invalid signature for AdminCert',
+            fatal: true,
+          }
+        }
+        /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest success: adminCert')
+        /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateJoinRequest success: adminCert')
+        return {
+          success: true,
+          reason: 'Join Request validated',
+          fatal: false,
+        }
+      }
+
+      // if condition true and if none of this triggers it'll go past the staking checks and return true...
+      if (
+        stakingEnabled &&
+        LiberdusFlags.AdminCertEnabled === true &&
+        mode !== 'processing' &&
+        numTotalNodes < minNodes //if node is about to enter processing check for stake as expected not admin cert
+      ) {
+        const adminCert: AdminCert = appJoinData.adminCert
+        /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest: mode is not processing, AdminCertEnabled enabled, node about to enter processing check')
+
+        const currentTimestamp = dapp.shardusGetTime()
+        if (!adminCert || adminCert.certExp < currentTimestamp) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: !adminCert || adminCert.certExp < currentTimestamp')
+          return {
+            success: false,
+            reason: 'No admin cert found in mode: ' + mode,
+            fatal: false,
+          }
+        }
+        /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest: adminCert ${Utils. safeStringify(adminCert)}`)
+
+        // check for adminCert nominee
+        const nodeAcc = data.sign.owner
+        if (nodeAcc !== adminCert.nominee) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: nodeAcc !== adminCert.nominee')
+          return {
+            success: false,
+            reason: 'Nominator mismatch',
+            fatal: true,
+          }
+        }
+
+        const pkClearance = dapp.getDevPublicKey(adminCert.sign.owner)
+        // check for invalid signature for AdminCert
+        if (pkClearance == null) {
+          return {
+            success: false,
+            reason: 'Unauthorized! no getDevPublicKey defined',
+            fatal: true,
+          }
+        }
+        if (pkClearance && (!dapp.crypto.verify(adminCert, pkClearance) || dapp.ensureKeySecurity(pkClearance, DevSecurityLevel.High) === false)) {
+          // check for invalid signature for AdminCert
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: !shardus.crypto.verify(adminCert, shardus.getDevPublicKeyMaxLevel())')
+          return {
+            success: false,
+            reason: 'Invalid signature for AdminCert',
+            fatal: true,
+          }
+        }
+        /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest success: adminCert')
+        /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateJoinRequest success: adminCert')
+        return {
+          success: true,
+          reason: 'Join Request validated',
+          fatal: false,
+        }
+      }
+
+      if ((LiberdusFlags.ModeEnabled === true && mode === 'processing' && stakingEnabled) || (LiberdusFlags.ModeEnabled === false && stakingEnabled)) {
+        /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'validating join request with staking enabled')
+
+        if (appJoinData.mustUseAdminCert) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: appJoinData.mustUseAdminCert')
+          return {
+            success: false,
+            reason: 'Join Request wont have a stake certificate',
+            fatal: false,
+          }
+        }
+
+        const nodeAcc = data.sign.owner
+        const stake_cert: StakeCert = appJoinData.stakeCert
+        if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest ${Utils.safeStringify(stake_cert)}`)
+
+        const tx_time = data.joinRequestTimestamp as number
+
+        if (stake_cert == null) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: stake_cert == null')
+          /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: stake_cert == null`)
+          return {
+            success: false,
+            reason: `Join request node doesn't provide the stake certificate.`,
+            fatal: true,
+          }
+        }
+
+        if (nodeAcc !== stake_cert.nominee) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: nodeAcc !== stake_cert.nominee')
+          /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: nodeAcc !== stake_cert.nominee`)
+          return {
+            success: false,
+            reason: `Nominated address and tx signature owner doesn't match, nominee: ${stake_cert.nominee}, sign owner: ${nodeAcc}`,
+            fatal: true,
+          }
+        }
+
+        if (tx_time > stake_cert.certExp) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: tx_time > stake_cert.certExp')
+          /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: tx_time > stake_cert.certExp ${tx_time} > ${stake_cert.certExp}`)
+          return {
+            success: false,
+            reason: `Certificate has expired at ${stake_cert.certExp}`,
+            fatal: false,
+          }
+        }
+
+        const serverConfig = config.server
+        const two_cycle_ms = serverConfig.p2p.cycleDuration * 2 * 1000
+
+        // stake certification should not expired for at least 2 cycle.
+        if (dapp.shardusGetTime() + two_cycle_ms > stake_cert.certExp) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: cert expires soon')
+          /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: cert expires soon ${dapp.shardusGetTime() + two_cycle_ms} > ${stake_cert.certExp}`)
+          return {
+            success: false,
+            reason: `Certificate will be expired really soon.`,
+            fatal: false,
+          }
+        }
+
+        const minStakeRequiredUsd = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
+        const minStakeRequired = utils.scaleByStabilityFactor(minStakeRequiredUsd, AccountsStorage.cachedNetworkAccount)
+
+        const stakedAmount = stake_cert.stake
+
+        if (stakedAmount < minStakeRequired) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: stake_cert.stake < minStakeRequired')
+          /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: stake_cert.stake < minStakeRequired ${stakedAmount} < ${minStakeRequired}`)
+          return {
+            success: false,
+            reason: `Minimum stake amount requirement does not meet.`,
+            fatal: false,
+          }
+        }
+
+        const requiredSig = getNodeCountForCertSignatures()
+        const { success, reason } = dapp.validateClosestActiveNodeSignatures(stake_cert, stake_cert.signs, requiredSig, 5, 2)
+        if (!success) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: invalid signature')
+          /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: invalid signature`, reason)
+          return { success, reason, fatal: false }
+        }
+      }
+
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest success!!!`)
+      return {
+        success: true,
+        reason: 'Join Request validated',
+        fatal: false,
+      }
+    } catch (e) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest exception: ${e}`)
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validateJoinRequest fail: exception: ${e} `)
+      return {
+        success: false,
+        reason: `validateJoinRequest fail: exception: ${e}`,
+        fatal: true,
+      }
+    }
+  },
+  validateArchiverJoinRequest(data) {
+    try {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateArchiverJoinRequest ${Utils. safeStringify(data)}`)
+      if (!data.appData) {
+        /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateArchiverJoinRequest fail: !data.appData`)
+        return {
+          success: false,
+          reason: `Join request Archiver doesn't provide the app data (appData).`,
+          fatal: true,
+        }
+      }
+      const { appData } = data
+      const { minVersion } = AccountsStorage.cachedNetworkAccount.current.archiver
+      if (!utils.isEqualOrNewerVersion(minVersion, appData.version)) {
+        /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateArchiverJoinRequest() fail: old version`)
+        return {
+          success: false,
+          reason: `Archiver Version number is old. Our Archiver version is: ${minVersion}. Join Archiver app version is ${appData.version}`,
+          fatal: true,
+        }
+      }
+
+      const { latestVersion } = AccountsStorage.cachedNetworkAccount.current.archiver
+      if (latestVersion && appData.version && !utils.isEqualOrOlderVersion(latestVersion, appData.version)) {
+        /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateArchiverJoinRequest() fail: version number is newer than latest`)
+        return {
+          success: false,
+          reason: `Archiver Version number is newer than latest. The latest allowed Archiver version is ${latestVersion}. Join Archiver app version is ${appData.version}`,
+          fatal: true,
+        }
+      }
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateArchiverJoinRequest() Successful!`)
+      return {
+        success: true,
+        reason: 'Archiver-Join Request Validated!',
+        fatal: false,
+      }
+    } catch (e) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateArchiverJoinRequest exception: ${e}`)
+      return {
+        success: false,
+        reason: `validateArchiverJoinRequest fail: exception: ${e}`,
+        fatal: true,
+      }
+    }
   },
   async isReadyToJoin(
     latestCycle: ShardusTypes.Cycle,
     publicKey: string,
     activeNodes: P2P.P2PTypes.Node[],
-    mode: P2P.ModesTypes.Record['mode'] | null
+    mode: P2P.ModesTypes.Record['mode'],
   ): Promise<boolean> {
-    return true
-  },
-  getJoinData() {
-    const joinData = {
-      version,
-      stakeCert: '',
-      adminCert: '',
-      mustUseAdminCert: false,
+    const networkAccount = AccountsStorage.cachedNetworkAccount
+    if (networkAccount) {
+      if (!utils.isValidVersion(networkAccount.current.minVersion, networkAccount.current.latestVersion, version)) {
+        const tag = 'version out-of-date; please update and restart'
+        const message = 'node version is out-of-date; please update node to latest version'
+        dapp.shutdownFromDapp(tag, message, false)
+        return false
+      }
     }
-    return joinData
+
+    isReadyToJoinLatestValue = false
+    mustUseAdminCert = false
+
+    //process golden ticket first
+    if (adminCert && adminCert.certExp > Date.now() && adminCert?.goldenTicket === true) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Join req with admincert and golden ticket')
+      isReadyToJoinLatestValue = true
+      mustUseAdminCert = true
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'goldenTicket available, isReadyToJoin = true')
+      return true
+    }
+
+    if (LiberdusFlags.StakingEnabled === false) {
+      isReadyToJoinLatestValue = true
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'staking disabled, isReadyToJoin = true')
+      return true
+    }
+
+    const numTotalNodes = latestCycle.active + latestCycle.syncing // total number of nodes in the network
+    if (numTotalNodes < LiberdusFlags.minActiveNodesForStaking) {
+      isReadyToJoinLatestValue = true
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'numTotalNodes < LiberdusFlags.minActiveNodesForStaking, isReadyToJoin = true')
+      return true
+    }
+    /* prettier-ignore */ if (logFlags.important_as_error) console.log(`active: ${latestCycle.active}, syncing: ${latestCycle.syncing}, flag: ${LiberdusFlags.AdminCertEnabled}`)
+    // check for LiberdusFlags for mode + check if mode is not equal to processing and validate adminCert
+    if (LiberdusFlags.AdminCertEnabled === true && mode !== 'processing') {
+      /* prettier-ignore */ if (logFlags.important_as_error) console.log('entered admin cert conditon mode:' + mode)
+      if (adminCert) {
+        /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`checkAdminCert ${Utils. safeStringify(adminCert)}`)
+        if (adminCert.certExp > dapp.shardusGetTime()) {
+          isReadyToJoinLatestValue = true
+          mustUseAdminCert = true
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'valid admin cert, isReadyToJoin = true')
+          /* prettier-ignore */ if (logFlags.important_as_error) console.log('valid admin cert, isReadyToJoin = true')
+          return true
+        } else {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'adminCert present but expired, this blocks joining')
+          /* prettier-ignore */ if (logFlags.important_as_error) console.log('admin cert present but expired, this blocks joining')
+          return false
+        }
+      }
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'adminCert expected not ready to join, this blocks joining')
+      /* prettier-ignore */ if (logFlags.important_as_error) console.log('admin cert required but missing, this blocks joining')
+      return false // this will stop us from joining the normal way
+    }
+    if (LiberdusFlags.AdminCertEnabled === true && mode === 'processing') {
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'AdminCertEnabled=true but mode is processing')
+    }
+    if (adminCert && !LiberdusFlags.AdminCertEnabled) {
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'adminCert present but AdminCertEnabled=false')
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest: AdminCert available but not utilized due to configuration`)
+    }
+
+    /* prettier-ignore */ if (logFlags.important_as_error) console.log(`Running isReadyToJoin cycle:${latestCycle.counter} publicKey: ${publicKey}`)
+    // handle first time staking setup
+    if (lastCertTimeTxTimestamp === 0) {
+      // inject setCertTimeTx for the first time
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'lastCertTimeTxTimestamp === 0 first time or expired')
+
+      const response = await SetCertTime.injectSetCertTimeTx(dapp, publicKey, activeNodes)
+      if (response == null) {
+        /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `failed call to injectSetCertTimeTx 1 reason: response is null`)
+        return false
+      }
+      if (!response.success) {
+        /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `failed call to injectSetCertTimeTx 1 reason: ${(response as LiberdusTypes.ValidatorError).reason}`)
+        return false
+      }
+
+      // set lastCertTimeTxTimestamp and cycle
+      lastCertTimeTxTimestamp = dapp.shardusGetTime()
+      lastCertTimeTxCycle = latestCycle.counter
+
+      // return false and query/check again in next cycle
+      return false
+    }
+
+    const isCertTimeExpired = lastCertTimeTxCycle > 0 && latestCycle.counter - lastCertTimeTxCycle > SetCertTime.getCertCycleDuration()
+    if (isCertTimeExpired) {
+      nestedCountersInstance.countEvent('liberdus-staking', 'stakeCert expired and need to be renewed')
+      const response = await SetCertTime.injectSetCertTimeTx(dapp, publicKey, activeNodes)
+      if (response == null) {
+        /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `failed call to injectSetCertTimeTx 2 reason: response is null`)
+        return false
+      }
+      if (!response.success) {
+        /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `failed call to injectSetCertTimeTx 2 reason: ${(response as LiberdusTypes.ValidatorError).reason}`)
+        return false
+      }
+      QueryCertificate.removeStakeCert() //clear stake cert, so we will know to query for it again
+      // set lastCertTimeTxTimestamp and cycle
+      lastCertTimeTxTimestamp = dapp.shardusGetTime()
+      lastCertTimeTxCycle = latestCycle.counter
+      // return false and query/check again in next cycle
+      return false
+    }
+
+    //if we have stakeCert, check its time
+    if (QueryCertificate.stakeCert != null) {
+      nestedCountersInstance.countEvent('liberdus-staking', `stakeCert is not null`)
+
+      const remainingValidTime = QueryCertificate.stakeCert.certExp - dapp.shardusGetTime()
+      const certStartTimestamp = QueryCertificate.stakeCert.certExp - SetCertTime.getCertCycleDuration() * configs.ONE_SECOND * latestCycle.duration
+      const certEndTimestamp = QueryCertificate.stakeCert.certExp
+      const expiredPercentage = (dapp.shardusGetTime() - certStartTimestamp) / (certEndTimestamp - certStartTimestamp)
+      const isExpiringSoon = expiredPercentage >= 0.7
+      // if the cert is expired 70% or more
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`cert != null, remainingValidTime: ${remainingValidTime}, expiredPercentage: ${expiredPercentage}, isExpiringSoon: ${isExpiringSoon}`)
+
+      if (isExpiringSoon) {
+        nestedCountersInstance.countEvent('liberdus-staking', 'stakeCert is expired or expiring soon')
+        const response = await SetCertTime.injectSetCertTimeTx(dapp, publicKey, activeNodes)
+        if (response == null) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `failed call to injectSetCertTimeTx 2 reason: response is null`)
+          return false
+        }
+        if (!response.success) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `failed call to injectSetCertTimeTx 2 reason: ${(response as LiberdusTypes.ValidatorError).reason}`)
+          return false
+        }
+        QueryCertificate.removeStakeCert() //clear stake cert, so we will know to query for it again
+        lastCertTimeTxTimestamp = dapp.shardusGetTime()
+        lastCertTimeTxCycle = latestCycle.counter
+        // return false and check again in next cycle
+        return false
+      } else {
+        const isValid = true
+        // todo: validate the cert here
+        if (!isValid) {
+          nestedCountersInstance.countEvent('liberdus-staking', 'invalid cert, isReadyToJoin = false')
+          return false
+        }
+
+        nestedCountersInstance.countEvent('liberdus-staking', 'valid cert, isReadyToJoin = true')
+        /* prettier-ignore */ if (logFlags.important_as_error) { console.log('valid cert, isReadyToJoin = true ', QueryCertificate.stakeCert) }
+
+        isReadyToJoinLatestValue = true
+        return true
+      }
+    }
+    //if stake cert is null and we have set cert time before then query for the cert
+    if (lastCertTimeTxTimestamp > 0 && QueryCertificate.stakeCert == null) {
+      // we have already submitted setCertTime
+      // query the certificate from the network
+      const res = await QueryCertificate.queryCertificate(dapp, publicKey, activeNodes)
+      /* prettier-ignore */ if (logFlags.important_as_error) console.log('queryCertificate', res)
+      if (!res.success) {
+        /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `call to queryCertificate failed with reason: ${(res as LiberdusTypes.ValidatorError).reason}`)
+
+        // if we injected setCertTimeTx more than 3 cycles ago but still cannot get new cert, we need to inject it again
+        if (latestCycle.counter - lastCertTimeTxCycle > 3 || dapp.shardusGetTime() - lastCertTimeTxTimestamp > 3 * configs.ONE_SECOND * latestCycle.duration) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `call to queryCertificate failed for 3 consecutive cycles, will inject setCertTimeTx again`)
+          lastCertTimeTxTimestamp = 0
+        }
+
+        return false
+      }
+      const signedStakeCert = (res as QueryCertificate.CertSignaturesResult).signedStakeCert
+      if (signedStakeCert == null) {
+        /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `signedStakeCert is null`)
+        return false
+      }
+      const remainingValidTime = signedStakeCert.certExp - dapp.shardusGetTime()
+
+      const certStartTimestamp = signedStakeCert.certExp - SetCertTime.getCertCycleDuration() * configs.ONE_SECOND * latestCycle.duration
+      const certEndTimestamp = signedStakeCert.certExp
+      const expiredPercentage = (dapp.shardusGetTime() - certStartTimestamp) / (certEndTimestamp - certStartTimestamp)
+      const isNewCertExpiringSoon = expiredPercentage >= 0.7
+      /* prettier-ignore */ if (logFlags.important_as_error) console.log(`stakeCert received. remainingValidTime: ${remainingValidTime} expiredPercent: ${expiredPercentage}, isNewCertExpiringSoon: ${isNewCertExpiringSoon}`)
+
+      // if queried cert is going to expire soon, inject a new setCertTimeTx
+      if (isNewCertExpiringSoon) {
+        /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'new stakeCert is expiring soon. will inject' + ' setCertTimeTx again')
+
+        QueryCertificate.removeStakeCert() //clear stake cert, so we will know to query for it again
+        const response = await SetCertTime.injectSetCertTimeTx(dapp, publicKey, activeNodes)
+        if (response == null) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `failed call to injectSetCertTimeTx 3 reason: response is null`)
+          return false
+        }
+        if (!response.success) {
+          /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `failed call to injectSetCertTimeTx 3 reason: ${(response as LiberdusTypes.ValidatorError).reason}`)
+          return false
+        }
+
+        lastCertTimeTxTimestamp = dapp.shardusGetTime()
+        lastCertTimeTxCycle = latestCycle.counter
+        // return false and check again in next cycle
+        return false
+      } else {
+        const isValid = true
+        // todo: validate the cert here
+        if (!isValid) {
+          nestedCountersInstance.countEvent('liberdus-staking', 'invalid cert, isReadyToJoin = false')
+          return false
+        }
+        // cert if valid and not expiring soon
+        QueryCertificate.addStakeCert(signedStakeCert)
+
+        nestedCountersInstance.countEvent('liberdus-staking', 'valid cert, isReadyToJoin = true')
+        /* prettier-ignore */ if (logFlags.important_as_error) console.log('valid cert, isReadyToJoin = true ', QueryCertificate.stakeCert)
+
+        isReadyToJoinLatestValue = true
+        return true
+      }
+    }
+
+    // avoid returning undefined, what if the calling code was refactored to check "=== false"...
+    /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `end of function with no earlier return`)
+    return false
   },
   getNodeInfoAppData() {
     let minVersion = ''
     let activeVersion = ''
     let latestVersion = ''
-    // const cachedNetworkAccount = AccountsStorage.cachedNetworkAccount
-    // if (cachedNetworkAccount) {
-    //   minVersion = cachedNetworkAccount.current.minVersion
-    //   activeVersion = cachedNetworkAccount.current.activeVersion
-    //   latestVersion = cachedNetworkAccount.current.latestVersion
-    // }
-    const shardeumNodeInfo: any = {
-      // const shardeumNodeInfo: NodeInfoAppData = {
-      liberdusVersion: version,
+    const cachedNetworkAccount = AccountsStorage.cachedNetworkAccount
+    if (cachedNetworkAccount) {
+      minVersion = cachedNetworkAccount.current.minVersion
+      activeVersion = cachedNetworkAccount.current.activeVersion
+      latestVersion = cachedNetworkAccount.current.latestVersion
+    }
+    const liberdusNodeInfo: LiberdusTypes.NodeInfoAppData = {
+      appVersion: version,
       minVersion,
       activeVersion,
       latestVersion,
-      operatorCLIVersion: '',
-      operatorGUIVersion: '',
+      operatorCLIVersion,
+      operatorGUIVersion,
     }
-    return shardeumNodeInfo
+    return liberdusNodeInfo
   },
-  canStayOnStandby(joinInfo: any): { canStay: boolean; reason: string } {
+  async eventNotify(data: ShardusTypes.ShardusEvent) {
+    if (LiberdusFlags.StakingEnabled === false) return
+    if (LiberdusFlags.VerboseLogs) console.log(`Running eventNotify`, data)
+
+    const nodeId = dapp.getNodeId()
+    const node = dapp.getNode(nodeId)
+
+    console.log('eventNotify', data.type, data.publicKey)
+    // skip for own node
+    if (!dapp.p2p.isFirstSeed && data.nodeId === nodeId && data.type !== 'node-activated') {
+      console.log('eventNotify', 'skipping for own node', data.type, data.publicKey)
+      return
+    }
+
+    if (node == null) {
+      if (LiberdusFlags.VerboseLogs) console.log(`node is null`, data.publicKey)
+      console.log('eventNotify', 'node is null', data.publicKey)
+      return
+    }
+
+    if (node.status !== 'active' && data.type !== 'node-activated') {
+      /* prettier-ignore */ if (logFlags.dapp_verbose) console.log('This node is not active yet')
+      console.log('eventNotify', 'This node is not active yet', data.publicKey)
+      return
+    }
+
+    const eventType = data.type
+    nestedCountersInstance.countEvent('eventNotify', `eventType: ${eventType}`)
+
+    // Waiting a bit here to make sure that shardus.getLatestCycles gives the latest cycle
+    await utils._sleep(1000)
+    const latestCycles: ShardusTypes.Cycle[] = dapp.getLatestCycles(10)
+    const currentCycle = latestCycles[0]
+    if (!currentCycle) {
+      /* prettier-ignore */ if (logFlags.error) console.log('No cycle records found', latestCycles)
+      console.log('eventNotify', 'No cycle records found', latestCycles, eventType, data.publicKey)
+      return
+    }
+
+    // TODO: see if it's fine; what if getClosestNodes gives only recently activatd nodes
+    // skip if this node is also activated in the same cycle
+    const currentlyActivatedNode = currentCycle.activated.includes(nodeId)
+    if (currentlyActivatedNode) {
+      console.log('eventNotify', 'skipping for currentlyActivatedNode', data.publicKey, eventType)
+      return
+    }
+
+    if (eventType === 'node-activated') {
+      const closestNodes = dapp.getClosestNodes(data.publicKey, 5)
+      for (const id of closestNodes) {
+        if (id === nodeId) {
+          nestedCountersInstance.countEvent('liberdus-staking', `${eventType}: injectInitRewardTx`)
+          const txData = {
+            startTime: data.time,
+            publicKey: data.publicKey,
+            nodeId: data.nodeId,
+          } as LiberdusTypes.NodeInitTxData
+          console.log('node-activated', 'injectInitRewardTx', data.publicKey, txData)
+          dapp.addNetworkTx('nodeInitReward', dapp.signAsNode(txData), data.publicKey)
+        }
+      }
+    } else if (eventType === 'node-deactivated') {
+      // todo: aamir check the timestamp and cycle the first time we see this event
+      // Limit the nodes that send this to the 5 closest to the node id
+      const closestNodes = dapp.getClosestNodes(data.publicKey, 5)
+      const ourId = dapp.getNodeId()
+      for (const id of closestNodes) {
+        if (id === ourId) {
+          nestedCountersInstance.countEvent('liberdus-staking', `${eventType}: injectClaimRewardTx`)
+          const txData = {
+            start: data.activeCycle,
+            end: data.cycleNumber,
+            endTime: data.time,
+            publicKey: data.publicKey,
+            nodeId: data.nodeId,
+          } as LiberdusTypes.NodeRewardTxData
+          console.log('node-deactivates', 'injectClaimRewardTx', data.publicKey, txData)
+          dapp.addNetworkTx('nodeReward', dapp.signAsNode(txData), data.publicKey)
+        }
+      }
+    } else if (
+      eventType === 'node-left-early' &&
+      AccountsStorage.cachedNetworkAccount.current.enableNodeSlashing === true &&
+      AccountsStorage.cachedNetworkAccount.current.slashing.enableLeftNetworkEarlySlashing
+    ) {
+      let nodeLostCycle
+      let nodeDroppedCycle
+      for (const cycle of latestCycles) {
+        if (cycle.apoptosized.includes(data.nodeId)) {
+          nodeDroppedCycle = cycle.counter
+        } else if (cycle.lost.includes(data.nodeId)) {
+          nodeLostCycle = cycle.counter
+        }
+      }
+      if (nodeLostCycle && nodeDroppedCycle && nodeLostCycle < nodeDroppedCycle) {
+        const violationData: LiberdusTypes.LeftNetworkEarlyViolationData = {
+          nodeLostCycle,
+          nodeDroppedCycle,
+          nodeDroppedTime: data.time,
+        }
+        nestedCountersInstance.countEvent('liberdus-staking', `node-left-early: injectPenaltyTx`)
+
+        // await PenaltyTx.injectPenaltyTX(dapp, data, violationData)
+      } else {
+        nestedCountersInstance.countEvent('liberdus-staking', `node-left-early: event skipped`)
+        /* prettier-ignore */ if (logFlags.dapp_verbose) console.log(`node-left-early event skipped`, data, nodeLostCycle, nodeDroppedCycle)
+      }
+    } else if (
+      eventType === 'node-sync-timeout' &&
+      AccountsStorage.cachedNetworkAccount.current.enableNodeSlashing === true &&
+      AccountsStorage.cachedNetworkAccount.current.slashing.enableSyncTimeoutSlashing
+    ) {
+      let violationData: LiberdusTypes.SyncingTimeoutViolationData
+      for (const cycle of latestCycles) {
+        if (cycle.lostSyncing.includes(data.nodeId) && cycle.counter === data.cycleNumber) {
+          violationData = {
+            nodeLostCycle: data.cycleNumber,
+            nodeDroppedTime: data.time,
+          }
+          nestedCountersInstance.countEvent('liberdus-staking', `node-sync-timeout: injectPenaltyTx`)
+
+          // await PenaltyTx.injectPenaltyTX(dapp, data, violationData)
+        }
+      }
+      if (!violationData) {
+        console.log(`node-sync-timeout validation failed: Node-ID: (${data.nodeId}) not found in lostSyncing`)
+        return
+      }
+    } else if (
+      eventType === 'node-refuted' &&
+      AccountsStorage.cachedNetworkAccount.current.enableNodeSlashing === true &&
+      AccountsStorage.cachedNetworkAccount.current.slashing.enableNodeRefutedSlashing
+    ) {
+      let nodeRefutedCycle
+      for (const cycle of latestCycles) {
+        if (cycle.refuted.includes(data.nodeId)) {
+          nodeRefutedCycle = cycle.counter
+        }
+      }
+      if (nodeRefutedCycle === data.cycleNumber) {
+        const violationData: LiberdusTypes.NodeRefutedViolationData = {
+          nodeRefutedCycle: nodeRefutedCycle,
+          nodeRefutedTime: data.time,
+        }
+        nestedCountersInstance.countEvent('liberdus-staking', `node-refuted: injectPenaltyTx`)
+
+        // await PenaltyTx.injectPenaltyTX(shardus, data, violationData)
+      } else {
+        nestedCountersInstance.countEvent('liberdus-staking', `node-refuted: event skipped`)
+        /* prettier-ignore */ if (logFlags.dapp_verbose) console.log(`node-refuted event skipped`, data, nodeRefutedCycle)
+      }
+    } else if (eventType === 'try-network-transaction') {
+      /* prettier-ignore */ if (logFlags.dapp_verbose) console.log('event', `try-network-transaction`, Utils.safeStringify(data))
+      nestedCountersInstance.countEvent('event', `try-network-transaction`)
+      if (data?.additionalData.type === 'nodeReward') {
+        console.log('event', `running injectClaimrewardTxWithRetry nodeReward`, Utils.safeStringify(data))
+        console.log('nodereward tx data 1', data.additionalData.hash)
+        if (dapp.fastIsPicked(1)) {
+          console.log('nodereward tx data 2', data.additionalData.hash)
+          const result = await ClaimReward.injectClaimRewardTx(dapp, data)
+          /* prettier-ignore */ if (logFlags.dapp_verbose) console.log('INJECTED_CLAIM_REWARD_TX',result)
+        }
+      } else if (data?.additionalData.type === 'nodeInitReward') {
+        /* prettier-ignore */ if (logFlags.dapp_verbose) console.log('event', `running injectInitRewardTx nodeInitReward`, Utils.safeStringify(data))
+        if (dapp.fastIsPicked(1)) {
+          console.log('nodeInitReward tx data 2', data.additionalData.hash)
+          const result = await InitReward.injectInitRewardTx(dapp, data)
+          /* prettier-ignore */ if (logFlags.dapp_verbose) console.log('INJECTED_INIT_REWARD_TIMES_TX', result)
+        }
+      }
+    }
+  },
+  // Note: this logic is added to the archive server; any changes here should have to be done in the archive server as well
+  async updateNetworkChangeQueue(account: LiberdusTypes.WrappedAccount, appData: any) {
+    const patchAndUpdate = async (existingObject: any, changeObj: any, parentPath = ''): Promise<void> => {
+      /* eslint-disable security/detect-object-injection */
+      for (const [key, value] of Object.entries(changeObj)) {
+        if (existingObject[key] != null) {
+          if (typeof value === 'object') {
+            await patchAndUpdate(existingObject[key], value, parentPath === '' ? key : parentPath + '.' + key)
+          } else {
+            if (key === 'activeVersion') {
+              // TODO: Add onActiveVersionChange feature
+              // await onActiveVersionChange(value as string)
+            }
+            existingObject[key] = value
+          }
+        }
+      }
+      /* eslint-enable security/detect-object-injection */
+    }
+
+    const networkAccount: LiberdusTypes.NetworkAccount = account.data
+    await patchAndUpdate(networkAccount.current, appData)
+    // TODO: look into updating the timestamp also
+    // Increase the timestamp by 1 second
+    // networkAccount.timestamp += ONE_SECOND ( this has issue when a newly joined node updates its config )
+    networkAccount.hash = this.calculateAccountHash(networkAccount)
+    account.stateId = networkAccount.hash
+    account.timestamp = networkAccount.timestamp
+    return [account]
+  },
+
+  // Note: this logic is added to the archive server; any changes here should have to be done in the archive server as well
+  async pruneNetworkChangeQueue(account: LiberdusTypes.WrappedAccount, currentCycle: number) {
+    const networkAccount: LiberdusTypes.NetworkAccount = account.data
+    const listOfChanges = account.data.listOfChanges
+
+    const generatePathKeys = (obj: any, prefix = ''): string[] => {
+      /* eslint-disable security/detect-object-injection */
+      let paths: string[] = []
+
+      // Loop over each key in the object
+      for (const key of Object.keys(obj)) {
+        // If the value corresponding to this key is an object (and not an array or null),
+        // then recurse into it.
+        if (obj[key] !== null && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+          paths = paths.concat(generatePathKeys(obj[key], prefix + key + '.'))
+        } else {
+          // Otherwise, just append this key to the path.
+          paths.push(prefix + key)
+        }
+      }
+      return paths
+      /* eslint-enable security/detect-object-injection */
+    }
+
+    const configsMap = new Map()
+    const keepAliveCount = shardusConfig.stateManager.configChangeMaxChangesToKeep
+    for (let i = listOfChanges.length - 1; i >= 0; i--) {
+      const thisChange = listOfChanges[i]
+      let keepAlive = false
+
+      let appConfigs = []
+      if (thisChange.appData) {
+        appConfigs = generatePathKeys(thisChange.appData, 'appdata.')
+      }
+      const shardusConfigs: string[] = generatePathKeys(thisChange.change)
+
+      const allConfigs = appConfigs.concat(shardusConfigs)
+
+      for (const config of allConfigs) {
+        if (!configsMap.has(config)) {
+          configsMap.set(config, 1)
+          keepAlive = true
+        } else if (configsMap.get(config) < keepAliveCount) {
+          configsMap.set(config, configsMap.get(config) + 1)
+          keepAlive = true
+        }
+      }
+
+      if (currentCycle - thisChange.cycle <= shardusConfig.stateManager.configChangeMaxCyclesToKeep) {
+        keepAlive = true
+      }
+
+      if (keepAlive == false) {
+        listOfChanges.splice(i, 1)
+      }
+    }
+    // TODO: look into updating the timestamp also
+    // Increase the timestamp by 1 second
+    // networkAccount.timestamp += ONE_SECOND ( this has issue when a newly joined node updates its config )
+    networkAccount.hash = this.calculateAccountHash(networkAccount)
+    account.stateId = networkAccount.hash
+    account.timestamp = networkAccount.timestamp
+    return [account]
+  },
+  canStayOnStandby(joinInfo: P2P.JoinTypes.JoinRequest): { canStay: boolean; reason: string } {
+    if (joinInfo) {
+      const appJoinData = joinInfo?.appJoinData as LiberdusTypes.AppJoinData
+
+      if (AccountsStorage.cachedNetworkAccount == null) {
+        //We need to enhance the early config getting to also get other values of the global account
+        //so we know what versions the network is.  this is a stopgap!
+        return { canStay: true, reason: 'dont have network account yet. cant boot anything!' }
+      }
+
+      const minVersion = AccountsStorage.cachedNetworkAccount.current.minVersion
+      if (!utils.isEqualOrNewerVersion(minVersion, appJoinData.version)) {
+        /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: old version`)
+        return {
+          canStay: false,
+          reason: `canStayOnStandby: standby node version: ${appJoinData.version} < minVersion ${minVersion}`,
+        }
+      }
+
+      const latestVersion = AccountsStorage.cachedNetworkAccount.current.latestVersion
+
+      if (latestVersion && appJoinData.version && !utils.isEqualOrOlderVersion(latestVersion, appJoinData.version)) {
+        /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: version number is newer than latest`)
+        return {
+          canStay: false,
+          reason: `version number is newer than latest. The latest allowed app version is ${latestVersion}. Join request node app version is ${appJoinData.version}`,
+          //fatal: true,
+        }
+      }
+    }
+
     return { canStay: true, reason: '' }
   },
   binarySerializeObject: null,
   binaryDeserializeObject: null,
-  verifyMultiSigs: function (rawPayload: object, sigs: ShardusTypes.Sign[], allowedPubkeys: { [pubkey: string]: ShardusTypes.DevSecurityLevel }, minSigRequired: number, requiredSecurityLevel: ShardusTypes.DevSecurityLevel): boolean {
+  verifyMultiSigs: function (
+    rawPayload: object,
+    sigs: ShardusTypes.Sign[],
+    allowedPubkeys: { [pubkey: string]: ShardusTypes.DevSecurityLevel },
+    minSigRequired: number,
+    requiredSecurityLevel: ShardusTypes.DevSecurityLevel,
+  ): boolean {
     return false
   },
   beforeStateAccountFilter(account: ShardusTypes.WrappedData) {
@@ -763,7 +1742,7 @@ dapp.registerExceptionHandler()
     drift = currentTime - expected
 
     try {
-      const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+      const account = await getLocalOrRemoteAccount(configs.networkAccount)
       network = account.data as LiberdusTypes.NetworkAccount
       ;[cycleData] = dapp.getLatestCycles()
       luckyNodes = dapp.getClosestNodes(cycleData.previous, LiberdusFlags.numberOfLuckyNodes)

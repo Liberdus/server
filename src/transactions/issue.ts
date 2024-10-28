@@ -4,6 +4,7 @@ import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import * as config from '../config'
 import {NodeAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Utils } from '@shardus/types'
 
 export const validate_fields = (tx: Tx.Issue, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.nodeId !== 'string') {
@@ -49,13 +50,13 @@ export const validate = (tx: Tx.Issue, wrappedStates: WrappedStates, response: S
 
   const networkIssueHash = crypto.hash(`issue-${network.issue}`)
   if (tx.issue !== networkIssueHash) {
-    response.reason = `issue hash (${tx.issue}) does not match current network issue hash (${networkIssueHash}) --- networkAccount: ${JSON.stringify(network)}`
+    response.reason = `issue hash (${tx.issue}) does not match current network issue hash (${networkIssueHash}) --- networkAccount: ${Utils.safeStringify(network)}`
     return response
   }
   const networkProposalHash = crypto.hash(`issue-${network.issue}-proposal-1`)
   if (tx.proposal !== networkProposalHash) {
     response.reason = `proposalHash (${tx.proposal
-      }) does not match the current default network proposal (${networkProposalHash}) --- networkAccount: ${JSON.stringify(network)}`
+      }) does not match the current default network proposal (${networkProposalHash}) --- networkAccount: ${Utils.safeStringify(network)}`
     return response
   }
   if (tx.timestamp < network.windows.proposalWindow[0] || tx.timestamp > network.windows.proposalWindow[1]) {

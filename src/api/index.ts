@@ -5,6 +5,7 @@ import proposals from './proposals'
 import accounts from './accounts'
 import messages from './messages'
 import debug from './debug'
+import { queryCertificateEndpoint } from './staking/query-certificate'
 
 export default (dapp: any) => {
   dapp.registerExternalPost('inject', inject(dapp))
@@ -44,4 +45,6 @@ export default (dapp: any) => {
 
   dapp.registerExternalGet('debug/dump', debug.dump(dapp))
   dapp.registerExternalPost('debug/exit', debug.exit)
+
+  dapp.registerExternalPut('query-certificate', queryCertificateEndpoint(dapp))
 }

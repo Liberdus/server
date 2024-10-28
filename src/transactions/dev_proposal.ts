@@ -118,7 +118,7 @@ export const validate = (tx: Tx.DevProposal, wrappedStates: WrappedStates, respo
     response.reason = 'Network is not within the time window to accept developer proposals'
     return response
   }
-  if (tx.payments.reduce<number>((acc: number, payment: DeveloperPayment) => new Decimal(payment.amount).plus(acc) as any, 0) > 1) {
+  if (tx.payments.reduce<number>((acc: number, payment: DeveloperPayment) => new Decimal(Number(payment.amount)).plus(acc) as any, 0) > 1) {
     response.reason = 'tx payment amounts added up to more than 100%'
     return response
   }

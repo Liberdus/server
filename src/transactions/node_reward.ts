@@ -65,15 +65,15 @@ export const apply = (tx: Tx.NodeReward, txTimestamp: number, txId: string, wrap
   const to: UserAccount = wrappedStates[tx.to].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   //const nodeAccount: NodeAccount = to
-  from.balance += network.current.nodeRewardAmount
+  from.balance += network.current.nodeRewardAmountUsd
   dapp.log(`Reward from ${tx.from} to ${tx.to}`)
   if (tx.from !== tx.to) {
     dapp.log('Node reward to and from are different.')
     dapp.log('TO ACCOUNT', to.data)
-    if (to.data.stake >= network.current.stakeRequired) {
+    if (to.data.stake >= network.current.stakeRequiredUsd) {
       to.data.balance += from.balance
       if (to.data.remove_stake_request) to.data.remove_stake_request = null
-      from.balance = 0
+      from.balance = BigInt(0)
       to.timestamp = txTimestamp
     }
   }

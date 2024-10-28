@@ -3,7 +3,7 @@ import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import * as crypto from '@shardus/crypto-utils'
 import create from '../accounts'
-import stringify from 'fast-stable-stringify'
+import { Utils } from '@shardus/types'
 import {Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.ApplyDevParameters, response: ShardusTypes.IncomingTransactionResult) => {
@@ -49,7 +49,7 @@ export const apply = (tx: Tx.ApplyDevParameters, txTimestamp: number, txId: stri
   network.nextDeveloperFund = tx.nextDeveloperFund
   network.devIssue = tx.devIssue
   network.timestamp = txTimestamp
-  dapp.log(`=== APPLIED DEV_PARAMETERS GLOBAL ${stringify(network)} ===`)
+  dapp.log(`=== APPLIED DEV_PARAMETERS GLOBAL ${Utils.safeStringify(network)} ===`)
 }
 
 export const keys = (tx: Tx.ApplyDevParameters, result: TransactionKeys) => {

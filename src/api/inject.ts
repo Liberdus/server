@@ -1,6 +1,11 @@
+import { Utils } from '@shardus/types'
+
 export const inject = dapp => async (req, res): Promise<void> => {
   try {
-    const result = await dapp.put(req.body)
+    console.log('inject body', req.body)
+    const tx = Utils.safeJsonParse(req.body.tx)
+    console.log('tx  object', tx)
+    const result = await dapp.put(tx)
     res.json({ result })
   } catch (error) {
     dapp.log(error)
