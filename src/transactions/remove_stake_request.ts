@@ -2,7 +2,7 @@ import * as crypto from '@shardus/crypto-utils'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import * as config from '../config'
-import {Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.RemoveStakeRequest, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -33,12 +33,12 @@ export const validate = (tx: Tx.RemoveStakeRequest, wrappedStates: WrappedStates
     response.reason = 'incorrect signing'
     return response
   }
-  if (from.data.stake < network.current.stakeRequired) {
-    response.reason = `From account has insufficient stake ${network.current.stakeRequired}`
+  if (from.data.stake < network.current.stakeRequiredUsd) {
+    response.reason = `From account has insufficient stake ${network.current.stakeRequiredUsd}`
     return response
   }
-  if (tx.stake > network.current.stakeRequired) {
-    response.reason = `Stake amount sent: ${tx.stake} is more than the cost required to operate a node: ${network.current.stakeRequired}`
+  if (tx.stake > network.current.stakeRequiredUsd) {
+    response.reason = `Stake amount sent: ${tx.stake} is more than the cost required to operate a node: ${network.current.stakeRequiredUsd}`
     return response
   }
   response.success = true

@@ -1,7 +1,7 @@
 import * as crypto from '@shardus/crypto-utils'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
-import stringify from 'fast-stable-stringify'
+import { Utils } from '@shardus/types'
 import create from '../accounts'
 import {DevIssueAccount, DevProposalAccount, NodeAccount, OurAppDefinedData, DevWindows, DeveloperPayment, NetworkAccount, WrappedStates, Tx, TransactionKeys } from '../@types'
 
@@ -57,7 +57,7 @@ export const validate = (tx: Tx.DevTally, wrappedStates: WrappedStates, response
     return response
   }
   if (Array.isArray(devIssue.winners) && devIssue.winners.length > 0) {
-    response.reason = `The winners for this devIssue has already been determined ${stringify(devIssue.winners)}`
+    response.reason = `The winners for this devIssue has already been determined ${Utils.safeStringify(devIssue.winners)}`
     return response
   }
   if (network.id !== config.networkAccount) {
@@ -85,7 +85,7 @@ export const apply = (tx: Tx.DevTally, txTimestamp: number, txId: string, wrappe
   let nextDeveloperFund: DeveloperPayment[] = []
 
   for (const devProposal of devProposals) {
-    if (devProposal.approve > devProposal.reject + devProposal.reject * 0.15) {
+    if (devProposal.approve > devProposal.reject + devProposal.reject * BigInt(0.15)) {
       devProposal.approved = true
       const payments = []
       for (const payment of devProposal.payments) {

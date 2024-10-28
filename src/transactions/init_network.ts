@@ -1,4 +1,4 @@
-import stringify from 'fast-stable-stringify'
+import { Utils } from '@shardus/types'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import create from '../accounts'
@@ -24,7 +24,7 @@ export const validate = (tx: Tx.InitNetwork, wrappedStates: WrappedStates, respo
 export const apply = (tx: Tx.InitNetwork, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.timestamp = txTimestamp
-  console.log(`init_network NETWORK_ACCOUNT: ${stringify(network)}`)
+  console.log(`init_network NETWORK_ACCOUNT: ${Utils.safeStringify(network)}`)
   // from.timestamp = txTimestamp
   dapp.log('Applied init_network transaction', network)
 }

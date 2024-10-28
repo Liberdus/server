@@ -38,9 +38,9 @@ class Storage {
   }
 
   async init(): Promise<void> {
-    console.log('shardeum storage init:' + this.storage.dbPath)
+    console.log('liberdus storage init:' + this.storage.dbPath)
     await this.storage.init()
-    console.log('shardeum storage init complete:')
+    console.log('liberdus storage init complete:')
 
     await this.storage.runCreate(
       'CREATE TABLE if not exists `accountsEntry` (`accountId` VARCHAR(255) NOT NULL, `timestamp` BIGINT NOT NULL, `data` JSON NOT NULL, PRIMARY KEY (`accountId`))',

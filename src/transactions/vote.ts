@@ -88,7 +88,7 @@ export const apply = (tx: Tx.Vote, txTimestamp: number, txId: string, wrappedSta
   from.data.balance -= tx.amount
   from.data.balance -= network.current.transactionFee
   from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
-  proposal.power += tx.amount
+  proposal.power += Number(tx.amount)
   proposal.totalVotes++
 
   // from.data.transactions.push({ ...tx, txId })

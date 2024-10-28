@@ -184,7 +184,7 @@ class Sqlite3Storage {
         console.log('PRAGMA locking_mode = EXCLUSIVE')
       }
     } catch (e) {
-      throw new Error('shardeum storage init error ' + e.name + ': ' + e.message + ' at ' + e.stack)
+      throw new Error('liberdus storage init error ' + e.name + ': ' + e.message + ' at ' + e.stack)
     }
 
     this.initialized = true
@@ -578,7 +578,7 @@ class Sqlite3Storage {
 
 async function _ensureExists(dir): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    // dir is 'db/shardeum.sqlite'
+    // dir is 'db/liberdus.sqlite'
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     fs.mkdir(dir, { recursive: true }, (err) => {
       if (err) {

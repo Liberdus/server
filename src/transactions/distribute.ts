@@ -47,7 +47,7 @@ export const validate = (tx: Tx.Distribute, wrappedStates: WrappedStates, respon
       return response
     }
   }
-  if (from.data.balance < recipients.length * tx.amount + network.current.transactionFee) {
+  if (from.data.balance < BigInt(recipients.length) * tx.amount + network.current.transactionFee) {
     response.reason = "from account doesn't have sufficient balance to cover the transaction"
     return response
   }

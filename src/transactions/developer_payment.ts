@@ -1,7 +1,7 @@
 import * as crypto from '@shardus/crypto-utils'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
-import stringify from 'fast-stable-stringify'
+import { Utils } from '@shardus/types'
 import create from '../accounts'
 import {Accounts, UserAccount, NetworkAccount, DeveloperPayment, NodeAccount, OurAppDefinedData, WrappedStates, Tx, TransactionKeys } from '../@types'
 
@@ -89,7 +89,7 @@ export const validate = (tx: Tx.DevPayment, wrappedStates: WrappedStates, respon
     return response
   }
   if (developer.data.payments.some(payment => payment.id === tx.payment.id)) {
-    response.reason = `This payment ${stringify(tx.payment)} has already been given to the developer ${tx.developer}`
+    response.reason = `This payment ${Utils.safeStringify(tx.payment)} has already been given to the developer ${tx.developer}`
     return response
   }
   response.success = true

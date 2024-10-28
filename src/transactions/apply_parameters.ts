@@ -1,9 +1,9 @@
-import stringify from 'fast-stable-stringify'
+import { Utils } from '@shardus/types'
 import _ from 'lodash'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import * as config from '../config'
-import {Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.ApplyParameters, response: ShardusTypes.IncomingTransactionResult) => {
   if (_.isEmpty(tx.current) || typeof tx.current !== 'object') {
@@ -26,22 +26,22 @@ export const validate_fields = (tx: Tx.ApplyParameters, response: ShardusTypes.I
     response.reason = 'tx "current parameter nodeRewardInterval" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.current.nodeRewardAmount !== 'number') {
+  if (typeof tx.current.nodeRewardAmountUsd !== 'bigint') {
     response.success = false
     response.reason = 'tx "current parameter nodeRewardAmount" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.current.nodePenalty !== 'number') {
+  if (typeof tx.current.nodePenaltyUsd !== 'number') {
     response.success = false
     response.reason = 'tx "current parameter nodePenalty" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.current.transactionFee !== 'number') {
+  if (typeof tx.current.transactionFee !== 'bigint') {
     response.success = false
     response.reason = 'tx "current parameter transactionFee" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.current.stakeRequired !== 'number') {
+  if (typeof tx.current.stakeRequiredUsd !== 'bigint') {
     response.success = false
     response.reason = 'tx "current parameter stakeRequired" field must be a number.'
     throw new Error(response.reason)
@@ -71,7 +71,7 @@ export const validate_fields = (tx: Tx.ApplyParameters, response: ShardusTypes.I
     response.reason = 'tx "current parameter faucetAmount" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.current.transactionFee !== 'number') {
+  if (typeof tx.current.transactionFee !== 'bigint') {
     response.success = false
     response.reason = 'tx "current parameter defaultToll" field must be a number.'
     throw new Error(response.reason)

@@ -1,7 +1,7 @@
-import stringify from 'fast-stable-stringify'
+import { Utils } from '@shardus/types'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
-import {Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 
 import _ from 'lodash'
 import * as config from '../config'
@@ -32,22 +32,22 @@ export const validate_fields = (tx: Tx.ApplyTally, response: ShardusTypes.Incomi
     response.reason = 'tx "next parameter nodeRewardInterval" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.next.nodeRewardAmount !== 'number') {
+  if (typeof tx.next.nodeRewardAmountUsd !== 'bigint') {
     response.success = false
     response.reason = 'tx "next parameter nodeRewardAmount" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.next.nodePenalty !== 'number') {
+  if (typeof tx.next.nodePenaltyUsd !== 'number') {
     response.success = false
     response.reason = 'tx "next parameter nodePenalty" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.next.transactionFee !== 'number') {
+  if (typeof tx.next.transactionFee !== 'bigint') {
     response.success = false
     response.reason = 'tx "next parameter transactionFee" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.next.stakeRequired !== 'number') {
+  if (typeof tx.next.stakeRequiredUsd !== 'number') {
     response.success = false
     response.reason = 'tx "next parameter stakeRequired" field must be a number.'
     throw new Error(response.reason)
@@ -77,7 +77,7 @@ export const validate_fields = (tx: Tx.ApplyTally, response: ShardusTypes.Incomi
     response.reason = 'tx "next parameter faucetAmount" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.next.transactionFee !== 'number') {
+  if (typeof tx.next.transactionFee !== 'bigint') {
     response.success = false
     response.reason = 'tx "next parameter defaultToll" field must be a number.'
     throw new Error(response.reason)
@@ -96,7 +96,7 @@ export const apply = (tx: Tx.ApplyTally, txTimestamp: number, txId: string, wrap
   network.next = tx.next
   network.nextWindows = tx.nextWindows
   network.timestamp = txTimestamp
-  dapp.log(`APPLIED TALLY GLOBAL ${stringify(network)} ===`)
+  dapp.log(`APPLIED TALLY GLOBAL ${Utils.safeStringify(network)} ===`)
 }
 
 export const keys = (tx: Tx.ApplyTally, result: TransactionKeys) => {

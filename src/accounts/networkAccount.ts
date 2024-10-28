@@ -1,6 +1,6 @@
 import * as crypto from '@shardus/crypto-utils'
 import * as config from '../config'
-import {NetworkAccount} from '../@types'
+import { NetworkAccount } from '../@types'
 
 export const networkAccount = (accountId: string, timestamp: number) => {
   // const proposalWindow = [timestamp, timestamp + config.TIME_FOR_PROPOSALS]
