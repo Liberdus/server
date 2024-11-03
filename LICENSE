@@ -1,0 +1,7 @@
+The Liberdus software is distributed under the LGPL license.
+https://www.gnu.org/licenses/lgpl-3.0.en.html
+
+The Liberdus software includes the Shardus software which has its own license.
+The Liberdus license does not apply to the Shardus software.
+See the LICENSE_SHARDUS file in this repo or
+https://shardus.com/license
