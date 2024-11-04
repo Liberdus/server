@@ -276,7 +276,7 @@ export namespace Tx {
   export interface PenaltyTX extends BaseLiberdusTx {
     reportedNodeId: string
     reportedNodePublickKey: string
-    operatorEVMAddress: string
+    nominator: string
     violationType: ViolationType
     violationData: LeftNetworkEarlyViolationData | SyncingTimeoutViolationData | NodeRefutedViolationData
   }
