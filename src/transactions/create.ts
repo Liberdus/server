@@ -14,9 +14,9 @@ export const validate_fields = (tx: Tx.Create, response: ShardusTypes.IncomingTr
     response.reason = '"To" must be a string.'
     throw new Error(response.reason)
   }
-  if (typeof tx.amount !== 'number') {
+  if (typeof tx.amount !== 'bigint' || tx.amount <= BigInt(0)) {
     response.success = false
-    response.reason = '"Amount" must be a number.'
+    response.reason = 'tx "amount" field must be a bigint and greater than 0.'
     throw new Error(response.reason)
   }
   return response
@@ -26,10 +26,6 @@ export const validate = (tx: Tx.Create, wrappedStates: WrappedStates, response: 
   const to: Accounts = wrappedStates[tx.to] && wrappedStates[tx.to].data
   if (to === undefined || to === null) {
     response.reason = "target account doesn't exist"
-    return response
-  }
-  if (tx.amount < 1) {
-    response.reason = 'create amount needs to be positive (1 or greater)'
     return response
   }
   response.success = true
