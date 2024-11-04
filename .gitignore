@@ -14,3 +14,4 @@ spam-test.json
 .dockersecret
 coverage
 .idea
+stakedNodeLists.json
