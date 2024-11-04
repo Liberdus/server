@@ -87,6 +87,7 @@ const ONE_WEEK = 7 * ONE_DAY
 const ONE_YEAR = 365 * ONE_DAY
 
 const walletFile = resolve('./wallet.json')
+const stakedNodeListsFile = resolve('./stakedNodeLists.json')
 const testConfigFile = resolve('./testConfig.json')
 const testConfigFromFile = require(testConfigFile)
 let walletEntries = {}
@@ -1664,9 +1665,16 @@ const getJoiningNodes = async () => {
 }
 
 const loadStakedNodeLists = async () => {
-  const data = await fs.promises.readFile('./stakedNodeLists.json', 'utf8');
-  console.log('stakedNodeLists', data);
-  return JSON.parse(data);
+  try {
+    const data = await fs.promises.readFile(stakedNodeListsFile, 'utf8');
+    console.log('stakedNodeLists', data);
+    return JSON.parse(data);
+  }
+  catch (err) {
+    saveEntries({}, stakedNodeListsFile)
+    console.log(`Created stakedNodeLists file '${stakedNodeListsFile}'.`)
+    return {};
+  }
 }
 vorpal.delimiter('>').show()
 vorpal.exec('init').then(res => (USER = res))

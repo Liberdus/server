@@ -7,3 +7,5 @@ dist/
 notes/
 statistics.tsv
 .dockersecret
+stakedNodeLists.json
+
