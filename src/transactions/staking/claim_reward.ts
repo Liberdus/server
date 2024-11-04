@@ -1,8 +1,8 @@
 import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardus/core'
 import * as crypto from '@shardus/crypto-utils'
-import { networkAccount, LiberdusFlags } from '../../config'
+import { LiberdusFlags } from '../../config'
 import { logFlags } from '@shardus/core/dist/logger'
-import { NetworkAccount, NodeAccount, UserAccount, WrappedStates, Tx, TransactionKeys } from '../../@types'
+import { NodeAccount, UserAccount, WrappedStates, Tx, TransactionKeys } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { scaleByStabilityFactor, _sleep, generateTxId } from '../../utils'
 import { TXTypes } from '..'
@@ -132,7 +132,7 @@ export const validate = (tx: Tx.ClaimRewardTX, wrappedStates: WrappedStates, res
   if (LiberdusFlags.VerboseLogs) console.log('validating claimRewardTX', tx)
   const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
   // TODO: make sure this is a valid node account
-  const operatorAccount = wrappedStates[tx.nominee].data as UserAccount
+  const operatorAccount = wrappedStates[tx.nominator].data as UserAccount
   // TODO: make sure this is a valid user account
   // check if the rewardStartTime is negative
   if (nodeAccount.rewardStartTime < 0) {
@@ -178,7 +178,7 @@ export const validate = (tx: Tx.ClaimRewardTX, wrappedStates: WrappedStates, res
 export const apply = (tx: Tx.ClaimRewardTX, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   if (LiberdusFlags.VerboseLogs) console.log(`Running applyClaimRewardTx`, tx, wrappedStates)
   const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
-  const operatorAccount = wrappedStates[tx.nominee].data as UserAccount
+  const operatorAccount = wrappedStates[tx.nominator].data as UserAccount
   const network = AccountsStorage.cachedNetworkAccount
 
   const currentRate = network.current.nodeRewardAmountUsd
@@ -232,7 +232,7 @@ export const apply = (tx: Tx.ClaimRewardTX, txTimestamp: number, txId: string, w
     )
 
   nestedCountersInstance.countEvent('liberdus-staking', `Applied ClaimRewardTX`)
-  if (logFlags.dapp_verbose) console.log('Applied ClaimRewardTX', tx.nominee)
+  if (logFlags.dapp_verbose) dapp.log('Applied ClaimRewardTX', tx.nominee)
 }
 
 export const keys = (tx: Tx.ClaimRewardTX, result: TransactionKeys) => {

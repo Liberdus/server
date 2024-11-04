@@ -1491,8 +1491,7 @@ dapp.setup({
           nodeDroppedTime: data.time,
         }
         nestedCountersInstance.countEvent('liberdus-staking', `node-left-early: injectPenaltyTx`)
-
-        // await PenaltyTx.injectPenaltyTX(dapp, data, violationData)
+        await ApplyPenalty.injectPenaltyTX(dapp, data, violationData)
       } else {
         nestedCountersInstance.countEvent('liberdus-staking', `node-left-early: event skipped`)
         /* prettier-ignore */ if (logFlags.dapp_verbose) console.log(`node-left-early event skipped`, data, nodeLostCycle, nodeDroppedCycle)
@@ -1510,8 +1509,7 @@ dapp.setup({
             nodeDroppedTime: data.time,
           }
           nestedCountersInstance.countEvent('liberdus-staking', `node-sync-timeout: injectPenaltyTx`)
-
-          // await PenaltyTx.injectPenaltyTX(dapp, data, violationData)
+          await ApplyPenalty.injectPenaltyTX(dapp, data, violationData)
         }
       }
       if (!violationData) {
@@ -1535,8 +1533,7 @@ dapp.setup({
           nodeRefutedTime: data.time,
         }
         nestedCountersInstance.countEvent('liberdus-staking', `node-refuted: injectPenaltyTx`)
-
-        // await PenaltyTx.injectPenaltyTX(shardus, data, violationData)
+        await ApplyPenalty.injectPenaltyTX(dapp, data, violationData)
       } else {
         nestedCountersInstance.countEvent('liberdus-staking', `node-refuted: event skipped`)
         /* prettier-ignore */ if (logFlags.dapp_verbose) console.log(`node-refuted event skipped`, data, nodeRefutedCycle)
@@ -1939,6 +1936,7 @@ dapp.registerExceptionHandler()
     if (nextMaintenanceWait <= 0) nextMaintenanceWait = cycleInterval
     let nextMaintenanceCycleStart = nextMaintenanceWait - driftFromCycleStart
     dapp.log(`Maintenance cycle has ended. Next maintenance in ${nextMaintenanceCycleStart} ms`)
+    ApplyPenalty.clearOldPenaltyTxs(dapp)
     return setTimeout(networkMaintenance, nextMaintenanceCycleStart)
   }
 

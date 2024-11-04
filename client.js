@@ -15,9 +15,10 @@ crypto.setCustomStringifier(Utils.safeStringify, 'shardus_safeStringify')
 
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
 let USER
-let HOST = process.argv[2] || 'localhost:9002'
+let HOST = process.argv[2] || 'localhost:9001'
 const HOST_IP = HOST.split(':')[0]
 const ARCHIVESERVER = process.argv[3] || 'localhost:4000'
+const MONITORSERVER = process.argv[4] || 'localhost:3000'
 console.log(`Using ${HOST} as node for queries and transactions.`)
 
 const network = '0'.repeat(64)
@@ -791,15 +792,15 @@ vorpal.command('deposit_stake', 'deposit the stake amount to the node').action(a
       type: 'number',
       name: 'amount',
       message: 'Enter number of tokens to stake: ',
-      default: 10,
-      filter: value => parseInt(value),
+      default: BigInt(10),
+      filter: value => BigInt(value),
     },
   ])
   const tx = {
     type: 'deposit_stake',
     nominator: USER.address,
     nominee: answers.nodeAddress,
-    stake: BigInt(answers.amount),
+    stake: answers.amount,
     timestamp: Date.now(),
   }
   crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
@@ -1569,5 +1570,103 @@ vorpal
     callback()
   })
 
+// Add a vorpal command for depositing stake to the joining nodes in the network.
+// First argument is the amount of tokens to stake.
+vorpal.command('deposit_stake-joining-nodes', 'deposit the stake amount to the joining nodes in the network').action(async function (args, callback) {
+
+  const answers = await this.prompt([
+    {
+      type: 'number',
+      name: 'amount',
+      message: 'Enter number of tokens to stake: ',
+      default: BigInt(10),
+      filter: value => BigInt(value),
+    },
+  ])
+  // Get the joining nodes from the monitor
+  const joiningNodes = await getJoiningNodes()
+  if (joiningNodes.length === 0) {
+    this.log('No joining nodes')
+    callback()
+    return
+  }
+
+  // Filter out the unstaked joining nodes by checking the stakeAmount
+  for (const publicKey of joiningNodes) {
+    const nodeAccount = await getAccountData(publicKey)
+    console.log('publicKey', nodeAccount)
+    if (nodeAccount && nodeAccount.account !== null && nodeAccount.stakeLock !== BigInt(0)) {
+      joiningNodes.splice(joiningNodes.indexOf(publicKey), 1)
+    }
+  }
+
+
+
+  // Load the staked nodeLists from the json file ( by a function in this file )
+  const stakedNodeLists = await loadStakedNodeLists()
+  // Check if there are any joining nodes that are not staked list
+  const unstakedJoiningNodes = joiningNodes.filter(node => !Object.keys(stakedNodeLists).includes(node))
+  if (unstakedJoiningNodes.length === 0) {
+    this.log('All joining nodes are staked')
+    callback()
+    return
+  }
+
+  const accounts = createAccounts(unstakedJoiningNodes.length)
+  // send create tx to create fund accounts for staking
+  for (let i = 0; i < accounts.length; i++) {
+    const createTx = {
+      type: 'create',
+      from: '0'.repeat(64),
+      to: accounts[i].address,
+      amount: BigInt(50), // extra 50 tokens
+      timestamp: Date.now(),
+    }
+    crypto.signObj(createTx, accounts[i].keys.secretKey, accounts[i].keys.publicKey)
+    let res = await injectTx(createTx)
+    this.log(res)
+  }
+
+  await _sleep(5 * ONE_SECOND)
+
+  // send deposit_stake to each unstaked joining node using the fund accounts
+  for (let i = 0; i < unstakedJoiningNodes.length; i++) {
+    stakedNodeLists[unstakedJoiningNodes[i]] = accounts[i].keys
+    const depositStateTx = {
+      type: 'deposit_stake',
+      nominator: accounts[i].address,
+      nominee: unstakedJoiningNodes[i],
+      stake: answers.amount,
+      timestamp: Date.now(),
+    }
+    crypto.signObj(depositStateTx, accounts[i].keys.secretKey, accounts[i].keys.publicKey)
+    const res = await injectTx(depositStateTx)
+    this.log(res)
+  }
+
+  // Save the staked nodeLists to the json file
+  fs.writeFile('./stakedNodeLists.json', JSON.stringify(stakedNodeLists), 'utf8', (err) => {
+    if (err) {
+      console.error(err)
+      return
+    }
+    console.log('stakedNodeLists saved')
+    callback()
+  })
+})
+
+const getJoiningNodes = async () => {
+  const res = await axios.get(`http://${MONITORSERVER}/api/report`)
+  if (!res.data.nodes) return []
+  const joining = Object.keys(res.data.nodes.joining);
+  console.log("Joining nodes: ", joining);
+  return joining
+}
+
+const loadStakedNodeLists = async () => {
+  const data = await fs.promises.readFile('./stakedNodeLists.json', 'utf8');
+  console.log('stakedNodeLists', data);
+  return JSON.parse(data);
+}
 vorpal.delimiter('>').show()
 vorpal.exec('init').then(res => (USER = res))
