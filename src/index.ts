@@ -752,14 +752,15 @@ dapp.registerExceptionHandler()
   let luckyNodes: string[]
   let expected = Date.now() + cycleInterval
   let drift: number
+  let lastMaintainedCycle: number
 
   await dapp.start()
 
   // THIS CODE IS CALLED ON EVERY NODE ON EVERY CYCLE
   async function networkMaintenance(): Promise<NodeJS.Timeout> {
     dapp.log('New maintenance cycle has started')
-    drift = Date.now() - expected
     currentTime = Date.now()
+    drift = currentTime - expected
 
     try {
       const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
@@ -769,14 +770,20 @@ dapp.registerExceptionHandler()
       nodeId = dapp.getNodeId()
       node = dapp.getNode(nodeId)
       nodeAddress = node.address
+      if (cycleData.counter <= lastMaintainedCycle) {
+        dapp.log(`Cycle ${cycleData.counter} has already been maintained. Waiting for next maintenance cycle`)
+        return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(cycleData))
+      }
     } catch (err) {
       dapp.log('ERR: ', err)
       console.log('ERR: ', err)
       return setTimeout(networkMaintenance, 100)
     }
+    lastMaintainedCycle = cycleData.counter
 
-    const driftFromCycleStart = (currentTime - cycleData.start * 1000) % cycleInterval
+    const driftFromCycleStart = (currentTime - cycleData.start * 1000)
     dapp.log('driftFromCycleStart: ', driftFromCycleStart, currentTime, cycleData.start * 1000)
+    dapp.log('lastMaintainedCycle: ', lastMaintainedCycle)
     dapp.log('payAddress: ', process.env.PAY_ADDRESS)
     dapp.log('cycleData: ', cycleData)
     dapp.log('luckyNode: ', luckyNodes)
@@ -802,12 +809,14 @@ dapp.registerExceptionHandler()
         nestedCountersInstance.countEvent('liberdus', 'start_network_windows')
       }
 
-      expected += cycleInterval
-      let nextMaintenanceWait = Math.max(0, cycleInterval - drift)
-      if (nextMaintenanceWait <= 0) nextMaintenanceWait = cycleInterval
-      let nextMaintenanceCycleStart = nextMaintenanceWait - driftFromCycleStart
-      dapp.log(`Maintenance cycle has ended. Next maintenance in ${nextMaintenanceCycleStart} ms`)
-      return setTimeout(networkMaintenance, nextMaintenanceCycleStart)
+      // expected += cycleInterval
+      // let nextMaintenanceWait = Math.max(0, cycleInterval - drift)
+      // if (nextMaintenanceWait <= 0) nextMaintenanceWait = cycleInterval
+      // let nextMaintenanceCycleStart = nextMaintenanceWait - driftFromCycleStart
+      // dapp.log(`Maintenance cycle has ended. Next maintenance in ${nextMaintenanceCycleStart} ms`)
+      // return setTimeout(networkMaintenance, nextMaintenanceCycleStart)
+
+      return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(cycleData))
     }
 
     // reset the DAO windows if it has been too long
@@ -818,12 +827,14 @@ dapp.registerExceptionHandler()
         nestedCountersInstance.countEvent('liberdus', 'reset_network_windows')
       }
 
-      expected += cycleInterval
-      let nextMaintenanceWait = Math.max(0, cycleInterval - drift)
-      if (nextMaintenanceWait <= 0) nextMaintenanceWait = cycleInterval
-      let nextMaintenanceCycleStart = nextMaintenanceWait - driftFromCycleStart
-      dapp.log(`Maintenance cycle has ended. Next maintenance in ${nextMaintenanceCycleStart} ms`)
-      return setTimeout(networkMaintenance, nextMaintenanceCycleStart)
+      // expected += cycleInterval
+      // let nextMaintenanceWait = Math.max(0, cycleInterval - drift)
+      // if (nextMaintenanceWait <= 0) nextMaintenanceWait = cycleInterval
+      // let nextMaintenanceCycleStart = nextMaintenanceWait - driftFromCycleStart
+      // dapp.log(`Maintenance cycle has ended. Next maintenance in ${nextMaintenanceCycleStart} ms`)
+      // return setTimeout(networkMaintenance, nextMaintenanceCycleStart)
+
+      return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(cycleData))
     }
 
     const isInProposalWindow = currentTime >= network.windows.proposalWindow[0] && currentTime <= network.windows.proposalWindow[1]
@@ -839,13 +850,16 @@ dapp.registerExceptionHandler()
     dapp.log(`Cycle: ${cycleData.counter}, isInProposalWindow: ${isInProposalWindow}, isInDevProposalWindow: ${isInDevProposalWindow}, isInGraceWindow: ${isInGraceWindow}, isInDevGraceWindow: ${isInDevGraceWindow}, isInApplyWindow: ${isInApplyWindow}, isProcessingMode: ${isProcessingMode}`)
 
     if (isProcessingMode === false || luckyNodes.includes(nodeId) === false) {
-      expected += cycleInterval
-      let nextMaintenanceWait = Math.max(0, cycleInterval - drift)
-      if (nextMaintenanceWait <= 0) nextMaintenanceWait = cycleInterval
-      let nextMaintenanceCycleStart = nextMaintenanceWait - driftFromCycleStart
-      dapp.log(`Maintenance cycle has ended. We are not lucky nodes. Next maintenance in ${nextMaintenanceCycleStart} ms`)
-      return setTimeout(networkMaintenance, nextMaintenanceCycleStart)
+      // expected += cycleInterval
+      // let nextMaintenanceWait = Math.max(0, cycleInterval - drift)
+      // if (nextMaintenanceWait <= 0) nextMaintenanceWait = cycleInterval
+      // let nextMaintenanceCycleStart = nextMaintenanceWait - driftFromCycleStart
+      // dapp.log(`Maintenance cycle has ended. We are not lucky nodes. Next maintenance in ${nextMaintenanceCycleStart} ms`)
+      // return setTimeout(networkMaintenance, nextMaintenanceCycleStart)
+      dapp.log(`We are not lucky node for cycle ${cycleData.counter}. We are waiting for next maintenance cycle`)
+      return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(cycleData))
     }
+    dapp.log(`We are lucky node for cycle ${cycleData.counter}`)
 
     // from this point, we are lucky node and in processing mode
     const issueAccountId =  utils.calculateIssueId(network.issue)
@@ -955,12 +969,26 @@ dapp.registerExceptionHandler()
     dapp.log('devTallyGenerated: ', devTallyGenerated)
     dapp.log('devApplyGenerated: ', devApplyGenerated)
 
-    expected += cycleInterval
-    let nextMaintenanceWait = Math.max(0, cycleInterval - drift)
-    if (nextMaintenanceWait <= 0) nextMaintenanceWait = cycleInterval
-    let nextMaintenanceCycleStart = nextMaintenanceWait - driftFromCycleStart
-    dapp.log(`Maintenance cycle has ended. Next maintenance in ${nextMaintenanceCycleStart} ms`)
-    return setTimeout(networkMaintenance, nextMaintenanceCycleStart)
+    // expected += cycleInterval
+    // let nextMaintenanceWait = Math.max(0, cycleInterval - drift)
+    // if (nextMaintenanceWait <= 0) nextMaintenanceWait = cycleInterval
+    // let nextMaintenanceCycleStart = nextMaintenanceWait - driftFromCycleStart
+    // dapp.log(`Maintenance cycle has ended. Next maintenance in ${nextMaintenanceCycleStart} ms`)
+    // return setTimeout(networkMaintenance, nextMaintenanceCycleStart)
+    return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(cycleData))
+  }
+
+  function getNextMaintenanceCycleStart (currentCycle: ShardusTypes.Cycle): number {
+    const cycleInterval = configs.cycleDuration * configs.ONE_SECOND
+    const currentCycleStartMs = currentCycle.start * 1000
+    let nextCycleStartMs = currentCycleStartMs + cycleInterval
+    const now = Date.now()
+    if (nextCycleStartMs <= now) {
+      nextCycleStartMs += cycleInterval
+    }
+    const timeUntilNextCycle = nextCycleStartMs - now
+    dapp.log(`Scheduling next network maintenance in ${timeUntilNextCycle} ms. now: ${now}, nextCycleStartMs: ${nextCycleStartMs}`)
+    return timeUntilNextCycle
   }
 
   dapp.on(
@@ -969,20 +997,8 @@ dapp.registerExceptionHandler()
       if (dapp.p2p.isFirstSeed) {
         await utils._sleep(configs.ONE_SECOND * configs.cycleDuration * 2)
       }
-      const currentTime = Date.now()
-      let currentCycle: ShardusTypes.Cycle
-      ;[currentCycle] = dapp.getLatestCycles()
-      let currentCycleStartMs = currentCycle.start * 1000
-      let waitTime = 0
-      if (currentTime < currentCycleStartMs + cycleInterval) {
-        // wait till this cycle end
-        waitTime = currentCycleStartMs + cycleInterval - currentTime
-      } else {
-        // or wait till next cycle end
-        waitTime = currentCycleStartMs + 2*cycleInterval - currentTime
-      }
-      lastReward = Date.now()
-      return setTimeout(networkMaintenance, waitTime)
+      const [currentCycle] = dapp.getLatestCycles()
+      return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(currentCycle))
     },
   )
 })()
