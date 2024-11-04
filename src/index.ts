@@ -705,6 +705,7 @@ dapp.setup({
       TXTypes.query_certificate,
       TXTypes.init_network,
       TXTypes.claim_reward,
+      TXTypes.apply_penalty,
     ]
     if (internalTxTypes.includes(tx.type)) {
       return true
