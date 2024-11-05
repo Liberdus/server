@@ -23,17 +23,18 @@ export const ONE_DAY = 24 * ONE_HOUR
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
 export const cycleDuration = 60
 const reduceTimeFromTxTimestamp = cycleDuration * ONE_SECOND
+const halfCycleDuration = (cycleDuration * 1000) / 2
 
 // DEV SETTINGS
-export const TIME_FOR_PROPOSALS = (2 * cycleDuration * 1000) + ONE_SECOND * 30
-export const TIME_FOR_VOTING = (2 * cycleDuration * 1000) + ONE_SECOND * 30
-export const TIME_FOR_GRACE = (2 * cycleDuration * 1000) + ONE_SECOND * 30
-export const TIME_FOR_APPLY = (2 * cycleDuration * 1000) + ONE_SECOND * 30
+export const TIME_FOR_PROPOSALS = (2 * cycleDuration * 1000) + halfCycleDuration
+export const TIME_FOR_VOTING = (2 * cycleDuration * 1000) + halfCycleDuration
+export const TIME_FOR_GRACE = (2 * cycleDuration * 1000) + halfCycleDuration
+export const TIME_FOR_APPLY = (2 * cycleDuration * 1000) + halfCycleDuration
 
-export const TIME_FOR_DEV_PROPOSALS = (2 * cycleDuration * 1000) + ONE_SECOND * 30
-export const TIME_FOR_DEV_VOTING = (2 * cycleDuration * 1000) + ONE_SECOND * 30
-export const TIME_FOR_DEV_GRACE = (2 * cycleDuration * 1000) + ONE_SECOND * 30
-export const TIME_FOR_DEV_APPLY = (2 * cycleDuration * 1000) + ONE_SECOND * 30
+export const TIME_FOR_DEV_PROPOSALS = (2 * cycleDuration * 1000) + halfCycleDuration
+export const TIME_FOR_DEV_VOTING = (2 * cycleDuration * 1000) + halfCycleDuration
+export const TIME_FOR_DEV_GRACE = (2 * cycleDuration * 1000) + halfCycleDuration
+export const TIME_FOR_DEV_APPLY = (2 * cycleDuration * 1000) + halfCycleDuration
 
 export const TOTAL_DAO_DURATION = TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE + TIME_FOR_APPLY
 
