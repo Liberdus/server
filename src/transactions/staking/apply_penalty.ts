@@ -15,6 +15,7 @@ import {
 import * as AccountsStorage from '../../storage/accountStorage'
 import { _sleep, generateTxId, scaleByStabilityFactor } from '../../utils'
 import * as crypto from '@shardus/crypto-utils'
+import { TXTypes } from '..'
 
 const penaltyTxsMap: Map<string, Tx.PenaltyTX> = new Map()
 
@@ -32,13 +33,13 @@ export async function injectPenaltyTX(
   else if (eventData.type === 'node-refuted') violationType = ViolationType.NodeRefuted
   else if (eventData.type === 'node-sync-timeout') violationType = ViolationType.SyncingTooLong
   const unsignedTx = {
-    type: 'penalty',
+    type: TXTypes.apply_penalty,
     reportedNodeId: eventData.nodeId,
     reportedNodePublickKey: eventData.publicKey,
     timestamp: dapp.shardusGetTime(),
     violationType,
     violationData,
-  }
+  } as Tx.PenaltyTX
 
   const wrapeedNodeAccount: ShardusTypes.WrappedDataFromQueue = await dapp.getLocalOrRemoteAccount(unsignedTx.reportedNodePublickKey)
   if (!wrapeedNodeAccount || !wrapeedNodeAccount.data) {
@@ -51,13 +52,14 @@ export async function injectPenaltyTX(
   const nodeAccount = wrapeedNodeAccount.data as NodeAccount
   // [TODO] Check if nodeAccount is a valid node account
 
-  if (nodeAccount.nominator === '') {
+  if (nodeAccount.nominator === '' || nodeAccount.nominator == null) {
     return {
       success: false,
       reason: 'Nominator is not set in the node account',
       status: 404,
     }
   }
+  unsignedTx.nominator = nodeAccount.nominator
 
   // to make sure that differnt nodes all submit an equivalent unsignedTx that is counted as the same unsignedTx,
   // we need to make sure that we have a determinstic timestamp
