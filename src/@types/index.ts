@@ -343,7 +343,7 @@ export interface NodeAccount {
   nodeRewardTime: number // TODO: remove
   hash: string
   timestamp: number
-  nominator: string | null
+  nominator: string
   stakeLock: bigint //amount of coins in
   stakeTimestamp: number
   reward: bigint

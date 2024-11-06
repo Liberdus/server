@@ -28,6 +28,11 @@ export async function injectClaimRewardTx(
     }
   }
   const nodeAccount = wrappedData.data as NodeAccount
+  if (nodeAccount.nominator === '' || nodeAccount.nominator == null) {
+    if (LiberdusFlags.VerboseLogs) console.log(`injectClaimRewardTx failed cant find nomimator : ${eventData.publicKey}`, nodeAccount)
+    nestedCountersInstance.countEvent('liberdus-staking', `injectClaimRewardTx failed cant find nomimator`)
+    return { success: false, reason: 'cant find nomimator', status: 500 }
+  }
   // check if the rewardStartTime is negative
   if (nodeAccount.rewardStartTime < 0) {
     if (LiberdusFlags.VerboseLogs) console.log(`injectClaimRewardTx failed rewardStartTime < 0`)
@@ -86,6 +91,13 @@ export const validate_fields = (tx: Tx.ClaimRewardTX, response: ShardusTypes.Inc
     if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail tx.deactivatedNodeId address invalid', tx)
     response.success = false
     response.reason = 'Invalid deactivatedNodeId'
+    throw new Error(response.reason)
+  }
+  if (!tx.nominator || tx.nominator === '' || tx.nominator.length !== 64) {
+    nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail tx.nominator address invalid`)
+    if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail tx.nominator address invalid', tx)
+    response.success = false
+    response.reason = 'Invalid nominator address'
     throw new Error(response.reason)
   }
   if (tx.nodeDeactivatedTime <= 0) {

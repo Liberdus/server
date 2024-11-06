@@ -29,7 +29,7 @@ export async function injectInitRewardTx(shardus: Shardus, eventData: ShardusTyp
   }
   const nodeAccount = wrappedData.data as NodeAccount
   // check if the nodeAccount has nomimator data
-  if (nodeAccount.nominator == null) {
+  if (nodeAccount.nominator == null || nodeAccount.nominator === '') {
     if (LiberdusFlags.VerboseLogs) console.log(`injectInitRewardTx failed cant find nomimator : ${eventData.publicKey}`, nodeAccount)
     nestedCountersInstance.countEvent('liberdus-staking', `injectInitRewardTx failed cant find nomimator`)
     return

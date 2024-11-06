@@ -9,7 +9,7 @@ export const nodeAccount = (accountId: string) => {
     nodeRewardTime: 0,
     hash: '',
     timestamp: 0,
-    nominator: null,
+    nominator: '',
     stakeLock: BigInt(0),
     stakeTimestamp: 0,
     rewarded: false,
