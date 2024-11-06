@@ -55,7 +55,7 @@ export const validate = (tx: Tx.WithdrawStake, wrappedStates: WrappedStates, res
     response.reason = 'nominator account has already staked to a different node'
     return response
   }
-  if (nodeAccount.nominator === null) {
+  if (nodeAccount.nominator == null || nodeAccount.nominator === '') {
     response.reason = 'No one has staked to this node yet'
     return response
   }
@@ -118,7 +118,7 @@ export const apply = (tx: Tx.WithdrawStake, txTimestamp: number, txId: string, w
   nominatorAccount.operatorAccountInfo.operatorStats.unstakeCount += 1
   nominatorAccount.operatorAccountInfo.operatorStats.lastStakedNodeKey = tx.nominee
 
-  nodeAccount.nominator = null
+  nodeAccount.nominator = ''
   nodeAccount.stakeLock = BigInt(0)
   nodeAccount.penalty = BigInt(0)
   nodeAccount.reward = BigInt(0)
