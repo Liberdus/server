@@ -28,22 +28,22 @@ export const validate_fields = (tx: Tx.ApplyParameters, response: ShardusTypes.I
   }
   if (typeof tx.current.nodeRewardAmountUsd !== 'bigint') {
     response.success = false
-    response.reason = 'tx "current parameter nodeRewardAmount" field must be a number.'
+    response.reason = 'tx "current parameter nodeRewardAmount" field must be a bigint.'
     throw new Error(response.reason)
   }
-  if (typeof tx.current.nodePenaltyUsd !== 'number') {
+  if (typeof tx.current.nodePenaltyUsd !== 'bigint') {
     response.success = false
-    response.reason = 'tx "current parameter nodePenalty" field must be a number.'
+    response.reason = 'tx "current parameter nodePenalty" field must be a bigint.'
     throw new Error(response.reason)
   }
   if (typeof tx.current.transactionFee !== 'bigint') {
     response.success = false
-    response.reason = 'tx "current parameter transactionFee" field must be a number.'
+    response.reason = 'tx "current parameter transactionFee" field must be a bigint.'
     throw new Error(response.reason)
   }
   if (typeof tx.current.stakeRequiredUsd !== 'bigint') {
     response.success = false
-    response.reason = 'tx "current parameter stakeRequired" field must be a number.'
+    response.reason = 'tx "current parameter stakeRequired" field must be a bigint.'
     throw new Error(response.reason)
   }
   if (typeof tx.current.maintenanceInterval !== 'number') {
@@ -51,24 +51,24 @@ export const validate_fields = (tx: Tx.ApplyParameters, response: ShardusTypes.I
     response.reason = 'tx "current parameter maintenanceInterval" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.current.maintenanceFee !== 'number') {
+  if (typeof tx.current.maintenanceFee !== 'bigint') {
     response.success = false
-    response.reason = 'tx "current parameter maintenanceFee" field must be a number.'
+    response.reason = 'tx "current parameter maintenanceFee" field must be a bigint.'
     throw new Error(response.reason)
   }
-  if (typeof tx.current.proposalFee !== 'number') {
+  if (typeof tx.current.proposalFee !== 'bigint') {
     response.success = false
-    response.reason = 'tx "current parameter proposalFee" field must be a number.'
+    response.reason = 'tx "current parameter proposalFee" field must be a bigint.'
     throw new Error(response.reason)
   }
-  if (typeof tx.current.devProposalFee !== 'number') {
+  if (typeof tx.current.devProposalFee !== 'bigint') {
     response.success = false
-    response.reason = 'tx "current parameter devProposalFee" field must be a number.'
+    response.reason = 'tx "current parameter devProposalFee" field must be a bigint.'
     throw new Error(response.reason)
   }
-  if (typeof tx.current.faucetAmount !== 'number') {
+  if (typeof tx.current.faucetAmount !== 'bigint') {
     response.success = false
-    response.reason = 'tx "current parameter faucetAmount" field must be a number.'
+    response.reason = 'tx "current parameter faucetAmount" field must be a bigint.'
     throw new Error(response.reason)
   }
   if (typeof tx.current.transactionFee !== 'bigint') {

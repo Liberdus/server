@@ -18,9 +18,9 @@ export const validate_fields = (tx: Tx.DevProposal, response: ShardusTypes.Incom
     response.reason = 'tx "devProposal" field must be a string.'
     throw new Error(response.reason)
   }
-  if (typeof tx.totalAmount !== 'number') {
+  if (typeof tx.totalAmount !== 'bigint') {
     response.success = false
-    response.reason = 'tx "totalAmount" field must be a number.'
+    response.reason = 'tx "totalAmount" field must be a bigint.'
     throw new Error(response.reason)
   }
   if (tx.totalAmount < 1) {

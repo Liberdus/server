@@ -69,7 +69,7 @@ export const validate = (tx: Tx.DevVote, wrappedStates: WrappedStates, response:
     response.reason = 'devIssue no longer active'
     return response
   }
-  if (tx.amount <= 0) {
+  if (typeof tx.amount !== 'bigint' || tx.amount <= BigInt(0)) {
     response.reason = 'Must send tokens in order to vote'
     return response
   }
