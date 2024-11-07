@@ -16,9 +16,9 @@ export const validate_fields = (tx: Tx.Distribute, response: ShardusTypes.Incomi
     response.reason = 'tx "recipients" field must be an array.'
     throw new Error(response.reason)
   }
-  if (typeof tx.amount !== 'number' || tx.amount <= 0) {
+  if (typeof tx.amount !== 'bigint' || tx.amount <= BigInt(0)) {
     response.success = false
-    response.reason = 'tx "amount" field must be a positive number.'
+    response.reason = 'tx "amount" field must be a positive bigint.'
     throw new Error(response.reason)
   }
   return response

@@ -47,9 +47,9 @@ export const validate_fields = (tx: Tx.ApplyTally, response: ShardusTypes.Incomi
     response.reason = 'tx "next parameter transactionFee" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.next.stakeRequiredUsd !== 'number') {
+  if (typeof tx.next.stakeRequiredUsd !== 'bigint') {
     response.success = false
-    response.reason = 'tx "next parameter stakeRequired" field must be a number.'
+    response.reason = 'tx "next parameter stakeRequired" field must be a bigint.'
     throw new Error(response.reason)
   }
   if (typeof tx.next.maintenanceInterval !== 'number') {
@@ -57,29 +57,29 @@ export const validate_fields = (tx: Tx.ApplyTally, response: ShardusTypes.Incomi
     response.reason = 'tx "next parameter maintenanceInterval" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.next.maintenanceFee !== 'number') {
+  if (typeof tx.next.maintenanceFee !== 'bigint') {
     response.success = false
-    response.reason = 'tx "next parameter maintenanceFee" field must be a number.'
+    response.reason = 'tx "next parameter maintenanceFee" field must be a bigint.'
     throw new Error(response.reason)
   }
-  if (typeof tx.next.proposalFee !== 'number') {
+  if (typeof tx.next.proposalFee !== 'bigint') {
     response.success = false
-    response.reason = 'tx "next parameter proposalFee" field must be a number.'
+    response.reason = 'tx "next parameter proposalFee" field must be a bigint.'
     throw new Error(response.reason)
   }
-  if (typeof tx.next.devProposalFee !== 'number') {
+  if (typeof tx.next.devProposalFee !== 'bigint') {
     response.success = false
-    response.reason = 'tx "next parameter devProposalFee" field must be a number.'
+    response.reason = 'tx "next parameter devProposalFee" field must be a bigint.'
     throw new Error(response.reason)
   }
-  if (typeof tx.next.faucetAmount !== 'number') {
+  if (typeof tx.next.faucetAmount !== 'bigint') {
     response.success = false
-    response.reason = 'tx "next parameter faucetAmount" field must be a number.'
+    response.reason = 'tx "next parameter faucetAmount" field must be a bigint.'
     throw new Error(response.reason)
   }
   if (typeof tx.next.transactionFee !== 'bigint') {
     response.success = false
-    response.reason = 'tx "next parameter defaultToll" field must be a number.'
+    response.reason = 'tx "next parameter defaultToll" field must be a bigint.'
     throw new Error(response.reason)
   }
   return response
