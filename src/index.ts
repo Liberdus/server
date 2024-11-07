@@ -207,8 +207,9 @@ dapp.setup({
       timestamp: txnTimestamp,
     } as LiberdusTypes.TransactionKeys
     const keys = transactions[tx.type].keys(tx, result)
+    const txId = utils.generateTxId(tx)
     return {
-      id: crypto.hashObj(tx),
+      id: txId,
       timestamp: txnTimestamp,
       keys,
       shardusMemoryPatterns: {

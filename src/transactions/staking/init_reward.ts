@@ -97,22 +97,24 @@ export const validate_fields = (tx: Tx.InitRewardTX, response: ShardusTypes.Inco
 }
 
 export const validate = (tx: Tx.InitRewardTX, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
-  if (LiberdusFlags.VerboseLogs) console.log('Validating DepositStake fields', tx)
+  if (LiberdusFlags.VerboseLogs) console.log('Validating InitRewardTX', tx)
   const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
   // TODO: make sure this is a valid node account
 
   // check if nodeAccount.rewardStartTime is already set to tx.nodeActivatedTime
   if (nodeAccount.rewardStartTime >= tx.nodeActivatedTime) {
-    if (LiberdusFlags.VerboseLogs) console.log('validateDepositStake fail rewardStartTime already set', tx)
-    nestedCountersInstance.countEvent('liberdus-staking', `validateDepositStake fail rewardStartTime already set`)
+    if (LiberdusFlags.VerboseLogs) console.log('validateInitRewardTX fail rewardStartTime already set', tx)
+    nestedCountersInstance.countEvent('liberdus-staking', `validateInitRewardTX fail rewardStartTime already set`)
     response.reason = 'rewardStartTime is already set'
+    return response
   }
   if (nodeAccount.timestamp >= tx.timestamp) {
-    if (LiberdusFlags.VerboseLogs) console.log('validateDepositStake fail timestamp already set', tx)
-    nestedCountersInstance.countEvent('liberdus-staking', `validateDepositStake fail timestamp already set`)
+    if (LiberdusFlags.VerboseLogs) console.log('validateInitRewardTX fail timestamp already set', tx)
+    nestedCountersInstance.countEvent('liberdus-staking', `validateInitRewardTX fail timestamp already set`)
     response.reason = 'timestamp is already set'
+    return response
   }
-  if (LiberdusFlags.VerboseLogs) console.log('validateDepositStake success', tx)
+  if (LiberdusFlags.VerboseLogs) console.log('validateInitRewardTX success', tx)
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
