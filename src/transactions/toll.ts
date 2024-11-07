@@ -11,17 +11,17 @@ export const validate_fields = (tx: Tx.Toll, response: ShardusTypes.IncomingTran
     response.reason = 'tx "from" field must be a string.'
     throw new Error(response.reason)
   }
-  if (typeof tx.toll !== 'number') {
+  if (typeof tx.toll !== 'bigint') {
     response.success = false
-    response.reason = 'tx "toll" field must be a number.'
+    response.reason = 'tx "toll" field must be a bigint.'
     throw new Error(response.reason)
   }
-  if (tx.toll < 1) {
+  if (tx.toll < BigInt(1)) {
     response.success = false
     response.reason = 'Minimum "toll" allowed is 1 token'
     throw new Error(response.reason)
   }
-  if (tx.toll > 1000000) {
+  if (tx.toll > BigInt(1000000)) {
     response.success = false
     response.reason = 'Maximum toll allowed is 1,000,000 tokens.'
     throw new Error(response.reason)

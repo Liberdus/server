@@ -10,9 +10,9 @@ export const validate_fields = (tx: Tx.Stake, response: ShardusTypes.IncomingTra
     response.reason = 'tx "from" field must be a string.'
     throw new Error(response.reason)
   }
-  if (typeof tx.stake !== 'number') {
+  if (typeof tx.stake !== 'bigint') {
     response.success = false
-    response.reason = 'tx "stake" field must be a number.'
+    response.reason = 'tx "stake" field must be a bigint.'
     throw new Error(response.reason)
   }
   return response
