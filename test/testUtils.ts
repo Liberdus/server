@@ -1,6 +1,6 @@
 import execa from 'execa'
 import { resolve } from 'path'
-import * as crypto from '@shardus/crypto-utils'
+import * as crypto from '../crypto'
 import fs from 'fs'
 import axios from 'axios'
 import chalkPipe from 'chalk-pipe'

@@ -1,4 +1,4 @@
-import * as crypto from '@shardus/crypto-utils'
+import * as crypto from '../crypto'
 import {ProposalAccount, NetworkParameters} from '../@types'
 
 export const proposalAccount = (accountId: string, parameters?: NetworkParameters) => {

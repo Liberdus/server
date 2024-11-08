@@ -1,4 +1,4 @@
-import * as crypto from '@shardus/crypto-utils'
+import * as crypto from '../crypto'
 import axios from 'axios'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'

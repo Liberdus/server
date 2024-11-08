@@ -1,5 +1,5 @@
 import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardus/core'
-import * as crypto from '@shardus/crypto-utils'
+import * as crypto from '../../crypto'
 import { LiberdusFlags } from '../../config'
 import { Tx, NodeAccount, WrappedStates, TransactionKeys } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'

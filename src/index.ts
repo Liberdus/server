@@ -1,6 +1,6 @@
 import { shardusFactory, ShardusTypes, nestedCountersInstance, DevSecurityLevel } from '@shardus/core'
 import { P2P, Utils } from '@shardus/types'
-import * as crypto from '@shardus/crypto-utils'
+import * as crypto from './crypto'
 import * as configs from './config'
 import {TOTAL_DAO_DURATION} from './config'
 import * as utils from './utils'
