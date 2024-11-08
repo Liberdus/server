@@ -1,5 +1,5 @@
 import {UserAccount, NetworkAccount, IssueAccount, DevIssueAccount, DeveloperPayment, InjectTxResponse, ValidatorError} from '../@types'
-import * as crypto from '@shardus/crypto-utils'
+import * as crypto from '../crypto'
 import * as configs from '../config'
 import { Shardus,  ShardusTypes } from '@shardus/core'
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'

@@ -1,4 +1,4 @@
-import * as crypto from '@shardus/crypto-utils'
+import * as crypto from '../crypto'
 import * as config from '../config'
 import { NetworkAccount } from '../@types'
 

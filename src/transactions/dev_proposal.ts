@@ -1,4 +1,4 @@
-import * as crypto from '@shardus/crypto-utils'
+import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import Decimal from 'decimal.js'
 import * as utils from '../utils'

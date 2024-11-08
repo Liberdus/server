@@ -6,6 +6,7 @@ import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.ApplyParameters, response: ShardusTypes.IncomingTransactionResult) => {
+  console.log('apply_parameters validate_fields tx', tx)
   if (_.isEmpty(tx.current) || typeof tx.current !== 'object') {
     response.success = false
     response.reason = 'tx "current" field must not be a non empty object'

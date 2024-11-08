@@ -8,10 +8,13 @@ const vorpal = require('vorpal')()
 const crypto = require('@shardus/crypto-utils')
 const stringify = require('fast-stable-stringify')
 const axios = require('axios')
+const { ethers } = require('ethers')
 const { Utils } = require('@shardus/types')
 
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 crypto.setCustomStringifier(Utils.safeStringify, 'shardus_safeStringify')
+
+const useEthereumSigning = true
 
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
 let USER
@@ -121,10 +124,23 @@ function saveEntries(entries, file) {
   fs.writeFileSync(file, stringifiedEntries)
 }
 
-function createAccount(keys = crypto.generateKeypair()) {
-  return {
-    address: keys.publicKey,
-    keys,
+function createAccount (keys = null) {
+  if (useEthereumSigning) {
+    // Create Ethereum wallet if no keys provided
+    const wallet = keys ? new ethers.Wallet(keys.secretKey) : ethers.Wallet.createRandom()
+    return {
+      address: toShardusAddress(wallet.address),
+      keys: {
+        secretKey: wallet.privateKey,
+        publicKey: wallet.address
+      }
+    }
+  } else {
+    // Use existing Shardus crypto
+    return {
+      address: keys ? keys.publicKey : crypto.generateKeypair().publicKey,
+      keys: keys || crypto.generateKeypair()
+    }
   }
 }
 
@@ -148,33 +164,15 @@ function createEntry(name, id) {
 function makeTxGenerator(accounts, total = 0, type) {
   function* buildGenerator(txBuilder, accounts, total, type) {
     let account1, offset, account2
-    // let username
-    // let users = {}
     while (total > 0) {
-      // Keep looping through all available accounts as the srcAcct
       account1 = accounts[total % accounts.length]
-      // Pick some other random account as the tgtAcct
       offset = Math.floor(Math.random() * (accounts.length - 1)) + 1
       account2 = accounts[(total + offset) % accounts.length]
 
-      // if (!users[account1.address]) {
-      //   username = `user${account1.address.slice(0, 4)}`
-      //   yield txBuilder({
-      //     type: 'register',
-      //     from: account1,
-      //     handle: username,
-      //     id: crypto.hash(username)
-      //   })
-      //   total--
-      //   users[account1.address] = true
-      // }
-
-      // Return a create tx to add funds to the srcAcct
       yield txBuilder({ type: 'create', to: account1, amount: 1 })
       total--
       if (!(total > 0)) break
 
-      // Return a transfer tx to transfer funds from srcAcct to tgtAcct
       switch (type) {
         case 'create': {
           yield txBuilder({ type: 'create', to: account1, amount: 1 })
@@ -305,16 +303,93 @@ function buildTx({ type, from = {}, to, handle, id, amount, message, toll }) {
       console.log('Type must be `transfer`, `message`, or `toll`')
     }
   }
-  if (from.keys) {
-    crypto.signObj(actualTx, from.keys.secretKey, from.keys.publicKey)
-  } else {
-    crypto.signObj(actualTx, to.keys.secretKey, to.keys.publicKey)
-  }
+  signTransaction(actualTx)
   console.log(`actual tx`, actualTx)
   return actualTx
 }
 
 const logError = false
+
+function toShardusAddress (addressStr) {
+  //change this:0x665eab3be2472e83e3100b4233952a16eed20c76
+  //    to this:  665eab3be2472e83e3100b4233952a16eed20c76000000000000000000000000
+  return addressStr.slice(2).toLowerCase() + '0'.repeat(24)
+}
+
+function signTransaction (tx) {
+  if (useEthereumSigning) {
+    signEthereumTx(tx, USER.keys)
+  } else {
+    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  }
+}
+
+function signEthereumTx (tx, keys) {
+  if (!keys) {
+    throw new Error('Keys are required for signing')
+  }
+
+  // Create a copy of the tx without any existing sign field
+  const dataToSign = Object.assign({}, tx)
+  delete dataToSign.sign
+
+  // Convert the object to a string with BigInt support
+  const message = crypto.hashObj(dataToSign)
+
+  try {
+    // Create wallet from private key
+    const wallet = new ethers.Wallet(keys.secretKey)
+
+    // Sign the message
+    const signature = wallet.signMessageSync(message)
+
+    // Add signature to transaction
+    tx.sign = {
+      owner: toShardusAddress(wallet.address),
+      sig: signature
+    }
+  } catch (error) {
+    throw new Error(`Failed to sign transaction: ${error.message}`)
+  }
+}
+
+function verifyEthereumTx (obj) {
+  if (typeof obj !== 'object') {
+    throw new TypeError('Input must be an object.')
+  }
+  if (!obj.sign || !obj.sign.owner || !obj.sign.sig) {
+    throw new Error(
+      'Object must contain a sign field with the following data: { owner, sig }'
+    )
+  }
+  if (typeof obj.sign.owner !== 'string') {
+    throw new TypeError(
+      'Owner must be a public key represented as a hex string.'
+    )
+  }
+  if (typeof obj.sign.sig !== 'string') {
+    throw new TypeError(
+      'Signature must be a valid signature represented as a hex string.'
+    )
+  }
+  const { owner, sig } = obj.sign
+  const dataWithoutSign = Object.assign({}, obj)
+  delete dataWithoutSign.sign
+  const message = crypto.hashObj(dataWithoutSign)
+
+  const recoveredAddress = ethers.verifyMessage(message, sig)
+  const recoveredShardusAddress = toShardusAddress(recoveredAddress)
+  const isValid = recoveredShardusAddress.toLowerCase() === owner.toLowerCase()
+
+  console.log('Signed Obj', obj)
+  console.log('Signature verification result:')
+  console.log('Is Valid:', isValid)
+  console.log('message', message)
+  console.log('Owner Address:', obj.sign.owner)
+  console.log('Recovered Address:', recoveredAddress)
+  console.log('Recovered Shardus Address:', recoveredShardusAddress)
+  return isValid
+}
 
 async function sendTx(tx, node = null, verbose = true) {
   if (!tx.sign) {
@@ -581,7 +656,7 @@ vorpal.command('snapshot', 'submits the snapshot the ULT contract').action(funct
     snapshot,
     timestamp: Date.now(),
   }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  signTransaction(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
@@ -613,7 +688,7 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
       config: answers.config,
       timestamp: Date.now(),
     }
-    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+    signTransaction(tx)
     injectTx(tx).then(res => {
       this.log(res)
       callback()
@@ -627,7 +702,8 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
       config: JSON.stringify(testConfigFromFile),
       timestamp: Date.now(),
     }
-    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+    signTransaction(tx)
+
     injectTx(tx).then(res => {
       this.log(res)
       callback()
@@ -686,7 +762,7 @@ vorpal.command('verify', 'verifies your email address').action(async function (_
     code: answer.code,
     timestamp: Date.now(),
   }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  signTransaction(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
@@ -707,11 +783,16 @@ vorpal.command('register', 'registers a unique alias for your account').action(a
     alias: answer.alias,
     timestamp: Date.now(),
   }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  if (useEthereumSigning) {
+    signEthereumTx(tx, USER.keys)
+  } else {
+    signTransaction(tx)
+  }
   console.log(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
+    // verifyEthereumTx(tx)
   })
 })
 
@@ -775,7 +856,7 @@ vorpal.command('transfer', 'transfers tokens to another account').action(async f
     amount: BigInt(answers.amount),
     timestamp: Date.now(),
   }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  signTransaction(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
@@ -804,7 +885,7 @@ vorpal.command('deposit_stake', 'deposit the stake amount to the node').action(a
     stake: answers.amount,
     timestamp: Date.now(),
   }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  signTransaction(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
@@ -826,7 +907,7 @@ vorpal.command('withdraw_stake', 'withdraw the stake from the node').action(asyn
     force: false,
     timestamp: Date.now(),
   }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  signTransaction(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
@@ -856,7 +937,7 @@ vorpal.command('distribute', 'distributes tokens to multiple accounts').action(a
     amount: answers.amount,
     timestamp: Date.now(),
   }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  signTransaction(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
@@ -916,7 +997,7 @@ vorpal.command('message', 'sends a message to another user').action(async functi
         message: encryptedMsg,
         timestamp: Date.now(),
       }
-      crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+      signTransaction(tx)
       injectTx(tx).then(res => {
         this.log(res)
         callback()
@@ -941,7 +1022,7 @@ vorpal.command('toll', 'sets a toll people must you in order to send you message
     toll: answer.toll,
     timestamp: Date.now(),
   }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  signTransaction(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
@@ -967,7 +1048,7 @@ vorpal.command('add friend', 'adds a friend to your account').action(async funct
     to: to,
     timestamp: Date.now(),
   }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  signTransaction(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
@@ -992,7 +1073,7 @@ vorpal.command('remove friend', 'removes a friend from your account').action(asy
     to: to,
     timestamp: Date.now(),
   }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  signTransaction(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
@@ -1019,7 +1100,7 @@ vorpal.command('stake', 'stakes tokens in order to operate a node').action(async
       stake: parameters.current.stakeRequired,
       timestamp: Date.now(),
     }
-    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+    signTransaction(tx)
     injectTx(tx).then(res => {
       this.log(res)
       callback()
@@ -1038,7 +1119,7 @@ vorpal.command('claim', 'submits a claim transaction for the snapshot').action(f
     from: USER.address,
     timestamp: Date.now(),
   }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  signTransaction(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
@@ -1152,7 +1233,7 @@ vorpal.command('proposal', 'submits a proposal to change network parameters').ac
     parameters: answers,
     timestamp: Date.now(),
   }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  signTransaction(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
@@ -1244,7 +1325,7 @@ vorpal.command('dev proposal', 'submits a development proposal').action(async fu
     payAddress: answers.payAddress,
     timestamp: Date.now(),
   }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  signTransaction(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
@@ -1295,7 +1376,7 @@ vorpal.command('vote', 'vote for a proposal').action(async function (args, callb
     amount: answers.amount,
     timestamp: Date.now(),
   }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  signTransaction(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
@@ -1355,7 +1436,7 @@ vorpal.command('vote dev', 'vote for a development proposal').action(async funct
     approve: answers.approve,
     timestamp: Date.now(),
   }
-  crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+  signTransaction(tx)
   injectTx(tx).then(res => {
     this.log(res)
     callback()
@@ -1675,6 +1756,16 @@ const loadStakedNodeLists = async () => {
     console.log(`Created stakedNodeLists file '${stakedNodeListsFile}'.`)
     return {};
   }
+}
+// Custom JSON stringify replacer for BigInt
+const jsonStringifyReplacer = (key, value) => {
+  if (typeof value === 'bigint') {
+    return {
+      type: 'BigInt',
+      value: value.toString()
+    }
+  }
+  return value
 }
 vorpal.delimiter('>').show()
 vorpal.exec('init').then(res => (USER = res))

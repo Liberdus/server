@@ -208,7 +208,8 @@ interface LiberdusFlags {
   certCycleDuration: number
   lowStakePercent: number
   allowForceUnstake: boolean
-  numberOfNodesToInjectPenaltyTx: number
+  numberOfNodesToInjectPenaltyTx: number,
+  useEthereumAddress: boolean
 }
 
 export const LiberdusFlags: LiberdusFlags = {
@@ -225,7 +226,8 @@ export const LiberdusFlags: LiberdusFlags = {
   certCycleDuration: 30,
   lowStakePercent: 0.2,
   allowForceUnstake: true,
-  numberOfNodesToInjectPenaltyTx: 5,  
+  numberOfNodesToInjectPenaltyTx: 5,
+  useEthereumAddress: true
 }
 
 const overwriteMerge = (target: any[], source: any[]): any[] => source // eslint-disable-line @typescript-eslint/no-explicit-any

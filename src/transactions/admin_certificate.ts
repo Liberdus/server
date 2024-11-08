@@ -1,6 +1,6 @@
 import { Shardus, ShardusTypes, nestedCountersInstance } from '@shardus/core'
 import { LiberdusFlags } from '../config'
-import * as crypto from '@shardus/crypto-utils'
+import * as crypto from '../crypto'
 import { Request } from 'express'
 import { DevSecurityLevel } from '@shardus/core'
 import { ValidatorError } from '../@types'

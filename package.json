@@ -40,6 +40,7 @@
     "dot-prop": "^5.1.1",
     "dotenv": "^8.2.0",
     "esm": "^3.2.25",
+    "ethers": "^6.13.4",
     "fast-stable-stringify": "^1.0.0",
     "inquirer": "^7.0.0",
     "moment": "^2.24.0",
