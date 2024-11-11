@@ -29,7 +29,7 @@ function validatePutAdminCertRequest(req: PutAdminCertRequest, shardus: Shardus)
     return { success: false, reason: 'Invalid nominee address' }
   }
   try {
-    if (!crypto.verifyObj(req)) return { success: false, reason: 'Invalid signature for AdminCert' }
+    if (!crypto.verifyObj(req, true)) return { success: false, reason: 'Invalid signature for AdminCert' }
   } catch (e) {
     return { success: false, reason: 'Invalid signature for QueryCert tx' }
   }

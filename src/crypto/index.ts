@@ -13,8 +13,8 @@ export const hash = ShardusCrypto.hash
 export const init = ShardusCrypto.init
 export const setCustomStringifier = ShardusCrypto.setCustomStringifier
 
-export function verifyObj(obj: SignedObj): boolean {
-  if (LiberdusFlags.useEthereumAddress) {
+export function verifyObj(obj: SignedObj, signedByValidator = false): boolean {
+  if (LiberdusFlags.useEthereumAddress && !signedByValidator) {
     if (typeof obj !== 'object') {
       throw new TypeError('Input must be an object.');
     }

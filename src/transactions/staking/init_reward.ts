@@ -84,7 +84,7 @@ export const validate_fields = (tx: Tx.InitRewardTX, response: ShardusTypes.Inco
     response.reason = 'nodeActivatedTime field is not correct in setRewardTimes Tx'
     throw new Error(response.reason)
   }
-  const isValid = crypto.verifyObj(tx)
+  const isValid = crypto.verifyObj(tx, true)
   if (!isValid) {
     if (LiberdusFlags.VerboseLogs) console.log('validateFields InitRewardTX fail invalid signature', tx)
     nestedCountersInstance.countEvent('liberdus-staking', `validateFields InitRewardTX fail invalid signature`)

@@ -9,7 +9,7 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
     const tx = txEntry.txData
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Validating nodeReward fields', Utils.safeStringify(tx))
     try {
-      if (!crypto.verifyObj(tx)) {
+      if (!crypto.verifyObj(tx, true)) {
         /* prettier-ignore */
         if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerifier - nodeReward: fail Invalid signature', Utils.safeStringify(tx))
         return false
@@ -80,7 +80,7 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
     const tx = txEntry.txData
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Validating nodeInitReward', Utils.safeStringify(tx))
 
-    const isValid = crypto.verifyObj(tx)
+    const isValid = crypto.verifyObj(tx, true)
     if (!isValid) {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validate nodeInitReward fail Invalid signature', Utils.safeStringify(tx))
       /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validate nodeInitReward fail Invalid signature`)

@@ -37,9 +37,9 @@ export const validate_fields = (tx: Tx.ApplyTally, response: ShardusTypes.Incomi
     response.reason = 'tx "next parameter nodeRewardAmount" field must be a number.'
     throw new Error(response.reason)
   }
-  if (typeof tx.next.nodePenaltyUsd !== 'number') {
+  if (typeof tx.next.nodePenaltyUsd !== 'bigint') {
     response.success = false
-    response.reason = 'tx "next parameter nodePenalty" field must be a number.'
+    response.reason = 'tx "next parameter nodePenalty" field must be a bigint.'
     throw new Error(response.reason)
   }
   if (typeof tx.next.transactionFee !== 'bigint') {
