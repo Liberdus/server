@@ -126,7 +126,7 @@ export const validate_fields = (tx: Tx.ClaimRewardTX, response: ShardusTypes.Inc
     response.reason = 'tx is not signed'
     throw new Error(response.reason)
   }
-  const isValid = crypto.verifyObj(tx)
+  const isValid = crypto.verifyObj(tx, true)
   if (!isValid) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail invalid signature`)
     if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail invalid signature', tx)

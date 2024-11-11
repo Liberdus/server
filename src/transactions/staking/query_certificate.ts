@@ -76,7 +76,7 @@ export const validate_fields = (tx: QueryCertRequest) => {
     if (LiberdusFlags.VerboseLogs) console.log('validate_fields fail not signed by nominee account', tx)
     return response
   }
-  if (!crypto.verifyObj(tx)) {
+  if (!crypto.verifyObj(tx, true)) {
     response.reason = 'Invalid signature for QueryCert tx'
     nestedCountersInstance.countEvent('liberdus-staking', `validate_fields fail Invalid signature for QueryCert tx`)
     if (LiberdusFlags.VerboseLogs) console.log('validate_fields fail Invalid signature for QueryCert tx', tx)

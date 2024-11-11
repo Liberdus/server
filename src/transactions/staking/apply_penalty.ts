@@ -163,7 +163,7 @@ export const validate_fields = (tx: Tx.PenaltyTX, response: ShardusTypes.Incomin
   if (preRecordedfPenaltyTX == null) {
     return { isValid: false, reason: 'Penalty TX not found in penaltyTxsMap of exe node' }
   }
-  const isValid = crypto.verifyObj(tx)
+  const isValid = crypto.verifyObj(tx, true)
   if (!isValid) {
     nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail tx.signature invalid`)
     if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail tx.signature invalid`, tx)
