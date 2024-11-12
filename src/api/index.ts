@@ -6,8 +6,9 @@ import accounts from './accounts'
 import messages from './messages'
 import debug from './debug'
 import { queryCertificateEndpoint } from './staking/query-certificate'
-
-export default (dapp: any) => {
+import { debug_liberdus_flags, set_liberdus_flag } from './liberdus_flags'
+import { Shardus } from '@shardus/core'
+export default (dapp: Shardus) => {
   dapp.registerExternalPost('inject', inject(dapp))
 
   dapp.registerExternalGet('network/parameters', network.current(dapp))
@@ -47,4 +48,8 @@ export default (dapp: any) => {
   dapp.registerExternalPost('debug/exit', debug.exit)
 
   dapp.registerExternalPut('query-certificate', queryCertificateEndpoint(dapp))
+
+  // Liberdus Flags
+  dapp.registerExternalGet('debug-liberdus-flags', debug_liberdus_flags(dapp))
+  dapp.registerExternalGet('debug-set-liberdus-flag', set_liberdus_flag(dapp))
 }

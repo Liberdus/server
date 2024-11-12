@@ -3,7 +3,7 @@ import _ from 'lodash'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import * as config from '../config'
-import {NetworkAccount, NodeAccount, WrappedStates, Tx, TransactionKeys } from '../@types'
+import {NetworkAccount, NodeAccount, WrappedStates, Tx, TransactionKeys, UserAccount } from '../@types'
 
 export const validate_fields = (tx: Tx.ApplyChangeConfig, response: ShardusTypes.IncomingTransactionResult) => {
   return response
@@ -28,10 +28,9 @@ export const keys = (tx: Tx.ApplyChangeConfig, result: TransactionKeys) => {
   return result
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: NodeAccount, accountId: string, tx: Tx.ApplyChangeConfig, accountCreated = false) => {
+export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.ApplyChangeConfig, accountCreated = false) => {
   if (!account) {
-    account = create.nodeAccount(accountId)
-    accountCreated = true
+    throw Error('Account must exist in order to perform a apply_change_config transaction')
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }
