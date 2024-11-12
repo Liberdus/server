@@ -124,7 +124,7 @@ function saveEntries(entries, file) {
   fs.writeFileSync(file, stringifiedEntries)
 }
 
-function createAccount (keys = null) {
+function createAccount(keys = null) {
   if (useEthereumSigning) {
     // Create Ethereum wallet if no keys provided
     const wallet = keys ? new ethers.Wallet(keys.secretKey) : ethers.Wallet.createRandom()
@@ -137,9 +137,10 @@ function createAccount (keys = null) {
     }
   } else {
     // Use existing Shardus crypto
+    const newAccount = crypto.generateKeypair()
     return {
-      address: keys ? keys.publicKey : crypto.generateKeypair().publicKey,
-      keys: keys || crypto.generateKeypair()
+      address: keys ? keys.publicKey : newAccount.publicKey,
+      keys: keys || newAccount
     }
   }
 }
@@ -708,6 +709,42 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
       this.log(res)
       callback()
     })
+  }
+})
+
+vorpal.command('change network parameters', 'Send a stringified JSON config object to update the network parameters').action(async function (args, callback) {
+  const answers = await this.prompt([
+    {
+      type: 'number',
+      name: 'cycle',
+      message: 'Enter the cycle on which the change should take place (or "-1" for 3 cycles from now): ',
+      default: -1,
+      filter: value => parseInt(value),
+    },
+    {
+      type: 'input',
+      name: 'config',
+      message: 'Enter the stringified JSON config object: ',
+      default: '{ "latestVersion": "2.3.2" }',
+    },
+  ])
+  try {
+    this.log(JSON.parse(answers.config))
+    const tx = {
+      type: 'change_network_param',
+      from: USER.address,
+      cycle: answers.cycle,
+      config: answers.config,
+      timestamp: Date.now(),
+    }
+    signTransaction(tx)
+    injectTx(tx).then(res => {
+      this.log(res)
+      callback()
+    })
+  } catch (err) {
+    this.log('change network parameters failed', err.message)
+    callback()
   }
 })
 

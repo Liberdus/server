@@ -132,6 +132,16 @@ export namespace Tx {
     change: any
   }
 
+  export interface ChangeNetworkParam extends BaseLiberdusTx {
+    from: string
+    cycle: number
+    config: string
+  }
+
+  export interface ApplyChangeNetworkParam extends BaseLiberdusTx {
+    change: any
+  }
+
   export interface DevParameters extends BaseLiberdusTx {
     nodeId: string
     from: string

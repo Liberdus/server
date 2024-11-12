@@ -5,7 +5,7 @@ import merge from 'deepmerge'
 import minimist from 'minimist'
 import { NetworkParameters } from '../@types'
 import { Utils } from '@shardus/types'
-import { DevSecurityLevel } from '@shardus/core'
+import { DevSecurityLevel, ShardusTypes } from '@shardus/core'
 
 export const networkAccount = '0'.repeat(64)
 
@@ -208,7 +208,7 @@ interface LiberdusFlags {
   certCycleDuration: number
   lowStakePercent: number
   allowForceUnstake: boolean
-  numberOfNodesToInjectPenaltyTx: number,
+  numberOfNodesToInjectPenaltyTx: number
   useEthereumAddress: boolean
 }
 
@@ -230,37 +230,34 @@ export const LiberdusFlags: LiberdusFlags = {
   useEthereumAddress: true
 }
 
-const overwriteMerge = (target: any[], source: any[]): any[] => source // eslint-disable-line @typescript-eslint/no-explicit-any
-
-export interface Config {
-  storage?: any // eslint-disable-line @typescript-eslint/no-explicit-any
-  server: {
-    globalAccount: string
-    p2p?: {
-      cycleDuration: number
-      existingArchivers: Array<{
-        ip: string
-        port: number
-        publicKey: string
-      }>
-      rotationEdgeToAvoid: number
-      allowActivePerCycle: number
+export function updateLiberdusFlag(key: string, value: string | number | boolean): void {
+  /* eslint-disable security/detect-object-injection */
+  try {
+    if (LiberdusFlags[key] == null) {
+      console.log(`There is no liberdus flag for ${key}`)
+      return
     }
-    baseDir: string
-    mode?: 'debug' | 'release'
-    sharding?: {
-      nodesPerConsensusGroup: number
+    if (typeof LiberdusFlags[key] !== typeof value) {
+      console.log(`Type of new value is different from the type of existing flag ${key}`)
+      return
     }
+    LiberdusFlags[key] = value
+    console.log(`Liberdus flag ${key} is set to ${value}`)
+  } catch (e) {
+    console.log(`Error: updateLiberdusFlag`, e)
   }
+  /* eslint-enable security/detect-object-injection */
 }
 
+const overwriteMerge = (target: any[], source: any[]): any[] => source // eslint-disable-line @typescript-eslint/no-explicit-any
+
 //TODO: improve typing here
-let config: Config = {
+let config = {
   server: {
     globalAccount: networkAccount,
     baseDir: './',
   },
-}
+} as ShardusTypes.ShardusConfiguration
 
 // eslint-disable-next-line security/detect-non-literal-fs-filename
 if (fs.existsSync(path.join(process.cwd(), FilePaths.CONFIG))) {
@@ -354,8 +351,8 @@ config = merge(config, {
     p2p: {
       cycleDuration: cycleDuration,
       minNodesToAllowTxs: 1, // to allow single node networks
-      baselineNodes: process.env.baselineNodes ? parseInt(process.env.baselineNodes) : 10, // config used for baseline for entering recovery, restore, and safety. Should be equivalient to minNodes on network startup
-      minNodes: process.env.minNodes ? parseInt(process.env.minNodes) : 10,
+      baselineNodes: process.env.baselineNodes ? parseInt(process.env.baselineNodes) : 5, // config used for baseline for entering recovery, restore, and safety. Should be equivalient to minNodes on network startup
+      minNodes: process.env.minNodes ? parseInt(process.env.minNodes) : 5,
       maxNodes: process.env.maxNodes ? parseInt(process.env.maxNodes) : 1100,
       maxJoinedPerCycle: 10,
       maxSyncingPerCycle: 10,
