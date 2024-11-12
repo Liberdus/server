@@ -16,6 +16,7 @@
   },
   "include": [
     "src/index.ts",
+    "src/versioning/migrations/**/*"
   ],
   "exclude": [
     "./node_modules"
