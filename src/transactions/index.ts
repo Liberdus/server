@@ -35,6 +35,8 @@ import * as developer_payment from './developer_payment'
 import * as apply_developer_payment from './apply_developer_payment'
 import * as change_config from './change_config'
 import * as apply_change_config from './apply_change_config'
+import * as change_network_param from './change_network_param'
+import * as apply_change_network_param from './apply_change_network_param'
 import * as deposit_stake from './staking/deposit_stake'
 import * as withdraw_stake from './staking/withdraw_stake'
 import * as set_cert_time from './staking/set_cert_time'
@@ -82,6 +84,8 @@ export default {
   apply_developer_payment,
   change_config,
   apply_change_config,
+  change_network_param,
+  apply_change_network_param,
   deposit_stake,
   withdraw_stake,
   set_cert_time,
@@ -130,6 +134,8 @@ export enum TXTypes {
   apply_developer_payment = 'apply_developer_payment',
   change_config = 'change_config',
   apply_change_config = 'apply_change_config',
+  change_network_param = 'change_network_param',
+  apply_change_network_param = 'apply_change_network_param',
   deposit_stake = 'deposit_stake',
   withdraw_stake = 'withdraw_stake',
   set_cert_time = 'set_cert_time',

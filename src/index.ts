@@ -2,7 +2,7 @@ import { shardusFactory, ShardusTypes, nestedCountersInstance, DevSecurityLevel 
 import { P2P, Utils } from '@shardus/types'
 import * as crypto from './crypto'
 import * as configs from './config'
-import {TOTAL_DAO_DURATION} from './config'
+import { TOTAL_DAO_DURATION } from './config'
 import * as utils from './utils'
 import * as LiberdusTypes from './@types'
 import dotenv from 'dotenv'
@@ -21,6 +21,7 @@ import * as ClaimReward from './transactions/staking/claim_reward'
 import * as ApplyPenalty from './transactions/staking/apply_penalty'
 import { configShardusNetworkTransactions } from './transactions/networkTransaction/networkTransaction'
 import { readOperatorVersions, operatorCLIVersion, operatorGUIVersion } from './utils/versions'
+import { onActiveVersionChange } from './versioning/index'
 const { version } = require('./../package.json')
 
 dotenv.config()
@@ -248,6 +249,7 @@ dapp.setup({
         if (
           tx.type === TXTypes.init_network ||
           tx.type === TXTypes.apply_change_config ||
+          tx.type === TXTypes.apply_change_network_param ||
           tx.type === TXTypes.apply_tally ||
           tx.type === TXTypes.apply_dev_tally ||
           tx.type === TXTypes.parameters ||
@@ -271,8 +273,7 @@ dapp.setup({
     let { tx } = timestampedTx
     let txId: string = utils.generateTxId(tx)
     try {
-      if (transactions[tx.type].transactionReceiptPass)
-        transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
+      if (transactions[tx.type].transactionReceiptPass) transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
     } catch (e) {
       console.log(`Error in transactionReceiptPass: ${e.message}`)
     }
@@ -701,6 +702,7 @@ dapp.setup({
       TXTypes.dev_parameters,
       TXTypes.apply_dev_parameters,
       TXTypes.apply_change_config,
+      TXTypes.apply_change_network_param,
       TXTypes.apply_developer_payment,
       TXTypes.node_reward,
       TXTypes.set_cert_time,
@@ -1572,8 +1574,7 @@ dapp.setup({
             await patchAndUpdate(existingObject[key], value, parentPath === '' ? key : parentPath + '.' + key)
           } else {
             if (key === 'activeVersion') {
-              // TODO: Add onActiveVersionChange feature
-              // await onActiveVersionChange(value as string)
+              await onActiveVersionChange(value as string)
             }
             existingObject[key] = value
           }
@@ -1760,7 +1761,7 @@ dapp.registerExceptionHandler()
     }
     lastMaintainedCycle = cycleData.counter
 
-    const driftFromCycleStart = (currentTime - cycleData.start * 1000)
+    const driftFromCycleStart = currentTime - cycleData.start * 1000
     dapp.log('driftFromCycleStart: ', driftFromCycleStart, currentTime, cycleData.start * 1000)
     dapp.log('lastMaintainedCycle: ', lastMaintainedCycle)
     dapp.log('payAddress: ', process.env.PAY_ADDRESS)
@@ -1824,9 +1825,11 @@ dapp.registerExceptionHandler()
 
     const isInApplyWindow = currentTime >= network.windows.applyWindow[0] && currentTime <= network.windows.applyWindow[1]
     const isInDevApplyWindow = currentTime >= network.devWindows.devApplyWindow[0] && currentTime <= network.devWindows.devApplyWindow[1]
-    const skipConsensus =  cycleData.active === 1
+    const skipConsensus = cycleData.active === 1
 
-    dapp.log(`Cycle: ${cycleData.counter}, isInProposalWindow: ${isInProposalWindow}, isInDevProposalWindow: ${isInDevProposalWindow}, isInGraceWindow: ${isInGraceWindow}, isInDevGraceWindow: ${isInDevGraceWindow}, isInApplyWindow: ${isInApplyWindow}, isProcessingMode: ${isProcessingMode}`)
+    dapp.log(
+      `Cycle: ${cycleData.counter}, isInProposalWindow: ${isInProposalWindow}, isInDevProposalWindow: ${isInDevProposalWindow}, isInGraceWindow: ${isInGraceWindow}, isInDevGraceWindow: ${isInDevGraceWindow}, isInApplyWindow: ${isInApplyWindow}, isProcessingMode: ${isProcessingMode}`,
+    )
 
     if (isProcessingMode === false || luckyNodes.includes(nodeId) === false) {
       // expected += cycleInterval
@@ -1841,10 +1844,10 @@ dapp.registerExceptionHandler()
     dapp.log(`We are lucky node for cycle ${cycleData.counter}`)
 
     // from this point, we are lucky node and in processing mode
-    const issueAccountId =  utils.calculateIssueId(network.issue)
+    const issueAccountId = utils.calculateIssueId(network.issue)
     const issueAccount = await dapp.getLocalOrRemoteAccount(issueAccountId)
 
-    const devIssueAccountId =  utils.calculateDevIssueId(network.devIssue)
+    const devIssueAccountId = utils.calculateDevIssueId(network.devIssue)
     const devIssueAccount = await dapp.getLocalOrRemoteAccount(devIssueAccountId)
 
     dapp.log('latest issueAccount: ', issueAccountId, issueAccount?.data)
@@ -1909,7 +1912,8 @@ dapp.registerExceptionHandler()
     if (isInApplyWindow) {
       // @ts-ignore
       const isIssueActive = issueAccount?.data?.active
-      if (isIssueActive) { // still active means it has not been applied the parameters
+      if (isIssueActive) {
+        // still active means it has not been applied the parameters
         dapp.log(`issueAccount is still active in applyWindows, we need to apply the parameters for issue: ${network.issue}`)
         await utils.injectParameterTx(nodeAddress, nodeId, dapp, skipConsensus)
         issueGenerated = false
@@ -1922,7 +1926,8 @@ dapp.registerExceptionHandler()
     if (isInDevApplyWindow) {
       // @ts-ignore
       const isDevIssueActive = devIssueAccount?.data?.active
-      if (isDevIssueActive) { // still active means it has not been applied the dev parameters
+      if (isDevIssueActive) {
+        // still active means it has not been applied the dev parameters
         dapp.log(`devIssueAccount is still active in devApplyWindows, we need to apply the dev parameters for devIssue: ${network.devIssue}`)
         await utils._sleep(3000) // this is to wait a moment for above parameter tx to be processed
         await utils.injectDevParameters(nodeAddress, nodeId, dapp, skipConsensus)
@@ -1961,7 +1966,7 @@ dapp.registerExceptionHandler()
     return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(cycleData))
   }
 
-  function getNextMaintenanceCycleStart (currentCycle: ShardusTypes.Cycle): number {
+  function getNextMaintenanceCycleStart(currentCycle: ShardusTypes.Cycle): number {
     const cycleInterval = configs.cycleDuration * configs.ONE_SECOND
     const currentCycleStartMs = currentCycle.start * 1000
     let nextCycleStartMs = currentCycleStartMs + cycleInterval
@@ -1974,14 +1979,11 @@ dapp.registerExceptionHandler()
     return timeUntilNextCycle
   }
 
-  dapp.on(
-    'active',
-    async (): Promise<NodeJS.Timeout> => {
-      if (dapp.p2p.isFirstSeed) {
-        await utils._sleep(configs.ONE_SECOND * configs.cycleDuration * 2)
-      }
-      const [currentCycle] = dapp.getLatestCycles()
-      return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(currentCycle))
-    },
-  )
+  dapp.on('active', async (): Promise<NodeJS.Timeout> => {
+    if (dapp.p2p.isFirstSeed) {
+      await utils._sleep(configs.ONE_SECOND * configs.cycleDuration * 2)
+    }
+    const [currentCycle] = dapp.getLatestCycles()
+    return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(currentCycle))
+  })
 })()
