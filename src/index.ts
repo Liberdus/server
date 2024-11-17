@@ -720,15 +720,47 @@ dapp.setup({
     return false
   },
   txPreCrackData: async function (tx: any, appData: any): Promise<{ status: boolean; reason: string }> {
-    if (tx.type != TXTypes.transfer || tx.type != TXTypes.message) {
-      return { status: true, reason: 'Tx PreCrack Skipped' }
+    if(tx.type != TXTypes.transfer){
+      return new Promise(resolve => resolve({status: true, reason: 'Tx Validation Passes'}))
     }
-    try {
-      const txTimestamp = utils.getInjectedOrGeneratedTimestamp(tx, dapp)
-      let wrappedStates: LiberdusTypes.WrappedStates = {}
-      let promises = []
-      let sourceKeyShardusAddr = null
-      let targetKeyShardusAddr = null
+    try{
+
+        const txTimestamp = utils.getInjectedOrGeneratedTimestamp(tx, dapp)
+        let wrappedStates: LiberdusTypes.WrappedStates = {}
+        let promises = []
+        let sourceKeyShardusAddr = null;
+        let targetKeyShardusAddr = null;
+
+        if(tx.from){
+          sourceKeyShardusAddr = toShardusAddress(tx.from)
+          promises.push(
+            dapp
+              .getLocalOrRemoteAccount(sourceKeyShardusAddr)
+              .then((queuedWrappedState) => {
+                wrappedStates[tx.from] = {
+                  accountId: queuedWrappedState.accountId,
+                  stateId: queuedWrappedState.stateId,
+                  data: queuedWrappedState.data as LiberdusTypes.Accounts,
+                  timestamp: txTimestamp
+                }
+              })
+          );
+        }
+        if(tx.to){
+          targetKeyShardusAddr = toShardusAddress(tx.to)
+          promises.push(
+            dapp
+              .getLocalOrRemoteAccount(targetKeyShardusAddr)
+              .then((queuedWrappedState) => {
+                wrappedStates[tx.to] = {
+                  accountId: queuedWrappedState.accountId,
+                  stateId: queuedWrappedState.stateId,
+                  data: queuedWrappedState.data as LiberdusTypes.Accounts,
+                  timestamp: txTimestamp
+                }
+              })
+          );
+        }
 
       if (tx.from) {
         sourceKeyShardusAddr = toShardusAddress(tx.from)
