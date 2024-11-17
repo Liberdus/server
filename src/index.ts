@@ -21,6 +21,7 @@ import * as ClaimReward from './transactions/staking/claim_reward'
 import * as ApplyPenalty from './transactions/staking/apply_penalty'
 import { configShardusNetworkTransactions } from './transactions/networkTransaction/networkTransaction'
 import { readOperatorVersions, operatorCLIVersion, operatorGUIVersion } from './utils/versions'
+import { toShardusAddress } from './utils/address'
 const { version } = require('./../package.json')
 
 dotenv.config()
@@ -716,16 +717,22 @@ dapp.setup({
     return false
   },
   txPreCrackData: async function (tx: any, appData: any): Promise<{ status: boolean; reason: string }> {
+    if(tx.type != TXTypes.transfer){
+      return new Promise(resolve => resolve({status: true, reason: 'Tx Validation Passes'}))
+    }
     try{
 
         const txTimestamp = utils.getInjectedOrGeneratedTimestamp(tx, dapp)
         let wrappedStates: LiberdusTypes.WrappedStates = {}
         let promises = []
+        let sourceKeyShardusAddr = null;
+        let targetKeyShardusAddr = null;
 
         if(tx.from){
+          sourceKeyShardusAddr = toShardusAddress(tx.from)
           promises.push(
             dapp
-              .getLocalOrRemoteAccount(tx.from)
+              .getLocalOrRemoteAccount(sourceKeyShardusAddr)
               .then((queuedWrappedState) => {
                 wrappedStates[tx.from] = {
                   accountId: queuedWrappedState.accountId,
@@ -737,9 +744,10 @@ dapp.setup({
           );
         }
         if(tx.to){
+          targetKeyShardusAddr = toShardusAddress(tx.to)
           promises.push(
             dapp
-              .getLocalOrRemoteAccount(tx.to)
+              .getLocalOrRemoteAccount(targetKeyShardusAddr)
               .then((queuedWrappedState) => {
                 wrappedStates[tx.to] = {
                   accountId: queuedWrappedState.accountId,
