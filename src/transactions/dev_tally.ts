@@ -133,17 +133,18 @@ export const apply = (tx: Tx.DevTally, txTimestamp: number, txId: string, wrappe
   }
 
   let ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
-  ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: from.id }
 
   from.timestamp = txTimestamp
   devIssue.timestamp = txTimestamp
+  devIssue.tallied = true
   dapp.log('Applied dev_tally tx', devIssue, devProposals, value)
 }
 
 export const transactionReceiptPass = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
   let { address, value, when, source } = applyResponse.appDefinedData.globalMsg
   dapp.setGlobal(address, value, when, source)
-  dapp.log('PostApplied dev_tally tx')
+  dapp.log('PostApplied dev_tally tx', address, value, when, source)
 }
 
 export const keys = (tx: Tx.DevTally, result: TransactionKeys) => {
