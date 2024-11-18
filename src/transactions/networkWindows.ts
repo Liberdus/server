@@ -42,7 +42,7 @@ export const apply = (tx: Tx.NetworkWindows, txTimestamp: number, txId: string, 
   }
 
   let ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
-  ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: from.id }
 
   from.timestamp = txTimestamp
   dapp.log(`Apply network_windows tx ${txId} value`, value)

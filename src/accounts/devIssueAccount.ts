@@ -12,6 +12,7 @@ export const devIssueAccount = (accountId: string) => {
     active: null,
     number: null,
     timestamp: 0,
+    tallied: false
   }
   devIssue.hash = crypto.hashObj(devIssue)
   return devIssue
