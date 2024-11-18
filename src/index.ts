@@ -258,8 +258,9 @@ dapp.setup({
         ) {
           const hashAfter = this.calculateAccountHash(wrappedStates[accountId].data)
           wrappedChangedAccount.stateId = hashAfter
-          wrappedChangedAccount.timestamp = txTimestamp
         }
+        // make sure the timestamp is set
+        wrappedChangedAccount.timestamp = txTimestamp
         dapp.applyResponseAddChangedAccount(applyResponse, accountId, wrappedChangedAccount, txId, txTimestamp)
       }
     }
@@ -1763,7 +1764,7 @@ dapp.registerExceptionHandler()
     dapp.log('driftFromCycleStart: ', driftFromCycleStart, currentTime, cycleData.start * 1000)
     dapp.log('lastMaintainedCycle: ', lastMaintainedCycle)
     dapp.log('payAddress: ', process.env.PAY_ADDRESS)
-    dapp.log('cycleData: ', cycleData)
+    dapp.log('cycleData: ', cycleData.counter)
     dapp.log('luckyNode: ', luckyNodes)
     dapp.log('nodeId: ', nodeId)
     dapp.log('nodeAddress: ', nodeAddress)
@@ -1877,8 +1878,10 @@ dapp.registerExceptionHandler()
     if (isInGraceWindow) {
       // @ts-ignore
       const issueWinner = issueAccount?.data?.winnerId
-      if (issueWinner == null) {
-        dapp.log(`issueWinner is null, we need to tally the votes for issue: ${network.issue}`)
+      // @ts-ignore
+      const tallied = issueAccount?.data?.tallied
+      if (!tallied) {
+        dapp.log(`Issue is not tallied yet, we need to tally the votes for issue: ${network.issue}`)
         await utils.tallyVotes(nodeAddress, nodeId, dapp, skipConsensus)
         issueGenerated = false
         tallyGenerated = true
@@ -1890,8 +1893,10 @@ dapp.registerExceptionHandler()
     if (isInDevGraceWindow) {
       // @ts-ignore
       const devIssueWinners = devIssueAccount?.data?.winners
-      if (devIssueWinners == null || devIssueWinners.length === 0) {
-        dapp.log(`devIssueWinners is null, we need to tally the votes for devIssue: ${network.devIssue}`)
+      // @ts-ignore
+      const tallied = devIssueAccount?.data?.tallied
+      if (!tallied) {
+        dapp.log(`devIssue is not tallied yet, we need to tally the votes for devIssue: ${network.devIssue}`)
         await utils._sleep(3000) // this is to wait a moment for above tally tx to be processed
         await utils.tallyDevVotes(nodeAddress, nodeId, dapp, skipConsensus)
         devIssueGenerated = false

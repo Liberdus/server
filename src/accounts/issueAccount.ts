@@ -12,6 +12,7 @@ export const issueAccount = (accountId: string) => {
     winnerId: null,
     hash: '',
     timestamp: 0,
+    tallied: false
   }
   issue.hash = crypto.hashObj(issue)
   return issue
