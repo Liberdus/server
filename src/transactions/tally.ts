@@ -129,9 +129,10 @@ export const apply = (tx: Tx.Tally, txTimestamp: number, txId: string, wrappedSt
   }
 
   let ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
-  ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: from.id }
 
   issue.winnerId = winner.id
+  issue.tallied = true
 
   from.timestamp = txTimestamp
   issue.timestamp = txTimestamp

@@ -30,7 +30,7 @@ export const apply = (tx: Tx.ApplyDevTally, txTimestamp: number, txId: string, w
   network.nextDeveloperFund = tx.nextDeveloperFund
   network.nextDevWindows = tx.nextDevWindows
   network.timestamp = txTimestamp
-  dapp.log(`=== APPLIED DEV_TALLY GLOBAL ${Utils.safeStringify(network)} ===`)
+  dapp.log('Applied apply_dev_tally tx', tx, network)
 }
 
 export const keys = (tx: Tx.ApplyDevTally, result: TransactionKeys) => {

@@ -411,6 +411,7 @@ export interface IssueAccount {
   active: boolean | null
   proposals: string[]
   proposalCount: number
+  tallied: boolean
   number: number | null
   winnerId: string | null
   hash: string
@@ -424,6 +425,7 @@ export interface DevIssueAccount {
   devProposalCount: number
   winners: string[]
   active: boolean | null
+  tallied: boolean
   number: number | null
   hash: string
   timestamp: number
