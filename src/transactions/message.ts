@@ -4,6 +4,8 @@ import * as utils from '../utils'
 import create from '../accounts'
 import * as config from '../config'
 import {Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { toShardusAddress } from '../utils/address'
+import { clone } from 'lodash'
 
 export const validate_fields = (tx: Tx.Message, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -36,9 +38,14 @@ export const validate_fields = (tx: Tx.Message, response: ShardusTypes.IncomingT
 }
 
 export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
-  const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
+  const clonedTx = { ...tx }
+  if (config.LiberdusFlags.useEthereumAddress) {
+    clonedTx.from = toShardusAddress(tx.from)
+    clonedTx.to = toShardusAddress(tx.to)
+  }
+  const from: Accounts = wrappedStates[clonedTx.from] && wrappedStates[clonedTx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
-  const to: Accounts = wrappedStates[tx.to] && wrappedStates[tx.to].data
+  const to: Accounts = wrappedStates[clonedTx.to] && wrappedStates[clonedTx.to].data
   if (tx.sign.owner !== tx.from) {
     response.reason = 'not signed by from account'
     return response
@@ -55,7 +62,7 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
     response.reason = '"target" account does not exist.'
     return response
   }
-  if (to.data.friends[tx.from]) {
+  if (to.data.friends[toShardusAddress(tx.from)]) {
     if (from.data.balance < network.current.transactionFee) {
       response.reason = `from account does not have sufficient funds: ${from.data.balance} to cover transaction fee: ${network.current.transactionFee}.`
       return response

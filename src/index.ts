@@ -720,8 +720,8 @@ dapp.setup({
     return false
   },
   txPreCrackData: async function (tx: any, appData: any): Promise<{ status: boolean; reason: string }> {
-    if(tx.type != TXTypes.transfer){
-      return new Promise(resolve => resolve({status: true, reason: 'Tx Validation Passes'}))
+    if(tx.type != TXTypes.transfer || tx.type != TXTypes.message){
+      return new Promise(resolve => resolve({status: true, reason: 'Tx PreCrack Skipped'}))
     }
     try{
 
@@ -737,7 +737,7 @@ dapp.setup({
             dapp
               .getLocalOrRemoteAccount(sourceKeyShardusAddr)
               .then((queuedWrappedState) => {
-                wrappedStates[tx.from] = {
+                wrappedStates[sourceKeyShardusAddr] = {
                   accountId: queuedWrappedState.accountId,
                   stateId: queuedWrappedState.stateId,
                   data: queuedWrappedState.data as LiberdusTypes.Accounts,
@@ -752,7 +752,7 @@ dapp.setup({
             dapp
               .getLocalOrRemoteAccount(targetKeyShardusAddr)
               .then((queuedWrappedState) => {
-                wrappedStates[tx.to] = {
+                wrappedStates[targetKeyShardusAddr] = {
                   accountId: queuedWrappedState.accountId,
                   stateId: queuedWrappedState.stateId,
                   data: queuedWrappedState.data as LiberdusTypes.Accounts,

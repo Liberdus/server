@@ -4,6 +4,8 @@ import * as utils from '../utils'
 import create from '../accounts'
 import * as config from '../config'
 import {Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { toShardusAddress } from '../utils/address'
+import { clone } from 'lodash'
 
 export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -25,8 +27,13 @@ export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.Incoming
 }
 
 export const validate = (tx: Tx.Transfer, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
-  const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
-  const to: Accounts = wrappedStates[tx.to] && wrappedStates[tx.to].data
+  let clonedTx = { ...tx }
+  if (config.LiberdusFlags.useEthereumAddress) {
+    clonedTx.from = toShardusAddress(tx.from)
+    clonedTx.to = toShardusAddress(tx.to)
+  }
+  const from: Accounts = wrappedStates[clonedTx.from] && wrappedStates[clonedTx.from].data
+  const to: Accounts = wrappedStates[clonedTx.to] && wrappedStates[clonedTx.to].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   if (tx.sign.owner !== tx.from) {
     response.reason = 'not signed by from account'
