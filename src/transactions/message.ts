@@ -5,7 +5,6 @@ import create from '../accounts'
 import * as config from '../config'
 import {Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 import { toShardusAddress } from '../utils/address'
-import { clone } from 'lodash'
 
 export const validate_fields = (tx: Tx.Message, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
