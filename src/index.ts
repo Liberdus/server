@@ -721,7 +721,7 @@ dapp.setup({
   },
   txPreCrackData: async function (tx: any, appData: any): Promise<{ status: boolean; reason: string }> {
     if(tx.type != TXTypes.transfer || tx.type != TXTypes.message){
-      return new Promise(resolve => resolve({status: true, reason: 'Tx PreCrack Skipped'}))
+      return {status: true, reason: 'Tx PreCrack Skipped'}
     }
     try{
 
@@ -778,13 +778,10 @@ dapp.setup({
         await Promise.allSettled(promises)
 
 
-        return new Promise(
-          resolve =>
-          resolve(transactions[tx.type].validate(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp))
-        )
+        return transactions[tx.type].validate(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp)
 
     }catch(e){
-      return new Promise(resolve => resolve({status: false, reason: 'Error in txPreCrackData - ' + e.message}))
+      return {status: false, reason: 'Error in txPreCrackData - ' + e.message}
     }
   },
   calculateTxId(tx: ShardusTypes.OpaqueTransaction) {
