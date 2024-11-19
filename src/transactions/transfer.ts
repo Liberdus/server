@@ -1,11 +1,9 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as utils from '../utils'
-import create from '../accounts'
 import * as config from '../config'
 import {Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 import { toShardusAddress } from '../utils/address'
-import { clone } from 'lodash'
 
 export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
