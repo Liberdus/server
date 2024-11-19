@@ -311,21 +311,21 @@ function buildTx({ type, from = {}, to, handle, id, amount, message, toll }) {
 
 const logError = false
 
-function toShardusAddress (addressStr) {
+function toShardusAddress(addressStr) {
   //change this:0x665eab3be2472e83e3100b4233952a16eed20c76
   //    to this:  665eab3be2472e83e3100b4233952a16eed20c76000000000000000000000000
   return addressStr.slice(2).toLowerCase() + '0'.repeat(24)
 }
 
-function signTransaction (tx) {
+function signTransaction(tx, keys) {
   if (useEthereumSigning) {
-    signEthereumTx(tx, USER.keys)
+    signEthereumTx(tx, keys ? keys : USER.keys)
   } else {
-    crypto.signObj(tx, USER.keys.secretKey, USER.keys.publicKey)
+    crypto.signObj(tx, keys ? keys.secretKey : USER.keys.secretKey, keys ? keys.publicKey : USER.keys.publicKey)
   }
 }
 
-function signEthereumTx (tx, keys) {
+function signEthereumTx(tx, keys) {
   if (!keys) {
     throw new Error('Keys are required for signing')
   }
@@ -354,7 +354,7 @@ function signEthereumTx (tx, keys) {
   }
 }
 
-function verifyEthereumTx (obj) {
+function verifyEthereumTx(obj) {
   if (typeof obj !== 'object') {
     throw new TypeError('Input must be an object.')
   }
@@ -766,7 +766,7 @@ vorpal.command('email', 'registers your email address to the network').action(as
     emailHash: crypto.hash(answer.email),
     from: USER.address,
   }
-  crypto.signObj(signedTx, USER.keys.secretKey, USER.keys.publicKey)
+  signTransaction(signedTx)
   const tx = {
     type: 'email',
     signedTx,
@@ -900,7 +900,7 @@ vorpal.command('transfer', 'transfers tokens to another account').action(async f
   })
 })
 
-vorpal.command('deposit_stake', 'deposit the stake amount to the node').action(async function (args, callback) {
+vorpal.command('deposit stake', 'deposit the stake amount to the node').action(async function (args, callback) {
   const answers = await this.prompt([
     {
       type: 'input',
@@ -1691,7 +1691,7 @@ vorpal
 
 // Add a vorpal command for depositing stake to the joining nodes in the network.
 // First argument is the amount of tokens to stake.
-vorpal.command('deposit_stake-joining-nodes', 'deposit the stake amount to the joining nodes in the network').action(async function (args, callback) {
+vorpal.command('deposit stake joining nodes', 'deposit the stake amount to the joining nodes in the network').action(async function (args, callback) {
 
   const answers = await this.prompt([
     {
@@ -1741,7 +1741,7 @@ vorpal.command('deposit_stake-joining-nodes', 'deposit the stake amount to the j
       amount: BigInt(50), // extra 50 tokens
       timestamp: Date.now(),
     }
-    crypto.signObj(createTx, accounts[i].keys.secretKey, accounts[i].keys.publicKey)
+    signTransaction(createTx, accounts[i].keys)
     let res = await injectTx(createTx)
     this.log(res)
   }
@@ -1758,7 +1758,7 @@ vorpal.command('deposit_stake-joining-nodes', 'deposit the stake amount to the j
       stake: answers.amount,
       timestamp: Date.now(),
     }
-    crypto.signObj(depositStateTx, accounts[i].keys.secretKey, accounts[i].keys.publicKey)
+    signTransaction(depositStateTx, accounts[i].keys)
     const res = await injectTx(depositStateTx)
     this.log(res)
   }
