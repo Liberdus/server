@@ -720,8 +720,8 @@ dapp.setup({
     return false
   },
   txPreCrackData: async function (tx: any, appData: any): Promise<{ status: boolean; reason: string }> {
-    if(tx.type != TXTypes.transfer){
-      return new Promise(resolve => resolve({status: true, reason: 'Tx Validation Passes'}))
+    if(tx.type != TXTypes.transfer || tx.type != TXTypes.message){
+      return {status: true, reason: 'Tx PreCrack Skipped'}
     }
     try{
 
@@ -765,46 +765,25 @@ dapp.setup({
       if (tx.from) {
         sourceKeyShardusAddr = toShardusAddress(tx.from)
         promises.push(
-          dapp.getLocalOrRemoteAccount(sourceKeyShardusAddr).then((queuedWrappedState) => {
-            wrappedStates[sourceKeyShardusAddr] = {
-              accountId: queuedWrappedState.accountId,
-              stateId: queuedWrappedState.stateId,
-              data: queuedWrappedState.data as LiberdusTypes.Accounts,
-              timestamp: txTimestamp,
-            }
-          }),
-        )
-      }
-      if (tx.to) {
-        targetKeyShardusAddr = toShardusAddress(tx.to)
-        promises.push(
-          dapp.getLocalOrRemoteAccount(targetKeyShardusAddr).then((queuedWrappedState) => {
-            wrappedStates[targetKeyShardusAddr] = {
-              accountId: queuedWrappedState.accountId,
-              stateId: queuedWrappedState.stateId,
-              data: queuedWrappedState.data as LiberdusTypes.Accounts,
-              timestamp: txTimestamp,
-            }
-          }),
-        )
-      }
+          dapp
+            .getLocalOrRemoteAccount(networkAccount)
+            .then((queuedWrappedState) => {
+              wrappedStates[networkAccount] = {
+                accountId: queuedWrappedState.accountId,
+                stateId: queuedWrappedState.stateId,
+                data: queuedWrappedState.data as LiberdusTypes.Accounts,
+                timestamp: txTimestamp
+              }
+            })
+        );
 
-      promises.push(
-        dapp.getLocalOrRemoteAccount(networkAccount).then((queuedWrappedState) => {
-          wrappedStates[networkAccount] = {
-            accountId: queuedWrappedState.accountId,
-            stateId: queuedWrappedState.stateId,
-            data: queuedWrappedState.data as LiberdusTypes.Accounts,
-            timestamp: txTimestamp,
-          }
-        }),
-      )
+        await Promise.allSettled(promises)
 
-      await Promise.allSettled(promises)
 
-      return transactions[tx.type].validate(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp)
-    } catch (e) {
-      return { status: false, reason: 'Error in txPreCrackData - ' + e.message }
+        return transactions[tx.type].validate(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp)
+
+    }catch(e){
+      return {status: false, reason: 'Error in txPreCrackData - ' + e.message}
     }
   },
   calculateTxId(tx: ShardusTypes.OpaqueTransaction) {
