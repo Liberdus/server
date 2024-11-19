@@ -51,6 +51,7 @@ export const validate = (tx: Tx.Transfer, wrappedStates: WrappedStates, response
     response.reason = "To account doesn't exist"
     return response
   }
+
   if (from.data.balance < tx.amount + network.current.transactionFee) {
     response.reason = "from account doesn't have sufficient balance to cover the transaction"
     return response
