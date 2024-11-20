@@ -719,13 +719,16 @@ dapp.setup({
     }
     return false
   },
-  txPreCrackData: async function (tx: any, appData: any): Promise<{ status: boolean; reason: string }> {
-    if(tx.type != TXTypes.transfer || tx.type != TXTypes.message){
-      return {status: true, reason: 'Tx PreCrack Skipped'}
+  async txPreCrackData(tx: any, appData: any): Promise<{ status: boolean; reason: string }> {
+    if(
+      tx.type != TXTypes.transfer && 
+      tx.type != TXTypes.message
+    ){
+      return { status: true, reason: 'Tx PreCrack Skipped' }
     }
     try{
 
-        const txTimestamp = utils.getInjectedOrGeneratedTimestamp(tx, dapp)
+        const txTimestamp = utils.getInjectedOrGeneratedTimestamp({ tx: tx }, dapp)
         let wrappedStates: LiberdusTypes.WrappedStates = {}
         let promises = []
         let sourceKeyShardusAddr = null;
@@ -780,7 +783,14 @@ dapp.setup({
         await Promise.allSettled(promises)
 
 
-        return transactions[tx.type].validate(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp)
+        const res = transactions[tx.type].validate(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp)
+
+        if(res.success === false){
+          return {status: false, reason: res.reason}
+        }else{
+          return {status: true, reason: 'Tx PreCrack Success'}
+        }
+
 
     }catch(e){
       return {status: false, reason: 'Error in txPreCrackData - ' + e.message}
