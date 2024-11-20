@@ -210,6 +210,10 @@ interface LiberdusFlags {
   allowForceUnstake: boolean
   numberOfNodesToInjectPenaltyTx: number
   useEthereumAddress: boolean
+  siloAddress: boolean
+  siloAddressBitLength: number
+  cacheMaxCycleAge: number
+  cacheMaxItemPerTopic: number
 }
 
 export const LiberdusFlags: LiberdusFlags = {
@@ -227,7 +231,11 @@ export const LiberdusFlags: LiberdusFlags = {
   lowStakePercent: 0.2,
   allowForceUnstake: true,
   numberOfNodesToInjectPenaltyTx: 5,
-  useEthereumAddress: true
+  useEthereumAddress: true,
+  siloAddress: true,
+  siloAddressBitLength: 3,
+  cacheMaxCycleAge: 10,
+  cacheMaxItemPerTopic: 3000,
 }
 
 export function updateLiberdusFlag(key: string, value: string | number | boolean): void {
