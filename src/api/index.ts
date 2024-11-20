@@ -33,7 +33,6 @@ export default (dapp: Shardus) => {
 
   dapp.registerExternalGet('account/:id', accounts.account(dapp))
   dapp.registerExternalGet('account/:id/alias', accounts.alias(dapp))
-  dapp.registerExternalGet('account/:id/transactions', accounts.transactions(dapp))
   dapp.registerExternalGet('account/:id/balance', accounts.balance(dapp))
   dapp.registerExternalGet('account/:id/toll', accounts.toll(dapp))
   dapp.registerExternalGet('address/:name', accounts.address(dapp))
@@ -41,6 +40,8 @@ export default (dapp: Shardus) => {
   dapp.registerExternalGet('account/:id/friends', accounts.friends(dapp))
   dapp.registerExternalGet('account/:id/recentMessages', accounts.recentMessages(dapp))
   // dapp.registerExternalGet('accounts', accounts.all(dapp))
+
+  dapp.registerExternalGet('transaction/:id', accounts.transactions(dapp))
 
   dapp.registerExternalGet('messages/:chatId', messages(dapp))
 

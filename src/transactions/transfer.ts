@@ -2,8 +2,8 @@ import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as utils from '../utils'
 import * as config from '../config'
-import {Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
-import { toShardusAddress } from '../utils/address'
+import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { toShardusAddress, toShardusAddressWithKey } from '../utils/address'
 
 export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -59,7 +59,7 @@ export const validate = (tx: Tx.Transfer, wrappedStates: WrappedStates, response
   return response
 }
 
-export const apply = (tx: Tx.Transfer, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (tx: Tx.Transfer, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus, applyResponse: any) => {
   const from = wrappedStates[tx.from].data
   const to: UserAccount = wrappedStates[tx.to].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
@@ -70,7 +70,32 @@ export const apply = (tx: Tx.Transfer, txTimestamp: number, txId: string, wrappe
   // to.data.transactions.push({ ...tx, txId })
   from.timestamp = txTimestamp
   to.timestamp = txTimestamp
+
+  const receipt = Object.assign({}, tx, { txId, success: true })
+  dapp.applyResponseAddReceiptData(applyResponse, receipt, txId)
   dapp.log('Applied transfer tx', from, to)
+}
+
+export const transactionReceiptPass = (tx: Tx.Transfer, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
+  if (applyResponse == null) return
+  const appReceiptData = applyResponse.appReceiptData
+
+  if (config.LiberdusFlags.VerboseLogs) {
+    console.log('_transactionReceiptPass appReceiptData for transfer tx', txId, appReceiptData)
+    console.log('_transactionReceiptPass appReceiptDataHash for transfer tx', txId, crypto.hashObj(appReceiptData))
+  }
+
+  if (appReceiptData) {
+    const dataId = appReceiptData.txId
+    dapp
+      .sendCorrespondingCachedAppData('receipt', dataId, appReceiptData, dapp.stateManager.currentCycleShardData.cycleNumber, tx.from, appReceiptData.txId)
+      .then(() => {
+        dapp.log('PostApplied transfer tx', tx, appReceiptData)
+      })
+      .catch((err) => {
+        throw new Error(`Error in sending receipt for transfer tx: ${err.message}`)
+      })
+  }
 }
 
 export const keys = (tx: Tx.Transfer, result: TransactionKeys) => {
