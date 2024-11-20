@@ -2,7 +2,7 @@ import { shardusFactory, ShardusTypes, nestedCountersInstance, DevSecurityLevel 
 import { P2P, Utils } from '@shardus/types'
 import * as crypto from './crypto'
 import * as configs from './config'
-import {networkAccount, TOTAL_DAO_DURATION} from './config'
+import { networkAccount, TOTAL_DAO_DURATION } from './config'
 import * as utils from './utils'
 import * as LiberdusTypes from './@types'
 import dotenv from 'dotenv'
@@ -155,7 +155,7 @@ dapp.setup({
   },
   // looks like this interface is deprecated by newer shardus version and is not used
   // some of the checks will be in validate() and txPreCrackData()
-  validateTransaction(tx: any, wrappedStates:  LiberdusTypes.WrappedStates ): ShardusTypes.IncomingTransactionResult {
+  validateTransaction(tx: any, wrappedStates: LiberdusTypes.WrappedStates): ShardusTypes.IncomingTransactionResult {
     const response: ShardusTypes.IncomingTransactionResult = {
       success: false,
       reason: 'Transaction is not valid.',
@@ -720,68 +720,59 @@ dapp.setup({
     return false
   },
   txPreCrackData: async function (tx: any, appData: any): Promise<{ status: boolean; reason: string }> {
-    if(tx.type != TXTypes.transfer || tx.type != TXTypes.message){
-      return {status: true, reason: 'Tx PreCrack Skipped'}
+    if (tx.type != TXTypes.transfer || tx.type != TXTypes.message) {
+      return { status: true, reason: 'Tx PreCrack Skipped' }
     }
-    try{
+    try {
+      const txTimestamp = utils.getInjectedOrGeneratedTimestamp(tx, dapp)
+      let wrappedStates: LiberdusTypes.WrappedStates = {}
+      let promises = []
+      let sourceKeyShardusAddr = null
+      let targetKeyShardusAddr = null
 
-        const txTimestamp = utils.getInjectedOrGeneratedTimestamp(tx, dapp)
-        let wrappedStates: LiberdusTypes.WrappedStates = {}
-        let promises = []
-        let sourceKeyShardusAddr = null;
-        let targetKeyShardusAddr = null;
-
-        if(tx.from){
-          sourceKeyShardusAddr = toShardusAddress(tx.from)
-          promises.push(
-            dapp
-              .getLocalOrRemoteAccount(sourceKeyShardusAddr)
-              .then((queuedWrappedState) => {
-                wrappedStates[sourceKeyShardusAddr] = {
-                  accountId: queuedWrappedState.accountId,
-                  stateId: queuedWrappedState.stateId,
-                  data: queuedWrappedState.data as LiberdusTypes.Accounts,
-                  timestamp: txTimestamp
-                }
-              })
-          );
-        }
-        if(tx.to){
-          targetKeyShardusAddr = toShardusAddress(tx.to)
-          promises.push(
-            dapp
-              .getLocalOrRemoteAccount(targetKeyShardusAddr)
-              .then((queuedWrappedState) => {
-                wrappedStates[targetKeyShardusAddr] = {
-                  accountId: queuedWrappedState.accountId,
-                  stateId: queuedWrappedState.stateId,
-                  data: queuedWrappedState.data as LiberdusTypes.Accounts,
-                  timestamp: txTimestamp
-                }
-              })
-          );
-        }
-
+      if (tx.from) {
+        sourceKeyShardusAddr = toShardusAddress(tx.from)
         promises.push(
-          dapp
-            .getLocalOrRemoteAccount(networkAccount)
-            .then((queuedWrappedState) => {
-              wrappedStates[networkAccount] = {
-                accountId: queuedWrappedState.accountId,
-                stateId: queuedWrappedState.stateId,
-                data: queuedWrappedState.data as LiberdusTypes.Accounts,
-                timestamp: txTimestamp
-              }
-            })
-        );
+          dapp.getLocalOrRemoteAccount(sourceKeyShardusAddr).then((queuedWrappedState) => {
+            wrappedStates[sourceKeyShardusAddr] = {
+              accountId: queuedWrappedState.accountId,
+              stateId: queuedWrappedState.stateId,
+              data: queuedWrappedState.data as LiberdusTypes.Accounts,
+              timestamp: txTimestamp,
+            }
+          }),
+        )
+      }
+      if (tx.to) {
+        targetKeyShardusAddr = toShardusAddress(tx.to)
+        promises.push(
+          dapp.getLocalOrRemoteAccount(targetKeyShardusAddr).then((queuedWrappedState) => {
+            wrappedStates[targetKeyShardusAddr] = {
+              accountId: queuedWrappedState.accountId,
+              stateId: queuedWrappedState.stateId,
+              data: queuedWrappedState.data as LiberdusTypes.Accounts,
+              timestamp: txTimestamp,
+            }
+          }),
+        )
+      }
 
-        await Promise.allSettled(promises)
+      promises.push(
+        dapp.getLocalOrRemoteAccount(networkAccount).then((queuedWrappedState) => {
+          wrappedStates[networkAccount] = {
+            accountId: queuedWrappedState.accountId,
+            stateId: queuedWrappedState.stateId,
+            data: queuedWrappedState.data as LiberdusTypes.Accounts,
+            timestamp: txTimestamp,
+          }
+        }),
+      )
 
+      await Promise.allSettled(promises)
 
-        return transactions[tx.type].validate(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp)
-
-    }catch(e){
-      return {status: false, reason: 'Error in txPreCrackData - ' + e.message}
+      return transactions[tx.type].validate(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp)
+    } catch (e) {
+      return { status: false, reason: 'Error in txPreCrackData - ' + e.message }
     }
   },
   calculateTxId(tx: ShardusTypes.OpaqueTransaction) {
