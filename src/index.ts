@@ -2039,6 +2039,7 @@ dapp.registerExceptionHandler()
     if (dapp.p2p.isFirstSeed) {
       await utils._sleep(configs.ONE_SECOND * configs.cycleDuration * 2)
     }
+    dapp.registerCacheTopic('receipt', LiberdusFlags.cacheMaxCycleAge, LiberdusFlags.cacheMaxItemPerTopic)
     const [currentCycle] = dapp.getLatestCycles()
     return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(currentCycle))
   })

@@ -15,7 +15,7 @@ export namespace Tx {
     next: {}
     windows: Windows
     nextWindows: {}
-    issue: number,
+    issue: number
     devWindows?: DevWindows
     nextDevWindows?: DevWindows
   }
