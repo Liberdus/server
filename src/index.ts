@@ -720,9 +720,10 @@ dapp.setup({
     return false
   },
   async txPreCrackData(tx: any, appData: any): Promise<{ status: boolean; reason: string }> {
-    if (tx.type != TXTypes.transfer && tx.type != TXTypes.message) {
+    if (tx.type != TXTypes.transfer && tx.type != TXTypes.message && tx.type != TXTypes.deposit_stake) {
       return { status: true, reason: 'Tx PreCrack Skipped' }
     }
+    console.log('txPreCrackData', tx)
     try {
       const txTimestamp = utils.getInjectedOrGeneratedTimestamp({ tx: tx }, dapp)
       let wrappedStates: LiberdusTypes.WrappedStates = {}
@@ -730,11 +731,19 @@ dapp.setup({
       let sourceKeyShardusAddr = null
       let targetKeyShardusAddr = null
 
-      if (tx.from) {
-        sourceKeyShardusAddr = toShardusAddress(tx.from)
+      let from = tx.from
+      let to = tx.to
+
+      if (tx.type === TXTypes.deposit_stake) {
+        from = tx.nominator
+        to = tx.nominee
+      }
+
+      if (from) {
+        sourceKeyShardusAddr = toShardusAddress(from)
         promises.push(
           dapp.getLocalOrRemoteAccount(sourceKeyShardusAddr).then((queuedWrappedState) => {
-            wrappedStates[tx.from] = {
+            wrappedStates[from] = {
               accountId: queuedWrappedState.accountId,
               stateId: queuedWrappedState.stateId,
               data: queuedWrappedState.data as LiberdusTypes.Accounts,
@@ -743,11 +752,11 @@ dapp.setup({
           }),
         )
       }
-      if (tx.to) {
-        targetKeyShardusAddr = toShardusAddress(tx.to)
+      if (to) {
+        targetKeyShardusAddr = toShardusAddress(to)
         promises.push(
           dapp.getLocalOrRemoteAccount(targetKeyShardusAddr).then((queuedWrappedState) => {
-            wrappedStates[tx.to] = {
+            wrappedStates[to] = {
               accountId: queuedWrappedState.accountId,
               stateId: queuedWrappedState.stateId,
               data: queuedWrappedState.data as LiberdusTypes.Accounts,
@@ -777,6 +786,7 @@ dapp.setup({
         return { status: true, reason: 'Tx PreCrack Success' }
       }
     } catch (e) {
+      console.error('Error in txPreCrackData', e)
       return { status: false, reason: 'Error in txPreCrackData - ' + e.message }
     }
   },
