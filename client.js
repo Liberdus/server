@@ -132,21 +132,21 @@ function createAccount(keys = null) {
       address: toShardusAddress(wallet.address),
       keys: {
         secretKey: wallet.privateKey,
-        publicKey: wallet.address
-      }
+        publicKey: wallet.address,
+      },
     }
   } else {
     // Use existing Shardus crypto
     const newAccount = crypto.generateKeypair()
     return {
       address: keys ? keys.publicKey : newAccount.publicKey,
-      keys: keys || newAccount
+      keys: keys || newAccount,
     }
   }
 }
 
 function createAccounts(num) {
-  const accounts = new Array(num).fill().map(account => createAccount())
+  const accounts = new Array(num).fill().map((account) => createAccount())
   return accounts
 }
 
@@ -347,7 +347,7 @@ function signEthereumTx(tx, keys) {
     // Add signature to transaction
     tx.sign = {
       owner: toShardusAddress(wallet.address),
-      sig: signature
+      sig: signature,
     }
   } catch (error) {
     throw new Error(`Failed to sign transaction: ${error.message}`)
@@ -359,19 +359,13 @@ function verifyEthereumTx(obj) {
     throw new TypeError('Input must be an object.')
   }
   if (!obj.sign || !obj.sign.owner || !obj.sign.sig) {
-    throw new Error(
-      'Object must contain a sign field with the following data: { owner, sig }'
-    )
+    throw new Error('Object must contain a sign field with the following data: { owner, sig }')
   }
   if (typeof obj.sign.owner !== 'string') {
-    throw new TypeError(
-      'Owner must be a public key represented as a hex string.'
-    )
+    throw new TypeError('Owner must be a public key represented as a hex string.')
   }
   if (typeof obj.sign.sig !== 'string') {
-    throw new TypeError(
-      'Signature must be a valid signature represented as a hex string.'
-    )
+    throw new TypeError('Signature must be a valid signature represented as a hex string.')
   }
   const { owner, sig } = obj.sign
   const dataWithoutSign = Object.assign({}, obj)
@@ -437,13 +431,13 @@ async function spamTxs({ txs, rate, nodes = [], saveFile = null }) {
   console.log('Done spamming')
 
   if (writeStream) {
-    await new Promise(resolve => writeStream.on('finish', resolve))
+    await new Promise((resolve) => writeStream.on('finish', resolve))
     console.log(`Wrote spammed txs to '${saveFile}'`)
   }
 }
 
 async function _sleep(ms = 0) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function injectTx(tx) {
@@ -658,7 +652,7 @@ vorpal.command('snapshot', 'submits the snapshot the ULT contract').action(funct
     timestamp: Date.now(),
   }
   signTransaction(tx)
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
   })
@@ -671,7 +665,7 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
       name: 'cycle',
       message: 'Enter the cycle on which the change should take place (or "-1" for 3 cycles from now): ',
       default: -1,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
     {
       type: 'input',
@@ -690,7 +684,7 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
       timestamp: Date.now(),
     }
     signTransaction(tx)
-    injectTx(tx).then(res => {
+    injectTx(tx).then((res) => {
       this.log(res)
       callback()
     })
@@ -705,7 +699,7 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
     }
     signTransaction(tx)
 
-    injectTx(tx).then(res => {
+    injectTx(tx).then((res) => {
       this.log(res)
       callback()
     })
@@ -719,7 +713,7 @@ vorpal.command('change network parameters', 'Send a stringified JSON config obje
       name: 'cycle',
       message: 'Enter the cycle on which the change should take place (or "-1" for 3 cycles from now): ',
       default: -1,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
     {
       type: 'input',
@@ -738,7 +732,7 @@ vorpal.command('change network parameters', 'Send a stringified JSON config obje
       timestamp: Date.now(),
     }
     signTransaction(tx)
-    injectTx(tx).then(res => {
+    injectTx(tx).then((res) => {
       this.log(res)
       callback()
     })
@@ -753,7 +747,7 @@ vorpal.command('email', 'registers your email address to the network').action(as
     type: 'input',
     name: 'email',
     message: 'Enter your email address: ',
-    validate: result => {
+    validate: (result) => {
       const regex = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/
       if (!regex.test(result)) {
         return 'You need to provide a valid email address'
@@ -773,7 +767,7 @@ vorpal.command('email', 'registers your email address to the network').action(as
     email: answer.email,
     timestamp: Date.now(),
   }
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
   })
@@ -784,7 +778,7 @@ vorpal.command('verify', 'verifies your email address').action(async function (_
     type: 'input',
     name: 'code',
     message: 'Enter the verification code sent to your email address: ',
-    validate: result => {
+    validate: (result) => {
       result = result.split` `.join``
       if (typeof result === 'string' && result.length === 6) {
         return true
@@ -800,7 +794,7 @@ vorpal.command('verify', 'verifies your email address').action(async function (_
     timestamp: Date.now(),
   }
   signTransaction(tx)
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
   })
@@ -826,7 +820,7 @@ vorpal.command('register', 'registers a unique alias for your account').action(a
     signTransaction(tx)
   }
   console.log(tx)
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
     // verifyEthereumTx(tx)
@@ -846,7 +840,7 @@ vorpal.command('create', 'creates tokens for an account').action(async function 
       name: 'amount',
       message: 'Enter number of tokens to create: ',
       default: 500,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
   ])
   const to = await getAddress(answers.target)
@@ -861,7 +855,7 @@ vorpal.command('create', 'creates tokens for an account').action(async function 
       amount: answers.amount,
       timestamp: Date.now(),
     }
-    injectTx(tx).then(res => {
+    injectTx(tx).then((res) => {
       this.log(res)
       callback()
     })
@@ -881,7 +875,7 @@ vorpal.command('transfer', 'transfers tokens to another account').action(async f
       name: 'amount',
       message: 'How many tokens do you want to send: ',
       default: 50,
-      filter: value => value,
+      filter: (value) => value,
     },
   ])
   const to = await getAddress(answers.target)
@@ -894,7 +888,7 @@ vorpal.command('transfer', 'transfers tokens to another account').action(async f
     timestamp: Date.now(),
   }
   signTransaction(tx)
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
   })
@@ -912,7 +906,7 @@ vorpal.command('deposit stake', 'deposit the stake amount to the node').action(a
       name: 'amount',
       message: 'Enter number of tokens to stake: ',
       default: BigInt(10),
-      filter: value => BigInt(value),
+      filter: (value) => BigInt(value),
     },
   ])
   const tx = {
@@ -923,7 +917,7 @@ vorpal.command('deposit stake', 'deposit the stake amount to the node').action(a
     timestamp: Date.now(),
   }
   signTransaction(tx)
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
   })
@@ -945,7 +939,7 @@ vorpal.command('withdraw_stake', 'withdraw the stake from the node').action(asyn
     timestamp: Date.now(),
   }
   signTransaction(tx)
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
   })
@@ -958,13 +952,13 @@ vorpal.command('distribute', 'distributes tokens to multiple accounts').action(a
       type: 'input',
       name: 'targets',
       message: 'Enter the target accounts separated by spaces: ',
-      filter: values => values.split` `.map(target => walletEntries[target].address),
+      filter: (values) => values.split` `.map((target) => walletEntries[target].address),
     },
     {
       type: 'number',
       name: 'amount',
       message: 'How many tokens do you want to send each target: ',
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
   ])
   const tx = {
@@ -975,7 +969,7 @@ vorpal.command('distribute', 'distributes tokens to multiple accounts').action(a
     timestamp: Date.now(),
   }
   signTransaction(tx)
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
   })
@@ -1035,7 +1029,7 @@ vorpal.command('message', 'sends a message to another user').action(async functi
         timestamp: Date.now(),
       }
       signTransaction(tx)
-      injectTx(tx).then(res => {
+      injectTx(tx).then((res) => {
         this.log(res)
         callback()
       })
@@ -1051,7 +1045,7 @@ vorpal.command('toll', 'sets a toll people must you in order to send you message
     type: 'number',
     name: 'toll',
     message: 'Enter the toll: ',
-    filter: value => parseInt(value),
+    filter: (value) => parseInt(value),
   })
   const tx = {
     type: 'toll',
@@ -1060,7 +1054,7 @@ vorpal.command('toll', 'sets a toll people must you in order to send you message
     timestamp: Date.now(),
   }
   signTransaction(tx)
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
   })
@@ -1086,7 +1080,7 @@ vorpal.command('add friend', 'adds a friend to your account').action(async funct
     timestamp: Date.now(),
   }
   signTransaction(tx)
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
   })
@@ -1111,7 +1105,7 @@ vorpal.command('remove friend', 'removes a friend from your account').action(asy
     timestamp: Date.now(),
   }
   signTransaction(tx)
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
   })
@@ -1138,7 +1132,7 @@ vorpal.command('stake', 'stakes tokens in order to operate a node').action(async
       timestamp: Date.now(),
     }
     signTransaction(tx)
-    injectTx(tx).then(res => {
+    injectTx(tx).then((res) => {
       this.log(res)
       callback()
     })
@@ -1157,7 +1151,7 @@ vorpal.command('claim', 'submits a claim transaction for the snapshot').action(f
     timestamp: Date.now(),
   }
   signTransaction(tx)
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
   })
@@ -1187,77 +1181,77 @@ vorpal.command('proposal', 'submits a proposal to change network parameters').ac
       name: 'nodeRewardInterval',
       message: 'Specify node reward interval (in minutes): ',
       default: defaults.nodeRewardInterval,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
     {
       type: 'number',
       name: 'nodeRewardAmount',
       message: 'Specify node reward amount: ',
       default: defaults.nodeRewardAmount,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
     {
       type: 'number',
       name: 'nodePenalty',
       message: 'Specify node penalty amount: ',
       default: defaults.nodePenalty,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
     {
       type: 'number',
       name: 'transactionFee',
       message: 'Specify transaction fee: ',
       default: defaults.transactionFee,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
     {
       type: 'number',
       name: 'stakeRequired',
       message: 'Specify stake requirement: ',
       default: defaults.stakeRequired,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
     {
       type: 'number',
       name: 'maintenanceInterval',
       message: 'Specify maintenance interval (in minutes): ',
       default: defaults.maintenanceInterval,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
     {
       type: 'number',
       name: 'maintenanceFee',
       message: 'Specify maintenance fee: ',
       default: defaults.maintenanceFee,
-      filter: value => parseFloat(value),
+      filter: (value) => parseFloat(value),
     },
     {
       type: 'number',
       name: 'proposalFee',
       message: 'Specify proposal fee: ',
       default: defaults.proposalFee,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
     {
       type: 'number',
       name: 'devProposalFee',
       message: 'Specify dev proposal fee: ',
       default: defaults.devProposalFee,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
     {
       type: 'number',
       name: 'faucetAmount',
       message: 'Specify faucet amount for new accounts: ',
       default: defaults.faucetAmount,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
     {
       type: 'number',
       name: 'defaultToll',
       message: 'Specify the default message toll: ',
       default: defaults.defaultToll,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
   ])
   const issue = await getIssueCount()
@@ -1271,7 +1265,7 @@ vorpal.command('proposal', 'submits a proposal to change network parameters').ac
     timestamp: Date.now(),
   }
   signTransaction(tx)
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
   })
@@ -1297,7 +1291,7 @@ vorpal.command('dev proposal', 'submits a development proposal').action(async fu
       name: 'totalAmount',
       message: 'Enter the requested funds: ',
       default: 10000,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
     {
       type: 'input',
@@ -1323,17 +1317,17 @@ vorpal.command('dev proposal', 'submits a development proposal').action(async fu
           name: 'count',
           message: 'Enter the number of payments: ',
           default: 5,
-          filter: value => parseInt(value),
+          filter: (value) => parseInt(value),
         },
         {
           type: 'number',
           name: 'delay',
           message: 'Enter the delay between payments (in minutes): ',
           default: 1,
-          filter: value => parseInt(value),
+          filter: (value) => parseInt(value),
         },
       ],
-      result => {
+      (result) => {
         paymentCount = result.count
         delay = result.delay * ONE_MINUTE
       },
@@ -1363,7 +1357,7 @@ vorpal.command('dev proposal', 'submits a development proposal').action(async fu
     timestamp: Date.now(),
   }
   signTransaction(tx)
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
   })
@@ -1382,7 +1376,7 @@ vorpal.command('vote', 'vote for a proposal').action(async function (args, callb
     this.log(prop)
   }
 
-  proposals = proposals.map(prop => ({
+  proposals = proposals.map((prop) => ({
     name: prop.number,
     value: prop.number,
     short: prop.number,
@@ -1394,14 +1388,14 @@ vorpal.command('vote', 'vote for a proposal').action(async function (args, callb
       name: 'proposal',
       message: 'Pick the proposal number',
       choices: [...proposals],
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
     {
       type: 'number',
       name: 'amount',
       message: 'How many tokens will you vote with? ',
       default: 50,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
   ])
 
@@ -1414,7 +1408,7 @@ vorpal.command('vote', 'vote for a proposal').action(async function (args, callb
     timestamp: Date.now(),
   }
   signTransaction(tx)
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
   })
@@ -1432,7 +1426,7 @@ vorpal.command('vote dev', 'vote for a development proposal').action(async funct
   for (const prop of devProposals) {
     this.log(prop)
   }
-  devProposals = devProposals.map(prop => ({
+  devProposals = devProposals.map((prop) => ({
     name: prop.number,
     value: prop.number,
     short: prop.description,
@@ -1444,7 +1438,7 @@ vorpal.command('vote dev', 'vote for a development proposal').action(async funct
       name: 'proposal',
       message: 'Pick the dev proposal number',
       choices: [...devProposals],
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
     {
       type: 'list',
@@ -1460,7 +1454,7 @@ vorpal.command('vote dev', 'vote for a development proposal').action(async funct
       name: 'amount',
       message: 'How many tokens will you vote with? ',
       default: 50,
-      filter: value => parseInt(value),
+      filter: (value) => parseInt(value),
     },
   ])
 
@@ -1474,7 +1468,7 @@ vorpal.command('vote dev', 'vote for a development proposal').action(async funct
     timestamp: Date.now(),
   }
   signTransaction(tx)
-  injectTx(tx).then(res => {
+  injectTx(tx).then((res) => {
     this.log(res)
     callback()
   })
@@ -1497,7 +1491,7 @@ vorpal
     if (args.account !== undefined) address = walletEntries[args.account].address
     this.log(`Querying network for ${address ? args.account : 'all data'} `)
     this.log(address)
-    getAccountData(address).then(res => {
+    getAccountData(address).then((res) => {
       try {
         this.log(res)
       } catch (err) {
@@ -1521,7 +1515,7 @@ vorpal
     const seedNodes = await getSeedNodes()
     this.log('SEED_NODES:', seedNodes)
     // const ports = seedNodes.map(url => url.port)
-    const nodes = seedNodes.map(url => `${HOST_IP}:${url.port}`)
+    const nodes = seedNodes.map((url) => `${HOST_IP}:${url.port}`)
     await spamTxs({ txs, rate: args.tps, nodes, saveFile: 'spam-test.json' })
     this.log('Done spamming...')
     callback()
@@ -1624,7 +1618,7 @@ vorpal.command('init', 'sets the user wallet if it exists, else creates it').act
       name: 'user',
       message: 'Enter wallet name: ',
     },
-    result => {
+    (result) => {
       callback(null, vorpal.execSync('wallet create ' + result.user))
     },
   )
@@ -1692,14 +1686,13 @@ vorpal
 // Add a vorpal command for depositing stake to the joining nodes in the network.
 // First argument is the amount of tokens to stake.
 vorpal.command('deposit stake joining nodes', 'deposit the stake amount to the joining nodes in the network').action(async function (args, callback) {
-
   const answers = await this.prompt([
     {
       type: 'number',
       name: 'amount',
       message: 'Enter number of tokens to stake: ',
       default: BigInt(10),
-      filter: value => BigInt(value),
+      filter: (value) => BigInt(value),
     },
   ])
   // Get the joining nodes from the monitor
@@ -1719,12 +1712,10 @@ vorpal.command('deposit stake joining nodes', 'deposit the stake amount to the j
     }
   }
 
-
-
   // Load the staked nodeLists from the json file ( by a function in this file )
   const stakedNodeLists = await loadStakedNodeLists()
   // Check if there are any joining nodes that are not staked list
-  const unstakedJoiningNodes = joiningNodes.filter(node => !Object.keys(stakedNodeLists).includes(node))
+  const unstakedJoiningNodes = joiningNodes.filter((node) => !Object.keys(stakedNodeLists).includes(node))
   if (unstakedJoiningNodes.length === 0) {
     this.log('All joining nodes are staked')
     callback()
@@ -1736,21 +1727,30 @@ vorpal.command('deposit stake joining nodes', 'deposit the stake amount to the j
   for (let i = 0; i < accounts.length; i++) {
     const createTx = {
       type: 'create',
-      from: '0'.repeat(64),
-      to: accounts[i].address,
+      from: accounts[i].address,
       amount: BigInt(50), // extra 50 tokens
       timestamp: Date.now(),
     }
     signTransaction(createTx, accounts[i].keys)
     let res = await injectTx(createTx)
     this.log(res)
+    // let success = false
+    // while (success === false) {
+    //   await _sleep(ONE_SECOND * 10)
+    //   const createdAccount = await getAccountData(accounts[i].address)
+    //   console.log(`createdAccount`, createdAccount)
+    //   if (createdAccount && createdAccount.account !== null) {
+    //     success = true
+    //   }
+    // }
+
+    await _sleep(ONE_SECOND * 1)
   }
 
-  await _sleep(5 * ONE_SECOND)
+  await _sleep(10 * ONE_SECOND)
 
   // send deposit_stake to each unstaked joining node using the fund accounts
   for (let i = 0; i < unstakedJoiningNodes.length; i++) {
-    stakedNodeLists[unstakedJoiningNodes[i]] = accounts[i].keys
     const depositStateTx = {
       type: 'deposit_stake',
       nominator: accounts[i].address,
@@ -1761,6 +1761,10 @@ vorpal.command('deposit stake joining nodes', 'deposit the stake amount to the j
     signTransaction(depositStateTx, accounts[i].keys)
     const res = await injectTx(depositStateTx)
     this.log(res)
+    if (res.result.success) {
+      stakedNodeLists[unstakedJoiningNodes[i]] = accounts[i].keys
+    }
+    await _sleep(ONE_SECOND * 1)
   }
 
   // Save the staked nodeLists to the json file
@@ -1777,21 +1781,20 @@ vorpal.command('deposit stake joining nodes', 'deposit the stake amount to the j
 const getJoiningNodes = async () => {
   const res = await axios.get(`http://${MONITORSERVER}/api/report`)
   if (!res.data.nodes) return []
-  const joining = Object.keys(res.data.nodes.joining);
-  console.log("Joining nodes: ", joining);
+  const joining = Object.keys(res.data.nodes.active)
+  console.log('Joining nodes: ', joining)
   return joining
 }
 
 const loadStakedNodeLists = async () => {
   try {
-    const data = await fs.promises.readFile(stakedNodeListsFile, 'utf8');
-    console.log('stakedNodeLists', data);
-    return JSON.parse(data);
-  }
-  catch (err) {
+    const data = await fs.promises.readFile(stakedNodeListsFile, 'utf8')
+    console.log('stakedNodeLists', data)
+    return JSON.parse(data)
+  } catch (err) {
     saveEntries({}, stakedNodeListsFile)
     console.log(`Created stakedNodeLists file '${stakedNodeListsFile}'.`)
-    return {};
+    return {}
   }
 }
 // Custom JSON stringify replacer for BigInt
@@ -1799,10 +1802,10 @@ const jsonStringifyReplacer = (key, value) => {
   if (typeof value === 'bigint') {
     return {
       type: 'BigInt',
-      value: value.toString()
+      value: value.toString(),
     }
   }
   return value
 }
 vorpal.delimiter('>').show()
-vorpal.exec('init').then(res => (USER = res))
+vorpal.exec('init').then((res) => (USER = res))
