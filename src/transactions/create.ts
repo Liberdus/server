@@ -1,17 +1,12 @@
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import * as config from '../config'
-import {Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.Create, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
     response.success = false
     response.reason = '"From" must be a string.'
-    throw new Error(response.reason)
-  }
-  if (typeof tx.to !== 'string') {
-    response.success = false
-    response.reason = '"To" must be a string.'
     throw new Error(response.reason)
   }
   if (typeof tx.amount !== 'bigint' || tx.amount <= BigInt(0)) {
@@ -23,8 +18,8 @@ export const validate_fields = (tx: Tx.Create, response: ShardusTypes.IncomingTr
 }
 
 export const validate = (tx: Tx.Create, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
-  const to: Accounts = wrappedStates[tx.to] && wrappedStates[tx.to].data
-  if (to === undefined || to === null) {
+  const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
+  if (from === undefined || from === null) {
     response.reason = "target account doesn't exist"
     return response
   }
@@ -34,17 +29,16 @@ export const validate = (tx: Tx.Create, wrappedStates: WrappedStates, response: 
 }
 
 export const apply = (tx: Tx.Create, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
-  const to: UserAccount = wrappedStates[tx.to].data
-  to.data.balance += tx.amount
-  to.timestamp = txTimestamp
-  // to.data.transactions.push({ ...tx, txId })
-  dapp.log('Applied create tx', to)
+  const from: UserAccount = wrappedStates[tx.from].data
+  from.data.balance += tx.amount
+  from.timestamp = txTimestamp
+  // from.data.transactions.push({ ...tx, txId })
+  dapp.log('Applied create tx', from)
 }
 
 export const keys = (tx: Tx.Create, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.to]
-  result.allKeys = [...result.sourceKeys, ...result.targetKeys]
+  result.allKeys = [...result.sourceKeys]
   return result
 }
 
