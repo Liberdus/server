@@ -62,9 +62,9 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   devProposalFee: BigInt(50),
   faucetAmount: BigInt(10),
   defaultToll: BigInt(1),
-  minVersion: '2.3.2',
-  activeVersion: '2.3.2',
-  latestVersion: '2.3.2',
+  minVersion: '2.3.3',
+  activeVersion: '2.3.3',
+  latestVersion: '2.3.3',
   archiver: {
     minVersion: '3.5.6',
     activeVersion: '3.5.6',
