@@ -11,12 +11,12 @@ export const validate_fields = (tx: Tx.DevVote, response: ShardusTypes.IncomingT
     response.reason = 'tx "from" field must be a string.'
     throw new Error(response.reason)
   }
-  if (typeof tx.amount !== 'number') {
+  if (typeof tx.amount !== 'bigint') {
     response.success = false
-    response.reason = 'ts "amount" field must be a number.'
+    response.reason = 'ts "amount" field must be a bigint.'
     throw new Error(response.reason)
   }
-  if (tx.amount < 1) {
+  if (tx.amount < BigInt(1)) {
     response.success = false
     response.reason = 'Minimum voting "amount" allowed is 1 token'
     throw new Error(response.reason)

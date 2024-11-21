@@ -36,9 +36,9 @@ export const validate_fields = (tx: Tx.DevPayment, response: ShardusTypes.Incomi
     response.reason = 'tx "payment.address" must be a string.'
     throw new Error(response.reason)
   }
-  if (typeof tx.payment.amount !== 'number') {
+  if (typeof tx.payment.amount !== 'bigint') {
     response.success = false
-    response.reason = 'tx "payment.amount" must be a number.'
+    response.reason = 'tx "payment.amount" must be a bigint.'
     throw new Error(response.reason)
   }
   if (typeof tx.payment.delay !== 'number') {
