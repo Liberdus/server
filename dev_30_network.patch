@@ -1,0 +1,51 @@
+diff --git forkSrcPrefix/src/config/index.ts forkDstPrefix/src/config/index.ts
+index d9d1fd8af80133cefde582e145f22b268fc46bda..e722b5a7ca56beaa2a4599fcebfc7ec6cc088ba7 100644
+--- forkSrcPrefix/src/config/index.ts
++++ forkDstPrefix/src/config/index.ts
+@@ -359,8 +359,8 @@ config = merge(config, {
+     p2p: {
+       cycleDuration: cycleDuration,
+       minNodesToAllowTxs: 1, // to allow single node networks
+-      baselineNodes: process.env.baselineNodes ? parseInt(process.env.baselineNodes) : 5, // config used for baseline for entering recovery, restore, and safety. Should be equivalient to minNodes on network startup
+-      minNodes: process.env.minNodes ? parseInt(process.env.minNodes) : 5,
++      baselineNodes: process.env.baselineNodes ? parseInt(process.env.baselineNodes) : 30, // config used for baseline for entering recovery, restore, and safety. Should be equivalient to minNodes on network startup
++      minNodes: process.env.minNodes ? parseInt(process.env.minNodes) : 30,
+       maxNodes: process.env.maxNodes ? parseInt(process.env.maxNodes) : 1100,
+       maxJoinedPerCycle: 10,
+       maxSyncingPerCycle: 10,
+@@ -373,7 +373,7 @@ config = merge(config, {
+       amountToShrink: 5,
+       maxDesiredMultiplier: 1.2,
+       maxScaleReqs: 250, // todo: this will become a variable config but this should work for a 500 node demo
+-      forceBogonFilteringOn: false,
++      forceBogonFilteringOn: true,
+       //these are new feature in 1.3.0, we can make them default:true in shardus-core later
+ 
+       // 1.2.3 migration starts
+@@ -435,7 +435,7 @@ config = merge(config, {
+       maxStandbyCount: 30000, //max allowed standby nodes count
+       enableMaxStandbyCount: true,
+ 
+-      formingNodesPerCycle: 10, //how many nodes can be add in a cycle while in forming mode
++      formingNodesPerCycle: 30, //how many nodes can be add in a cycle while in forming mode
+ 
+       downNodeFilteringEnabled: false, //turning down node filtering off for diagnostics purposes
+     },
+@@ -490,7 +490,7 @@ config = merge(config, {
+ config = merge(config, {
+   server: {
+     sharding: {
+-      nodesPerConsensusGroup: process.env.nodesPerConsensusGroup ? parseInt(process.env.nodesPerConsensusGroup) : 10, //128 is the final goal
++      nodesPerConsensusGroup: process.env.nodesPerConsensusGroup ? parseInt(process.env.nodesPerConsensusGroup) : 15, //128 is the final goal
+       nodesPerEdge: process.env.nodesPerEdge ? parseInt(process.env.nodesPerEdge) : 5,
+       executeInOneShard: true,
+     },
+@@ -539,7 +539,7 @@ config = merge(
+       // for easier debugging
+       debug: {
+         startInFatalsLogMode: false, // true setting good for big aws test with nodes joining under stress.
+-        startInErrorLogMode: false,
++        startInErrorLogMode: true,
+         robustQueryDebug: false,
+         fakeNetworkDelay: 0,
+         disableSnapshots: true, // do not check in if set to false
