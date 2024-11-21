@@ -3,7 +3,18 @@ import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import { Utils } from '@shardus/types'
 import create from '../accounts'
-import {DevIssueAccount, DevProposalAccount, NodeAccount, OurAppDefinedData, DevWindows, DeveloperPayment, NetworkAccount, WrappedStates, Tx, TransactionKeys } from '../@types'
+import {
+  DevIssueAccount,
+  DevProposalAccount,
+  NodeAccount,
+  OurAppDefinedData,
+  DevWindows,
+  DeveloperPayment,
+  NetworkAccount,
+  WrappedStates,
+  Tx,
+  TransactionKeys,
+} from '../@types'
 
 export const validate_fields = (tx: Tx.DevTally, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.nodeId !== 'string') {
@@ -84,8 +95,10 @@ export const apply = (tx: Tx.DevTally, txTimestamp: number, txId: string, wrappe
   const devProposals: DevProposalAccount[] = tx.devProposals.map((id: string) => wrappedStates[id].data)
   let nextDeveloperFund: DeveloperPayment[] = []
 
+  const scalingFactor = BigInt(100)
+  const multiplier = BigInt(15) // Represents 0.15 as an integer
   for (const devProposal of devProposals) {
-    if (devProposal.approve > devProposal.reject + devProposal.reject * BigInt(0.15)) {
+    if (devProposal.approve > devProposal.reject + (devProposal.reject * multiplier) / scalingFactor) {
       devProposal.approved = true
       const payments = []
       for (const payment of devProposal.payments) {
