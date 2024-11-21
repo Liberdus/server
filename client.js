@@ -1193,15 +1193,15 @@ vorpal.command('proposal', 'submits a proposal to change network parameters').ac
       type: 'number',
       name: 'nodeRewardAmount',
       message: 'Specify node reward amount: ',
-      default: defaults.nodeRewardAmountUsd,
+      default: defaults.nodeRewardAmount,
       filter: value => parseInt(value),
     },
     {
       type: 'number',
       name: 'nodePenalty',
       message: 'Specify node penalty amount: ',
-      default: defaults.nodePenaltyUsd,
-      filter: value => BigInt(value),
+      default: defaults.nodePenalty,
+      filter: value => parseInt(value),
     },
     {
       type: 'number',
@@ -1212,10 +1212,10 @@ vorpal.command('proposal', 'submits a proposal to change network parameters').ac
     },
     {
       type: 'number',
-      name: 'stakeRequiredUsd',
+      name: 'stakeRequired',
       message: 'Specify stake requirement: ',
-      default: defaults.stakeRequiredUsd,
-      filter: value => BigInt(value),
+      default: defaults.stakeRequired,
+      filter: value => parseInt(value),
     },
     {
       type: 'number',
