@@ -531,7 +531,7 @@ dapp.setup({
     return `${Utils.safeStringify(wrappedAccount)}`
   },
   canDebugDropTx(tx: any) {
-    return tx.type === 'create'
+    return false
   },
   close(): void {
     dapp.log('Shutting down server...')
