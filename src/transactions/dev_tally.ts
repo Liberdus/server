@@ -145,8 +145,10 @@ export const apply = (tx: Tx.DevTally, txTimestamp: number, txId: string, wrappe
     nextDevWindows,
   }
 
-  let ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
-  ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: from.id }
+  const addressHash = wrappedStates[config.networkAccount].stateId
+  const ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
+
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id }
 
   from.timestamp = txTimestamp
   devIssue.timestamp = txTimestamp
@@ -155,8 +157,8 @@ export const apply = (tx: Tx.DevTally, txTimestamp: number, txId: string, wrappe
 }
 
 export const transactionReceiptPass = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
-  let { address, value, when, source } = applyResponse.appDefinedData.globalMsg
-  dapp.setGlobal(address, value, when, source)
+  let { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
+  dapp.setGlobal(address, addressHash, value, when, source)
   dapp.log('PostApplied dev_tally tx', address, value, when, source)
 }
 
