@@ -41,8 +41,10 @@ export const apply = (tx: Tx.NetworkWindows, txTimestamp: number, txId: string, 
     issue: network.issue,
   }
 
-  let ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
-  ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: from.id }
+  const addressHash = wrappedStates[config.networkAccount].stateId
+  const ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
+
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id }
 
   from.timestamp = txTimestamp
   dapp.log(`Apply network_windows tx ${txId} value`, value)
@@ -56,8 +58,8 @@ export const keys = (tx: Tx.NetworkWindows, result: TransactionKeys) => {
 }
 
 export const transactionReceiptPass = (tx: Tx.ChangeConfig, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
-  let { address, value, when, source } = applyResponse.appDefinedData.globalMsg
-  dapp.setGlobal(address, value, when, source)
+  let { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
+  dapp.setGlobal(address, addressHash, value, when, source)
   dapp.log('PostApplied network_windows tx', address, value)
 }
 

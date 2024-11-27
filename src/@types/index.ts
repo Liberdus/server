@@ -595,6 +595,7 @@ export type KeyResult = {
 export interface OurAppDefinedData {
   globalMsg: {
     address: string
+    addressHash: string
     value: any
     when: number
     source: string
