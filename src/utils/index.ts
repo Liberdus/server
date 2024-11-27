@@ -4,7 +4,6 @@ import * as configs from '../config'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import { shardusPostToNode } from './request'
 import { Utils } from '@shardus/types'
-import { getLocalOrRemoteAccount } from './../index'
 import { TXTypes } from '../transactions'
 
 export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): bigint => {
@@ -126,7 +125,7 @@ export function nodeReward(address: string, nodeId: string, dapp: Shardus): void
 
 // START NETWORK DAO WINDOWS
 export async function startNetworkWindows(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await getLocalOrRemoteAccount(configs.networkAccount)
+  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
     type: TXTypes.network_windows,
@@ -140,7 +139,7 @@ export async function startNetworkWindows(address: string, nodeId: string, dapp:
 
 // ISSUE TRANSACTION FUNCTION
 export async function generateIssue(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await getLocalOrRemoteAccount(configs.networkAccount)
+  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
     type: TXTypes.issue,
@@ -156,7 +155,7 @@ export async function generateIssue(address: string, nodeId: string, dapp: Shard
 
 // DEV_ISSUE TRANSACTION FUNCTION
 export async function generateDevIssue(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await getLocalOrRemoteAccount(configs.networkAccount)
+  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
     type: TXTypes.dev_issue,
@@ -173,9 +172,9 @@ export async function generateDevIssue(address: string, nodeId: string, dapp: Sh
 export async function tallyVotes(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
   console.log(`GOT TO TALLY_VOTES FN ${address} ${nodeId}`)
   try {
-    const network = await getLocalOrRemoteAccount(configs.networkAccount)
+    const network = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
     const networkAccount = network.data as NetworkAccount
-    const account = await getLocalOrRemoteAccount(crypto.hash(`issue-${networkAccount.issue}`))
+    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${networkAccount.issue}`))
     if (!account) {
       dapp.log(`No account found for issue-${networkAccount.issue}`)
       await _sleep(500)
@@ -203,9 +202,9 @@ export async function tallyVotes(address: string, nodeId: string, dapp: Shardus,
 // DEV_TALLY TRANSACTION FUNCTION
 export async function tallyDevVotes(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
   try {
-    const network = await getLocalOrRemoteAccount(configs.networkAccount)
+    const network = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
     const networkAccount = network.data as NetworkAccount
-    const account = await getLocalOrRemoteAccount(crypto.hash(`dev-issue-${networkAccount.devIssue}`))
+    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${networkAccount.devIssue}`))
     if (!account) {
       await _sleep(500)
       return tallyDevVotes(address, nodeId, dapp)
@@ -230,7 +229,7 @@ export async function tallyDevVotes(address: string, nodeId: string, dapp: Shard
 
 // Inject "parameters" transaction to the network
 export async function injectParameterTx(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await getLocalOrRemoteAccount(configs.networkAccount)
+  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
     type: TXTypes.parameters,
@@ -245,7 +244,7 @@ export async function injectParameterTx(address: string, nodeId: string, dapp: S
 
 // Inject "dev_parameters" transaction to the network
 export async function injectDevParameters(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await getLocalOrRemoteAccount(configs.networkAccount)
+  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
     type: TXTypes.dev_parameters,
@@ -260,7 +259,7 @@ export async function injectDevParameters(address: string, nodeId: string, dapp:
 
 // APPLY_PARAMETERS TRANSACTION FUNCTION
 export async function applyParameters(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await getLocalOrRemoteAccount(configs.networkAccount)
+  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
     type: TXTypes.apply_parameters,
@@ -275,7 +274,7 @@ export async function applyParameters(address: string, nodeId: string, dapp: Sha
 
 // APPLY_DEV_PARAMETERS TRANSACTION FUNCTION
 export async function applyDevParameters(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await getLocalOrRemoteAccount(configs.networkAccount)
+  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
   const network = account.data as NetworkAccount
   const tx = {
     type: TXTypes.apply_dev_parameters,

@@ -69,16 +69,17 @@ export const apply = (
     change: { cycle: changeOnCycle, change: {}, appData: Utils.safeJsonParse(tx.config) },
   }
 
-  let ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
-  ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: config.networkAccount }
+  const addressHash = wrappedStates[config.networkAccount].stateId
+  const ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id }
 
   from.timestamp = tx.timestamp
   dapp.log('Applied change_network_param tx')
 }
 
 export const transactionReceiptPass = (tx: Tx.ChangeNetworkParam, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
-  let { address, value, when, source } = applyResponse.appDefinedData.globalMsg
-  dapp.setGlobal(address, value, when, source)
+  let { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
+  dapp.setGlobal(address, addressHash, value, when, source)
   dapp.log('PostApplied change_network_param tx')
 }
 

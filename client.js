@@ -18,10 +18,10 @@ const useEthereumSigning = true
 
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
 let USER
-let HOST = process.argv[2] || 'localhost:9001'
+let HOST = process.argv[2] || '63.141.233.178:9001'
 const HOST_IP = HOST.split(':')[0]
 const ARCHIVESERVER = process.argv[3] || 'localhost:4000'
-const MONITORSERVER = process.argv[4] || 'localhost:3000'
+const MONITORSERVER = process.argv[4] || '63.141.233.178:3000'
 console.log(`Using ${HOST} as node for queries and transactions.`)
 
 const network = '0'.repeat(64)
@@ -463,6 +463,7 @@ async function takeSnapshot(host) {
 async function getAccountData(id) {
   try {
     const res = await axios.get(`http://${HOST}/${id ? 'account/' + id : 'accounts'}`)
+    if (res.data) return Utils.safeJsonParse(Utils.safeStringify(res.data))
     return res.data
   } catch (err) {
     return err.message
@@ -1704,10 +1705,9 @@ vorpal.command('deposit stake joining nodes', 'deposit the stake amount to the j
   }
 
   // Filter out the unstaked joining nodes by checking the stakeAmount
-  for (const publicKey of joiningNodes) {
+  for (const publicKey of [...joiningNodes]) {
     const nodeAccount = await getAccountData(publicKey)
-    console.log('publicKey', nodeAccount)
-    if (nodeAccount && nodeAccount.account !== null && nodeAccount.stakeLock !== BigInt(0)) {
+    if (nodeAccount && nodeAccount.account !== null && nodeAccount.account.stakeLock !== BigInt(0)) {
       joiningNodes.splice(joiningNodes.indexOf(publicKey), 1)
     }
   }
@@ -1781,7 +1781,7 @@ vorpal.command('deposit stake joining nodes', 'deposit the stake amount to the j
 const getJoiningNodes = async () => {
   const res = await axios.get(`http://${MONITORSERVER}/api/report`)
   if (!res.data.nodes) return []
-  const joining = Object.keys(res.data.nodes.active)
+  const joining = Object.keys(res.data.nodes.joining)
   console.log('Joining nodes: ', joining)
   return joining
 }

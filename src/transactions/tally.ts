@@ -2,7 +2,18 @@ import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import create from '../accounts'
-import {NodeAccount, Windows, OurAppDefinedData, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import {
+  NodeAccount,
+  Windows,
+  OurAppDefinedData,
+  UserAccount,
+  NetworkAccount,
+  IssueAccount,
+  WrappedStates,
+  ProposalAccount,
+  Tx,
+  TransactionKeys,
+} from '../@types'
 
 export const validate_fields = (tx: Tx.Tally, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.nodeId !== 'string') {
@@ -128,8 +139,10 @@ export const apply = (tx: Tx.Tally, txTimestamp: number, txId: string, wrappedSt
     nextWindows,
   }
 
-  let ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
-  ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: from.id }
+  const addressHash = wrappedStates[config.networkAccount].stateId
+  const ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
+
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id }
 
   issue.winnerId = winner.id
   issue.tallied = true
@@ -152,8 +165,8 @@ export const transactionReceiptPass = (tx: Tx.Tally, txId: string, wrappedStates
     return
   }
 
-  let { address, value, when, source } = applyResponse.appDefinedData.globalMsg
-  dapp.setGlobal(address, value, when, source)
+  let { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
+  dapp.setGlobal(address, addressHash, value, when, source)
   dapp.log('PostApplied tally tx', issue, winner, value)
 }
 

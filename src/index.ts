@@ -65,17 +65,6 @@ export let adminCert: AdminCert = null
 let isReadyToJoinLatestValue = false
 let mustUseAdminCert = false
 
-export async function getLocalOrRemoteAccount(id: string): Promise<(ShardusTypes.WrappedData & { data: LiberdusTypes.Accounts }) | null> {
-  try {
-    const account = (await dapp.getLocalOrRemoteAccount(id)) as ShardusTypes.WrappedData & { data: LiberdusTypes.Accounts }
-    if (account) return utils.fixBigIntLiteralsToBigInt(account)
-    return account
-  } catch (error) {
-    dapp.log('Failed to get local or remote account', error)
-    return null
-  }
-}
-
 // API
 registerAPI(dapp)
 
@@ -120,6 +109,7 @@ dapp.setup({
       } else {
         dapp.setGlobal(
           configs.networkAccount,
+          '', // Setting addressHash = '' as the network account is not created yet.
           {
             type: 'init_network',
             timestamp: when,
@@ -220,7 +210,7 @@ dapp.setup({
         await utils._sleep(configs.ONE_SECOND * 10)
       }
     } else {
-      while (!(await getLocalOrRemoteAccount(configs.networkAccount))) {
+      while (!(await dapp.getLocalOrRemoteAccount(configs.networkAccount))) {
         console.log('waiting..')
         await utils._sleep(1000)
       }
@@ -869,7 +859,7 @@ dapp.setup({
     return null
   },
   async getNetworkAccount(): Promise<ShardusTypes.WrappedData> {
-    const account = await getLocalOrRemoteAccount(configs.networkAccount)
+    const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
     return account
   },
   async signAppData(type: string, hash: string, nodesToSign: number, originalAppData: any): Promise<ShardusTypes.SignAppDataResult> {
@@ -902,7 +892,7 @@ dapp.setup({
           return fail
         }
         if (LiberdusFlags.FullCertChecksEnabled) {
-          const nominatorAccount = await getLocalOrRemoteAccount(stakeCert.nominator)
+          const nominatorAccount = await dapp.getLocalOrRemoteAccount(stakeCert.nominator)
           if (!nominatorAccount) {
             /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'could not find nominator account')
             /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`could not find nominator account ${type} ${Utils.safeStringify(stakeCert)} `)
@@ -952,7 +942,7 @@ dapp.setup({
           return fail
         }
 
-        const nodeAccount = await getLocalOrRemoteAccount(removeNodeCert.nodePublicKey)
+        const nodeAccount = await dapp.getLocalOrRemoteAccount(removeNodeCert.nodePublicKey)
         // TODO: validate the account is actually a node account
         const nodeAccountData = nodeAccount.data as LiberdusTypes.NodeAccount
         if (ApplyPenalty.isLowStake(nodeAccountData) === false) {
@@ -1901,7 +1891,7 @@ dapp.registerExceptionHandler()
     drift = currentTime - expected
 
     try {
-      const account = await getLocalOrRemoteAccount(configs.networkAccount)
+      const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
       network = account.data as LiberdusTypes.NetworkAccount
       ;[cycleData] = dapp.getLatestCycles()
       luckyNodes = dapp.getClosestNodes(cycleData.previous, LiberdusFlags.numberOfLuckyNodes)
