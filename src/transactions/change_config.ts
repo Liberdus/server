@@ -1,6 +1,6 @@
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
-import {UserAccount, NetworkAccount, WrappedStates, OurAppDefinedData, Tx, TransactionKeys } from '../@types'
+import { UserAccount, NetworkAccount, WrappedStates, OurAppDefinedData, Tx, TransactionKeys } from '../@types'
 import { TXTypes } from '.'
 import { Utils } from '@shardus/types'
 
@@ -41,7 +41,14 @@ export const validate = (tx: Tx.ChangeConfig, wrappedStates: WrappedStates, resp
   return response
 }
 
-export const apply = (tx: Tx.ChangeConfig, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp, applyResponse: ShardusTypes.ApplyResponse) => {
+export const apply = (
+  tx: Tx.ChangeConfig,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp,
+  applyResponse: ShardusTypes.ApplyResponse,
+) => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   let changeOnCycle
@@ -62,16 +69,18 @@ export const apply = (tx: Tx.ChangeConfig, txTimestamp: number, txId: string, wr
     change: { cycle: changeOnCycle, change: Utils.safeJsonParse(tx.config) },
   }
 
-  let ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
-  ourAppDefinedData.globalMsg = { address: config.networkAccount, value, when, source: from.id }
+  const addressHash = wrappedStates[config.networkAccount].stateId
+  const ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
+
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id }
 
   from.timestamp = tx.timestamp
   dapp.log('Applied change_config tx')
 }
 
 export const transactionReceiptPass = (tx: Tx.ChangeConfig, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
-  let { address, value, when, source } = applyResponse.appDefinedData.globalMsg
-  dapp.setGlobal(address, value, when, source)
+  let { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
+  dapp.setGlobal(address, addressHash, value, when, source)
   dapp.log('PostApplied change_config tx')
 }
 
