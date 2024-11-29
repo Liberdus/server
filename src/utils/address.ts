@@ -1,6 +1,7 @@
 import { LiberdusFlags } from '../config'
 import { UserAccount } from '../@types'
 import * as crypto from '../crypto'
+import { ethers } from 'ethers'
 
 /**
  * Converts an Ethereum address to a Shardus address by padding to fill 64 bytes.
@@ -23,10 +24,33 @@ export function toShardusAddress(addressStr: string): string {
   }
 
   if (byte64Str.length === 64) {
-    return byte64Str
+    return byte64Str.toLowerCase()
   }
 
-  return byte64Str + '0'.repeat(64 - byte64Str.length)
+  return byte64Str.toLowerCase() + '0'.repeat(64 - byte64Str.length)
+}
+
+export function isValidUncompressedPublicKey(publicKey: string): boolean {
+  // Check if it starts with '04' and is 130 characters long (64 bytes for x + 64 bytes for y + 1 byte for prefix)
+  if (publicKey.length === 130 && publicKey.startsWith('04')) {
+    return true
+  }
+  return false
+}
+
+export function getAddressFromPublicKey(publicKey: string): string {
+  try {
+    // add '0x' prefix to publicKey if it is not present
+    if (!publicKey.startsWith('0x')) {
+      publicKey = '0x' + publicKey
+    }
+    const address = ethers.computeAddress(publicKey)
+    console.log(`getAddressFromPublicKey: ${address}`, toShardusAddress(address))
+    return toShardusAddress(address)
+  } catch (e) {
+    console.log(`getAddressFromPublicKey error: ${e.message}`, e)
+    return null
+  }
 }
 
 export function toShardusAddressWithKey(addressStr: string, secondaryAddressStr: string): string {

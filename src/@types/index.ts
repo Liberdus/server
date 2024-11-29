@@ -170,6 +170,7 @@ export namespace Tx {
     aliasHash: string
     from: string
     alias: string
+    publicKey: string
   }
 
   export interface RemoveFriend extends BaseLiberdusTx {
@@ -322,6 +323,7 @@ export interface UserAccount {
   timestamp: number
   hash: string
   operatorAccountInfo?: OperatorAccountInfo
+  publicKey: string
 }
 
 export interface OperatorAccountInfo {

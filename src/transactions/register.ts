@@ -1,8 +1,9 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
+import { isValidUncompressedPublicKey, getAddressFromPublicKey } from '../utils/address'
 import * as config from '../config'
-import {AliasAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { AliasAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.Register, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.aliasHash !== 'string') {
@@ -60,6 +61,16 @@ export const validate = (tx: Tx.Register, wrappedStates: WrappedStates, response
     response.reason = 'Alias may only contain alphanumeric characters'
     return response
   }
+  if (isValidUncompressedPublicKey(tx.publicKey) === false) {
+    response.reason = 'Invalid public key'
+    return response
+  }
+
+  if (getAddressFromPublicKey(tx.publicKey) !== tx.from) {
+    response.reason = 'Public key does not match the from address'
+    return response
+  }
+
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
@@ -72,7 +83,9 @@ export const apply = (tx: Tx.Register, txTimestamp: number, txId: string, wrappe
   // from.data.balance -= maintenanceAmount(txTimestamp, from)
   alias.inbox = tx.alias
   from.alias = tx.alias
+  from.publicKey = tx.publicKey
   alias.address = tx.from
+
   // from.data.transactions.push({ ...tx, txId })
   alias.timestamp = txTimestamp
   from.timestamp = txTimestamp
