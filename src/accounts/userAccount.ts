@@ -21,6 +21,7 @@ export const userAccount = (accountId: string, timestamp: number) => {
     claimedSnapshot: false,
     lastMaintenance: timestamp,
     timestamp: 0,
+    publicKey: '',
   }
   account.hash = crypto.hashObj(account)
   return account
