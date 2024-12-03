@@ -216,13 +216,7 @@ dapp.setup({
       id: txId,
       timestamp: txnTimestamp,
       keys,
-      shardusMemoryPatterns: {
-        ro: [],
-        rw: [],
-        wo: [],
-        on: [],
-        ri: [],
-      },
+      shardusMemoryPatterns: null,
     }
   },
   async apply(timestampedTx: ShardusTypes.OpaqueTransaction, wrappedStates) {
