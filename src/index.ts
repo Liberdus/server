@@ -134,18 +134,18 @@ dapp.setup({
         /* Genesis account */
 
         type GenesisBalances = {
-          [alias: string]: {
-            address: string
+          [address: string]: {
+            alias: string
             publicKey: string
-            LIB: string
+            balance: string
           }
         }
 
         const genesisLoaded = genesis as GenesisBalances;
         let accountCopies: ShardusTypes.AccountsCopy[] = []
 
-        for (let alias in genesisLoaded) {
-          const accountId = toShardusAddress(genesisLoaded[alias].address)
+        for (let address in genesisLoaded) {
+          const accountId = toShardusAddress(address)
 
           if (await getLocalOrRemoteAccount(accountId)) {
             continue
@@ -154,10 +154,10 @@ dapp.setup({
           const currentCycle = dapp.getLatestCycles(1)[0]
           let userAccount = account.userAccount(accountId, currentCycle.start)
 
-          userAccount.alias = alias
-          userAccount.publicKey = genesisLoaded[alias].publicKey
+          userAccount.alias = genesisLoaded[address].alias
+          userAccount.publicKey = genesisLoaded[address].publicKey
           userAccount.timestamp = currentCycle.start
-          userAccount.data.balance = BigInt(genesisLoaded[alias].LIB)
+          userAccount.data.balance = BigInt(genesisLoaded[address].balance)
           userAccount.hash = ''
           userAccount.hash = crypto.hashObj(userAccount)
 
@@ -173,14 +173,14 @@ dapp.setup({
           accountCopies.push(constructedShardusAccount)
 
 
-          let aliasAccount = account.aliasAccount(crypto.hash(alias))
+          let aliasAccount = account.aliasAccount(crypto.hash(genesisLoaded[address].alias))
           aliasAccount.address = userAccount.id
           aliasAccount.timestamp = currentCycle.start
           aliasAccount.hash = ''
           aliasAccount.hash = crypto.hashObj(aliasAccount)
 
           accountCopies.push({
-            accountId: crypto.hash(alias),
+            accountId: crypto.hash(genesisLoaded[address].alias),
             cycleNumber: currentCycle.counter,
             data: aliasAccount,
             timestamp: currentCycle.start,
