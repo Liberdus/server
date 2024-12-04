@@ -18,10 +18,10 @@ const useEthereumSigning = true
 
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
 let USER
-let HOST = process.argv[2] || '63.141.233.178:9001'
+let HOST = process.argv[2] || 'localhost:9001'
 const HOST_IP = HOST.split(':')[0]
 const ARCHIVESERVER = process.argv[3] || 'localhost:4000'
-const MONITORSERVER = process.argv[4] || '63.141.233.178:3000'
+const MONITORSERVER = process.argv[4] || 'localhost:3000'
 console.log(`Using ${HOST} as node for queries and transactions.`)
 
 const network = '0'.repeat(64)

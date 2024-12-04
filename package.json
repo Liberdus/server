@@ -30,10 +30,10 @@
   "license": "ISC",
   "dependencies": {
     "@shardus/archiver-discovery": "1.1.0",
-    "@shardus/core": "git+https://github.com/shardeum/shardus-core#dev",
-    "@shardus/crypto-utils": "4.1.4",
-    "@shardus/net": "1.4.0",
-    "@shardus/types": "1.2.21-1",
+    "@shardus/core": "git+https://github.com/shardus/shardus-core#dev",
+    "@shardus/crypto-utils": "git+https://github.com/shardeum/lib-crypto-utils#v4.1.5",
+    "@shardus/net": "git+https://github.com/shardeum/lib-net#v1.4.4",
+    "@shardus/types": "git+https://github.com/shardeum/lib-types#v1.2.22",
     "chalk-pipe": "^3.0.0",
     "decimal.js": "^10.2.0",
     "deepmerge": "^4.2.2",
@@ -51,7 +51,7 @@
     "vorpal": "^1.12.0"
   },
   "devDependencies": {
-    "@shardus/core": "git+https://github.com/shardeum/archive-server#dev",
+    "@shardus/archiver": "git+https://github.com/shardus/archive-server#liberdus-archiver",
     "@shardus/monitor-server": "2.8.5",
     "@types/decimal.js": "^7.4.0",
     "@types/express": "^4.17.2",
