@@ -1,5 +1,5 @@
 import { shardusFactory, ShardusTypes, nestedCountersInstance, DevSecurityLevel } from '@shardus/core'
-import account from "./accounts"
+import account from './accounts'
 import { P2P, Utils } from '@shardus/types'
 import * as crypto from './crypto'
 import * as configs from './config'
@@ -132,7 +132,7 @@ dapp.setup({
           }
         }
 
-        const genesisLoaded = genesis as GenesisBalances;
+        const genesisLoaded = genesis as GenesisBalances
         let accountCopies: ShardusTypes.AccountsCopy[] = []
 
         for (let address in genesisLoaded) {
@@ -163,7 +163,6 @@ dapp.setup({
 
           accountCopies.push(constructedShardusAccount)
 
-
           let aliasAccount = account.aliasAccount(crypto.hash(genesisLoaded[address].alias))
           aliasAccount.address = userAccount.id
           aliasAccount.timestamp = currentCycle.start
@@ -178,16 +177,14 @@ dapp.setup({
             isGlobal: false,
             hash: aliasAccount.hash,
           })
-
-
         }
 
-        accountCopies = accountCopies.map(acc => {
+        accountCopies = accountCopies.map((acc) => {
           return Utils.safeJsonParse(Utils.safeStringify(acc))
         })
 
         await dapp.debugCommitAccountCopies(accountCopies)
-        await dapp.forwardAccounts({ accounts: accountCopies, receipts: []})
+        await dapp.forwardAccounts({ accounts: accountCopies, receipts: [] })
 
         // WE SHOULD NOT DO THIS WHILE THE NETWORK IS FORMING
         // dapp.set({
