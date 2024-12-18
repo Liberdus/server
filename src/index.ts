@@ -1,7 +1,13 @@
+<<<<<<< HEAD
 import { shardusFactory, ShardusTypes, nestedCountersInstance, DevSecurityLevel } from '@shardus/core'
 import account from "./accounts"
 import { P2P, Utils } from '@shardus/types'
 import * as crypto from './crypto'
+=======
+import {shardusFactory, ShardusTypes} from '@shardus/core'
+import {P2P, Utils } from '@shardus/types'
+import * as crypto from '@shardus/crypto-utils'
+>>>>>>> ded729fc (wip: serialisation of appdata (accounts))
 import * as configs from './config'
 import { networkAccount, TOTAL_DAO_DURATION } from './config'
 import * as utils from './utils'
@@ -1828,16 +1834,33 @@ dapp.setup({
 
     return { canStay: true, reason: '' }
   },
-  binarySerializeObject: null,
-  binaryDeserializeObject: null,
   verifyMultiSigs: function (
     rawPayload: object,
     sigs: ShardusTypes.Sign[],
     allowedPubkeys: { [pubkey: string]: ShardusTypes.DevSecurityLevel },
     minSigRequired: number,
     requiredSecurityLevel: ShardusTypes.DevSecurityLevel,
-  ): boolean {
-    return false
+  ): boolean { return false },  
+  binarySerializeObject(identifier: string, obj): Buffer {
+    console.log("TEMP:", identifier, obj);
+    try {
+      switch (identifier) {
+        default:
+          return Buffer.from(Utils.safeStringify(obj), 'utf8')
+      }
+    } catch (e) {
+      return Buffer.from(Utils.safeStringify(obj), 'utf8')
+    }
+  },
+  binaryDeserializeObject(identifier: string, buffer: Buffer) {
+    try {
+      switch (identifier) {
+        default:
+          return Utils.safeJsonParse(buffer.toString('utf8'))
+      }
+    } catch (e) {
+      return Utils.safeJsonParse(buffer.toString('utf8'))
+    }
   },
   beforeStateAccountFilter(account: ShardusTypes.WrappedData) {
     return false
