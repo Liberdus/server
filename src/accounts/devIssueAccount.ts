@@ -1,4 +1,6 @@
 import * as crypto from '../crypto'
+import { VectorBufferStream } from '@shardus/core'
+import { SerdeTypeIdent } from '.'
 import {DevIssueAccount} from '../@types'
 
 export const devIssueAccount = (accountId: string) => {
@@ -16,4 +18,85 @@ export const devIssueAccount = (accountId: string) => {
   }
   devIssue.hash = crypto.hashObj(devIssue)
   return devIssue
+}
+
+export const serializeDevIssueAccount = (stream: VectorBufferStream, inp: DevIssueAccount, root = false): void => {
+  if(root){
+    stream.writeUInt16(SerdeTypeIdent.DevIssueAccount)
+  }
+
+  stream.writeString(inp.id)
+  stream.writeString(inp.type)
+  stream.writeUInt32(inp.devProposals.length)
+
+  for(let i = 0; i < inp.devProposals.length; i++){
+    stream.writeString(inp.devProposals[i])
+  }
+
+  stream.writeUInt32(inp.devProposalCount)
+  
+  stream.writeUInt32(inp.winners.length)
+
+  for(let i = 0; i < inp.winners.length; i++){
+    stream.writeString(inp.winners[i])
+  }
+
+  stream.writeUInt8(inp.active ? 1 : 0)
+
+  stream.writeUInt8(inp.number ? 1 : 0)
+
+  if(inp.number){
+    stream.writeUInt32(inp.number)
+  }
+
+  stream.writeString(inp.hash)
+  stream.writeBigUInt64(BigInt(inp.timestamp))
+  
+}
+
+
+export const deserializeDevIssueAccount = (stream: VectorBufferStream, root = false): DevIssueAccount => {
+
+  if(root && (stream.readUInt16() !== SerdeTypeIdent.DevIssueAccount)){
+    throw new Error("Unexpected bufferstream for DevIssueAccount type");
+  }
+
+  const id = stream.readString()
+  const type = stream.readString()
+  const devProposals = []
+
+  for(let i = 0; i < stream.readUInt32(); i++){
+    devProposals.push(stream.readString())
+  }
+
+  const devProposalCount = stream.readUInt32()
+
+  const winners = []
+
+  for(let i = 0; i < stream.readUInt32(); i++){
+    winners.push(stream.readString())
+  }
+
+  const active = stream.readUInt8() === 1 ? true : false
+
+  let number = null
+  if(stream.readUInt8){
+    number = stream.readUInt32()
+  }
+
+  const hash = stream.readString()
+  const timestamp = Number(stream.readBigUInt64)
+
+  return {
+    id,
+    type,
+    devProposals,
+    devProposalCount,
+    winners,
+    active,
+    number,
+    hash,
+    timestamp
+  }
+
 }
