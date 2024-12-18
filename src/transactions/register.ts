@@ -6,6 +6,7 @@ import * as config from '../config'
 import { AliasAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.Register, response: ShardusTypes.IncomingTransactionResult) => {
+  
   if (typeof tx.aliasHash !== 'string') {
     response.success = false
     response.reason = 'tx "aliasHash" field must be a string.'
@@ -31,6 +32,19 @@ export const validate_fields = (tx: Tx.Register, response: ShardusTypes.Incoming
     response.reason = 'tx "alias" field may only contain alphanumeric characters'
     throw new Error(response.reason)
   }
+
+  if (tx.aliasHash !== crypto.hash(tx.alias)) {
+    response.success = false
+    response.reason = 'tx "publicKey" field must be a string.'
+    throw new Error(response.reason)
+  }
+
+  if(crypto.verifyObj(tx) === false) {
+    response.success = false
+    response.reason = 'tx signature is incorrect'
+    throw new Error(response.reason)
+  }
+
   return response
 }
 
