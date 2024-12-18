@@ -35,7 +35,7 @@ export const validate_fields = (tx: Tx.Register, response: ShardusTypes.Incoming
 
   if (tx.aliasHash !== crypto.hash(tx.alias)) {
     response.success = false
-    response.reason = 'tx "publicKey" field must be a string.'
+    response.reason = 'alias hash does not match alias'
     throw new Error(response.reason)
   }
 
