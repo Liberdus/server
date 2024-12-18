@@ -115,7 +115,7 @@ export const serializeDeveloperPayment = (stream: VectorBufferStream, inp: Devel
   }
   stream.writeString(inp.id)
   stream.writeString(inp.address)
-  stream.writeUInt32(inp.amount)
+  stream.writeBigUInt64(inp.amount)
   stream.writeUInt32(inp.delay)
   stream.writeBigUInt64(BigInt(inp.timestamp))
 }
@@ -127,7 +127,7 @@ export const deserializeDeveloperPayment = (stream: VectorBufferStream, root = f
   return {
     id: stream.readString(),
     address: stream.readString(),
-    amount: stream.readUInt32(),
+    amount: stream.readBigUInt64(),
     delay: stream.readUInt32(),
     timestamp: Number(stream.readBigUInt64())
   }

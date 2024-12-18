@@ -49,8 +49,8 @@ export const serializeDevProposalAccount = (stream: VectorBufferStream, inp: Dev
 
   stream.writeString(inp.id)
   stream.writeString(inp.type)
-  stream.writeUInt32(inp.approve)
-  stream.writeUInt32(inp.reject)
+  stream.writeBigUInt64(inp.approve)
+  stream.writeBigUInt64(inp.reject)
 
   if(inp.title !== null){
     stream.writeUInt8(1)
@@ -71,7 +71,7 @@ export const serializeDevProposalAccount = (stream: VectorBufferStream, inp: Dev
 
   if(inp.totalAmount !== null){
     stream.writeUInt8(1)
-    stream.writeUInt32(inp.totalAmount)
+    stream.writeBigInt64(inp.totalAmount)
   }else{
     stream.writeUInt8(0)
   }
@@ -111,8 +111,8 @@ export const deserializeDevProposalAccount = (stream: VectorBufferStream, root =
 
     const id = stream.readString()
     const type = stream.readString()
-    const approve = stream.readUInt32()
-    const reject = stream.readUInt32()
+    const approve = stream.readBigUInt64()
+    const reject = stream.readBigUInt64()
 
     let title = null
     if(stream.readUInt8() === 1){
@@ -125,7 +125,7 @@ export const deserializeDevProposalAccount = (stream: VectorBufferStream, root =
     const totalVotes = stream.readUInt32()
     let totalAmount = null
     if(stream.readUInt8() === 1){
-      totalAmount = stream.readUInt32()
+      totalAmount = stream.readBigUInt64()
     }
     const payAddress = stream.readString()
     const payments = []

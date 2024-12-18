@@ -58,6 +58,7 @@ export const serializeDevIssueAccount = (stream: VectorBufferStream, inp: DevIss
 
   stream.writeString(inp.hash)
   stream.writeBigUInt64(BigInt(inp.timestamp))
+  stream.writeUInt8(inp.tallied ? 1 : 0)
   
 }
 
@@ -96,6 +97,7 @@ export const deserializeDevIssueAccount = (stream: VectorBufferStream, root = fa
 
   const hash = stream.readString()
   const timestamp = Number(stream.readBigUInt64())
+  const tallied = stream.readUInt8() === 1 ? true : false
 
   return {
     id,
@@ -106,7 +108,8 @@ export const deserializeDevIssueAccount = (stream: VectorBufferStream, root = fa
     active,
     number,
     hash,
-    timestamp
+    timestamp,
+    tallied
   }
 
 }
