@@ -100,7 +100,7 @@ dapp.setup({
        */
       // const when = Date.now() + configs.ONE_SECOND * 10
       const when = Date.now()
-      const existingNetworkAccount = await getLocalOrRemoteAccount(configs.networkAccount)
+      const existingNetworkAccount = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
 
 
       if (existingNetworkAccount) {
@@ -138,7 +138,7 @@ dapp.setup({
         for (let address in genesisLoaded) {
           const accountId = toShardusAddress(address)
 
-          if (await getLocalOrRemoteAccount(accountId)) {
+          if (await dapp.getLocalOrRemoteAccount(accountId)) {
             continue
           }
 
