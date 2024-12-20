@@ -126,14 +126,22 @@ function saveEntries(entries, file) {
 
 function createAccount(keys = null) {
   if (useEthereumSigning) {
-    // Create Ethereum wallet if no keys provided
-    const wallet = keys ? new ethers.Wallet(keys.secretKey) : ethers.Wallet.createRandom()
-    return {
-      address: toShardusAddress(wallet.address),
-      keys: {
-        secretKey: wallet.privateKey,
-        publicKey: wallet.address,
-      },
+    try {
+      // Create Ethereum wallet if no keys provided
+      const wallet = keys ? new ethers.Wallet(keys.secretKey) : ethers.Wallet.createRandom()
+      // get uncompressed public key from the secretKey
+      const signingKey = new ethers.SigningKey(wallet.privateKey)
+      const uncompressedPublicKey = signingKey.publicKey
+      console.log('Uncompressed Public Key:', uncompressedPublicKey)
+      return {
+        address: toShardusAddress(wallet.address),
+        keys: {
+          secretKey: wallet.privateKey,
+          publicKey: uncompressedPublicKey.slice(2),
+        },
+      }
+    } catch (e) {
+      console.log('Failed to create Ethereum wallet:', e)
     }
   } else {
     // Use existing Shardus crypto
@@ -813,6 +821,7 @@ vorpal.command('register', 'registers a unique alias for your account').action(a
     aliasHash: crypto.hash(answer.alias),
     from: USER.address,
     alias: answer.alias,
+    publicKey: USER.keys.publicKey,
     timestamp: Date.now(),
   }
   if (useEthereumSigning) {
@@ -878,6 +887,12 @@ vorpal.command('transfer', 'transfers tokens to another account').action(async f
       default: 50,
       filter: (value) => value,
     },
+    {
+      type: 'input',
+      name: 'memo',
+      message: 'Enter a memo for the transaction: ',
+      maxLength: 140,
+    },
   ])
   const to = await getAddress(answers.target)
   console.log(BigInt(answers.amount))
@@ -886,6 +901,7 @@ vorpal.command('transfer', 'transfers tokens to another account').action(async f
     from: USER.address,
     to,
     amount: BigInt(answers.amount),
+    memo: answers.memo ? answers.memo : null,
     timestamp: Date.now(),
   }
   signTransaction(tx)
@@ -1630,7 +1646,9 @@ vorpal.command('wallet create <name>', 'creates a wallet <name>').action(functio
   if (typeof walletEntries[args.name] !== 'undefined' && walletEntries[args.name] !== null) {
     return walletEntries[args.name]
   } else {
+    console.log('Creating wallet for: ', args.name)
     const user = createEntry(args.name, args.id)
+    console.log('User', user)
     return user
   }
 })

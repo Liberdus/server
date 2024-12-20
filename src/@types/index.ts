@@ -225,6 +225,7 @@ export namespace Tx {
     from: string
     to: string
     amount: bigint
+    memo?: string
   }
 
   export interface Verify extends BaseLiberdusTx {
