@@ -31,6 +31,9 @@ export function toShardusAddress(addressStr: string): string {
 }
 
 export function isValidUncompressedPublicKey(publicKey: string): boolean {
+  if (publicKey == null) {
+    return false
+  }
   // Check if it starts with '04' and is 130 characters long (64 bytes for x + 64 bytes for y + 1 byte for prefix)
   if (publicKey.length === 130 && publicKey.startsWith('04')) {
     return true

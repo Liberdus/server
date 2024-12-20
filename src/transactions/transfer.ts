@@ -21,6 +21,16 @@ export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.Incoming
     response.reason = 'tx "amount" field must be a bigint and greater than 0.'
     throw new Error(response.reason)
   }
+  if (tx.memo && typeof tx.memo !== 'string') {
+    response.success = false
+    response.reason = 'tx "memo" field must be a string.'
+    throw new Error(response.reason)
+  }
+  if (tx.memo && tx.memo.length > config.LiberdusFlags.transferMemoLimit) {
+    response.success = false
+    response.reason = `tx "memo" size must be less than ${config.LiberdusFlags.transferMemoLimit} characters.`
+    throw new Error(response.reason)
+  }
   return response
 }
 
@@ -66,8 +76,6 @@ export const apply = (tx: Tx.Transfer, txTimestamp: number, txId: string, wrappe
   from.data.balance -= tx.amount + network.current.transactionFee
   from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
   to.data.balance += tx.amount
-  // from.data.transactions.push({ ...tx, txId })
-  // to.data.transactions.push({ ...tx, txId })
   from.timestamp = txTimestamp
   to.timestamp = txTimestamp
 

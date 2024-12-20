@@ -214,6 +214,8 @@ interface LiberdusFlags {
   siloAddressBitLength: number
   cacheMaxCycleAge: number
   cacheMaxItemPerTopic: number
+  transferMemoLimit: number
+  messageSizeLimit: number
 }
 
 export const LiberdusFlags: LiberdusFlags = {
@@ -236,6 +238,8 @@ export const LiberdusFlags: LiberdusFlags = {
   siloAddressBitLength: 3,
   cacheMaxCycleAge: 10,
   cacheMaxItemPerTopic: 3000,
+  transferMemoLimit: 140, // 140 characters
+  messageSizeLimit: 100, // 100kb
 }
 
 export function updateLiberdusFlag(key: string, value: string | number | boolean): void {
