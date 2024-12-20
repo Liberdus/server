@@ -80,10 +80,10 @@ export const validate = (tx: Tx.Register, wrappedStates: WrappedStates, response
     return response
   }
 
-  if (getAddressFromPublicKey(tx.publicKey) !== tx.from) {
-    response.reason = 'Public key does not match the from address'
-    return response
-  }
+  // if (getAddressFromPublicKey(tx.publicKey) !== tx.from) {
+  //   response.reason = 'Public key does not match the from address'
+  //   return response
+  // }
 
   response.success = true
   response.reason = 'This transaction is valid!'

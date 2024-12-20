@@ -3,7 +3,7 @@ import { Shardus, ShardusTypes } from '@shardus/core'
 import * as utils from '../utils'
 import create from '../accounts'
 import * as config from '../config'
-import {Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 import { toShardusAddress } from '../utils/address'
 
 export const validate_fields = (tx: Tx.Message, response: ShardusTypes.IncomingTransactionResult) => {
@@ -28,9 +28,9 @@ export const validate_fields = (tx: Tx.Message, response: ShardusTypes.IncomingT
     throw new Error(response.reason)
   }
   const messageSizeInKb = Buffer.byteLength(tx.message, 'utf8') / 1024
-  if (messageSizeInKb > 5) {
+  if (messageSizeInKb > config.LiberdusFlags.messageSizeLimit) {
     response.success = false
-    response.reason = 'tx "message" size must be less than 5kb.'
+    response.reason = `tx "message" size must be less than ${config.LiberdusFlags.messageSizeLimit} kB.`
     throw new Error(response.reason)
   }
   return response
@@ -69,8 +69,9 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
   } else {
     if (to.data.toll === null) {
       if (from.data.balance < network.current.defaultToll + network.current.transactionFee) {
-        response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the default toll + transaction fee ${network.current
-          .defaultToll + network.current.transactionFee}.`
+        response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the default toll + transaction fee ${
+          network.current.defaultToll + network.current.transactionFee
+        }.`
         return response
       }
     } else {
