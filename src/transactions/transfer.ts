@@ -113,6 +113,16 @@ export const keys = (tx: Tx.Transfer, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.Transfer, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  const memoryPattern: ShardusTypes.ShardusMemoryPatternsInput = {
+    rw: [tx.from, tx.to],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [config.networkAccount],
+  }
+  return memoryPattern
+}
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.Transfer, accountCreated = false) => {
   if (!account) {
     throw Error('Account must exist in order to send a transfer transaction')

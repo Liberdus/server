@@ -1,7 +1,7 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as utils from '../utils'
-import {Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 import create from '../accounts'
 import * as config from '../config'
 
@@ -102,6 +102,17 @@ export const keys = (tx: Tx.Vote, result: TransactionKeys) => {
   result.targetKeys = [tx.issue, tx.proposal, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
+}
+
+export const memoryPattern = (tx: Tx.Vote, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  const memoryPattern: ShardusTypes.ShardusMemoryPatternsInput = {
+    rw: [tx.from, tx.proposal, tx.issue],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [config.networkAccount],
+  }
+  return memoryPattern
 }
 
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.Vote, accountCreated = false) => {

@@ -3,7 +3,7 @@ import _ from 'lodash'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import * as config from '../config'
-import {NetworkAccount, NodeAccount, WrappedStates, Tx, TransactionKeys, UserAccount } from '../@types'
+import { NetworkAccount, NodeAccount, WrappedStates, Tx, TransactionKeys, UserAccount } from '../@types'
 
 export const validate_fields = (tx: Tx.ApplyChangeConfig, response: ShardusTypes.IncomingTransactionResult) => {
   return response
@@ -26,6 +26,15 @@ export const keys = (tx: Tx.ApplyChangeConfig, result: TransactionKeys) => {
   result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
+}
+export const memoryPattern = (tx: Tx.ApplyChangeConfig, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [config.networkAccount],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [],
+  }
 }
 
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.ApplyChangeConfig, accountCreated = false) => {

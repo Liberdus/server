@@ -2,7 +2,7 @@ import stringify from 'fast-stable-stringify'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import create from '../accounts'
-import {NodeAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, OurAppDefinedData, Tx, TransactionKeys } from '../@types'
+import { NodeAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, OurAppDefinedData, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.NetworkWindows, response: ShardusTypes.IncomingTransactionResult) => {
   return response
@@ -21,14 +21,20 @@ export const validate = (tx: Tx.NetworkWindows, wrappedStates: WrappedStates, re
   return response
 }
 
-export const apply = (tx: Tx.NetworkWindows, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus, applyResponse: ShardusTypes.ApplyResponse) => {
-
+export const apply = (
+  tx: Tx.NetworkWindows,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+) => {
   const from: NodeAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
 
   const when = txTimestamp + config.ONE_SECOND * 10
   const windowsStartTime = when + config.ONE_SECOND * 10
-  const {windows, devWindows} = getWindows(windowsStartTime, network)
+  const { windows, devWindows } = getWindows(windowsStartTime, network)
   let value = {
     type: 'apply_parameters',
     timestamp: when,
@@ -57,13 +63,29 @@ export const keys = (tx: Tx.NetworkWindows, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.NetworkWindows, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.from],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [config.networkAccount],
+  }
+}
+
 export const transactionReceiptPass = (tx: Tx.ChangeConfig, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
   let { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
   dapp.setGlobal(address, addressHash, value, when, source)
   dapp.log('PostApplied network_windows tx', address, value)
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: NodeAccount | NetworkAccount, accountId: string, tx: Tx.NetworkWindows, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: NodeAccount | NetworkAccount,
+  accountId: string,
+  tx: Tx.NetworkWindows,
+  accountCreated = false,
+) => {
   if (!account) {
     if (accountId === config.networkAccount) {
       account = create.networkAccount(accountId, tx.timestamp)
@@ -126,6 +148,5 @@ const getWindows = (timestamp: number, network: NetworkAccount) => {
     devApplyWindow,
   }
 
-  return {windows, devWindows}
-
+  return { windows, devWindows }
 }

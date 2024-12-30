@@ -3,7 +3,7 @@ import axios from 'axios'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import * as config from '../config'
-import {Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.Email, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.signedTx !== 'object') {
@@ -109,6 +109,15 @@ export const keys = (tx: Tx.Email, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.Email, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.signedTx.from],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [],
+  }
+}
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.Email, accountCreated = false) => {
   if (!account) {
     account = create.userAccount(accountId, tx.timestamp)

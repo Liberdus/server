@@ -105,6 +105,16 @@ export const keys = (tx: Tx.ApplyTally, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.ApplyTally, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [config.networkAccount],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [],
+  }
+}
+
 export const createRelevantAccount = (dapp: Shardus, account: NetworkAccount, accountId: string, tx: Tx.ApplyTally, accountCreated = false) => {
   if (!account) {
     throw new Error('Network Account must already exist for the apply_tally transaction')

@@ -102,7 +102,6 @@ dapp.setup({
       const when = Date.now()
       const existingNetworkAccount = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
 
-
       if (existingNetworkAccount) {
         dapp.log('NETWORK_ACCOUNT ALREADY EXISTED: ', existingNetworkAccount)
         await utils._sleep(configs.ONE_SECOND * 5)
@@ -271,12 +270,13 @@ dapp.setup({
       timestamp: txnTimestamp,
     } as LiberdusTypes.TransactionKeys
     const keys = transactions[tx.type].keys(tx, result)
+    const memoryPattern = transactions[tx.type].memoryPattern ? transactions[tx.type].memoryPattern(tx, result) : null
     const txId = utils.generateTxId(tx)
     return {
       id: txId,
       timestamp: txnTimestamp,
       keys,
-      shardusMemoryPatterns: null,
+      shardusMemoryPatterns: memoryPattern,
     }
   },
   async apply(timestampedTx: ShardusTypes.OpaqueTransaction, wrappedStates) {
@@ -1822,11 +1822,13 @@ dapp.setup({
     allowedPubkeys: { [pubkey: string]: ShardusTypes.DevSecurityLevel },
     minSigRequired: number,
     requiredSecurityLevel: ShardusTypes.DevSecurityLevel,
-  ): boolean { return false },  
+  ): boolean {
+    return false
+  },
   binarySerializeObject(identifier: string, obj): Buffer {
     try {
       switch (identifier) {
-        case "AppData":
+        case 'AppData':
           return serializeAccounts(obj).getBuffer()
         default:
           return Buffer.from(Utils.safeStringify(obj), 'utf8')
@@ -1838,7 +1840,7 @@ dapp.setup({
   binaryDeserializeObject(identifier: string, buffer: Buffer) {
     try {
       switch (identifier) {
-        case "AppData":
+        case 'AppData':
           return deserializeAccounts(buffer)
         default:
           return Utils.safeJsonParse(buffer.toString('utf8'))
