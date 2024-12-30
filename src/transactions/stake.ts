@@ -64,6 +64,16 @@ export const keys = (tx: Tx.Stake, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.Stake, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.from],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [config.networkAccount],
+  }
+}
+
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.Stake, accountCreated = false) => {
   if (!account) {
     throw new Error('Account must already exist in order to send the stake transaction')

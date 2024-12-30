@@ -60,6 +60,16 @@ export const keys = (tx: Tx.RemoveStakeRequest, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.RemoveStakeRequest, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.from],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [config.networkAccount],
+  }
+}
+
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.RemoveStakeRequest, accountCreated = false) => {
   if (!account) {
     throw new Error('Account must already exist for the remove_stake_request transaction')

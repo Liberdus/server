@@ -139,6 +139,16 @@ export const keys = (tx: Tx.InitRewardTX, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.InitRewardTX, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.nominee],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [],
+  }
+}
+
 export const createRelevantAccount = (dapp: Shardus, account: NodeAccount, accountId: string, tx: Tx.InitRewardTX, accountCreated = false) => {
   if (!account) {
     throw new Error('Account must already exist in order to perform the init_reward transaction')

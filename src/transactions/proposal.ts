@@ -224,6 +224,16 @@ export const keys = (tx: Tx.Proposal, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.Proposal, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.from, tx.issue, tx.proposal],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [config.networkAccount],
+  }
+}
+
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount | ProposalAccount, accountId: string, tx: Tx.Proposal, accountCreated = false) => {
   if (!account) {
     if (accountId === tx.proposal) {

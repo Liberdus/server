@@ -132,6 +132,16 @@ export const keys = (tx: Tx.DepositStake, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.DepositStake, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.nominator, tx.nominee],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [],
+  }
+}
+
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount | NodeAccount, accountId: string, tx: Tx.DepositStake, accountCreated = false) => {
   if (!account) {
     if (accountId === tx.nominee) {

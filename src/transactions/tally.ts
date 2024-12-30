@@ -177,6 +177,16 @@ export const keys = (tx: Tx.Tally, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.Tally, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.from, tx.issue, ...tx.proposals],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [config.networkAccount],
+  }
+}
+
 export const createRelevantAccount = (dapp: Shardus, account: NodeAccount | IssueAccount, accountId: string, tx: Tx.Tally, accountCreated = false) => {
   if (!account) {
     account = create.nodeAccount(accountId)

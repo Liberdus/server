@@ -6,7 +6,6 @@ import * as config from '../config'
 import { AliasAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.Register, response: ShardusTypes.IncomingTransactionResult) => {
-  
   if (typeof tx.aliasHash !== 'string') {
     response.success = false
     response.reason = 'tx "aliasHash" field must be a string.'
@@ -39,7 +38,7 @@ export const validate_fields = (tx: Tx.Register, response: ShardusTypes.Incoming
     throw new Error(response.reason)
   }
 
-  if(crypto.verifyObj(tx) === false) {
+  if (crypto.verifyObj(tx) === false) {
     response.success = false
     response.reason = 'tx signature is incorrect'
     throw new Error(response.reason)
@@ -111,6 +110,16 @@ export const keys = (tx: Tx.Register, result: TransactionKeys) => {
   result.targetKeys = [tx.aliasHash]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
+}
+
+export const memoryPattern = (tx: Tx.Register, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.from, tx.aliasHash],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [config.networkAccount],
+  }
 }
 
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount | AliasAccount, accountId: string, tx: Tx.Register, accountCreated = false) => {

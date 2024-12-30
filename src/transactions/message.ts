@@ -124,6 +124,16 @@ export const keys = (tx: Tx.Message, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.Message, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.from, tx.to, tx.chatId],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [config.networkAccount],
+  }
+}
+
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount | ChatAccount, accountId: string, tx: Tx.Message, accountCreated = false) => {
   if (!account) {
     if (accountId === tx.chatId) {

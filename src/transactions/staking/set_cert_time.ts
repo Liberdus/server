@@ -174,6 +174,15 @@ export const keys = (tx: Tx.SetCertTime, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.SetCertTime, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.nominee, tx.nominator],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [],
+  }
+}
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount | NodeAccount, accountId: string, tx: Tx.SetCertTime, accountCreated = false) => {
   if (!account) {
     throw new Error('Account must already exist in order to perform the set_cert_time transaction')
