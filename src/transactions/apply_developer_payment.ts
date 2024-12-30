@@ -2,7 +2,7 @@ import { Utils } from '@shardus/types'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import * as config from '../config'
-import {Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.ApplyDevPayment, response: ShardusTypes.IncomingTransactionResult) => {
   if (!Array.isArray(tx.developerFund)) {
@@ -30,6 +30,16 @@ export const keys = (tx: Tx.ApplyDevPayment, result: TransactionKeys) => {
   result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
+}
+
+export const memoryPattern = (tx: Tx.ApplyDevPayment, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [config.networkAccount],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [],
+  }
 }
 
 export const createRelevantAccount = (dapp: Shardus, account: NetworkAccount, accountId: string, tx: Tx.ApplyDevPayment, accountCreated = false) => {

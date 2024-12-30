@@ -2,7 +2,7 @@ import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import * as config from '../config'
-import {DevIssueAccount, NodeAccount, NetworkAccount, WrappedStates, Tx, TransactionKeys } from '../@types'
+import { DevIssueAccount, NodeAccount, NetworkAccount, WrappedStates, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.DevIssue, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.nodeId !== 'string') {
@@ -72,6 +72,16 @@ export const keys = (tx: Tx.DevIssue, result: TransactionKeys) => {
   result.targetKeys = [tx.devIssue, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
+}
+
+export const memoryPattern = (tx: Tx.DevIssue, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.from, tx.devIssue],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [config.networkAccount],
+  }
 }
 
 export const createRelevantAccount = (dapp: Shardus, account: NodeAccount | DevIssueAccount, accountId: string, tx: Tx.DevIssue, accountCreated = false) => {

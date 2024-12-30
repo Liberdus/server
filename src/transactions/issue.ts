@@ -3,7 +3,7 @@ import _ from 'lodash'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import * as config from '../config'
-import {NodeAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { NodeAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 import { Utils } from '@shardus/types'
 
 export const validate_fields = (tx: Tx.Issue, response: ShardusTypes.IncomingTransactionResult) => {
@@ -50,13 +50,16 @@ export const validate = (tx: Tx.Issue, wrappedStates: WrappedStates, response: S
 
   const networkIssueHash = crypto.hash(`issue-${network.issue}`)
   if (tx.issue !== networkIssueHash) {
-    response.reason = `issue hash (${tx.issue}) does not match current network issue hash (${networkIssueHash}) --- networkAccount: ${Utils.safeStringify(network)}`
+    response.reason = `issue hash (${tx.issue}) does not match current network issue hash (${networkIssueHash}) --- networkAccount: ${Utils.safeStringify(
+      network,
+    )}`
     return response
   }
   const networkProposalHash = crypto.hash(`issue-${network.issue}-proposal-1`)
   if (tx.proposal !== networkProposalHash) {
-    response.reason = `proposalHash (${tx.proposal
-      }) does not match the current default network proposal (${networkProposalHash}) --- networkAccount: ${Utils.safeStringify(network)}`
+    response.reason = `proposalHash (${
+      tx.proposal
+    }) does not match the current default network proposal (${networkProposalHash}) --- networkAccount: ${Utils.safeStringify(network)}`
     return response
   }
   if (tx.timestamp < network.windows.proposalWindow[0] || tx.timestamp > network.windows.proposalWindow[1]) {
@@ -96,6 +99,16 @@ export const keys = (tx: Tx.Issue, result: TransactionKeys) => {
   result.targetKeys = [tx.issue, tx.proposal, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
+}
+
+export const memoryPattern = (tx: Tx.Issue, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.from, tx.issue, tx.proposal],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [config.networkAccount],
+  }
 }
 
 export const createRelevantAccount = (
