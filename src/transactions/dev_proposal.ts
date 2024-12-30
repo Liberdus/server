@@ -5,7 +5,7 @@ import * as utils from '../utils'
 import create from '../accounts'
 import _ from 'lodash'
 import * as config from '../config'
-import {Accounts, UserAccount, NetworkAccount, DevIssueAccount, WrappedStates, DeveloperPayment,  DevProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, DevIssueAccount, WrappedStates, DeveloperPayment, DevProposalAccount, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.DevProposal, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.devIssue !== 'string') {
@@ -158,6 +158,16 @@ export const keys = (tx: Tx.DevProposal, result: TransactionKeys) => {
   result.targetKeys = [tx.devIssue, tx.devProposal, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
+}
+
+export const memoryPattern = (tx: Tx.DevProposal, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.from, tx.devProposal, tx.devIssue],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [config.networkAccount],
+  }
 }
 
 export const createRelevantAccount = (

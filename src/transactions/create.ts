@@ -42,6 +42,15 @@ export const keys = (tx: Tx.Create, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.Create, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.from],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [],
+  }
+}
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.Create, accountCreated = false) => {
   if (!account) {
     account = create.userAccount(accountId, tx.timestamp)

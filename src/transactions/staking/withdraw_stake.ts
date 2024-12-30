@@ -139,6 +139,15 @@ export const keys = (tx: Tx.WithdrawStake, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.WithdrawStake, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.nominee, tx.nominator],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [],
+  }
+}
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.WithdrawStake, accountCreated = false) => {
   if (!account) {
     throw new Error('Account must already exist in order to perform the withdraw_stake transaction')

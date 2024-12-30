@@ -125,6 +125,16 @@ export const keys = (tx: Tx.ApplyParameters, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.ApplyParameters, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [config.networkAccount],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [],
+  }
+}
+
 export const createRelevantAccount = (dapp: Shardus, account: NetworkAccount, accountId: string, tx: Tx.ApplyParameters, accountCreated = false) => {
   if (!account) {
     throw new Error('Network Account must already exist for the apply_parameters transaction')

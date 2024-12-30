@@ -3,7 +3,7 @@ import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import { Utils } from '@shardus/types'
 import create from '../accounts'
-import {Accounts, UserAccount, NetworkAccount, DeveloperPayment, NodeAccount, OurAppDefinedData, WrappedStates, Tx, TransactionKeys } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, DeveloperPayment, NodeAccount, OurAppDefinedData, WrappedStates, Tx, TransactionKeys } from '../@types'
 
 export const validate_fields = (tx: Tx.DevPayment, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -88,7 +88,7 @@ export const validate = (tx: Tx.DevPayment, wrappedStates: WrappedStates, respon
     response.reason = `tx developer ${tx.developer} does not match address in payment ${tx.payment.address}`
     return response
   }
-  if (developer.data.payments.some(payment => payment.id === tx.payment.id)) {
+  if (developer.data.payments.some((payment) => payment.id === tx.payment.id)) {
     response.reason = `This payment ${Utils.safeStringify(tx.payment)} has already been given to the developer ${tx.developer}`
     return response
   }
@@ -135,6 +135,16 @@ export const keys = (tx: Tx.DevPayment, result: TransactionKeys) => {
   result.targetKeys = [tx.developer, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
+}
+
+export const memoryPattern = (tx: Tx.DevPayment, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.from, tx.developer],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [config.networkAccount],
+  }
 }
 
 export const createRelevantAccount = (dapp: Shardus, account: NodeAccount, accountId: string, tx: Tx.DevPayment, accountCreated = false) => {

@@ -90,6 +90,16 @@ export const keys = (tx: Tx.ChangeNetworkParam, result: TransactionKeys) => {
   return result
 }
 
+export const memoryPattern = (tx: Tx.ChangeNetworkParam, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+  return {
+    rw: [tx.from],
+    wo: [],
+    on: [],
+    ri: [],
+    ro: [config.networkAccount],
+  }
+}
+
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.ChangeNetworkParam, accountCreated = false) => {
   if (!account) {
     throw Error('Account must exist in order to perform a change_network_param transaction')
