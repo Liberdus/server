@@ -472,12 +472,12 @@ config = merge(config, {
       },
     },
     loadDetection: {
-      queueLimit: 320, // EXSS does the main limiting now queue limit is a secondary limit.  It should be higher that the exeutute queue limit
-      executeQueueLimit: 160, // This limit how many items can be in the queue that will execute (apply) on our node
+      queueLimit: 100, // EXSS does the main limiting now queue limit is a secondary limit.  It should be higher that the exeutute queue limit
+      executeQueueLimit: 100, // This limit how many items can be in the queue that will execute (apply) on our node
       // Example: if you a have a limit of 160 and we expect TXs to take 4 sec in consensus after a 6 second wait
       // then we look at 160 / 10 to see that 10tps sustained or more will give us a 1.0 load.
       // note that executeQueueLength value of 0.6 means we start rejecting TXs at 60% of the limit
-      desiredTxTime: 10000000, // this is the average age of a TX in the queue.  we will only detect this if there are at least 20 txes in the queue
+      desiredTxTime: 60, // this is the average age of a TX in the queue.  we will only detect this if there are at least 20 txes in the queue
       highThreshold: 0.5, // This is mainly used to detect if any of our three parameters above are getting too high
       // if any of the three external load factors are above highload we will raise a high load
       // event and vote to the network if we are in the voter set for that cycle
