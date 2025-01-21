@@ -2,13 +2,14 @@ import { UserAccount } from '../@types'
 import { VectorBufferStream } from '@shardus/core'
 import * as crypto from '@shardus/crypto-utils'
 import { deserializeDeveloperPayment, SerdeTypeIdent, serializeDeveloperPayment } from '.'
+import * as utils from '../utils'
 
 export const userAccount = (accountId: string, timestamp: number) => {
   const account: UserAccount = {
     id: accountId,
     type: 'UserAccount',
     data: {
-      balance: BigInt(50),
+      balance: utils.libToWei(50),
       stake: BigInt(0),
       remove_stake_request: null,
       toll: null,
