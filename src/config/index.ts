@@ -75,11 +75,11 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   stabilityScaleDiv: 1000,
   txPause: false,
   certCycleDuration: 30,
-  enableNodeSlashing: true,
+  enableNodeSlashing: false,
   slashing: {
-    enableLeftNetworkEarlySlashing: true,
-    enableSyncTimeoutSlashing: true,
-    enableNodeRefutedSlashing: true,
+    enableLeftNetworkEarlySlashing: false,
+    enableSyncTimeoutSlashing: false,
+    enableNodeRefutedSlashing: false,
     leftNetworkEarlyPenaltyPercent: 0.2,
     syncTimeoutPenaltyPercent: 0.2,
     nodeRefutedPenaltyPercent: 0.2,
@@ -364,8 +364,8 @@ config = merge(config, {
     p2p: {
       cycleDuration: cycleDuration,
       minNodesToAllowTxs: 1, // to allow single node networks
-      baselineNodes: process.env.baselineNodes ? parseInt(process.env.baselineNodes) : 10, // config used for baseline for entering recovery, restore, and safety. Should be equivalient to minNodes on network startup
-      minNodes: process.env.minNodes ? parseInt(process.env.minNodes) : 10,
+      baselineNodes: process.env.baselineNodes ? parseInt(process.env.baselineNodes) : 32, // config used for baseline for entering recovery, restore, and safety. Should be equivalient to minNodes on network startup
+      minNodes: process.env.minNodes ? parseInt(process.env.minNodes) : 32,
       maxNodes: process.env.maxNodes ? parseInt(process.env.maxNodes) : 1100,
       maxJoinedPerCycle: 10,
       maxSyncingPerCycle: 10,
@@ -378,7 +378,7 @@ config = merge(config, {
       amountToShrink: 5,
       maxDesiredMultiplier: 1.2,
       maxScaleReqs: 250, // todo: this will become a variable config but this should work for a 500 node demo
-      forceBogonFilteringOn: false,
+      forceBogonFilteringOn: true,
       //these are new feature in 1.3.0, we can make them default:true in shardus-core later
 
       // 1.2.3 migration starts
@@ -438,7 +438,7 @@ config = merge(config, {
       maxStandbyCount: 30000, //max allowed standby nodes count
       enableMaxStandbyCount: true,
 
-      formingNodesPerCycle: 10, //how many nodes can be add in a cycle while in forming mode
+      formingNodesPerCycle: 32, //how many nodes can be add in a cycle while in forming mode
 
       downNodeFilteringEnabled: false, //turning down node filtering off for diagnostics purposes
     },
@@ -473,12 +473,12 @@ config = merge(config, {
       },
     },
     loadDetection: {
-      queueLimit: 100, // EXSS does the main limiting now queue limit is a secondary limit.  It should be higher that the exeutute queue limit
-      executeQueueLimit: 100, // This limit how many items can be in the queue that will execute (apply) on our node
+      queueLimit: 150, // EXSS does the main limiting now queue limit is a secondary limit.  It should be higher that the exeutute queue limit
+      executeQueueLimit: 150, // This limit how many items can be in the queue that will execute (apply) on our node
       // Example: if you a have a limit of 160 and we expect TXs to take 4 sec in consensus after a 6 second wait
       // then we look at 160 / 10 to see that 10tps sustained or more will give us a 1.0 load.
       // note that executeQueueLength value of 0.6 means we start rejecting TXs at 60% of the limit
-      desiredTxTime: 60, // this is the average age of a TX in the queue.  we will only detect this if there are at least 20 txes in the queue
+      desiredTxTime: 120, // this is the average age of a TX in the queue.  we will only detect this if there are at least 20 txes in the queue
       highThreshold: 0.5, // This is mainly used to detect if any of our three parameters above are getting too high
       // if any of the three external load factors are above highload we will raise a high load
       // event and vote to the network if we are in the voter set for that cycle
@@ -493,7 +493,7 @@ config = merge(config, {
 config = merge(config, {
   server: {
     sharding: {
-      nodesPerConsensusGroup: process.env.nodesPerConsensusGroup ? parseInt(process.env.nodesPerConsensusGroup) : 10, //128 is the final goal
+      nodesPerConsensusGroup: process.env.nodesPerConsensusGroup ? parseInt(process.env.nodesPerConsensusGroup) : 16, //128 is the final goal
       nodesPerEdge: process.env.nodesPerEdge ? parseInt(process.env.nodesPerEdge) : 5,
       executeInOneShard: true,
     },
@@ -504,15 +504,15 @@ config = merge(config, {
 
       forwardToLuckyNodes: false, // 1.11.0 we seem to have more issues with this on.  can turn off for local testing
 
-      removeStuckTxsFromQueue: false,
-      removeStuckTxsFromQueue3: false,
+      removeStuckTxsFromQueue: true,
+      removeStuckTxsFromQueue3: true,
 
-      removeStuckChallengedTXs: false,
+      removeStuckChallengedTXs: true,
 
       stuckTxMoveTime: 3600000,
 
-      stuckTxRemoveTime: 600000, // 10 min
-      stuckTxRemoveTime3: 300000, // 5 min
+      stuckTxRemoveTime: 300000, // 5 min
+      stuckTxRemoveTime3: 1000 * 60 * 2, // 2 min
 
       awaitingDataCanBailOnReceipt: true,
       reduceTimeFromTxTimestamp,
@@ -542,7 +542,7 @@ config = merge(
       // for easier debugging
       debug: {
         startInFatalsLogMode: false, // true setting good for big aws test with nodes joining under stress.
-        startInErrorLogMode: false,
+        startInErrorLogMode: true,
         robustQueryDebug: false,
         fakeNetworkDelay: 0,
         disableSnapshots: true, // do not check in if set to false
