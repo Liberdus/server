@@ -884,7 +884,7 @@ vorpal.command('transfer', 'transfers tokens to another account').action(async f
       type: 'number',
       name: 'amount',
       message: 'How many tokens do you want to send: ',
-      default: 50,
+      default: 5,
       filter: (value) => value,
     },
     {
@@ -895,12 +895,13 @@ vorpal.command('transfer', 'transfers tokens to another account').action(async f
     },
   ])
   const to = await getAddress(answers.target)
-  console.log(BigInt(answers.amount))
+  const amountInWei = libToWei(parseFloat(answers.amount))
+  console.log(`Sending ${amountInWei} to ${to}`)
   const tx = {
     type: 'transfer',
     from: USER.address,
     to,
-    amount: BigInt(answers.amount),
+    amount: amountInWei,
     memo: answers.memo ? answers.memo : null,
     timestamp: Date.now(),
   }
@@ -926,11 +927,12 @@ vorpal.command('deposit stake', 'deposit the stake amount to the node').action(a
       filter: (value) => BigInt(value),
     },
   ])
+  const stakeAmount = libToWei(parseFloat(answers.amount))
   const tx = {
     type: 'deposit_stake',
     nominator: USER.address,
     nominee: answers.nodeAddress,
-    stake: answers.amount,
+    stake: stakeAmount,
     timestamp: Date.now(),
   }
   signTransaction(tx)
@@ -1710,32 +1712,40 @@ vorpal.command('deposit stake joining nodes', 'deposit the stake amount to the j
       type: 'number',
       name: 'amount',
       message: 'Enter number of tokens to stake: ',
-      default: BigInt(10),
+      default: 10,
       filter: (value) => BigInt(value),
+    },
+    // ask the node type "joining" or "active"
+    {
+      type: 'list',
+      name: 'nodeType',
+      message: 'Enter the node type to stake: ',
+      choices: ['joining', 'active'],
     },
   ])
   // Get the joining nodes from the monitor
-  const joiningNodes = await getJoiningNodes()
-  if (joiningNodes.length === 0) {
-    this.log('No joining nodes')
+  // If the nodeType is "active" then get the active nodes
+  const nodeList = answers.nodeType === 'joining' ? await getJoiningNodes() : await getActiveNodes()
+  if (nodeList.length === 0) {
+    this.log('No nodes')
     callback()
     return
   }
 
   // Filter out the unstaked joining nodes by checking the stakeAmount
-  for (const publicKey of [...joiningNodes]) {
+  for (const publicKey of [...nodeList]) {
     const nodeAccount = await getAccountData(publicKey)
     if (nodeAccount && nodeAccount.account !== null && nodeAccount.account.stakeLock !== BigInt(0)) {
-      joiningNodes.splice(joiningNodes.indexOf(publicKey), 1)
+      nodeList.splice(nodeList.indexOf(publicKey), 1)
     }
   }
 
   // Load the staked nodeLists from the json file ( by a function in this file )
   const stakedNodeLists = await loadStakedNodeLists()
   // Check if there are any joining nodes that are not staked list
-  const unstakedJoiningNodes = joiningNodes.filter((node) => !Object.keys(stakedNodeLists).includes(node))
+  const unstakedJoiningNodes = nodeList.filter((node) => !Object.keys(stakedNodeLists).includes(node))
   if (unstakedJoiningNodes.length === 0) {
-    this.log('All joining nodes are staked')
+    this.log('All nodes are staked')
     callback()
     return
   }
@@ -1746,7 +1756,7 @@ vorpal.command('deposit stake joining nodes', 'deposit the stake amount to the j
     const createTx = {
       type: 'create',
       from: accounts[i].address,
-      amount: BigInt(50), // extra 50 tokens
+      amount: libToWei(50), // extra 50 tokens
       timestamp: Date.now(),
     }
     signTransaction(createTx, accounts[i].keys)
@@ -1773,7 +1783,7 @@ vorpal.command('deposit stake joining nodes', 'deposit the stake amount to the j
       type: 'deposit_stake',
       nominator: accounts[i].address,
       nominee: unstakedJoiningNodes[i],
-      stake: answers.amount,
+      stake: libToWei(parseFloat(answers.amount)),
       timestamp: Date.now(),
     }
     signTransaction(depositStateTx, accounts[i].keys)
@@ -1804,6 +1814,14 @@ const getJoiningNodes = async () => {
   return joining
 }
 
+const getActiveNodes = async () => {
+  const res = await axios.get(`http://${MONITORSERVER}/api/report`)
+  if (!res.data.nodes) return []
+  const active = Object.keys(res.data.nodes.active)
+  console.log('Active nodes: ', active)
+  return active
+}
+
 const loadStakedNodeLists = async () => {
   try {
     const data = await fs.promises.readFile(stakedNodeListsFile, 'utf8')
@@ -1824,6 +1842,13 @@ const jsonStringifyReplacer = (key, value) => {
     }
   }
   return value
+}
+function libToWei(lib) {
+  return BigInt(lib * 10 ** 18)
+}
+
+function weiToLib(wei) {
+  return Number(wei) / 10 ** 18
 }
 vorpal.delimiter('>').show()
 vorpal.exec('init').then((res) => (USER = res))
