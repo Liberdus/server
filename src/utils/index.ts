@@ -397,6 +397,14 @@ export function getRandom<T>(arr: T[], n: number): T[] {
   return result
 }
 
+export function libToWei(lib: number): bigint {
+  return BigInt(lib * 10 ** 18)
+}
+
+export function weiToLib(wei: bigint): number {
+  return Number(wei) / 10 ** 18
+}
+
 /**
  * Check if the test version is equal or newer than the min version
  * @param minimumVersion
