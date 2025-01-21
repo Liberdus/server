@@ -21,7 +21,8 @@ COPY . .
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl
-RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -RUN curl https://sh.rustup.rs -sSf | bash -s -- -y \
+    --default-toolchain 1.74.1y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install node_modules
