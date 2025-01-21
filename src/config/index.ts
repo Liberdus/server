@@ -6,6 +6,7 @@ import minimist from 'minimist'
 import { NetworkParameters } from '../@types'
 import { Utils } from '@shardus/types'
 import { DevSecurityLevel, ShardusTypes } from '@shardus/core'
+import * as utils from '../utils'
 
 export const networkAccount = '0'.repeat(64)
 
@@ -55,13 +56,13 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   nodePenaltyUsd: BigInt(10),
   stakeRequiredUsd: BigInt(10),
   restakeCooldown: 30 * ONE_MINUTE,
-  transactionFee: BigInt(1),
+  transactionFee: utils.libToWei(1),
   maintenanceInterval: ONE_DAY,
-  maintenanceFee: BigInt(0),
-  proposalFee: BigInt(50),
-  devProposalFee: BigInt(50),
-  faucetAmount: BigInt(10),
-  defaultToll: BigInt(1),
+  maintenanceFee: utils.libToWei(0),
+  proposalFee: utils.libToWei(50),
+  devProposalFee: utils.libToWei(50),
+  faucetAmount: utils.libToWei(10),
+  defaultToll: utils.libToWei(1),
   minVersion: '2.3.4',
   activeVersion: '2.3.4',
   latestVersion: '2.3.4',
