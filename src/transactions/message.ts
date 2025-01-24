@@ -103,10 +103,20 @@ export const apply = (tx: Tx.Message, txTimestamp: number, txId: string, wrapped
   }
   from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
 
-  if (!from.data.chats[tx.to]) from.data.chats[tx.to] = tx.chatId
-  if (!to.data.chats[tx.from]) to.data.chats[tx.from] = tx.chatId
+  if (!from.data.chats[tx.to])
+    from.data.chats[tx.to] = {
+      timestamp: txTimestamp,
+      chatId: tx.chatId,
+    }
+  from.data.chatTimestamp = txTimestamp
+  if (!to.data.chats[tx.from])
+    to.data.chats[tx.from] = {
+      timestamp: txTimestamp,
+      chatId: tx.chatId,
+    }
+  to.data.chatTimestamp = txTimestamp
 
-  chat.messages.push(tx.message)
+  chat.messages.push(tx)
   // from.data.transactions.push({ ...tx, txId })
   // to.data.transactions.push({ ...tx, txId })
 
