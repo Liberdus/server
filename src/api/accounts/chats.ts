@@ -19,16 +19,13 @@ export const chats =
       const account = await dapp.getLocalOrRemoteAccount(id)
       if (account && account.data) {
         const userAccount = account.data as UserAccount
-        console.log('userAccount', userAccount)
-        const chats = new Map()
+        const chats: { [address: string]: string } = {}
         for (const address in userAccount.data.chats) {
-          console.log('chat', address, userAccount.data.chats[address], timestamp)
           if (userAccount.data.chats[address].timestamp > timestamp) {
-            chats.set(address, userAccount.data.chats[address].chatId)
+            chats[address] = userAccount.data.chats[address].chatId
           }
         }
-        console.log('chats', chats)
-        res.json({chats : chats})
+        res.json({ chats })
       } else {
         res.json({ error: 'No account with the given id' })
       }
