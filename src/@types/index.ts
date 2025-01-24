@@ -309,7 +309,8 @@ export interface UserAccount {
   data: {
     balance: bigint
     toll: bigint | null
-    chats: object
+    chats: chatMessages
+    chatTimestamp: number
     friends: object
     stake?: bigint
     remove_stake_request: number | null
@@ -325,6 +326,13 @@ export interface UserAccount {
   hash: string
   operatorAccountInfo?: OperatorAccountInfo
   publicKey: string
+}
+
+interface chatMessages {
+  [address: string]: {
+    timestamp: number
+    chatId: string
+  }
 }
 
 export interface OperatorAccountInfo {
@@ -381,7 +389,7 @@ export interface NodeAccountStats {
 export interface ChatAccount {
   id: string
   type: string
-  messages: unknown[]
+  messages: Tx.Message[]
   timestamp: number
   hash: string
 }
@@ -482,7 +490,16 @@ export type Accounts = NetworkAccount &
   DevProposalAccount &
   NodeAccount &
   ChatAccount
-export type AccountVariant = NetworkAccount | IssueAccount | DevIssueAccount | UserAccount | AliasAccount | ProposalAccount | DevProposalAccount | NodeAccount | ChatAccount
+export type AccountVariant =
+  | NetworkAccount
+  | IssueAccount
+  | DevIssueAccount
+  | UserAccount
+  | AliasAccount
+  | ProposalAccount
+  | DevProposalAccount
+  | NodeAccount
+  | ChatAccount
 
 /**
  * ---------------------- NETWORK DATA export interfaceS ----------------------
