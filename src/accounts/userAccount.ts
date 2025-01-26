@@ -49,7 +49,7 @@ export const serializeUserAccount = (stream: VectorBufferStream, inp: UserAccoun
   for (const key in inp.data.chats) {
     stream.writeString(key)
     const chatObject = inp.data.chats[key]
-    stream.writeUInt32(chatObject.timestamp)
+    stream.writeUInt32(chatObject.receivedTimestamp)
     stream.writeString(chatObject.chatId)
   }
   stream.writeUInt32(inp.data.chatTimestamp)
@@ -114,15 +114,15 @@ export const deserializeUserAccount = (stream: VectorBufferStream, root = false)
   }
 
   // Deserialize chats
-  const chats: Record<string, { timestamp: number; chatId: string }> = {}
+  const chats = {} as UserAccount['data']['chats']
   const chatCount = stream.readUInt32()
   for (let i = 0; i < chatCount; i++) {
     const key = stream.readString()
-    const timestamp = stream.readUInt32()
+    const receivedTimestamp = stream.readUInt32()
     const chatId = stream.readString()
     // eslint-disable-next-line security/detect-object-injection
     chats[key] = {
-      timestamp,
+      receivedTimestamp,
       chatId,
     }
   }

@@ -21,7 +21,7 @@ export const chats =
         const userAccount = account.data as UserAccount
         const chats: { [address: string]: string } = {}
         for (const address in userAccount.data.chats) {
-          if (userAccount.data.chats[address].timestamp > timestamp) {
+          if (userAccount.data.chats[address].receivedTimestamp > timestamp || timestamp === 0) {
             chats[address] = userAccount.data.chats[address].chatId
           }
         }
