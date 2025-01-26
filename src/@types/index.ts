@@ -330,7 +330,7 @@ export interface UserAccount {
 
 interface chatMessages {
   [address: string]: {
-    timestamp: number
+    receivedTimestamp: number
     chatId: string
   }
 }
