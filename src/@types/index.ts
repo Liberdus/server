@@ -226,6 +226,7 @@ export namespace Tx {
     to: string
     amount: bigint
     memo?: string
+    chatId: string
   }
 
   export interface Verify extends BaseLiberdusTx {
@@ -389,7 +390,7 @@ export interface NodeAccountStats {
 export interface ChatAccount {
   id: string
   type: string
-  messages: Tx.Message[]
+  messages: (Tx.Message | Tx.Transfer)[]
   timestamp: number
   hash: string
 }
