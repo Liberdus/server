@@ -611,6 +611,10 @@ export const isValidAddress = (address: string): boolean => {
   return address.length === 64
 }
 
+export const sortAddresses = (from: string, to: string): string[] => {
+  return [from, to].sort((a, b) => a.localeCompare(b))
+}
+
 // From: https://stackoverflow.com/a/19270021
 export function getRandom<T>(arr: T[], n: number): T[] {
   let len = arr.length
