@@ -96,7 +96,7 @@ export const apply = (
   wrappedStates: WrappedStates,
   dapp,
   applyResponse: ShardusTypes.ApplyResponse,
-) => {
+): void => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[networkAccount].data
   let changeOnCycle

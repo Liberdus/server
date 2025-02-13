@@ -93,9 +93,8 @@ export const apply = (
   wrappedStates: WrappedStates,
   dapp,
   applyResponse: ShardusTypes.ApplyResponse,
-) => {
+): void => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   let changeOnCycle
   let cycleData: ShardusTypes.Cycle
 
@@ -107,7 +106,7 @@ export const apply = (
   }
 
   const when = txTimestamp + config.ONE_SECOND * 10
-  let value = {
+  const value = {
     type: TXTypes.apply_change_network_param,
     timestamp: when,
     network: config.networkAccount,

@@ -4,7 +4,7 @@ import { SerdeTypeIdent } from '.'
 import { NodeAccount } from '../@types'
 import { Utils } from '@shardus/types'
 
-export const nodeAccount = (accountId: string) => {
+export const nodeAccount = (accountId: string): NodeAccount => {
   const account: NodeAccount = {
     id: accountId,
     type: 'NodeAccount',
@@ -15,7 +15,6 @@ export const nodeAccount = (accountId: string) => {
     nominator: '',
     stakeLock: BigInt(0),
     stakeTimestamp: 0,
-    rewarded: false,
     penalty: BigInt(0),
     nodeAccountStats: {
       totalReward: BigInt(0),
@@ -46,7 +45,6 @@ export const serializeNodeAccount = (stream: VectorBufferStream, inp: NodeAccoun
   stream.writeString(inp.nominator)
   stream.writeBigUInt64(inp.stakeLock)
   stream.writeBigUInt64(BigInt(inp.stakeTimestamp))
-  stream.writeUInt8(inp.rewarded ? 1 : 0)
   stream.writeBigUInt64(inp.penalty)
   stream.writeString(Utils.safeStringify(inp.nodeAccountStats.history))
   stream.writeBigUInt64(BigInt(inp.rewardStartTime))
