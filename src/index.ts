@@ -255,7 +255,7 @@ dapp.setup({
       response.reason = 'Tx "timestamp" field must be a number.'
       throw new Error(response.reason)
     }
-    return transactions[tx.type].validate_fields(tx, response)
+    return transactions[tx.type].validate_fields(tx, response, dapp)
   },
   getTimestampFromTransaction(tx: any) {
     return tx.timestamp ? tx.timestamp : 0
