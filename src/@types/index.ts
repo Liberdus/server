@@ -171,6 +171,7 @@ export namespace Tx {
     from: string
     alias: string
     publicKey: string
+    pqPublicKey?: string
   }
 
   export interface RemoveFriend extends BaseLiberdusTx {
@@ -327,6 +328,7 @@ export interface UserAccount {
   hash: string
   operatorAccountInfo?: OperatorAccountInfo
   publicKey: string
+  pqPublicKey?: string
 }
 
 interface chatMessages {

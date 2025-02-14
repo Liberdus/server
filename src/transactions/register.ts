@@ -1,7 +1,7 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
-import { isValidUncompressedPublicKey, getAddressFromPublicKey } from '../utils/address'
+import { isValidUncompressedPublicKey, validatePQPublicKey, getAddressFromPublicKey } from '../utils/address'
 import * as config from '../config'
 import { AliasAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
 
@@ -36,6 +36,16 @@ export const validate_fields = (tx: Tx.Register, response: ShardusTypes.Incoming
     response.success = false
     response.reason = 'alias hash does not match alias'
     throw new Error(response.reason)
+  }
+
+  if (isValidUncompressedPublicKey(tx.publicKey) === false) {
+    response.reason = 'Invalid public key'
+    return response
+  }
+
+  if (tx.pqPublicKey && validatePQPublicKey(tx.pqPublicKey) === false) {
+    response.reason = 'Invalid post-quantum public key'
+    return response
   }
 
   if (crypto.verifyObj(tx) === false) {
@@ -79,10 +89,10 @@ export const validate = (tx: Tx.Register, wrappedStates: WrappedStates, response
     return response
   }
 
-  // if (getAddressFromPublicKey(tx.publicKey) !== tx.from) {
-  //   response.reason = 'Public key does not match the from address'
-  //   return response
-  // }
+  if (tx.pqPublicKey && validatePQPublicKey(tx.pqPublicKey) === false) {
+    response.reason = 'Invalid post-quantum public key'
+    return response
+  }
 
   response.success = true
   response.reason = 'This transaction is valid!'
@@ -98,6 +108,10 @@ export const apply = (tx: Tx.Register, txTimestamp: number, txId: string, wrappe
   from.alias = tx.alias
   from.publicKey = tx.publicKey
   alias.address = tx.from
+
+  if (tx.pqPublicKey) {
+    from.pqPublicKey = tx.pqPublicKey
+  }
 
   // from.data.transactions.push({ ...tx, txId })
   alias.timestamp = txTimestamp
