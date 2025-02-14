@@ -26,6 +26,21 @@ export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.Inco
   } catch (err) {
     response.success = false
     response.reason = 'tx "change_config" field must be a valid JSON string'
+    throw new Error(response.reason)
+  }
+  if (!tx.signs) {
+    response.success = false
+    response.reason = 'No signature array found'
+    throw new Error(response.reason)
+  }
+
+  const allowedPublicKeys = dapp.getMultisigPublicKeys()
+  const requiredSigs = Math.max(1, dapp.config.debug.minMultiSigRequiredForGlobalTxs)
+
+  const sigs: Signature[] = tx.signs instanceof Array ? tx.signs : [tx.signs]
+  const txWithoutSign = { ...tx }
+  delete txWithoutSign.signs
+
     dapp.log('validate_fields tx "change_config" field must be a valid JSON string', err)
     throw new Error(response.reason)
   }
@@ -42,6 +57,10 @@ export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.Inco
   const txWithoutSign = { ...tx }
   delete txWithoutSign.signs
 
+  const sigsAreValid = utils.verifyMultiSigs(txWithoutSign, sigs, allowedPublicKeys, requiredSigs, DevSecurityLevel.High)
+  if (!sigsAreValid) {
+    response.success = false
+    response.reason = 'Invalid signatures'
   const sigsAreValid = utils.verifyMultiSigs(txWithoutSign, sigs, allowedPublicKeys, requiredSigs, DevSecurityLevel.High)
   if (!sigsAreValid) {
     response.success = false
