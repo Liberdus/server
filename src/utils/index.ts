@@ -1,7 +1,8 @@
-import { UserAccount, NetworkAccount, IssueAccount, DevIssueAccount, DeveloperPayment, InjectTxResponse, ValidatorError } from '../@types'
+import { DeveloperPayment, DevIssueAccount, InjectTxResponse, IssueAccount, NetworkAccount, Tx, UserAccount, ValidatorError } from '../@types'
 import * as crypto from '../crypto'
 import * as configs from '../config'
 import { Shardus, ShardusTypes } from '@shardus/core'
+import { DevSecurityLevel, Sign } from '@shardus/core/dist/shardus/shardus-types'
 import { shardusPostToNode } from './request'
 import { Utils } from '@shardus/types'
 import { TXTypes } from '../transactions'
@@ -34,6 +35,50 @@ export function generateTxId(tx: any): string {
     txId = crypto.hashObj(tx, true) // compute from tx
   }
   return txId
+}
+
+export function isMessageRecord(message: Tx.MessageRecord | Tx.Transfer | Tx.Read): message is Tx.MessageRecord {
+  return 'tollDeposited' in message
+}
+
+export function verifyMultiSigs(
+  rawPayload: object,
+  signatures: Sign[],
+  allowedPubkeys: { [pubkey: string]: DevSecurityLevel },
+  minSigRequired: number,
+  requiredSecurityLevel: DevSecurityLevel,
+): boolean {
+  if (!rawPayload || !signatures || !allowedPubkeys || !Array.isArray(signatures)) {
+    return false
+  }
+  if (signatures.length < minSigRequired) return false
+  if (signatures.length > Object.keys(allowedPubkeys).length) return false
+
+  let validSigs = 0
+  const seen = new Set()
+
+  for (let i = 0; i < signatures.length; i++) {
+    const signedObj = {
+      ...rawPayload,
+      sign: signatures[i],
+    }
+    /* eslint-disable security/detect-object-injection */
+    // The sig owner has not been seen before
+    // The sig owner is listed on the server
+    // The sig owner has enough security clearance
+    // The signature is valid
+    if (
+      !seen.has(signatures[i].owner) &&
+      allowedPubkeys[signatures[i].owner] &&
+      allowedPubkeys[signatures[i].owner] >= requiredSecurityLevel &&
+      crypto.verifyObj(signedObj)
+    ) {
+      validSigs++
+      seen.add(signatures[i].owner)
+    }
+    if (validSigs >= minSigRequired) break
+  }
+  return validSigs >= minSigRequired
 }
 
 export async function InjectTxToConsensor(
