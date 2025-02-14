@@ -1,5 +1,4 @@
 import { LiberdusFlags } from '../config'
-import { UserAccount } from '../@types'
 import * as crypto from '../crypto'
 import { ethers } from 'ethers'
 
@@ -39,6 +38,21 @@ export function isValidUncompressedPublicKey(publicKey: string): boolean {
     return true
   }
   return false
+}
+
+export function validatePQPublicKey(publicKey: string): boolean {
+  try {
+    if (publicKey == null) {
+      return false
+    }
+    // convert base64 to bytes
+    const publicKeyBytes = Buffer.from(publicKey, 'base64')
+    // check it is less than 80k bytes
+    return publicKeyBytes.length <= 80000
+  } catch (e) {
+    console.log(`validatePQPublicKey error: ${e.message}`, e)
+    return false
+  }
 }
 
 export function getAddressFromPublicKey(publicKey: string): string {
