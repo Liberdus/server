@@ -1,10 +1,11 @@
-import { Shardus, ShardusTypes } from '@shardus/core'
+import { DevSecurityLevel, Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
-import { UserAccount, NetworkAccount, WrappedStates, OurAppDefinedData, Tx, TransactionKeys } from '../@types'
+import { NetworkAccount, OurAppDefinedData, Signature, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
 import { TXTypes } from '.'
 import { Utils } from '@shardus/types'
+import * as utils from '../utils'
 
-export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   if (typeof tx.from !== 'string') {
     response.success = false
     response.reason = 'tx "from" field must be a string'
@@ -29,6 +30,25 @@ export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.Inco
     console.log('validate_fields tx "change_config" field must be a valid JSON string', err)
     throw new Error(response.reason)
   }
+  if (!tx.signs) {
+    response.success = false
+    response.reason = 'No signature array found'
+    throw new Error(response.reason)
+  }
+
+  const allowedPublicKeys = dapp.getMultisigPublicKeys()
+  const requiredSigs = Math.max(1, dapp.config.debug.minMultiSigRequiredForGlobalTxs)
+
+  const sigs: Signature[] = tx.signs instanceof Array ? tx.signs : [tx.signs]
+  const txWithoutSign = { ...tx }
+  delete txWithoutSign.signs
+
+  const sigsAreValid = utils.verifyMultiSigs(txWithoutSign, sigs, allowedPublicKeys, requiredSigs, DevSecurityLevel.High)
+  if (!sigsAreValid) {
+    response.success = false
+    response.reason = 'Invalid signatures'
+    throw new Error(response.reason)
+  }
   return response
 }
 
@@ -36,6 +56,19 @@ export const validate = (tx: Tx.ChangeConfig, wrappedStates: WrappedStates, resp
   const parsedConfig = JSON.parse(tx.config)
   dapp.log('Tx.ChangeConfig: ', parsedConfig)
   // [TODO] Validate parsed config
+  const allowedPublicKeys = dapp.getMultisigPublicKeys()
+  const requiredSigs = Math.max(1, dapp.config.debug.minMultiSigRequiredForGlobalTxs)
+
+  const sigs: Signature[] = tx.signs instanceof Array ? tx.signs : [tx.signs]
+  const txWithoutSign = { ...tx }
+  delete txWithoutSign.signs
+
+  const sigsAreValid = utils.verifyMultiSigs(txWithoutSign, sigs, allowedPublicKeys, requiredSigs, DevSecurityLevel.High)
+  if (!sigsAreValid) {
+    response.success = false
+    response.reason = 'Invalid signatures'
+    return response
+  }
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
@@ -54,6 +87,14 @@ export const apply = (
   let changeOnCycle
   let cycleData: ShardusTypes.Cycle
 
+  const isValid = validate(tx, wrappedStates, { success: false, reason: '' }, dapp)
+  if (!isValid.success) {
+    dapp.log(`txId: ${txId} validation failed`, isValid.reason)
+    from.timestamp = txTimestamp
+    dapp.log('Applied change_config tx')
+    return
+  }
+
   if (tx.cycle === -1) {
     ;[cycleData] = dapp.getLatestCycles()
     changeOnCycle = cycleData.counter + 3
@@ -62,7 +103,7 @@ export const apply = (
   }
 
   const when = txTimestamp + config.ONE_SECOND * 10
-  let value = {
+  const value = {
     type: TXTypes.apply_change_config,
     timestamp: when,
     network: config.networkAccount,
@@ -75,13 +116,13 @@ export const apply = (
   ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id }
 
   from.timestamp = tx.timestamp
-  dapp.log('Applied change_config tx')
+  dapp.log(`Applied change_config tx: ${txId}, value: ${Utils.safeStringify(value)}`)
 }
 
 export const transactionReceiptPass = (tx: Tx.ChangeConfig, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
   let { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
   dapp.setGlobal(address, addressHash, value, when, source)
-  dapp.log('PostApplied change_config tx')
+  dapp.log(`PostApplied change_config tx transactionReceiptPass: ${Utils.safeStringify({ address, addressHash, value, when, source })}`)
 }
 
 export const keys = (tx: Tx.ChangeConfig, result: TransactionKeys) => {
