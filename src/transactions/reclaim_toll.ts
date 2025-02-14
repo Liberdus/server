@@ -3,7 +3,7 @@ import { Shardus, ShardusTypes } from '@shardus/core'
 import * as utils from '../utils'
 import create from '../accounts'
 import * as config from '../config'
-import { Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, Tx, TransactionKeys } from '../@types'
+import { Accounts, ChatAccount, NetworkAccount, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
 import { toShardusAddress } from '../utils/address'
 
 export const validate_fields = (tx: Tx.ReclaimToll, response: ShardusTypes.IncomingTransactionResult) => {
@@ -111,14 +111,10 @@ export const apply = (tx: Tx.ReclaimToll, txTimestamp: number, txId: string, wra
 
   const otherPartyLastReadTime = chat.read[otherPartyIndex]
 
-  function isMessageRecord(message: Tx.MessageRecord | Tx.Transfer | Tx.Read): message is Tx.MessageRecord {
-    return 'tollDeposited' in message
-  }
-
   // loop through messages not read by the other party and reclaim toll
   for (const message of chat.messages) {
     const messageAge = txTimestamp - message.timestamp
-    if (isMessageRecord(message) && tx.from === message.from && messageAge > network.current.tollTimeout && message.timestamp > otherPartyLastReadTime) {
+    if (utils.isMessageRecord(message) && tx.from === message.from && messageAge > network.current.tollTimeout && message.timestamp > otherPartyLastReadTime) {
       reclaimTollAmount += message.tollDeposited
     }
   }

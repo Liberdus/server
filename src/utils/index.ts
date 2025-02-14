@@ -38,6 +38,10 @@ export function generateTxId(tx: any): string {
   return txId
 }
 
+export function isMessageRecord(message: Tx.MessageRecord | Tx.Transfer | Tx.Read): message is Tx.MessageRecord {
+  return 'tollDeposited' in message
+}
+
 export function verifyMultiSigs(
   rawPayload: object,
   signatures: Sign[],
