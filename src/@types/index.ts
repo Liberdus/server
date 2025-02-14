@@ -126,6 +126,7 @@ export namespace Tx {
     from: string
     cycle: number
     config: string
+    signs: Signature[]
   }
 
   export interface ApplyChangeConfig extends BaseLiberdusTx {
