@@ -561,9 +561,16 @@ config = merge(
           '4561289434eff9b547250911ed0f75e38c16572c926c60f7a8a45c384d088835': DevSecurityLevel.High,
         },
         multisigKeys: {
+          // '': DevSecurityLevel.Unauthorized,
+          // These are production keys.  Use 'git apply use_test_key.patch' for unsafe local test keys
+          // Never merge a commit with changes to these lines without approval.
           // always prefix with prettier ignore
-          /* prettier-ignore */ '': DevSecurityLevel.High, // test key
-          // always prefix with prettier ignore
+          /* prettier-ignore */ '899de21e0c47a29be4319376a9207f5e63d8e5b7d296b8a6391e301e1f14cd32': DevSecurityLevel.High,
+          '235a87986ef232e204d5672a5bc0d15201ad502f99ecf879109c53751deb8fca': DevSecurityLevel.High,
+          '4f4559259253943837268209775c4c8731a24aac11ef923f616ea543bae9355a': DevSecurityLevel.High,
+          '6128f995fd46a9be1af049d84d89424384770b0df3471b2eff4ddf476e399dd4': DevSecurityLevel.High,
+          '0ad2caeba527f230f6b703fb6b50ad284968065c522eed42774107965dc0a1a7': DevSecurityLevel.High,
+          '4561289434eff9b547250911ed0f75e38c16572c926c60f7a8a45c384d088835': DevSecurityLevel.High,
         },
         checkAddressFormat: true, //enabled for 1.10.0
         enableCycleRecordDebugTool: false, // only enable if you want to debug variant cycle records

@@ -23,14 +23,14 @@ export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.Inco
   }
   try {
     const parsed = JSON.parse(tx.config)
-    console.log('validate_fields Tx.ChangeConfig: ', parsed)
+    dapp.log('validate_fields Tx.ChangeConfig: ', parsed)
   } catch (err) {
     response.success = false
     response.reason = 'tx "change_config" field must be a valid JSON string'
-    console.log('validate_fields tx "change_config" field must be a valid JSON string', err)
+    dapp.log('validate_fields tx "change_config" field must be a valid JSON string', err)
     throw new Error(response.reason)
   }
-  if (!tx.signs) {
+  if (!tx.signs || (tx.signs instanceof Array && tx.signs.length === 0)) {
     response.success = false
     response.reason = 'No signature array found'
     throw new Error(response.reason)
@@ -39,7 +39,7 @@ export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.Inco
   const allowedPublicKeys = dapp.getMultisigPublicKeys()
   const requiredSigs = Math.max(1, dapp.config.debug.minMultiSigRequiredForGlobalTxs)
 
-  const sigs: Signature[] = tx.signs instanceof Array ? tx.signs : [tx.signs]
+  const sigs: Signature[] = Object.assign([], tx.signs)
   const txWithoutSign = { ...tx }
   delete txWithoutSign.signs
 

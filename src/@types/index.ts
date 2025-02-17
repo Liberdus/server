@@ -485,6 +485,13 @@ export interface DevProposalAccount {
   timestamp: number
 }
 
+export interface DevAccount {
+  id: string
+  type: string
+  hash: string
+  timestamp: number
+}
+
 export type Accounts = NetworkAccount &
   IssueAccount &
   DevIssueAccount &
@@ -504,6 +511,7 @@ export type AccountVariant =
   | DevProposalAccount
   | NodeAccount
   | ChatAccount
+  | DevAccount
 
 /**
  * ---------------------- NETWORK DATA export interfaceS ----------------------
