@@ -133,6 +133,7 @@ dapp.setup({
 
         const genesisLoaded = genesis as GenesisBalances
         let accountCopies: ShardusTypes.AccountsCopy[] = []
+        const currentCycle = dapp.getLatestCycles(1)[0]
 
         for (let address in genesisLoaded) {
           const accountId = toShardusAddress(address)
@@ -141,12 +142,11 @@ dapp.setup({
             continue
           }
 
-          const currentCycle = dapp.getLatestCycles(1)[0]
           let userAccount = account.userAccount(accountId, currentCycle.start)
 
           userAccount.alias = genesisLoaded[address].alias
           userAccount.publicKey = genesisLoaded[address].publicKey
-          userAccount.timestamp = currentCycle.start
+          userAccount.timestamp = currentCycle.start * 1000
           userAccount.data.balance = BigInt(genesisLoaded[address].balance)
           userAccount.hash = ''
           userAccount.hash = crypto.hashObj(userAccount)
@@ -155,16 +155,16 @@ dapp.setup({
             accountId: accountId,
             cycleNumber: currentCycle.counter,
             data: userAccount,
-            timestamp: currentCycle.start,
+            timestamp: userAccount.timestamp,
             isGlobal: false,
             hash: userAccount.hash,
           }
 
           accountCopies.push(constructedShardusAccount)
 
-          let aliasAccount = account.aliasAccount(crypto.hash(genesisLoaded[address].alias))
+          const aliasAccount = account.aliasAccount(crypto.hash(genesisLoaded[address].alias))
           aliasAccount.address = userAccount.id
-          aliasAccount.timestamp = currentCycle.start
+          aliasAccount.timestamp = currentCycle.start * 1000
           aliasAccount.hash = ''
           aliasAccount.hash = crypto.hashObj(aliasAccount)
 
@@ -178,10 +178,30 @@ dapp.setup({
           })
         }
 
+        //TODO we need to brainstorm a way to allow migration of keys on a live network
+        const devPublicKeys = dapp.getDevPublicKeys()
+        for (const devPublicKey of Object.keys(devPublicKeys)) {
+          // eslint-disable-next-line security/detect-object-injection
+          const level = devPublicKeys[devPublicKey]
+          if (level >= DevSecurityLevel.Low) {
+            const devAccount = account.devAccount(devPublicKey)
+            devAccount.timestamp = currentCycle.start
+            devAccount.hash = ''
+            devAccount.hash = crypto.hashObj(devAccount)
+            const accountCopy: ShardusTypes.AccountsCopy = {
+              cycleNumber: currentCycle.counter,
+              accountId: devAccount.id,
+              data: devAccount,
+              hash: devAccount.hash,
+              isGlobal: false,
+              timestamp: devAccount.timestamp,
+            }
+            accountCopies.push(accountCopy)
+          }
+        }
         accountCopies = accountCopies.map((acc) => {
           return Utils.safeJsonParse(Utils.safeStringify(acc))
         })
-
         await dapp.debugCommitAccountCopies(accountCopies)
         await dapp.forwardAccounts({ accounts: accountCopies, receipts: [] })
 
