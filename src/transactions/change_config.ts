@@ -1,5 +1,5 @@
 import { DevSecurityLevel, Shardus, ShardusTypes } from '@shardus/core'
-import * as config from '../config'
+import config, { networkAccount, ONE_SECOND } from '../config'
 import { NetworkAccount, OurAppDefinedData, Signature, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
 import { TXTypes } from '.'
 import { Utils } from '@shardus/types'
@@ -22,7 +22,7 @@ export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.Inco
     throw new Error(response.reason)
   }
   try {
-    const parsed = JSON.parse(tx.config)
+    const parsed = Utils.safeJsonParse(tx.config)
     dapp.log('validate_fields Tx.ChangeConfig: ', parsed)
   } catch (err) {
     response.success = false
@@ -37,7 +37,7 @@ export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.Inco
   }
 
   const allowedPublicKeys = dapp.getMultisigPublicKeys()
-  const requiredSigs = Math.max(1, dapp.config.debug.minMultiSigRequiredForGlobalTxs)
+  const requiredSigs = Math.max(1, config.server.debug.minMultiSigRequiredForGlobalTxs)
 
   const sigs: Signature[] = Object.assign([], tx.signs)
   const txWithoutSign = { ...tx }
@@ -55,7 +55,22 @@ export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.Inco
 export const validate = (tx: Tx.ChangeConfig, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   const parsedConfig = JSON.parse(tx.config)
   dapp.log('Tx.ChangeConfig: ', parsedConfig)
-  // [TODO] Validate parsed config
+
+  // Validate parsed config
+  const givenConfig = Utils.safeJsonParse(tx.config)
+  if (
+    utils.comparePropertiesTypes(utils.omitDevKeys(givenConfig), config.server) &&
+    utils.isValidDevKeyAddition(givenConfig) &&
+    utils.isValidMultisigKeyAddition(givenConfig)
+  ) {
+    dapp.log('Valid config', givenConfig)
+  } else {
+    response.success = false
+    response.reason = 'Invalid server config'
+    dapp.log('Invalid config', givenConfig)
+    return response
+  }
+
   const allowedPublicKeys = dapp.getMultisigPublicKeys()
   const requiredSigs = Math.max(1, dapp.config.debug.minMultiSigRequiredForGlobalTxs)
 
@@ -83,7 +98,7 @@ export const apply = (
   applyResponse: ShardusTypes.ApplyResponse,
 ) => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
+  const network: NetworkAccount = wrappedStates[networkAccount].data
   let changeOnCycle
   let cycleData: ShardusTypes.Cycle
 
@@ -102,18 +117,18 @@ export const apply = (
     changeOnCycle = tx.cycle
   }
 
-  const when = txTimestamp + config.ONE_SECOND * 10
+  const when = txTimestamp + ONE_SECOND * 10
   const value = {
     type: TXTypes.apply_change_config,
     timestamp: when,
-    network: config.networkAccount,
+    network: networkAccount,
     change: { cycle: changeOnCycle, change: Utils.safeJsonParse(tx.config) },
   }
 
-  const addressHash = wrappedStates[config.networkAccount].stateId
+  const addressHash = wrappedStates[networkAccount].stateId
   const ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
 
-  ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id }
+  ourAppDefinedData.globalMsg = { address: networkAccount, addressHash, value, when, source: from.id }
 
   from.timestamp = tx.timestamp
   dapp.log(`Applied change_config tx: ${txId}, value: ${Utils.safeStringify(value)}`)
@@ -127,7 +142,7 @@ export const transactionReceiptPass = (tx: Tx.ChangeConfig, txId: string, wrappe
 
 export const keys = (tx: Tx.ChangeConfig, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [config.networkAccount]
+  result.targetKeys = [networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
@@ -138,7 +153,7 @@ export const memoryPattern = (tx: Tx.ChangeConfig, result: TransactionKeys): Sha
     wo: [],
     on: [],
     ri: [],
-    ro: [config.networkAccount],
+    ro: [networkAccount],
   }
 }
 
