@@ -10,6 +10,7 @@ const stringify = require('fast-stable-stringify')
 const axios = require('axios')
 const { ethers } = require('ethers')
 const { Utils } = require('@shardus/types')
+require('dotenv').config()
 
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 crypto.setCustomStringifier(Utils.safeStringify, 'shardus_safeStringify')
@@ -685,33 +686,25 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
   ])
   try {
     this.log(JSON.parse(answers.config))
+    const devPublicKey = process.env.DEV_PUBLIC_KEY
+    const devPrivateKey = process.env.DEV_PRIVATE_KEY
     const tx = {
       type: 'change_config',
-      from: USER.address,
+      from: devPublicKey,
       cycle: answers.cycle,
       config: answers.config,
       timestamp: Date.now(),
     }
-    signTransaction(tx)
-    injectTx(tx).then((res) => {
+    console.log('Dev Public Key:', devPublicKey, devPrivateKey)
+    let signedTx = crypto.signObj(tx, devPrivateKey, devPublicKey)
+    signedTx.signs = [Object.assign({}, signedTx.sign)]
+    delete signedTx.sign
+    injectTx(signedTx).then((res) => {
       this.log(res)
       callback()
     })
   } catch (err) {
-    this.log(err.message, 'Using backup Json config file instead of the input that was given')
-    const tx = {
-      type: 'change_config',
-      from: USER.address,
-      cycle: answers.cycle,
-      config: JSON.stringify(testConfigFromFile),
-      timestamp: Date.now(),
-    }
-    signTransaction(tx)
-
-    injectTx(tx).then((res) => {
-      this.log(res)
-      callback()
-    })
+    this.log(err.message)
   }
 })
 

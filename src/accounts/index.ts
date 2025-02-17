@@ -1,4 +1,5 @@
 import { aliasAccount, deserializeAliasAccount, serializeAliasAccount } from './aliasAccount'
+import { devAccount, deserializeDevAccount, serializeDevAccount } from './devAccount'
 import { chatAccount, deserializeChatAccount, serializeChatAccount } from './chatAccount'
 import { deserializeDevProposalAccount, devProposalAccount, serializeDevProposalAccount } from './devProposalAccount'
 import { deserializeDevIssueAccount, devIssueAccount, serializeDevIssueAccount } from './devIssueAccount'
@@ -8,7 +9,20 @@ import { deserializeNetworkAccount, networkAccount, serializeNetworkAccount } fr
 import { deserializeNodeAccount, nodeAccount, serializeNodeAccount } from './nodeAccount'
 import { deserializeProposalAccount, proposalAccount, serializeProposalAccount } from './proposalAccount'
 import { VectorBufferStream } from '@shardus/core'
-import { DeveloperPayment, AccountVariant, AliasAccount, ChatAccount, DevIssueAccount, DevProposalAccount, IssueAccount, NetworkAccount, NodeAccount, ProposalAccount, UserAccount } from '../@types'
+import {
+  DeveloperPayment,
+  AccountVariant,
+  AliasAccount,
+  ChatAccount,
+  DevIssueAccount,
+  DevProposalAccount,
+  IssueAccount,
+  NetworkAccount,
+  NodeAccount,
+  ProposalAccount,
+  UserAccount,
+  DevAccount,
+} from '../@types'
 import { Utils } from '@shardus/types'
 
 export enum SerdeTypeIdent {
@@ -23,13 +37,13 @@ export enum SerdeTypeIdent {
   UserAccount,
   DeveloperPayment,
   NetworkParameters,
+  DevAccount,
   Fallback,
 }
 
-
 export const serializeAccounts = (inp: AccountVariant): VectorBufferStream => {
   const stream = new VectorBufferStream(0)
-  switch(inp.type){
+  switch (inp.type) {
     case 'aliasAccount':
       serializeAliasAccount(stream, inp as AliasAccount, true)
       break
@@ -57,6 +71,9 @@ export const serializeAccounts = (inp: AccountVariant): VectorBufferStream => {
     case 'userAccount':
       serializeUserAccount(stream, inp as UserAccount, true)
       break
+    case 'devAccount':
+      serializeDevAccount(stream, inp as DevAccount, true)
+      break
     default:
       fallbackSerializer(stream, inp, true)
       break
@@ -68,7 +85,7 @@ export const serializeAccounts = (inp: AccountVariant): VectorBufferStream => {
 export const deserializeAccounts = (buffer: Buffer): AccountVariant => {
   const stream = VectorBufferStream.fromBuffer(buffer)
   const type = stream.readUInt16()
-  switch(type){
+  switch (type) {
     case SerdeTypeIdent.AliasAccount:
       return deserializeAliasAccount(stream)
     case SerdeTypeIdent.ChatAccount:
@@ -87,30 +104,29 @@ export const deserializeAccounts = (buffer: Buffer): AccountVariant => {
       return deserializeProposalAccount(stream)
     case SerdeTypeIdent.UserAccount:
       return deserializeUserAccount(stream)
+    case SerdeTypeIdent.DevAccount:
+      return deserializeDevAccount(stream)
     default:
       return fallbackDeserializer(stream)
   }
 }
 
 export const fallbackSerializer = (stream: VectorBufferStream, inp: any, root = false): void => {
-  if(root){
+  if (root) {
     stream.writeUInt16(SerdeTypeIdent.Fallback)
   }
   stream.writeString(Utils.safeStringify(inp))
 }
 
 export const fallbackDeserializer = (stream: VectorBufferStream, root = false): any => {
-  if(root && (stream.readUInt16() !== SerdeTypeIdent.Fallback)){
-    throw new Error("Unexpected bufferstream for Fallback type");
+  if (root && stream.readUInt16() !== SerdeTypeIdent.Fallback) {
+    throw new Error('Unexpected bufferstream for Fallback type')
   }
   return Utils.safeJsonParse(stream.readString())
 }
 
-
-
-
 export const serializeDeveloperPayment = (stream: VectorBufferStream, inp: DeveloperPayment, root = false): void => {
-  if(root){
+  if (root) {
     stream.writeUInt16(SerdeTypeIdent.DeveloperPayment)
   }
   stream.writeString(inp.id)
@@ -121,20 +137,20 @@ export const serializeDeveloperPayment = (stream: VectorBufferStream, inp: Devel
 }
 
 export const deserializeDeveloperPayment = (stream: VectorBufferStream, root = false): DeveloperPayment => {
-  if(root && (stream.readUInt16() !== SerdeTypeIdent.DeveloperPayment)){
-    throw new Error("Unexpected bufferstream for DeveloperPayment type");
+  if (root && stream.readUInt16() !== SerdeTypeIdent.DeveloperPayment) {
+    throw new Error('Unexpected bufferstream for DeveloperPayment type')
   }
   return {
     id: stream.readString(),
     address: stream.readString(),
     amount: stream.readBigUInt64(),
     delay: stream.readUInt32(),
-    timestamp: Number(stream.readBigUInt64())
+    timestamp: Number(stream.readBigUInt64()),
   }
 }
 
 export const serializeNetworkParameters = (stream: VectorBufferStream, inp: any, root = false): void => {
-  if(root){
+  if (root) {
     stream.writeUInt16(SerdeTypeIdent.NetworkParameters)
   }
   stream.writeString(inp.title)
@@ -153,8 +169,8 @@ export const serializeNetworkParameters = (stream: VectorBufferStream, inp: any,
 }
 
 export const deserializeNetworkParameters = (stream: VectorBufferStream, root = false): any => {
-  if(root && (stream.readUInt16() !== SerdeTypeIdent.NetworkParameters)){
-    throw new Error("Unexpected bufferstream for NetworkParameters type");
+  if (root && stream.readUInt16() !== SerdeTypeIdent.NetworkParameters) {
+    throw new Error('Unexpected bufferstream for NetworkParameters type')
   }
   return {
     title: stream.readString(),
@@ -169,14 +185,13 @@ export const deserializeNetworkParameters = (stream: VectorBufferStream, root = 
     proposalFee: stream.readUInt32(),
     devProposalFee: stream.readUInt32(),
     faucetAmount: stream.readUInt32(),
-    defaultToll: stream.readUInt32()
+    defaultToll: stream.readUInt32(),
   }
 }
 
-
-
 export default {
   aliasAccount,
+  devAccount,
   chatAccount,
   devIssueAccount,
   devProposalAccount,
