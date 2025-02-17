@@ -1,10 +1,11 @@
-import { Shardus, ShardusTypes } from '@shardus/core'
+import { DevSecurityLevel, Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
-import { UserAccount, NetworkAccount, WrappedStates, OurAppDefinedData, Tx, TransactionKeys } from '../@types'
+import { NetworkAccount, OurAppDefinedData, Signature, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
 import { TXTypes } from '.'
 import { Utils } from '@shardus/types'
+import * as utils from '../utils'
 
-export const validate_fields = (tx: Tx.ChangeNetworkParam, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.ChangeNetworkParam, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   if (typeof tx.from !== 'string') {
     response.success = false
     response.reason = 'tx "from" field must be a string'
@@ -22,11 +23,30 @@ export const validate_fields = (tx: Tx.ChangeNetworkParam, response: ShardusType
   }
   try {
     const parsedNetworkParam = JSON.parse(tx.config)
-    console.log('validate_fields Tx.ChangeNetworkParam: ', parsedNetworkParam)
+    dapp.log('validate_fields Tx.ChangeNetworkParam: ', parsedNetworkParam)
   } catch (err) {
     response.success = false
     response.reason = 'tx "change_network_param" field must be a valid JSON string'
     console.log('validate_fields tx "change_network_param" field must be a valid JSON string', err)
+    throw new Error(response.reason)
+  }
+  if (!tx.signs || (tx.signs instanceof Array && tx.signs.length === 0)) {
+    response.success = false
+    response.reason = 'No signature array found'
+    throw new Error(response.reason)
+  }
+
+  const allowedPublicKeys = dapp.getMultisigPublicKeys()
+  const requiredSigs = Math.max(1, dapp.config.debug.minMultiSigRequiredForGlobalTxs)
+
+  const sigs: Signature[] = Object.assign([], tx.signs)
+  const txWithoutSign = { ...tx }
+  delete txWithoutSign.signs
+
+  const sigsAreValid = utils.verifyMultiSigs(txWithoutSign, sigs, allowedPublicKeys, requiredSigs, DevSecurityLevel.High)
+  if (!sigsAreValid) {
+    response.success = false
+    response.reason = 'Invalid signatures'
     throw new Error(response.reason)
   }
   return response
@@ -34,8 +54,33 @@ export const validate_fields = (tx: Tx.ChangeNetworkParam, response: ShardusType
 
 export const validate = (tx: Tx.ChangeNetworkParam, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   const parsedNetworkParam = JSON.parse(tx.config)
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   dapp.log('Tx.ChangeNetworkParam: ', parsedNetworkParam)
-  // [TODO] Validate parsed n
+
+  // Validate parsed network params
+  const givenNetworkParams = Utils.safeJsonParse(tx.config)
+  if (utils.comparePropertiesTypes(givenNetworkParams, network.current)) {
+    dapp.log('Valid network parameters', givenNetworkParams)
+  } else {
+    response.success = false
+    response.reason = 'Invalid network parameters'
+    dapp.log('Invalid network parameters', givenNetworkParams)
+    return response
+  }
+
+  const allowedPublicKeys = dapp.getMultisigPublicKeys()
+  const requiredSigs = Math.max(1, dapp.config.debug.minMultiSigRequiredForGlobalTxs)
+
+  const sigs: Signature[] = tx.signs instanceof Array ? tx.signs : [tx.signs]
+  const txWithoutSign = { ...tx }
+  delete txWithoutSign.signs
+
+  const sigsAreValid = utils.verifyMultiSigs(txWithoutSign, sigs, allowedPublicKeys, requiredSigs, DevSecurityLevel.High)
+  if (!sigsAreValid) {
+    response.success = false
+    response.reason = 'Invalid signatures'
+    return response
+  }
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
@@ -74,13 +119,13 @@ export const apply = (
   ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id }
 
   from.timestamp = tx.timestamp
-  dapp.log('Applied change_network_param tx')
+  dapp.log(`Applied change_network_param tx: ${txId}, value: ${Utils.safeStringify(value)}`)
 }
 
 export const transactionReceiptPass = (tx: Tx.ChangeNetworkParam, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
   let { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
   dapp.setGlobal(address, addressHash, value, when, source)
-  dapp.log('PostApplied change_network_param tx')
+  dapp.log(`PostApplied change_network_param tx transactionReceiptPass: ${Utils.safeStringify({ address, addressHash, value, when, source })}`)
 }
 
 export const keys = (tx: Tx.ChangeNetworkParam, result: TransactionKeys) => {
