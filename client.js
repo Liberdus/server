@@ -15,6 +15,11 @@ require('dotenv').config()
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 crypto.setCustomStringifier(Utils.safeStringify, 'shardus_safeStringify')
 
+const devKey = {
+  publicKey: '',
+  secretKey: '',
+}
+
 const useEthereumSigning = true
 
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
@@ -326,8 +331,8 @@ function toShardusAddress(addressStr) {
   return addressStr.slice(2).toLowerCase() + '0'.repeat(24)
 }
 
-function signTransaction(tx, keys) {
-  if (useEthereumSigning) {
+function signTransaction(tx, keys, useDefaultSigning = false) {
+  if (useEthereumSigning && !useDefaultSigning) {
     signEthereumTx(tx, keys ? keys : USER.keys)
   } else {
     crypto.signObj(tx, keys ? keys.secretKey : USER.keys.secretKey, keys ? keys.publicKey : USER.keys.publicKey)
@@ -1804,6 +1809,52 @@ vorpal.command('deposit stake joining nodes', 'deposit the stake amount to the j
     callback()
   })
 })
+
+vorpal.command('admin certificate', 'put admin certificate').action(async function (args, callback) {
+  const answers = await this.prompt([
+    {
+      type: 'input',
+      name: 'nodeAddress',
+      message: 'Enter the node account: ',
+    },
+    {
+      type: 'confirm',
+      name: 'goldenTicket',
+      message: 'Enable golden ticket: ',
+      default: false,
+    },
+    {
+      type: 'input',
+      name: 'certHours',
+      message: 'Certificate expiry in hours: ',
+      default: 24,
+    },
+  ])
+  const currentTime = Date.now()
+  const certExpHours = answers.certHours
+  const expiration = currentTime + 1000 * 60 * 60 * certExpHours
+  const adminCert = {
+    nominee: answers.nodeAddress,
+    certCreation: currentTime,
+    certExp: expiration,
+    goldenTicket: answers.goldenTicket,
+  }
+  console.log(adminCert)
+  signTransaction(adminCert, devKey, true)
+  const res = await putAdminCert(adminCert)
+  this.log(res)
+  callback()
+})
+
+const putAdminCert = async (adminCert) => {
+  console.log(`Sending admin certificate to ${HOST}...`)
+  try {
+    const res = await axios.put(`http://${HOST}/admin-certificate`, adminCert)
+    return res.data
+  } catch (err) {
+    return err.message
+  }
+}
 
 const getJoiningNodes = async () => {
   const res = await axios.get(`http://${MONITORSERVER}/api/report`)
