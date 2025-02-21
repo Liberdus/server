@@ -14,7 +14,7 @@ import transactions, { TXTypes } from './transactions'
 import registerAPI from './api'
 import * as AccountsStorage from './storage/accountStorage'
 import { logFlags } from '@shardeum-foundation/core/dist/logger'
-import { AdminCert } from './transactions/admin_certificate'
+import { adminCert, AdminCert } from './transactions/admin_certificate'
 import * as QueryCertificate from './transactions/staking/query_certificate'
 import { RemoveNodeCert, StakeCert } from './transactions/staking/query_certificate'
 import * as SetCertTime from './transactions/staking/set_cert_time'
@@ -55,8 +55,6 @@ if (LiberdusFlags.UseDBForAccounts === true) {
 const statsDebugLogs = false
 let lastCertTimeTxTimestamp = 0
 let lastCertTimeTxCycle: number | null = null
-
-export const adminCert: AdminCert = null
 
 let isReadyToJoinLatestValue = false
 let mustUseAdminCert = false
