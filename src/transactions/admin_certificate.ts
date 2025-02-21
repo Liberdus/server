@@ -17,16 +17,23 @@ export type PutAdminCertRequest = AdminCert
 
 export interface PutAdminCertResult {
   success: boolean
-  signedAdminCert: AdminCert
+  reason?: string // error message if failed
 }
 
-function validatePutAdminCertRequest(req: PutAdminCertRequest, shardus: Shardus): ValidatorError {
+export let adminCert: AdminCert = null
+
+function validatePutAdminCertRequest(req: PutAdminCertRequest, shardus: Shardus): PutAdminCertResult {
   const publicKey = shardus.crypto.getPublicKey()
 
-  if (!req.nominee || req.nominee === '' || req.nominee.length !== 64 || req.nominee != publicKey) {
+  if (!req.nominee || req.nominee === '' || req.nominee.length !== 64) {
     /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-admin-certificate', `validatePutAdminCertRequest fail req.nominee address invalid`)
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validatePutAdminCertRequest fail req.nominee address invalid', req)
     return { success: false, reason: 'Invalid nominee address' }
+  }
+  if (req.nominee != publicKey) {
+    /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-admin-certificate', `validatePutAdminCertRequest fail req.nominee address and the current node public key do not match`)
+    /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validatePutAdminCertRequest fail req.nominee address and the current node public key do not match', req)
+    return { success: false, reason: 'nominee address and the current node public key do not match' }
   }
   try {
     if (!crypto.verifyObj(req, true)) return { success: false, reason: 'Invalid signature for AdminCert' }
@@ -49,15 +56,15 @@ function validatePutAdminCertRequest(req: PutAdminCertRequest, shardus: Shardus)
   return { success: true, reason: '' }
 }
 
-export async function putAdminCertificateHandler(req: Request, shardus: Shardus): Promise<PutAdminCertResult | ValidatorError> {
-  nestedCountersInstance.countEvent('liberdus-admin-certificate', 'calling queryCertificateHandler')
+export async function putAdminCertificateHandler(req: Request, shardus: Shardus): Promise<PutAdminCertResult> {
+  nestedCountersInstance.countEvent('liberdus-admin-certificate', 'calling putAdminCertificateHandler')
 
   const certReq = req.body as PutAdminCertRequest
   const reqValidationResult = validatePutAdminCertRequest(certReq, shardus)
   if (!reqValidationResult.success) {
-    nestedCountersInstance.countEvent('liberdus-admin-certificate', 'queryCertificateHandler: failed validateQueryCertRequest')
+    nestedCountersInstance.countEvent('liberdus-admin-certificate', 'putAdminCertificateHandler: failed validateQueryCertRequest')
     return reqValidationResult
   }
-
-  return { success: true, signedAdminCert: certReq }
+  adminCert = certReq
+  return { success: true }
 }
