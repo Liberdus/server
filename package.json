@@ -30,7 +30,7 @@
   "license": "ISC",
   "dependencies": {
     "@shardus/archiver-discovery": "1.1.0",
-    "@shardus/core": "git+https://github.com/shardeum/shardus-core#dev",
+    "@shardeum-foundation/core": "2.13.7-prerelease.11",
     "@shardus/crypto-utils": "git+https://github.com/shardeum/lib-crypto-utils#v4.1.5",
     "@shardus/net": "git+https://github.com/shardeum/lib-net#v1.4.4",
     "@shardus/types": "git+https://github.com/shardeum/lib-types#v1.2.22",
