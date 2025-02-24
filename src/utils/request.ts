@@ -1,31 +1,20 @@
-import {UserAccount, NetworkAccount, IssueAccount, DevIssueAccount, DeveloperPayment, InjectTxResponse, ValidatorError} from '../@types'
+import { UserAccount, NetworkAccount, IssueAccount, DevIssueAccount, DeveloperPayment, InjectTxResponse, ValidatorError } from '../@types'
 import * as crypto from '../crypto'
 import * as configs from '../config'
-import { Shardus,  ShardusTypes } from '@shardus/core'
+import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 
-export const shardusGet = async <ResponseType>(
-  url: string,
-  config: AxiosRequestConfig
-): Promise<AxiosResponse<ResponseType>> => {
+export const shardusGet = async <ResponseType>(url: string, config: AxiosRequestConfig): Promise<AxiosResponse<ResponseType>> => {
   const response = axios.get<ResponseType>(url, config)
   return response
 }
 
-export const shardusPost = async <ResponseType>(
-  url: string,
-  data: unknown,
-  config: AxiosRequestConfig
-): Promise<AxiosResponse<ResponseType>> => {
+export const shardusPost = async <ResponseType>(url: string, data: unknown, config: AxiosRequestConfig): Promise<AxiosResponse<ResponseType>> => {
   const response = axios.post<ResponseType>(url, data, config)
   return response
 }
 
-export const shardusPut = async <ResponseType>(
-  url: string,
-  data: unknown,
-  config: AxiosRequestConfig
-): Promise<AxiosResponse<ResponseType>> => {
+export const shardusPut = async <ResponseType>(url: string, data: unknown, config: AxiosRequestConfig): Promise<AxiosResponse<ResponseType>> => {
   const response = axios.put<ResponseType>(url, data, config)
   return response
 }
@@ -57,7 +46,7 @@ const urlFromNode = (node: ShardusTypes.ValidatorNodeDetails, path: string): str
 export const shardusGetFromNode = async <ResponseType>(
   node: ShardusTypes.ValidatorNodeDetails,
   path: string,
-  config?: AxiosRequestConfig
+  config?: AxiosRequestConfig,
 ): Promise<AxiosResponse<ResponseType>> => {
   const url = urlFromNode(node, path)
   return shardusGet<ResponseType>(url, config)
@@ -74,7 +63,7 @@ export const shardusPostToNode = async <ResponseType>(
   node: ShardusTypes.ValidatorNodeDetails,
   path: string,
   data?: unknown,
-  config?: AxiosRequestConfig
+  config?: AxiosRequestConfig,
 ): Promise<AxiosResponse<ResponseType>> => {
   const url = urlFromNode(node, path)
   return shardusPost<ResponseType>(url, data, config)
@@ -91,7 +80,7 @@ export const shardusPutToNode = async <ResponseType>(
   node: ShardusTypes.ValidatorNodeDetails,
   path: string,
   data?: unknown,
-  config?: AxiosRequestConfig
+  config?: AxiosRequestConfig,
 ): Promise<AxiosResponse<ResponseType>> => {
   const url = urlFromNode(node, path)
   return shardusPut<ResponseType>(url, data, config)

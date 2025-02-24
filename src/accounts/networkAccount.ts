@@ -1,7 +1,7 @@
 import * as crypto from '../crypto'
 import * as config from '../config'
 import { NetworkAccount } from '../@types'
-import { VectorBufferStream } from '@shardus/core'
+import { VectorBufferStream } from '@shardeum-foundation/core'
 import { SerdeTypeIdent } from '.'
 import { Utils } from '@shardus/types'
 
@@ -47,7 +47,7 @@ export const serializeNetworkAccount = (stream: VectorBufferStream, inp: Network
 }
 
 export const deserializeNetworkAccount = (stream: VectorBufferStream, root = false): NetworkAccount => {
-  if (root && (stream.readUInt16() !== SerdeTypeIdent.NetworkAccount)) {
+  if (root && stream.readUInt16() !== SerdeTypeIdent.NetworkAccount) {
     throw new Error('Unexpected bufferstream for NetworkAccount type')
   }
   return Utils.safeJsonParse(stream.readString())

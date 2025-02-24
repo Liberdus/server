@@ -1,8 +1,8 @@
-import { Shardus, ShardusTypes, nestedCountersInstance } from '@shardus/core'
+import { Shardus, ShardusTypes, nestedCountersInstance } from '@shardeum-foundation/core'
 import { LiberdusFlags } from '../config'
 import * as crypto from '../crypto'
 import { Request } from 'express'
-import { DevSecurityLevel } from '@shardus/core'
+import { DevSecurityLevel } from '@shardeum-foundation/core'
 import { ValidatorError } from '../@types'
 
 export interface AdminCert {

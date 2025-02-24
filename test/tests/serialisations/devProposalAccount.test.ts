@@ -1,11 +1,9 @@
-
-import { VectorBufferStream } from '@shardus/core'
+import { VectorBufferStream } from '@shardeum-foundation/core'
 import { Utils } from '@shardus/types'
 import { devProposalAccount, serializeDevProposalAccount, deserializeDevProposalAccount } from '../../../src/accounts/devProposalAccount'
 import { SerdeTypeIdent } from '../../../src/accounts/index'
 
 import { DevProposalAccount } from '../../../src/@types'
-
 
 describe('DevPropsoalAccount Serialization', () => {
   test('should serialize with root true', () => {
@@ -24,4 +22,3 @@ describe('DevPropsoalAccount Serialization', () => {
     expect(Utils.safeStringify(deserialised)).toEqual(Utils.safeStringify(obj))
   })
 })
-

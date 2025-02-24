@@ -1,11 +1,11 @@
-import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardus/core'
+import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import config, { ONE_SECOND, LiberdusFlags } from '../../config'
 import { getAccountWithRetry } from './query_certificate'
 import { AccountQueryResponse, WrappedStates, InjectTxResponse, NodeAccount, UserAccount, Tx, TransactionKeys } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { getRandom, scaleByStabilityFactor, InjectTxToConsensor } from '../../utils'
 import { Utils } from '@shardus/types'
-import { logFlags } from '@shardus/core/dist/logger'
+import { logFlags } from '@shardeum-foundation/core/dist/logger'
 import { verifyObj } from '@shardus/crypto-utils'
 import { TXTypes } from '..'
 

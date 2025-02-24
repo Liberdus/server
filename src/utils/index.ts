@@ -1,8 +1,9 @@
-import { DeveloperPayment, DevIssueAccount, InjectTxResponse, IssueAccount, NetworkAccount, Tx, UserAccount, ValidatorError } from '../@types'
+import { DeveloperPayment, DevIssueAccount, InjectTxResponse, IssueAccount, NetworkAccount, UserAccount, ValidatorError } from '../@types'
 import * as crypto from '../crypto'
 import * as configs from '../config'
-import { Shardus, ShardusTypes } from '@shardus/core'
-import { DevSecurityLevel, Sign } from '@shardus/core/dist/shardus/shardus-types'
+import { LiberdusFlags } from '../config'
+import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
+import { DevSecurityLevel, Sign } from '@shardeum-foundation/core/dist/shardus/shardus-types'
 import { shardusPostToNode } from './request'
 import { Utils } from '@shardus/types'
 import { TXTypes } from '../transactions'
@@ -75,6 +76,109 @@ export function verifyMultiSigs(
     if (validSigs >= minSigRequired) break
   }
   return validSigs >= minSigRequired
+}
+
+type MajorityTargetValueFunc<T> = (o: T) => string
+type MajorityResult<T> = T | null
+type MajorityParam<T> = T[]
+
+/**
+ Gather the results into an array.
+ Use an object to count the occurrences of each result.
+ Iterate through the object to determine the majority result.
+ Check if the majority count is greater than 1/2 of the total results
+ @param results -  The original array
+ @param getTargetValue - Function to get the target value for the object, default to identity function
+ */
+export function findMajorityResult<T>(results: MajorityParam<T>, getTargetValue: MajorityTargetValueFunc<T>): MajorityResult<T> {
+  const resultCounts = {}
+
+  // Count the occurrences of each result
+  for (const result of results) {
+    const value = getTargetValue(result)
+    /* eslint-disable security/detect-object-injection */
+    resultCounts[value] = (resultCounts[value] || 0) + 1
+  }
+
+  const totalResults = results.length
+
+  // Find the majority result
+  let majorityResult
+  let majorityCount = 0
+
+  for (const result of results) {
+    const value = getTargetValue(result)
+    /* eslint-disable security/detect-object-injection */
+    const resultCount = resultCounts[value]
+    if (resultCount > majorityCount) {
+      majorityResult = result
+      /* eslint-disable security/detect-object-injection */
+      majorityCount = resultCount
+    }
+  }
+
+  // Check if majority count is greater than 1/2 of total results
+  if (majorityCount > totalResults / 2) {
+    return majorityResult
+  } else {
+    return null
+  }
+}
+
+/**
+ * Try to print a variety of possible erros for debug purposes
+ * @param err
+ * @returns
+ */
+export function formatErrorMessage(err: unknown): string {
+  let errMsg = 'An error occurred'
+
+  if (typeof err === 'string') {
+    errMsg = err
+  } else if (err instanceof Error) {
+    errMsg = err.message
+
+    if (err.stack) {
+      errMsg += ` \nStack trace:\n${err.stack}`
+    }
+  } else if (typeof err === 'object' && err !== null) {
+    //chat gpt reccomended this fancy part but the linter doesn't like it
+
+    // const keys = Object.keys(err)
+    // if (keys.length > 0) {
+    //   errMsg = 'Error properties:\n'
+    //   const errObj = err as object
+    //   for (const key of keys) {
+    //     errMsg += `${key}: ${errObj[key]}\n`
+    //   }
+    // } else {
+    errMsg = `Unknown error: ${Utils.safeStringify(err)}`
+    // }
+  } else {
+    errMsg = `Unknown error: ${err}`
+  }
+
+  return errMsg
+}
+
+export function patchConfig(existingConfig: ShardusTypes.ShardusConfiguration, changeObj: any): void {
+  //remove after testing
+  /* prettier-ignore */
+  if (LiberdusFlags.VerboseLogs) console.log(`TESTING existingObject: ${JSON.stringify(existingConfig, null, 2)}`)
+  /* prettier-ignore */
+  if (LiberdusFlags.VerboseLogs) console.log(`TESTING changeObj: ${JSON.stringify(changeObj, null, 2)}`)
+  for (const changeKey in changeObj) {
+    if (changeObj[changeKey] && existingConfig.server[changeKey]) {
+      const targetObject = existingConfig.server[changeKey]
+      const changeProperties = changeObj[changeKey]
+
+      for (const propKey in changeProperties) {
+        if (changeProperties[propKey] && targetObject[propKey]) {
+          targetObject[propKey] = changeProperties[propKey]
+        }
+      }
+    }
+  }
 }
 
 export function comparePropertiesTypes(A: any, B: any): boolean {

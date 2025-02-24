@@ -1,4 +1,4 @@
-import { nestedCountersInstance } from '@shardus/core'
+import { nestedCountersInstance } from '@shardeum-foundation/core'
 import { isEqualOrNewerVersion } from '../utils'
 import { Migration as Migrate } from './types'
 
@@ -17,7 +17,7 @@ const appliedMigrations = new Set<string>()
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const onActiveVersionChange = async (newActiveVersion: string) => {
   // For future migrations, add a file under ./migrations and add the version here
-  const migrations = ['2.3.2']
+  const migrations = ['2.3.2', '2.3.3']
 
   for (let index = 0; index < migrations.length; index++) {
     const migrationVersion = migrations[index] // eslint-disable-line security/detect-object-injection

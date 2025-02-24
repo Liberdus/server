@@ -1,7 +1,7 @@
 import { ethers } from 'ethers'
 import * as ShardusCrypto from '@shardus/crypto-utils'
 import { LiberdusFlags } from '../config'
-import { ShardusTypes } from '@shardus/core'
+import { ShardusTypes } from '@shardeum-foundation/core'
 import { toShardusAddress } from '../utils/address'
 
 interface SignedObj {
