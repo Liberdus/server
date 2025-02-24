@@ -1,6 +1,6 @@
 // ---------------------- TRANSACTION export interfaceS ------------------
 
-import { shardusFactory, ShardusTypes } from '@shardus/core'
+import { shardusFactory, ShardusTypes } from '@shardeum-foundation/core'
 import { TXTypes } from '../transactions'
 import { StakeCert } from '../transactions/staking/query_certificate'
 import { AdminCert } from '../transactions/admin_certificate'

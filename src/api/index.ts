@@ -7,7 +7,7 @@ import messages from './messages'
 import debug from './debug'
 import { queryCertificateEndpoint } from './staking/query-certificate'
 import { debug_liberdus_flags, set_liberdus_flag } from './liberdus_flags'
-import { Shardus } from '@shardus/core'
+import { Shardus } from '@shardeum-foundation/core'
 export default (dapp: Shardus) => {
   dapp.registerExternalPost('inject', inject(dapp))
 

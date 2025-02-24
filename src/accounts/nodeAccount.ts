@@ -1,7 +1,7 @@
 import * as crypto from '../crypto'
-import { VectorBufferStream } from '@shardus/core'
+import { VectorBufferStream } from '@shardeum-foundation/core'
 import { SerdeTypeIdent } from '.'
-import {NodeAccount} from '../@types'
+import { NodeAccount } from '../@types'
 import { Utils } from '@shardus/types'
 
 export const nodeAccount = (accountId: string) => {
@@ -33,9 +33,8 @@ export const nodeAccount = (accountId: string) => {
   return account
 }
 
-
 export const serializeNodeAccount = (stream: VectorBufferStream, inp: NodeAccount, root = false): void => {
-  if(root){
+  if (root) {
     stream.writeUInt16(SerdeTypeIdent.NodeAccount)
   }
   stream.writeString(inp.id)
@@ -57,27 +56,26 @@ export const serializeNodeAccount = (stream: VectorBufferStream, inp: NodeAccoun
 }
 
 export const deserializeNodeAccount = (stream: VectorBufferStream, root = false): NodeAccount => {
-  
-    if(root && (stream.readUInt16() !== SerdeTypeIdent.NodeAccount)){
-      throw new Error("Unexpected bufferstream for NodeAccount type");
-    }
-  
-    return {
-      id: stream.readString(),
-      type: stream.readString(),
-      balance: stream.readBigUInt64(),
-      nodeRewardTime: Number(stream.readBigUInt64()),
-      hash: stream.readString(),
-      timestamp: Number(stream.readBigUInt64()),
-      nominator: stream.readString(),
-      stakeLock: stream.readBigUInt64(),
-      stakeTimestamp: Number(stream.readBigUInt64()),
-      rewarded: stream.readUInt8() === 1,
-      penalty: stream.readBigUInt64(),
-      nodeAccountStats: Utils.safeJsonParse(stream.readString()),
-      rewardStartTime: Number(stream.readBigUInt64()),
-      rewardEndTime: Number(stream.readBigUInt64()),
-      reward: stream.readBigUInt64(),
-      rewardRate: stream.readBigUInt64(),
-    }
+  if (root && stream.readUInt16() !== SerdeTypeIdent.NodeAccount) {
+    throw new Error('Unexpected bufferstream for NodeAccount type')
   }
+
+  return {
+    id: stream.readString(),
+    type: stream.readString(),
+    balance: stream.readBigUInt64(),
+    nodeRewardTime: Number(stream.readBigUInt64()),
+    hash: stream.readString(),
+    timestamp: Number(stream.readBigUInt64()),
+    nominator: stream.readString(),
+    stakeLock: stream.readBigUInt64(),
+    stakeTimestamp: Number(stream.readBigUInt64()),
+    rewarded: stream.readUInt8() === 1,
+    penalty: stream.readBigUInt64(),
+    nodeAccountStats: Utils.safeJsonParse(stream.readString()),
+    rewardStartTime: Number(stream.readBigUInt64()),
+    rewardEndTime: Number(stream.readBigUInt64()),
+    reward: stream.readBigUInt64(),
+    rewardRate: stream.readBigUInt64(),
+  }
+}

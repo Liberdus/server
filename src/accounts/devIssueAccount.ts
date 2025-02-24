@@ -1,7 +1,7 @@
 import * as crypto from '../crypto'
-import { VectorBufferStream } from '@shardus/core'
+import { VectorBufferStream } from '@shardeum-foundation/core'
 import { SerdeTypeIdent } from '.'
-import {DevIssueAccount} from '../@types'
+import { DevIssueAccount } from '../@types'
 
 export const devIssueAccount = (accountId: string) => {
   const devIssue: DevIssueAccount = {
@@ -14,14 +14,14 @@ export const devIssueAccount = (accountId: string) => {
     active: null,
     number: null,
     timestamp: 0,
-    tallied: false
+    tallied: false,
   }
   devIssue.hash = crypto.hashObj(devIssue)
   return devIssue
 }
 
 export const serializeDevIssueAccount = (stream: VectorBufferStream, inp: DevIssueAccount, root = false): void => {
-  if(root){
+  if (root) {
     stream.writeUInt16(SerdeTypeIdent.DevIssueAccount)
   }
 
@@ -29,51 +29,47 @@ export const serializeDevIssueAccount = (stream: VectorBufferStream, inp: DevIss
   stream.writeString(inp.type)
   stream.writeUInt32(inp.devProposals.length)
 
-  for(let i = 0; i < inp.devProposals.length; i++){
+  for (let i = 0; i < inp.devProposals.length; i++) {
     stream.writeString(inp.devProposals[i])
   }
 
   stream.writeUInt32(inp.devProposalCount)
-  
+
   stream.writeUInt32(inp.winners.length)
 
-  for(let i = 0; i < inp.winners.length; i++){
+  for (let i = 0; i < inp.winners.length; i++) {
     stream.writeString(inp.winners[i])
   }
 
-  if(inp.active !== null){
+  if (inp.active !== null) {
     stream.writeUInt8(1)
-    stream.writeUInt8((inp.active === true) ? 1 : 0)
-  }else{
+    stream.writeUInt8(inp.active === true ? 1 : 0)
+  } else {
     stream.writeUInt8(0)
   }
 
-  if(inp.number !== null){
+  if (inp.number !== null) {
     stream.writeUInt8(1)
     stream.writeUInt32(inp.number)
-  }else{
+  } else {
     stream.writeUInt8(0)
   }
-
 
   stream.writeString(inp.hash)
   stream.writeBigUInt64(BigInt(inp.timestamp))
   stream.writeUInt8(inp.tallied ? 1 : 0)
-  
 }
 
-
 export const deserializeDevIssueAccount = (stream: VectorBufferStream, root = false): DevIssueAccount => {
-
-  if(root && (stream.readUInt16() !== SerdeTypeIdent.DevIssueAccount)){
-    throw new Error("Unexpected bufferstream for DevIssueAccount type");
+  if (root && stream.readUInt16() !== SerdeTypeIdent.DevIssueAccount) {
+    throw new Error('Unexpected bufferstream for DevIssueAccount type')
   }
 
   const id = stream.readString()
   const type = stream.readString()
   const devProposals = []
 
-  for(let i = 0; i < stream.readUInt32(); i++){
+  for (let i = 0; i < stream.readUInt32(); i++) {
     devProposals.push(stream.readString())
   }
 
@@ -81,17 +77,17 @@ export const deserializeDevIssueAccount = (stream: VectorBufferStream, root = fa
 
   const winners = []
 
-  for(let i = 0; i < stream.readUInt32(); i++){
+  for (let i = 0; i < stream.readUInt32(); i++) {
     winners.push(stream.readString())
   }
 
   let active = null
-  if(stream.readUInt8() === 1){
+  if (stream.readUInt8() === 1) {
     active = stream.readUInt8() === 1 ? true : false
   }
 
   let number = null
-  if(stream.readUInt8() === 1){
+  if (stream.readUInt8() === 1) {
     number = stream.readUInt32()
   }
 
@@ -109,7 +105,6 @@ export const deserializeDevIssueAccount = (stream: VectorBufferStream, root = fa
     number,
     hash,
     timestamp,
-    tallied
+    tallied,
   }
-
 }
