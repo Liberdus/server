@@ -1,7 +1,7 @@
 import * as crypto from '../crypto'
-import { VectorBufferStream } from '@shardus/core'
+import { VectorBufferStream } from '@shardeum-foundation/core'
 import { deserializeNetworkParameters, SerdeTypeIdent, serializeNetworkParameters } from '.'
-import {ProposalAccount, NetworkParameters} from '../@types'
+import { ProposalAccount, NetworkParameters } from '../@types'
 
 export const proposalAccount = (accountId: string, parameters?: NetworkParameters) => {
   const proposal: ProposalAccount = {
@@ -20,7 +20,7 @@ export const proposalAccount = (accountId: string, parameters?: NetworkParameter
 }
 
 export const serializeProposalAccount = (stream: VectorBufferStream, inp: ProposalAccount, root = false) => {
-  if(root){
+  if (root) {
     stream.writeUInt16(SerdeTypeIdent.ProposalAccount)
   }
 
@@ -31,7 +31,7 @@ export const serializeProposalAccount = (stream: VectorBufferStream, inp: Propos
   serializeNetworkParameters(stream, inp.parameters)
   stream.writeUInt8(inp.winner ? 1 : 0)
   stream.writeUInt8(inp.number ? 1 : 0)
-  if(inp.number){
+  if (inp.number) {
     stream.writeUInt32(inp.number)
   }
   stream.writeString(inp.hash)
@@ -39,9 +39,8 @@ export const serializeProposalAccount = (stream: VectorBufferStream, inp: Propos
 }
 
 export const deserializeProposalAccount = (stream: VectorBufferStream, root = false): ProposalAccount => {
-
-  if(root && (stream.readUInt16() !== SerdeTypeIdent.ProposalAccount)){
-    throw new Error("Unexpected bufferstream for ProposalAccount type");
+  if (root && stream.readUInt16() !== SerdeTypeIdent.ProposalAccount) {
+    throw new Error('Unexpected bufferstream for ProposalAccount type')
   }
 
   return {
@@ -53,6 +52,6 @@ export const deserializeProposalAccount = (stream: VectorBufferStream, root = fa
     winner: stream.readUInt8() === 1,
     number: stream.readUInt8() === 1 ? stream.readUInt32() : null,
     hash: stream.readString(),
-    timestamp: Number(stream.readBigUInt64())
+    timestamp: Number(stream.readBigUInt64()),
   }
 }

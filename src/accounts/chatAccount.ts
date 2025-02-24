@@ -1,8 +1,8 @@
 import * as crypto from '../crypto'
-import { VectorBufferStream } from '@shardus/core'
+import { VectorBufferStream } from '@shardeum-foundation/core'
 import { Utils } from '@shardus/types'
 import { SerdeTypeIdent } from '.'
-import {ChatAccount} from '../@types'
+import { ChatAccount } from '../@types'
 
 export const chatAccount = (accountId: string): ChatAccount => {
   const chat: ChatAccount = {
@@ -17,10 +17,10 @@ export const chatAccount = (accountId: string): ChatAccount => {
 }
 
 export const serializeChatAccount = (stream: VectorBufferStream, inp: ChatAccount, root = false): void => {
-  if(root){
+  if (root) {
     stream.writeUInt16(SerdeTypeIdent.ChatAccount)
   }
-  
+
   stream.writeString(inp.id)
   stream.writeString(inp.type)
   // [] Might have to update the serialization used for messages as it has updated to an array of object ( TxMessage )
@@ -29,11 +29,9 @@ export const serializeChatAccount = (stream: VectorBufferStream, inp: ChatAccoun
   stream.writeString(inp.hash)
 }
 
-
 export const deserializeChatAccount = (stream: VectorBufferStream, root = false): ChatAccount => {
-
-  if(root && (stream.readUInt16() !== SerdeTypeIdent.ChatAccount)){
-    throw new Error("Unexpected bufferstream for ChatAccount type");
+  if (root && stream.readUInt16() !== SerdeTypeIdent.ChatAccount) {
+    throw new Error('Unexpected bufferstream for ChatAccount type')
   }
 
   return {
@@ -41,7 +39,6 @@ export const deserializeChatAccount = (stream: VectorBufferStream, root = false)
     type: stream.readString(),
     messages: Utils.safeJsonParse(stream.readString()),
     timestamp: Number(stream.readBigUInt64()),
-    hash: stream.readString()
+    hash: stream.readString(),
   }
 }
-

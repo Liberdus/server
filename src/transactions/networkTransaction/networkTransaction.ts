@@ -1,11 +1,11 @@
-import { Shardus, nestedCountersInstance } from '@shardus/core'
+import { Shardus, nestedCountersInstance } from '@shardeum-foundation/core'
 import * as crypto from '../../crypto'
 import { Utils, P2P } from '@shardus/types'
 import { LiberdusFlags } from '../../config'
 import { NodeAccount, SignedNodeInitTxData, SignedNodeRewardTxData } from '../../@types'
 
 export const configShardusNetworkTransactions = (dapp: Shardus): void => {
-  dapp.registerBeforeAddVerifier('nodeReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeRewardTxData>) => {
+  dapp.serviceQueue.registerBeforeAddVerifier('nodeReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeRewardTxData>) => {
     const tx = txEntry.txData
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Validating nodeReward fields', Utils.safeStringify(tx))
     try {
@@ -63,7 +63,7 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward success', Utils.safeStringify(tx))
     return true
   })
-  dapp.registerApplyVerifier('nodeReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeRewardTxData>) => {
+  dapp.serviceQueue.registerApplyVerifier('nodeReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeRewardTxData>) => {
     const tx = txEntry.txData
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Validating nodeReward applied', Utils.safeStringify(tx))
     const shardusAddress = tx.publicKey?.toLowerCase()
@@ -76,7 +76,7 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeReward appliedEntry', appliedEntry)
     return appliedEntry
   })
-  dapp.registerBeforeAddVerifier('nodeInitReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeInitTxData>) => {
+  dapp.serviceQueue.registerBeforeAddVerifier('nodeInitReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeInitTxData>) => {
     const tx = txEntry.txData
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Validating nodeInitReward', Utils.safeStringify(tx))
 
@@ -107,7 +107,7 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validate nodeInitReward success', Utils.safeStringify(tx))
     return true
   })
-  dapp.registerApplyVerifier('nodeInitReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeInitTxData>) => {
+  dapp.serviceQueue.registerApplyVerifier('nodeInitReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeInitTxData>) => {
     const tx = txEntry.txData
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Validating nodeInitReward applied', Utils.safeStringify(tx))
     const shardusAddress = tx.publicKey?.toLowerCase()
@@ -127,7 +127,7 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeInitReward node.rewardStartTime not applied yet')
     return false
   })
-  dapp.registerShutdownHandler('nodeInitReward', (node: P2P.NodeListTypes.Node, record: P2P.CycleCreatorTypes.CycleRecord) => {
+  dapp.serviceQueue.registerShutdownHandler('nodeInitReward', (node: P2P.NodeListTypes.Node, record: P2P.CycleCreatorTypes.CycleRecord) => {
     if (record.activated.includes(node.id)) {
       if (record.txadd.some((entry) => entry.txData.nodeId === node.id && entry.type === 'nodeInitReward')) {
         /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`shutdown condition: active node with id ${node.id} is already in txadd (nodeInitReward); this should not happen`)
@@ -146,7 +146,7 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
     }
     return null
   })
-  dapp.registerShutdownHandler('nodeReward', (node: P2P.NodeListTypes.Node, record: P2P.CycleCreatorTypes.CycleRecord) => {
+  dapp.serviceQueue.registerShutdownHandler('nodeReward', (node: P2P.NodeListTypes.Node, record: P2P.CycleCreatorTypes.CycleRecord) => {
     if (record.txadd.some((entry) => entry.txData.nodeId === node.id && entry.type === 'nodeReward')) {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`shutdown condition: active node with id ${node.id} is already in txadd; this should not happen`)
       return null

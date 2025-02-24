@@ -5,7 +5,7 @@ import merge from 'deepmerge'
 import minimist from 'minimist'
 import { NetworkParameters } from '../@types'
 import { Utils } from '@shardus/types'
-import { DevSecurityLevel, ShardusTypes } from '@shardus/core'
+import { DevSecurityLevel, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 
 export const networkAccount = '0'.repeat(64)
@@ -19,20 +19,20 @@ export const ONE_DAY = 24 * ONE_HOUR
 // export const ONE_YEAR = 365 * ONE_DAY
 
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
-export const cycleDuration = 60
+export const cycleDuration = 30
 const reduceTimeFromTxTimestamp = cycleDuration * ONE_SECOND
 const halfCycleDuration = (cycleDuration * 1000) / 2
 
 // DEV SETTINGS
-export const TIME_FOR_PROPOSALS = (2 * cycleDuration * 1000) + halfCycleDuration
-export const TIME_FOR_VOTING = (2 * cycleDuration * 1000) + halfCycleDuration
-export const TIME_FOR_GRACE = (2 * cycleDuration * 1000) + halfCycleDuration
-export const TIME_FOR_APPLY = (2 * cycleDuration * 1000) + halfCycleDuration
+export const TIME_FOR_PROPOSALS = 2 * cycleDuration * 1000 + halfCycleDuration
+export const TIME_FOR_VOTING = 2 * cycleDuration * 1000 + halfCycleDuration
+export const TIME_FOR_GRACE = 2 * cycleDuration * 1000 + halfCycleDuration
+export const TIME_FOR_APPLY = 2 * cycleDuration * 1000 + halfCycleDuration
 
-export const TIME_FOR_DEV_PROPOSALS = (2 * cycleDuration * 1000) + halfCycleDuration
-export const TIME_FOR_DEV_VOTING = (2 * cycleDuration * 1000) + halfCycleDuration
-export const TIME_FOR_DEV_GRACE = (2 * cycleDuration * 1000) + halfCycleDuration
-export const TIME_FOR_DEV_APPLY = (2 * cycleDuration * 1000) + halfCycleDuration
+export const TIME_FOR_DEV_PROPOSALS = 2 * cycleDuration * 1000 + halfCycleDuration
+export const TIME_FOR_DEV_VOTING = 2 * cycleDuration * 1000 + halfCycleDuration
+export const TIME_FOR_DEV_GRACE = 2 * cycleDuration * 1000 + halfCycleDuration
+export const TIME_FOR_DEV_APPLY = 2 * cycleDuration * 1000 + halfCycleDuration
 
 export const TOTAL_DAO_DURATION = TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE + TIME_FOR_APPLY
 
@@ -217,6 +217,9 @@ interface LiberdusFlags {
   cacheMaxItemPerTopic: number
   transferMemoLimit: number
   messageSizeLimit: number
+  fetchNetworkAccountFromArchiver: boolean
+  enableArchiverNetworkAccountValidation: boolean
+  enableDAOTransactions: boolean
 }
 
 export const LiberdusFlags: LiberdusFlags = {
@@ -225,7 +228,7 @@ export const LiberdusFlags: LiberdusFlags = {
   numberOfLuckyNodes: 1,
   VerboseLogs: true,
   AdminCertEnabled: true,
-  StakingEnabled: true,
+  StakingEnabled: false,
   ModeEnabled: true,
   minActiveNodesForStaking: 5,
   MinStakeCertSig: 1, // this is the minimum amount of signature required for stake certification. will move to network param in future.
@@ -241,6 +244,9 @@ export const LiberdusFlags: LiberdusFlags = {
   cacheMaxItemPerTopic: 3000,
   transferMemoLimit: 140, // 140 characters
   messageSizeLimit: 100, // 100kb
+  fetchNetworkAccountFromArchiver: true,
+  enableArchiverNetworkAccountValidation: false,
+  enableDAOTransactions: false,
 }
 
 export function updateLiberdusFlag(key: string, value: string | number | boolean): void {
@@ -364,8 +370,8 @@ config = merge(config, {
     p2p: {
       cycleDuration: cycleDuration,
       minNodesToAllowTxs: 1, // to allow single node networks
-      baselineNodes: process.env.baselineNodes ? parseInt(process.env.baselineNodes) : 32, // config used for baseline for entering recovery, restore, and safety. Should be equivalient to minNodes on network startup
-      minNodes: process.env.minNodes ? parseInt(process.env.minNodes) : 32,
+      baselineNodes: process.env.baselineNodes ? parseInt(process.env.baselineNodes) : 10, // config used for baseline for entering recovery, restore, and safety. Should be equivalient to minNodes on network startup
+      minNodes: process.env.minNodes ? parseInt(process.env.minNodes) : 10,
       maxNodes: process.env.maxNodes ? parseInt(process.env.maxNodes) : 1100,
       maxJoinedPerCycle: 10,
       maxSyncingPerCycle: 10,
@@ -378,7 +384,7 @@ config = merge(config, {
       amountToShrink: 5,
       maxDesiredMultiplier: 1.2,
       maxScaleReqs: 250, // todo: this will become a variable config but this should work for a 500 node demo
-      forceBogonFilteringOn: true,
+      forceBogonFilteringOn: false,
       //these are new feature in 1.3.0, we can make them default:true in shardus-core later
 
       // 1.2.3 migration starts
@@ -493,7 +499,7 @@ config = merge(config, {
 config = merge(config, {
   server: {
     sharding: {
-      nodesPerConsensusGroup: process.env.nodesPerConsensusGroup ? parseInt(process.env.nodesPerConsensusGroup) : 16, //128 is the final goal
+      nodesPerConsensusGroup: process.env.nodesPerConsensusGroup ? parseInt(process.env.nodesPerConsensusGroup) : 10, //128 is the final goal
       nodesPerEdge: process.env.nodesPerEdge ? parseInt(process.env.nodesPerEdge) : 5,
       executeInOneShard: true,
     },
@@ -542,7 +548,7 @@ config = merge(
       // for easier debugging
       debug: {
         startInFatalsLogMode: false, // true setting good for big aws test with nodes joining under stress.
-        startInErrorLogMode: true,
+        startInErrorLogMode: false,
         robustQueryDebug: false,
         fakeNetworkDelay: 0,
         disableSnapshots: true, // do not check in if set to false

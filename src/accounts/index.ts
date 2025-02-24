@@ -8,7 +8,7 @@ import { deserializeIssueAccount, issueAccount, serializeIssueAccount } from './
 import { deserializeNetworkAccount, networkAccount, serializeNetworkAccount } from './networkAccount'
 import { deserializeNodeAccount, nodeAccount, serializeNodeAccount } from './nodeAccount'
 import { deserializeProposalAccount, proposalAccount, serializeProposalAccount } from './proposalAccount'
-import { VectorBufferStream } from '@shardus/core'
+import { VectorBufferStream } from '@shardeum-foundation/core'
 import {
   DeveloperPayment,
   AccountVariant,
