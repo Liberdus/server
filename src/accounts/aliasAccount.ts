@@ -1,6 +1,6 @@
 import * as crypto from '../crypto'
-import {AliasAccount} from '../@types'
-import { VectorBufferStream } from '@shardus/core'
+import { AliasAccount } from '../@types'
+import { VectorBufferStream } from '@shardeum-foundation/core'
 import { SerdeTypeIdent } from '.'
 
 export const aliasAccount = (accountId: string): AliasAccount => {
@@ -17,7 +17,7 @@ export const aliasAccount = (accountId: string): AliasAccount => {
 }
 
 export const serializeAliasAccount = (stream: VectorBufferStream, inp: AliasAccount, root = false): void => {
-  if(root){
+  if (root) {
     stream.writeUInt16(SerdeTypeIdent.AliasAccount)
   }
   stream.writeString(inp.id)
@@ -28,11 +28,9 @@ export const serializeAliasAccount = (stream: VectorBufferStream, inp: AliasAcco
   stream.writeBigUInt64(BigInt(inp.timestamp))
 }
 
-
 export const deserializeAliasAccount = (stream: VectorBufferStream, root = false): AliasAccount => {
-
-  if(root && (stream.readUInt16() !== SerdeTypeIdent.AliasAccount)){
-    throw new Error("Unexpected bufferstream for AliasAccount type");
+  if (root && stream.readUInt16() !== SerdeTypeIdent.AliasAccount) {
+    throw new Error('Unexpected bufferstream for AliasAccount type')
   }
 
   return {
@@ -41,6 +39,6 @@ export const deserializeAliasAccount = (stream: VectorBufferStream, root = false
     hash: stream.readString(),
     inbox: stream.readString(),
     address: stream.readString(),
-    timestamp: Number(stream.readBigUInt64())
+    timestamp: Number(stream.readBigUInt64()),
   }
 }

@@ -1,5 +1,5 @@
 import { Utils } from '@shardus/types'
-import { Shardus, ShardusTypes } from '@shardus/core'
+import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import create from '../accounts'
 import * as config from '../config'
 import _ from 'lodash'

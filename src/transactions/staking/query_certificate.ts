@@ -1,11 +1,11 @@
-import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardus/core'
+import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as crypto from '../../crypto'
 import { Request } from 'express'
 import { LiberdusFlags } from '../../config'
 import { AccountAxiosResponse, AccountQueryResponse, InjectTxResponse, UserAccount, ValidatorError } from '../../@types'
 import { fixBigIntLiteralsToBigInt, getRandom } from '../../utils'
 import { shardusGetFromNode, shardusPostToNode, shardusPutToNode } from '../../utils/request'
-import { logFlags } from '@shardus/core/dist/logger'
+import { logFlags } from '@shardeum-foundation/core/dist/logger'
 
 export let stakeCert: StakeCert = null
 

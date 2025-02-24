@@ -1,5 +1,5 @@
 import stringify from 'fast-stable-stringify'
-import { Shardus, ShardusTypes } from '@shardus/core'
+import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as config from '../config'
 import create from '../accounts'
 import { NodeAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, OurAppDefinedData, Tx, TransactionKeys } from '../@types'

@@ -1,4 +1,4 @@
-import { DevSecurityLevel, Shardus, ShardusTypes } from '@shardus/core'
+import { DevSecurityLevel, Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as config from '../config'
 import { NetworkAccount, OurAppDefinedData, Signature, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
 import { TXTypes } from '.'
