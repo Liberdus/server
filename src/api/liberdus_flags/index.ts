@@ -1,5 +1,5 @@
 import { nestedCountersInstance, Shardus } from '@shardeum-foundation/core'
-import { LiberdusFlags, updateLiberdusFlag } from '../config'
+import { LiberdusFlags, updateLiberdusFlag } from '../../config'
 
 export const debug_liberdus_flags =
   (dapp: Shardus) =>
