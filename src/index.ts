@@ -43,7 +43,7 @@ const args = process.argv
 // let config = configs.overrideDefaultConfig(defaultConfig, env, args)
 
 export let dapp: Shardus
-let shardusConfig: ShardusTypes.ServerConfiguration
+export let shardusConfig: ShardusTypes.ServerConfiguration
 
 // Read the CLI and GUI versions and save them in memory
 readOperatorVersions()
