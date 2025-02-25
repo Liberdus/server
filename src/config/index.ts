@@ -228,7 +228,7 @@ export const LiberdusFlags: LiberdusFlags = {
   numberOfLuckyNodes: 1,
   VerboseLogs: true,
   AdminCertEnabled: true,
-  StakingEnabled: false,
+  StakingEnabled: true,
   ModeEnabled: true,
   minActiveNodesForStaking: 5,
   MinStakeCertSig: 1, // this is the minimum amount of signature required for stake certification. will move to network param in future.
