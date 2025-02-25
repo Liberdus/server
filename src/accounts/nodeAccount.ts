@@ -68,7 +68,6 @@ export const deserializeNodeAccount = (stream: VectorBufferStream, root = false)
     nominator: stream.readString(),
     stakeLock: stream.readBigUInt64(),
     stakeTimestamp: Number(stream.readBigUInt64()),
-    rewarded: stream.readUInt8() === 1,
     penalty: stream.readBigUInt64(),
     nodeAccountStats: Utils.safeJsonParse(stream.readString()),
     rewardStartTime: Number(stream.readBigUInt64()),
