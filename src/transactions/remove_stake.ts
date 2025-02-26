@@ -60,7 +60,7 @@ export const apply = (
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
-  const shouldRemoveState = from.data.remove_stake_request && from.data.remove_stake_request + 2 * network.current.nodeRewardInterval <= Date.now()
+  const shouldRemoveState = from.data.remove_stake_request && from.data.remove_stake_request + 2 * network.current.nodeRewardInterval <= dapp.shardusGetTime()
   const stakeRemovalStatus = shouldRemoveState
     ? 'Applied remove_stake tx'
     : 'Cancelled remove_stake tx because `remove_stake_request` is null or earlier than 2 * nodeRewardInterval'

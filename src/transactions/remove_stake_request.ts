@@ -56,7 +56,7 @@ export const apply = (
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
-  from.data.remove_stake_request = Date.now()
+  from.data.remove_stake_request = dapp.shardusGetTime()
 
   const appReceiptData: AppReceiptData = {
     txId,

@@ -62,7 +62,7 @@ export const validate = (tx: Tx.DepositStake, wrappedStates: WrappedStates, resp
     }
   }
   const restakeCooldown = AccountsStorage.cachedNetworkAccount.current.restakeCooldown
-  if (nodeAccount && nodeAccount.stakeTimestamp + restakeCooldown > Date.now()) {
+  if (nodeAccount && nodeAccount.stakeTimestamp + restakeCooldown > dapp.shardusGetTime()) {
     response.reason = `This node was staked within the last ${restakeCooldown / config.ONE_MINUTE} minutes. You can't stake more to this node yet!`
     return response
   }
