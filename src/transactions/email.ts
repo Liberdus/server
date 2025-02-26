@@ -104,7 +104,7 @@ export const apply = (
       from: address,
       emailHash: tx.signedTx.emailHash,
       verified: crypto.hash(`${verificationNumber}`),
-      timestamp: Date.now(),
+      timestamp: dapp.shardusGetTime(),
     })
   }
 
