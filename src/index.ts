@@ -83,8 +83,8 @@ const shardusSetup = (): void => {
          * caused the network to not form up when the tx processing pipeline was
          * fixed to check timestamps properly
          */
-        // const when = Date.now() + configs.ONE_SECOND * 10
-        const when = Date.now()
+        // const when = dapp.shardusGetTime() + configs.ONE_SECOND * 10
+        const when = dapp.shardusGetTime()
         const existingNetworkAccount = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
 
         if (existingNetworkAccount) {
@@ -1019,7 +1019,7 @@ const shardusSetup = (): void => {
           /* prettier-ignore */
           nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest: Golden ticket is enabled, node about to enter processing check')
 
-          const currentTimestamp = Date.now()
+          const currentTimestamp = dapp.shardusGetTime()
           if (!adminCert || adminCert.certExp < currentTimestamp) {
             /* prettier-ignore */
             nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: !adminCert || adminCert.certExp < currentTimestamp')
@@ -1332,7 +1332,7 @@ const shardusSetup = (): void => {
       mustUseAdminCert = false
 
       //process golden ticket first
-      if (adminCert && adminCert.certExp > Date.now() && adminCert?.goldenTicket === true) {
+      if (adminCert && adminCert.certExp > dapp.shardusGetTime() && adminCert?.goldenTicket === true) {
         /* prettier-ignore */
         if (LiberdusFlags.VerboseLogs) console.log('Join req with admincert and golden ticket')
         isReadyToJoinLatestValue = true
@@ -2185,7 +2185,7 @@ async function updateConfigFromNetworkAccount(
   let cycleData: ShardusTypes.Cycle
   let currentTime: number
   let luckyNodes: string[]
-  const expected = Date.now() + cycleInterval
+  const expected = dapp.shardusGetTime() + cycleInterval
   let drift: number
   let lastMaintainedCycle: number
 
@@ -2195,7 +2195,7 @@ async function updateConfigFromNetworkAccount(
   async function networkMaintenance(): Promise<NodeJS.Timeout> {
     dapp.log('New maintenance cycle has started')
     Penalty.clearOldPenaltyTxs(dapp)
-    currentTime = Date.now()
+    currentTime = dapp.shardusGetTime()
     drift = currentTime - expected
     let network: LiberdusTypes.NetworkAccount
     try {
@@ -2404,7 +2404,7 @@ async function updateConfigFromNetworkAccount(
     const cycleInterval = configs.cycleDuration * configs.ONE_SECOND
     const currentCycleStartMs = currentCycle.start * 1000
     let nextCycleStartMs = currentCycleStartMs + cycleInterval
-    const now = Date.now()
+    const now = dapp.shardusGetTime()
     if (nextCycleStartMs <= now) {
       nextCycleStartMs += cycleInterval
     }
