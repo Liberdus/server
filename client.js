@@ -691,17 +691,14 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
   ])
   try {
     this.log(JSON.parse(answers.config))
-    const devPublicKey = process.env.DEV_PUBLIC_KEY
-    const devPrivateKey = process.env.DEV_PRIVATE_KEY
     const tx = {
       type: 'change_config',
-      from: devPublicKey,
+      from: devKey.publicKey,
       cycle: answers.cycle,
       config: answers.config,
       timestamp: Date.now(),
     }
-    // console.log('Dev Public Key:', devPublicKey, devPrivateKey)
-    let signedTx = crypto.signObj(tx, devPrivateKey, devPublicKey)
+    let signedTx = crypto.signObj(tx, devKey.secretKey, devKey.publicKey)
     signedTx.signs = [Object.assign({}, signedTx.sign)]
     delete signedTx.sign
     injectTx(signedTx).then((res) => {
@@ -731,17 +728,14 @@ vorpal.command('change network parameters', 'Send a stringified JSON config obje
   ])
   try {
     this.log(JSON.parse(answers.config))
-    const devPublicKey = process.env.DEV_PUBLIC_KEY
-    const devPrivateKey = process.env.DEV_PRIVATE_KEY
     const tx = {
       type: 'change_network_param',
-      from: devPublicKey,
+      from: devKey.publicKey,
       cycle: answers.cycle,
       config: answers.config,
       timestamp: Date.now(),
     }
-    // console.log('Dev Public Key:', devPublicKey, devPrivateKey)
-    let signedTx = crypto.signObj(tx, devPrivateKey, devPublicKey)
+    let signedTx = crypto.signObj(tx, devKey.secretKey, devKey.publicKey)
     signedTx.signs = [Object.assign({}, signedTx.sign)]
     delete signedTx.sign
     injectTx(signedTx).then((res) => {
