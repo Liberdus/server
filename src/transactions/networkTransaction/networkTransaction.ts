@@ -8,16 +8,6 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
   dapp.serviceQueue.registerBeforeAddVerifier('nodeReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeRewardTxData>) => {
     const tx = txEntry.txData
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Validating nodeReward fields', Utils.safeStringify(tx))
-    try {
-      if (!crypto.verifyObj(tx, true)) {
-        /* prettier-ignore */
-        if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerifier - nodeReward: fail Invalid signature', Utils.safeStringify(tx))
-        return false
-      }
-    } catch (e) {
-      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Invalid signature for internal tx', Utils.safeStringify(tx))
-      return false
-    }
     if (txEntry.priority !== 0) {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerifier - nodeReward: fail Invalid priority', Utils.safeStringify(tx))
       return false
@@ -31,25 +21,38 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
       /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerBeforeAddVerify nodeReward fail invalid publicKey field`)
       return false
     }
-    if (tx.start === undefined) {
-      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail start field missing', Utils.safeStringify(tx))
-      /* prettier-ignore */ nestedCountersInstance.countEvent(
-          'liberdus-staking',
-          `registerBeforeAddVerify nodeReward fail start field missing`
-        )
+    if (!tx.nodeId || tx.nodeId === '' || tx.nodeId.length !== 64) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail invalid nodeId field', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerBeforeAddVerify nodeReward fail invalid nodeId field`)
       return false
     }
-    const latestCycles = dapp.getLatestCycles(5)
-    if (tx.start < 0 || !latestCycles.some((cycle) => tx.start <= cycle.counter)) {
-      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail start value is not correct ', Utils.safeStringify(tx))
-      /* prettier-ignore */ nestedCountersInstance.countEvent(
-          'liberdus-staking',
-          `registerBeforeAddVerify nodeReward fail start value is not correct `
-        )
+    if (!tx.start || tx.start <= 0) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail start field missing', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking',`registerBeforeAddVerify nodeReward fail start field missing`)
+      return false
+    }
+    if (!tx.end || tx.end <= 0 || tx.end < tx.start) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail end field missing', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerBeforeAddVerify nodeReward fail end field missing`)
+      return false
+    }
+    if (!tx.endTime || tx.endTime <= 0) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail endTime field missing', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerBeforeAddVerify nodeReward fail endTime field missing`)
       return false
     }
 
-    const nodeRemovedCycle = latestCycles.find((cycle) => cycle.removed.includes(tx.nodeId) || cycle.lost.includes(tx.nodeId))
+    const nodePubKey = dapp.getRemovedNodePubKeyFromCache(tx.nodeId)
+    if (nodePubKey == null || tx.publicKey !== nodePubKey) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail invalid nodeId field', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent('shardeum-staking', `registerBeforeAddVerify nodeReward fail invalid nodeId field`)
+      return false
+    }
+    const latestCycles = dapp.getLatestCycles(5)
+
+    const nodeRemovedCycle = latestCycles.find(
+      (cycle) => cycle.removed.includes(tx.nodeId) || cycle.apoptosized.includes(tx.nodeId) || cycle.appRemoved.includes(tx.nodeId),
+    )
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('nodeRemovedCycle', nodeRemovedCycle)
     if (!nodeRemovedCycle) {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail !nodeRemovedCycle', Utils.safeStringify(tx))
@@ -59,6 +62,45 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
         )
       return false
     }
+    if (nodeRemovedCycle.counter !== tx.end) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail nodeRemovedCycle.counter and tx.end do not match', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent(
+          'liberdus-staking',
+          `registerBeforeAddVerify nodeReward fail nodeRemovedCycle and tx.end do not match`
+        )
+      return false
+    }
+    if (nodeRemovedCycle.start !== tx.endTime) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail nodeRemovedCycle.start and tx.endTime do not match', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent(
+          'liberdus-staking',
+          `registerBeforeAddVerify nodeReward fail nodeRemovedCycle.start and tx.endTime do not match`
+        )
+      return false
+    }
+
+    try {
+      if (!crypto.verifyObj(tx, true)) {
+        /* prettier-ignore */
+        if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerifier - nodeReward: fail Invalid signature', Utils.safeStringify(tx))
+        return false
+      }
+    } catch (e) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Invalid signature for internal tx', Utils.safeStringify(tx))
+      return false
+    }
+
+    const nodeAddress = tx.publicKey.toLowerCase()
+    const account = await dapp.getLocalOrRemoteAccount(nodeAddress)
+    if (!account) {
+      console.log(`registerBeforeAddVerifier - nodeReward: Account for node address ${nodeAddress} not found, do not add tx`)
+      return false
+    }
+    const nodeAccount = account.data as NodeAccount
+    if (!nodeAccount || !nodeAccount.nominator || nodeAccount.nominator === '') {
+      console.log(`registerBeforeAddVerifier - nodeReward: Account for node address ${nodeAddress} has null nominator, do not add tx`)
+      return false
+    }
 
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward success', Utils.safeStringify(tx))
     return true
@@ -66,13 +108,20 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
   dapp.serviceQueue.registerApplyVerifier('nodeReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeRewardTxData>) => {
     const tx = txEntry.txData
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Validating nodeReward applied', Utils.safeStringify(tx))
-    const shardusAddress = tx.publicKey?.toLowerCase()
+    const shardusAddress = tx.publicKey.toLowerCase()
     const account = await dapp.getLocalOrRemoteAccount(shardusAddress)
     if (!account) {
-      throw new Error(`Account for shardus address ${shardusAddress} not found`)
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeReward fail account not found', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerApplyVerify nodeReward fail account not found`)
+      return true
     }
-    const data = account.data as NodeAccount
-    const appliedEntry = data.rewardEndTime === tx.endTime
+    const nodeAccount = account.data as NodeAccount
+    if (!nodeAccount || typeof nodeAccount.rewardEndTime !== 'number') {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeReward fail rewardEndTime not found', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerApplyVerify nodeReward fail rewardEndTime not found`)
+      return true
+    }
+    const appliedEntry = nodeAccount.rewardEndTime >= tx.endTime
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeReward appliedEntry', appliedEntry)
     return appliedEntry
   })
@@ -80,16 +129,26 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
     const tx = txEntry.txData
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Validating nodeInitReward', Utils.safeStringify(tx))
 
-    const isValid = crypto.verifyObj(tx, true)
-    if (!isValid) {
-      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validate nodeInitReward fail Invalid signature', Utils.safeStringify(tx))
-      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validate nodeInitReward fail Invalid signature`)
-      return false
-    }
     if (txEntry.subQueueKey == null || txEntry.subQueueKey != tx.publicKey) {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerifier - nodeInitReward: fail Invalid subQueueKey', Utils.safeStringify(tx))
       return false
     }
+    if (!tx.publicKey || tx.publicKey === '' || tx.publicKey.length !== 64) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeInitReward fail invalid publicKey field', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerBeforeAddVerify nodeInitReward fail invalid publicKey field`)
+      return false
+    }
+    if (!tx.nodeId || tx.nodeId === '' || tx.nodeId.length !== 64) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeInitReward fail invalid nodeId field', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerBeforeAddVerify nodeInitReward fail invalid nodeId field`)
+      return false
+    }
+    if (tx.startTime == undefined || tx.startTime <= 0) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeInitReward fail start field missing', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking',`registerBeforeAddVerify nodeInitReward fail start field missing`)
+      return false
+    }
+
     const latestCycles = dapp.getLatestCycles(5)
     const nodeActivedCycle = latestCycles.find((cycle) => cycle.activatedPublicKeys.includes(tx.publicKey))
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('nodeActivedCycle', nodeActivedCycle)
@@ -104,21 +163,53 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
       return false
     }
 
+    const isValid = crypto.verifyObj(tx, true)
+    if (!isValid) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validate nodeInitReward fail Invalid signature', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validate nodeInitReward fail Invalid signature`)
+      return false
+    }
+
+    const nodeAddress = tx.publicKey.toLowerCase()
+    const account = await dapp.getLocalOrRemoteAccount(nodeAddress)
+    if (!account) {
+      console.log(`registerBeforeAddVerifier - nodeInitReward: Account for node address ${nodeAddress} not found, do not add tx`)
+      return false
+    }
+    const nodeAccount = account.data as NodeAccount
+    if (!nodeAccount || !nodeAccount.nominator || nodeAccount.nominator === '') {
+      console.log(`registerBeforeAddVerifier - nodeInitReward: Account for node address ${nodeAddress} has null nominator, do not add tx`)
+      return false
+    }
+
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validate nodeInitReward success', Utils.safeStringify(tx))
     return true
   })
   dapp.serviceQueue.registerApplyVerifier('nodeInitReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeInitTxData>) => {
     const tx = txEntry.txData
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Validating nodeInitReward applied', Utils.safeStringify(tx))
-    const shardusAddress = tx.publicKey?.toLowerCase()
+    if (!tx.publicKey || tx.publicKey === '' || tx.publicKey.length !== 64) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeInitReward fail invalid publicKey field', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerApplyVerify nodeInitReward fail invalid publicKey field`)
+      return true
+    }
+    const shardusAddress = tx.publicKey.toLowerCase()
     const account = await dapp.getLocalOrRemoteAccount(shardusAddress)
     if (!account) {
-      throw new Error(`Account for shardus address ${shardusAddress} not found`)
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeInitReward fail account not found', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerApplyVerify nodeInitReward fail account not found`)
+      return true
     }
-    const data = account.data as NodeAccount
+
+    const nodeAccount = account.data as NodeAccount
+    if (!nodeAccount || typeof nodeAccount.rewardStartTime !== 'number') {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeInitReward fail rewardStartTime not found', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerApplyVerify nodeInitReward fail rewardStartTime not found`)
+      return true
+    }
 
     // check if nodeAccount.rewardStartTime is already set to tx.nodeActivatedTime
-    if (data.rewardStartTime >= tx.startTime) {
+    if (nodeAccount.rewardStartTime >= tx.startTime) {
       /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validateInitRewardState success rewardStartTime already set`)
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeInitReward data.rewardStartTime >= tx.startTime')
       return true
