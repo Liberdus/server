@@ -1,7 +1,6 @@
 import { DevSecurityLevel, Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import config, { networkAccount, ONE_SECOND } from '../config'
-import { NetworkAccount, OurAppDefinedData, Signature, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
-import { TXTypes } from '.'
+import { NetworkAccount, TXTypes, OurAppDefinedData, Signature, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
 import { Utils } from '@shardus/types'
 import * as utils from '../utils'
 
@@ -59,7 +58,7 @@ export const validate = (tx: Tx.ChangeConfig, wrappedStates: WrappedStates, resp
   // Validate parsed config
   const givenConfig = Utils.safeJsonParse(tx.config)
   if (
-    utils.comparePropertiesTypes(utils.omitDevKeys(givenConfig), config.server) &&
+    utils.comparePropertiesTypes(utils.omitDevKeys(givenConfig), dapp.config) &&
     utils.isValidDevKeyAddition(givenConfig) &&
     utils.isValidMultisigKeyAddition(givenConfig)
   ) {
@@ -121,7 +120,7 @@ export const apply = (
   const value = {
     type: TXTypes.apply_change_config,
     timestamp: when,
-    network: networkAccount,
+    // network: networkAccount,
     change: { cycle: changeOnCycle, change: Utils.safeJsonParse(tx.config) },
   }
 
@@ -135,7 +134,7 @@ export const apply = (
 }
 
 export const transactionReceiptPass = (tx: Tx.ChangeConfig, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
-  let { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
+  const { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
   dapp.setGlobal(address, addressHash, value, when, source)
   dapp.log(`PostApplied change_config tx transactionReceiptPass: ${Utils.safeStringify({ address, addressHash, value, when, source })}`)
 }

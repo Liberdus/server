@@ -12,11 +12,11 @@ import {
   SyncingTimeoutViolationData,
   TransactionKeys,
   AppReceiptData,
+  TXTypes
 } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { _sleep, generateTxId, scaleByStabilityFactor } from '../../utils'
 import * as crypto from '../../crypto'
-import { TXTypes } from '..'
 
 const penaltyTxsMap: Map<string, Tx.PenaltyTX> = new Map()
 
