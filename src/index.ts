@@ -9,8 +9,9 @@ import * as configs from './config'
 import config, { FilePaths, LiberdusFlags, networkAccount, TOTAL_DAO_DURATION } from './config'
 import * as utils from './utils'
 import * as LiberdusTypes from './@types'
+import { TXTypes } from './@types'
 import dotenv from 'dotenv'
-import transactions, { TXTypes } from './transactions'
+import transactions from './transactions'
 import registerAPI from './api'
 import * as AccountsStorage from './storage/accountStorage'
 import { logFlags } from '@shardeum-foundation/core/dist/logger'
@@ -22,6 +23,7 @@ import * as InitReward from './transactions/staking/init_reward'
 import * as ClaimReward from './transactions/staking/claim_reward'
 import * as Penalty from './transactions/staking/apply_penalty'
 import { configShardusNetworkTransactions } from './transactions/networkTransaction/networkTransaction'
+import { initAjvSchemas, verifyPayload } from './@types/ajvHelper'
 import { operatorCLIVersion, operatorGUIVersion, readOperatorVersions } from './utils/versions'
 import { toShardusAddress } from './utils/address'
 import { onActiveVersionChange } from './versioning/index'
@@ -58,6 +60,7 @@ let lastCertTimeTxCycle: number | null = null
 
 let isReadyToJoinLatestValue = false
 let mustUseAdminCert = false
+
 
 function getNodeCountForCertSignatures(): number {
   let latestCycle: ShardusTypes.Cycle
@@ -241,6 +244,18 @@ const shardusSetup = (): void => {
       if (typeof txnTimestamp !== 'number') {
         response.success = false
         response.reason = 'Tx "timestamp" field must be a number.'
+        throw new Error(response.reason)
+      }
+      if (Object.values(LiberdusTypes.TXTypes).includes(tx.type) === false) {
+        response.success = false
+        response.reason = 'Tx type is not recognized'
+        throw new Error(response.reason)
+      }
+      const errors = verifyPayload(tx.type, tx)
+      if (errors != null) {
+        nestedCountersInstance.countEvent('external', `ajv-failed-${tx.type}-tx`)
+        response.success = false
+        response.reason = `AJV failed for ${tx.type} tx`
         throw new Error(response.reason)
       }
       return transactions[tx.type].validate_fields(tx, response, dapp)
@@ -658,16 +673,14 @@ const shardusSetup = (): void => {
           } else {
             if (statsDebugLogs)
               dapp.log(
-                `error: null balance attempt. dataSummaryUpdate UserAccount 1 ${accountDataAfter.data.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
-                  accountDataBefore.data.balance
+                `error: null balance attempt. dataSummaryUpdate UserAccount 1 ${accountDataAfter.data.balance} ${Utils.safeStringify(accountDataAfter.id)} ${accountDataBefore.data.balance
                 } ${Utils.safeStringify(accountDataBefore.id)}`,
               )
           }
         } else {
           if (statsDebugLogs)
             dapp.log(
-              `error: null balance attempt. dataSummaryUpdate UserAccount 2 ${accountDataAfter.data.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
-                accountDataBefore.data.balance
+              `error: null balance attempt. dataSummaryUpdate UserAccount 2 ${accountDataAfter.data.balance} ${Utils.safeStringify(accountDataAfter.id)} ${accountDataBefore.data.balance
               } ${Utils.safeStringify(accountDataBefore.id)}`,
             )
         }
@@ -681,16 +694,14 @@ const shardusSetup = (): void => {
           } else {
             if (statsDebugLogs)
               dapp.log(
-                `error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
-                  accountDataBefore.balance
+                `error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${accountDataBefore.balance
                 } ${Utils.safeStringify(accountDataBefore.id)}`,
               )
           }
         } else {
           if (statsDebugLogs)
             dapp.log(
-              `error: null balance attempt. dataSummaryUpdate NodeAccount 2 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
-                accountDataBefore.balance
+              `error: null balance attempt. dataSummaryUpdate NodeAccount 2 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${accountDataBefore.balance
               } ${Utils.safeStringify(accountDataBefore.id)}`,
             )
         }
@@ -699,14 +710,14 @@ const shardusSetup = (): void => {
     injectTxToConsensor(validatorDetails: any[], tx) {
       return utils.InjectTxToConsensor(validatorDetails, tx)
     },
-    getNonceFromTx: function (tx: ShardusTypes.OpaqueTransaction): bigint {
+    getNonceFromTx: function(tx: ShardusTypes.OpaqueTransaction): bigint {
       return BigInt(-1)
     },
-    getAccountNonce: function (accountId: string, wrappedData?: ShardusTypes.WrappedData): Promise<bigint> {
+    getAccountNonce: function(accountId: string, wrappedData?: ShardusTypes.WrappedData): Promise<bigint> {
       return new Promise((resolve) => resolve(BigInt(-1)))
     },
     // todo: consider a base liberdus tx type
-    getTxSenderAddress: function (tx: any): string {
+    getTxSenderAddress: function(tx: any): string {
       const result = {
         sourceKeys: [],
         targetKeys: [],
@@ -716,7 +727,7 @@ const shardusSetup = (): void => {
       const keys = transactions[tx.type].keys(tx, result)
       return keys.allKeys[0]
     },
-    isInternalTx: function (tx: LiberdusTypes.BaseLiberdusTx): boolean {
+    isInternalTx: function(tx: LiberdusTypes.BaseLiberdusTx): boolean {
       // todo: decide what is internal and what is external
       const internalTxTypes = [
         TXTypes.init_network,
@@ -819,11 +830,11 @@ const shardusSetup = (): void => {
     calculateTxId(tx: ShardusTypes.OpaqueTransaction) {
       return utils.generateTxId(tx)
     },
-    getCachedRIAccountData: function (addressList: string[]): Promise<ShardusTypes.WrappedData[]> {
+    getCachedRIAccountData: function(addressList: string[]): Promise<ShardusTypes.WrappedData[]> {
       console.log(`Not implemented getCachedRIAccountData`)
       return null
     },
-    setCachedRIAccountData: function (accountRecords: unknown[]): Promise<void> {
+    setCachedRIAccountData: function(accountRecords: unknown[]): Promise<void> {
       console.log(`Not implemented setCachedRIAccountData`)
       return null
     },
@@ -1921,7 +1932,7 @@ const shardusSetup = (): void => {
 
       return { canStay: true, reason: '' }
     },
-    verifyMultiSigs: function (
+    verifyMultiSigs: function(
       rawPayload: object,
       sigs: ShardusTypes.Sign[],
       allowedPubkeys: { [pubkey: string]: ShardusTypes.DevSecurityLevel },
@@ -2114,7 +2125,7 @@ async function updateConfigFromNetworkAccount(
 }
 
 // CODE THAT GETS EXECUTED WHEN NODES START
-;(async (): Promise<void> => {
+; (async (): Promise<void> => {
   await setupArchiverDiscovery({
     customArchiverList: config.server.p2p?.existingArchivers,
   })
@@ -2163,6 +2174,7 @@ async function updateConfigFromNetworkAccount(
   registerAPI(dapp)
   configShardusNetworkTransactions(dapp)
   shardusSetup()
+  initAjvSchemas()
 
   dapp.registerExternalGet('accounts', async (req, res): Promise<void> => {
     const accounts = await AccountsStorage.debugGetAllAccounts()
@@ -2202,7 +2214,7 @@ async function updateConfigFromNetworkAccount(
     try {
       const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
       network = account.data as LiberdusTypes.NetworkAccount
-      ;[cycleData] = dapp.getLatestCycles()
+        ;[cycleData] = dapp.getLatestCycles()
       luckyNodes = dapp.getClosestNodes(cycleData.previous, LiberdusFlags.numberOfLuckyNodes)
       nodeId = dapp.getNodeId()
       node = dapp.getNode(nodeId)

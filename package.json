@@ -48,7 +48,8 @@
     "nodemailer-smtp-transport": "^2.7.4",
     "sqlite3": "^5.1.7",
     "streamroller": "^2.2.3",
-    "vorpal": "^1.12.0"
+    "vorpal": "^1.12.0",
+    "ajv": "^6.12.6"
   },
   "devDependencies": {
     "@shardus/archiver": "git+https://github.com/liberdus/archiver#dev",
