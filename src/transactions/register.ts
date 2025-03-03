@@ -1,11 +1,12 @@
 import * as crypto from '../crypto'
-import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
+import { Shardus, ShardusTypes, nestedCountersInstance } from '@shardeum-foundation/core'
 import create from '../accounts'
 import { isValidUncompressedPublicKey, validatePQPublicKey, getAddressFromPublicKey } from '../utils/address'
 import * as config from '../config'
-import { AliasAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { AliasAccount, UserAccount, NetworkAccount, IssueAccount, AJVSchemaEnum, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import * as ajvHelper from '../@types/ajvHelper'
 
-export const validate_fields = (tx: Tx.Register, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.Register, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.aliasHash !== 'string') {
     response.success = false
     response.reason = 'tx "aliasHash" field must be a string.'

@@ -1,13 +1,12 @@
 import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import config, { ONE_SECOND, LiberdusFlags } from '../../config'
 import { getAccountWithRetry } from './query_certificate'
-import { AccountQueryResponse, WrappedStates, InjectTxResponse, NodeAccount, UserAccount, Tx, TransactionKeys, AppReceiptData } from '../../@types'
+import { AccountQueryResponse, TXTypes, WrappedStates, InjectTxResponse, NodeAccount, UserAccount, Tx, TransactionKeys, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { getRandom, scaleByStabilityFactor, InjectTxToConsensor } from '../../utils'
 import { Utils } from '@shardus/types'
 import { logFlags } from '@shardeum-foundation/core/dist/logger'
 import { verifyObj } from '@shardus/crypto-utils'
-import { TXTypes } from '..'
 
 export function getCertCycleDuration(): number {
   if (AccountsStorage.cachedNetworkAccount && AccountsStorage.cachedNetworkAccount.current.certCycleDuration !== null) {
@@ -150,7 +149,7 @@ export const apply = (
       shouldChargeTxFee = false
       /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'applySetCertTimeTx' + ' renew' + ' certExp chargeTxFee: false')
     } else {
-      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'applySetCertTimeTx' + ' renew' +' certExp chargeTxFee: true')
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'applySetCertTimeTx' + ' renew' + ' certExp chargeTxFee: true')
     }
   }
 
