@@ -2,10 +2,9 @@ import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardeum-foundat
 import * as crypto from '../../crypto'
 import { LiberdusFlags } from '../../config'
 import { logFlags } from '@shardeum-foundation/core/dist/logger'
-import { NodeAccount, UserAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../../@types'
+import { NodeAccount, TXTypes, UserAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { scaleByStabilityFactor, _sleep, generateTxId } from '../../utils'
-import { TXTypes } from '..'
 import { dapp } from '../..'
 
 export async function injectClaimRewardTx(

@@ -6,7 +6,7 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import { DevSecurityLevel, Sign } from '@shardeum-foundation/core/dist/shardus/shardus-types'
 import { shardusPostToNode } from './request'
 import { Utils } from '@shardus/types'
-import { TXTypes } from '../transactions'
+import { TXTypes } from '../@types'
 
 export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): bigint => {
   let amount: bigint
@@ -584,7 +584,7 @@ export function calculateChatId(from: string, to: string): string {
 }
 
 export function getInjectedOrGeneratedTimestamp(timestampedTx: any, dapp: Shardus) {
-  let { tx, timestampReceipt } = timestampedTx
+  const { tx, timestampReceipt } = timestampedTx
   let txnTimestamp: number
 
   if (tx.timestamp) {

@@ -1,8 +1,9 @@
 import * as crypto from '../crypto'
-import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
+import { Shardus, ShardusTypes, nestedCountersInstance } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 import * as config from '../config'
 import create from '../accounts'
+import * as ajvHelper from '../@types/ajvHelper'
 import {
   Accounts,
   UserAccount,
@@ -14,10 +15,11 @@ import {
   Tx,
   TransactionKeys,
   AppReceiptData,
+  AJVSchemaEnum
 } from '../@types'
 import { toShardusAddress, toShardusAddressWithKey } from '../utils/address'
 
-export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.from !== 'string' && utils.isValidAddress(tx.from) === false) {
     response.success = false
     response.reason = 'tx "from" field must be a string.'
@@ -56,8 +58,8 @@ export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.Incoming
   return response
 }
 
-export const validate = (tx: Tx.Transfer, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
-  let clonedTx = { ...tx }
+export const validate = (tx: Tx.Transfer, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus): ShardusTypes.IncomingTransactionResult => {
+  const clonedTx = { ...tx }
   if (config.LiberdusFlags.useEthereumAddress) {
     clonedTx.from = toShardusAddress(tx.from)
     clonedTx.to = toShardusAddress(tx.to)

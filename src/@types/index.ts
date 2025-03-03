@@ -1,9 +1,118 @@
 // ---------------------- TRANSACTION export interfaceS ------------------
 
 import { shardusFactory, ShardusTypes } from '@shardeum-foundation/core'
-import { TXTypes } from '../transactions'
 import { StakeCert } from '../transactions/staking/query_certificate'
 import { AdminCert } from '../transactions/admin_certificate'
+
+// Define the AJVSchemaEnum with snake case values
+export enum AJVSchemaEnum {
+  query_cert_req = 'query_cert_req',
+  inject_tx_req = 'inject_tx_req',
+  internal_tx_base = 'internal_tx_base',
+  left_network_early_violation_data = 'left_network_early_violation_data',
+  syncing_timeout_violation_data = 'syncing_timeout_violation_data',
+  node_refuted_violation_data = 'node_refuted_violation_data',
+  sign = 'sign',
+  signature = 'signature',
+  app_join_data = 'app_join_data',
+  stake_resp = 'stake_resp',
+  // Transaction types with snake case values matching TXTypes
+  init_network = 'init_network',
+  network_windows = 'network_windows',
+  snapshot = 'snapshot',
+  email = 'email',
+  gossip_email_hash = 'gossip_email_hash',
+  verify = 'verify',
+  register = 'register',
+  create = 'create',
+  transfer = 'transfer',
+  distribute = 'distribute',
+  message = 'message',
+  toll = 'toll',
+  friend = 'friend',
+  remove_friend = 'remove_friend',
+  stake = 'stake',
+  remove_stake = 'remove_stake',
+  remove_stake_request = 'remove_stake_request',
+  node_reward = 'node_reward',
+  snapshot_claim = 'snapshot_claim',
+  issue = 'issue',
+  proposal = 'proposal',
+  vote = 'vote',
+  tally = 'tally',
+  apply_tally = 'apply_tally',
+  parameters = 'parameters',
+  apply_parameters = 'apply_parameters',
+  dev_issue = 'dev_issue',
+  dev_proposal = 'dev_proposal',
+  dev_vote = 'dev_vote',
+  dev_tally = 'dev_tally',
+  apply_dev_tally = 'apply_dev_tally',
+  dev_parameters = 'dev_parameters',
+  apply_dev_parameters = 'apply_dev_parameters',
+  developer_payment = 'developer_payment',
+  apply_developer_payment = 'apply_developer_payment',
+  change_config = 'change_config',
+  apply_change_config = 'apply_change_config',
+  change_network_param = 'change_network_param',
+  apply_change_network_param = 'apply_change_network_param',
+  deposit_stake = 'deposit_stake',
+  withdraw_stake = 'withdraw_stake',
+  set_cert_time = 'set_cert_time',
+  query_certificate = 'query_certificate',
+  init_reward = 'init_reward',
+  claim_reward = 'claim_reward',
+  apply_penalty = 'apply_penalty'
+}
+
+export enum TXTypes {
+  init_network = 'init_network',
+  network_windows = 'network_windows',
+  snapshot = 'snapshot',
+  email = 'email',
+  gossip_email_hash = 'gossip_email_hash',
+  verify = 'verify',
+  register = 'register',
+  create = 'create',
+  transfer = 'transfer',
+  distribute = 'distribute',
+  message = 'message',
+  toll = 'toll',
+  friend = 'friend',
+  remove_friend = 'remove_friend',
+  stake = 'stake',
+  remove_stake = 'remove_stake',
+  remove_stake_request = 'remove_stake_request',
+  node_reward = 'node_reward',
+  snapshot_claim = 'snapshot_claim',
+  issue = 'issue',
+  proposal = 'proposal',
+  vote = 'vote',
+  tally = 'tally',
+  apply_tally = 'apply_tally',
+  parameters = 'parameters',
+  apply_parameters = 'apply_parameters',
+  dev_issue = 'dev_issue',
+  dev_proposal = 'dev_proposal',
+  dev_vote = 'dev_vote',
+  dev_tally = 'dev_tally',
+  apply_dev_tally = 'apply_dev_tally',
+  dev_parameters = 'dev_parameters',
+  apply_dev_parameters = 'apply_dev_parameters',
+  developer_payment = 'developer_payment',
+  apply_developer_payment = 'apply_developer_payment',
+  change_config = 'change_config',
+  apply_change_config = 'apply_change_config',
+  change_network_param = 'change_network_param',
+  apply_change_network_param = 'apply_change_network_param',
+  deposit_stake = 'deposit_stake',
+  withdraw_stake = 'withdraw_stake',
+  set_cert_time = 'set_cert_time',
+  query_certificate = 'query_certificate',
+  init_reward = 'init_reward',
+  claim_reward = 'claim_reward',
+  apply_penalty = 'apply_penalty',
+}
 export interface BaseLiberdusTx {
   timestamp: number
   type: TXTypes
@@ -696,15 +805,12 @@ export interface SignedNodeInitTxData extends NodeInitTxData {
 }
 
 export enum ViolationType {
-  ShardusCoreMaxID = 999,
-  LiberdusMinID = 1000,
   // 0-999 reserved for shardus core
+  LiberdusMinID = 999,
   LeftNetworkEarly = 1000,
   SyncingTooLong = 1001,
   DoubleVote = 1002,
   NodeRefuted = 1003,
-  //..others tbd
-
   LiberdusMaxID = 2000,
 }
 
