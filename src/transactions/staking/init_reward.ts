@@ -1,10 +1,9 @@
 import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as crypto from '../../crypto'
 import { LiberdusFlags } from '../../config'
-import { Tx, NodeAccount, WrappedStates, TransactionKeys, AppReceiptData } from '../../@types'
+import { TXTypes, Tx, NodeAccount, WrappedStates, TransactionKeys, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { _sleep, generateTxId } from '../../utils'
-import { TXTypes } from '..'
 import { dapp } from '../..'
 
 export async function injectInitRewardTx(shardus: Shardus, eventData: ShardusTypes.ShardusEvent): Promise<unknown> {
