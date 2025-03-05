@@ -73,9 +73,18 @@ const shardusSetup = (): void => {
   dapp.setup({
     async sync(): Promise<void> {
       dapp.useAccountWrites()
-      if (dapp.p2p.isFirstSeed) {
-        await utils._sleep(configs.ONE_SECOND * 5)
-
+      // In the restore network, the current getLocalOrRemoteAccount would return null and the network account exist check will not work
+      // https://github.com/shardeum/shardus-core/blob/39600e933622cda25ac629f3372b875f301b481a/src/shardus/index.ts#L2238
+      // [TODO] - Might be goo to change in shardus core to fetch account data during restore mode, to ensure that required network account is present.
+      if (dapp.getNetworkMode() === 'restore') {
+        return
+      }
+      const existingNetworkAccount = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+      if (existingNetworkAccount) {
+        dapp.log('NETWORK_ACCOUNT ALREADY EXISTED: ', existingNetworkAccount)
+        return
+      }
+      if (dapp.p2p.isFirstSeed && dapp.getNetworkMode() === 'forming') {
         const nodeId = dapp.getNodeId()
         const address = dapp.getNode(nodeId).address
         /**
@@ -85,116 +94,108 @@ const shardusSetup = (): void => {
          */
         // const when = dapp.shardusGetTime() + configs.ONE_SECOND * 10
         const when = dapp.shardusGetTime()
-        const existingNetworkAccount = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
+        dapp.setGlobal(
+          configs.networkAccount,
+          '', // Setting addressHash = '' as the network account is not created yet.
+          {
+            type: 'init_network',
+            timestamp: when,
+            network: configs.networkAccount,
+          },
+          when,
+          configs.networkAccount,
+        )
 
-        if (existingNetworkAccount) {
-          dapp.log('NETWORK_ACCOUNT ALREADY EXISTED: ', existingNetworkAccount)
-          await utils._sleep(configs.ONE_SECOND * 5)
-        } else {
-          dapp.setGlobal(
-            configs.networkAccount,
-            '', // Setting addressHash = '' as the network account is not created yet.
-            {
-              type: 'init_network',
-              timestamp: when,
-              network: configs.networkAccount,
-            },
-            when,
-            configs.networkAccount,
-          )
+        dapp.log(`node ${nodeId} GENERATED_A_NEW_NETWORK_ACCOUNT: `)
 
-          dapp.log(`node ${nodeId} GENERATED_A_NEW_NETWORK_ACCOUNT: `)
-          await utils._sleep(configs.ONE_SECOND * 10)
+        /* Genesis account */
 
-          /* Genesis account */
-
-          type GenesisBalances = {
-            [address: string]: {
-              alias: string
-              publicKey: string
-              balance: string
-            }
+        type GenesisBalances = {
+          [address: string]: {
+            alias: string
+            publicKey: string
+            balance: string
           }
-
-          const genesisLoaded = genesis as GenesisBalances
-          let accountCopies: ShardusTypes.AccountsCopy[] = []
-          const currentCycle = dapp.getLatestCycles(1)[0]
-
-          for (const address in genesisLoaded) {
-            const accountId = toShardusAddress(address)
-
-            if (await dapp.getLocalOrRemoteAccount(accountId)) {
-              continue
-            }
-
-            const userAccount = account.userAccount(accountId, currentCycle.start)
-
-            userAccount.alias = genesisLoaded[address].alias
-            userAccount.publicKey = genesisLoaded[address].publicKey
-            userAccount.timestamp = currentCycle.start * 1000
-            userAccount.data.balance = BigInt(genesisLoaded[address].balance)
-            userAccount.hash = ''
-            userAccount.hash = crypto.hashObj(userAccount)
-
-            const constructedShardusAccount = {
-              accountId: accountId,
-              cycleNumber: currentCycle.counter,
-              data: userAccount,
-              timestamp: userAccount.timestamp,
-              isGlobal: false,
-              hash: userAccount.hash,
-            }
-
-            accountCopies.push(constructedShardusAccount)
-
-            const aliasAccount = account.aliasAccount(crypto.hash(genesisLoaded[address].alias))
-            aliasAccount.address = userAccount.id
-            aliasAccount.timestamp = currentCycle.start * 1000
-            aliasAccount.hash = ''
-            aliasAccount.hash = crypto.hashObj(aliasAccount)
-
-            accountCopies.push({
-              accountId: crypto.hash(genesisLoaded[address].alias),
-              cycleNumber: currentCycle.counter,
-              data: aliasAccount,
-              timestamp: currentCycle.start,
-              isGlobal: false,
-              hash: aliasAccount.hash,
-            })
-          }
-
-          //TODO we need to brainstorm a way to allow migration of keys on a live network
-          const devPublicKeys = dapp.getDevPublicKeys()
-          for (const devPublicKey of Object.keys(devPublicKeys)) {
-            // eslint-disable-next-line security/detect-object-injection
-            const level = devPublicKeys[devPublicKey]
-            if (level >= DevSecurityLevel.Low) {
-              const devAccount = account.devAccount(devPublicKey)
-              devAccount.timestamp = currentCycle.start
-              devAccount.hash = ''
-              devAccount.hash = crypto.hashObj(devAccount)
-              const accountCopy: ShardusTypes.AccountsCopy = {
-                cycleNumber: currentCycle.counter,
-                accountId: devAccount.id,
-                data: devAccount,
-                hash: devAccount.hash,
-                isGlobal: false,
-                timestamp: devAccount.timestamp,
-              }
-              accountCopies.push(accountCopy)
-            }
-          }
-          accountCopies = accountCopies.map((acc) => {
-            return Utils.safeJsonParse(Utils.safeStringify(acc))
-          })
-          await dapp.debugCommitAccountCopies(accountCopies)
-          await dapp.forwardAccounts({ accounts: accountCopies, receipts: [] })
-
-          await utils._sleep(configs.ONE_SECOND * 10)
         }
+
+        const genesisLoaded = genesis as GenesisBalances
+        let accountCopies: ShardusTypes.AccountsCopy[] = []
+        const currentCycle = dapp.getLatestCycles(1)[0]
+
+        for (const address in genesisLoaded) {
+          const accountId = toShardusAddress(address)
+
+          if (await dapp.getLocalOrRemoteAccount(accountId)) {
+            continue
+          }
+
+          const userAccount = account.userAccount(accountId, currentCycle.start)
+
+          userAccount.alias = genesisLoaded[address].alias
+          userAccount.publicKey = genesisLoaded[address].publicKey
+          userAccount.timestamp = currentCycle.start * 1000
+          userAccount.data.balance = BigInt(genesisLoaded[address].balance)
+          userAccount.hash = ''
+          userAccount.hash = crypto.hashObj(userAccount)
+
+          const constructedShardusAccount = {
+            accountId: accountId,
+            cycleNumber: currentCycle.counter,
+            data: userAccount,
+            timestamp: userAccount.timestamp,
+            isGlobal: false,
+            hash: userAccount.hash,
+          }
+
+          accountCopies.push(constructedShardusAccount)
+
+          const aliasAccount = account.aliasAccount(crypto.hash(genesisLoaded[address].alias))
+          aliasAccount.address = userAccount.id
+          aliasAccount.timestamp = currentCycle.start * 1000
+          aliasAccount.hash = ''
+          aliasAccount.hash = crypto.hashObj(aliasAccount)
+
+          accountCopies.push({
+            accountId: crypto.hash(genesisLoaded[address].alias),
+            cycleNumber: currentCycle.counter,
+            data: aliasAccount,
+            timestamp: currentCycle.start,
+            isGlobal: false,
+            hash: aliasAccount.hash,
+          })
+        }
+
+        //TODO we need to brainstorm a way to allow migration of keys on a live network
+        const devPublicKeys = dapp.getDevPublicKeys()
+        for (const devPublicKey of Object.keys(devPublicKeys)) {
+          // eslint-disable-next-line security/detect-object-injection
+          const level = devPublicKeys[devPublicKey]
+          if (level >= DevSecurityLevel.Low) {
+            const devAccount = account.devAccount(devPublicKey)
+            devAccount.timestamp = currentCycle.start
+            devAccount.hash = ''
+            devAccount.hash = crypto.hashObj(devAccount)
+            const accountCopy: ShardusTypes.AccountsCopy = {
+              cycleNumber: currentCycle.counter,
+              accountId: devAccount.id,
+              data: devAccount,
+              hash: devAccount.hash,
+              isGlobal: false,
+              timestamp: devAccount.timestamp,
+            }
+            accountCopies.push(accountCopy)
+          }
+        }
+        accountCopies = accountCopies.map((acc) => {
+          return Utils.safeJsonParse(Utils.safeStringify(acc))
+        })
+        await dapp.debugCommitAccountCopies(accountCopies)
+        await dapp.forwardAccounts({ accounts: accountCopies, receipts: [] })
+
+        await utils._sleep(configs.ONE_SECOND * 5)
       } else {
         while (!(await dapp.getLocalOrRemoteAccount(configs.networkAccount))) {
-          console.log('waiting..')
+          console.log('Waiting network account...', +'Current network mode', dapp.getNetworkMode())
           await utils._sleep(1000)
         }
       }

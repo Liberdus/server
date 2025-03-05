@@ -75,11 +75,11 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   stabilityScaleDiv: 1000,
   txPause: false,
   certCycleDuration: 30,
-  enableNodeSlashing: false,
+  enableNodeSlashing: true,
   slashing: {
-    enableLeftNetworkEarlySlashing: false,
-    enableSyncTimeoutSlashing: false,
-    enableNodeRefutedSlashing: false,
+    enableLeftNetworkEarlySlashing: true,
+    enableSyncTimeoutSlashing: true,
+    enableNodeRefutedSlashing: true,
     leftNetworkEarlyPenaltyPercent: 0.2,
     syncTimeoutPenaltyPercent: 0.2,
     nodeRefutedPenaltyPercent: 0.2,
@@ -447,6 +447,7 @@ config = merge(config, {
       formingNodesPerCycle: 32, //how many nodes can be add in a cycle while in forming mode
 
       downNodeFilteringEnabled: false, //turning down node filtering off for diagnostics purposes
+      initShutdown: false,
     },
     features: {
       //This feature will restrict transactions to only coin transfers
@@ -504,7 +505,7 @@ config = merge(config, {
       executeInOneShard: true,
     },
     stateManager: {
-      accountBucketSize: 250, // todo: we need to re-test with higher numbers after some recent improvements
+      accountBucketSize: 200, // todo: we need to re-test with higher numbers after some recent improvements
       includeBeforeStatesInReceipts: true, // 1.5.3 migration
       useNewPOQ: false, // 1.10.0 enabled required by archive server updates
 
