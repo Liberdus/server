@@ -687,6 +687,7 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
       name: 'config',
       message: 'Enter the stringified JSON config object: ',
       default: '{ "p2p": { "minNodes": 15, "maxNodes": 30 } }', //JSON.stringify(testConfig),
+      // default: '{ "p2p": { "initShutdown": true } }',
     },
   ])
   try {
