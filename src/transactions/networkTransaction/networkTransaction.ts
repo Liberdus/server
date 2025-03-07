@@ -2,7 +2,7 @@ import { Shardus, nestedCountersInstance } from '@shardeum-foundation/core'
 import * as crypto from '../../crypto'
 import { Utils, P2P } from '@shardus/types'
 import { LiberdusFlags } from '../../config'
-import { NodeAccount, SignedNodeInitTxData, SignedNodeRewardTxData } from '../../@types'
+import { NodeAccount, NodeInitTxData, NodeRewardTxData, SignedNodeInitTxData, SignedNodeRewardTxData } from '../../@types'
 
 export const configShardusNetworkTransactions = (dapp: Shardus): void => {
   dapp.serviceQueue.registerBeforeAddVerifier('nodeReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeRewardTxData>) => {
@@ -26,16 +26,6 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
       /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerBeforeAddVerify nodeReward fail invalid nodeId field`)
       return false
     }
-    if (!tx.start || tx.start <= 0) {
-      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail start field missing', Utils.safeStringify(tx))
-      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking',`registerBeforeAddVerify nodeReward fail start field missing`)
-      return false
-    }
-    if (!tx.end || tx.end <= 0 || tx.end < tx.start) {
-      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail end field missing', Utils.safeStringify(tx))
-      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerBeforeAddVerify nodeReward fail end field missing`)
-      return false
-    }
     if (!tx.endTime || tx.endTime <= 0) {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail endTime field missing', Utils.safeStringify(tx))
       /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerBeforeAddVerify nodeReward fail endTime field missing`)
@@ -45,7 +35,7 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
     const nodePubKey = dapp.getRemovedNodePubKeyFromCache(tx.nodeId)
     if (nodePubKey == null || tx.publicKey !== nodePubKey) {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail invalid nodeId field', Utils.safeStringify(tx))
-      /* prettier-ignore */ nestedCountersInstance.countEvent('shardeum-staking', `registerBeforeAddVerify nodeReward fail invalid nodeId field`)
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerBeforeAddVerify nodeReward fail invalid nodeId field`)
       return false
     }
     const latestCycles = dapp.getLatestCycles(5)
@@ -59,14 +49,6 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
       /* prettier-ignore */ nestedCountersInstance.countEvent(
           'liberdus-staking',
           `registerBeforeAddVerify nodeReward fail !nodeRemovedCycle`
-        )
-      return false
-    }
-    if (nodeRemovedCycle.counter !== tx.end) {
-      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail nodeRemovedCycle.counter and tx.end do not match', Utils.safeStringify(tx))
-      /* prettier-ignore */ nestedCountersInstance.countEvent(
-          'liberdus-staking',
-          `registerBeforeAddVerify nodeReward fail nodeRemovedCycle and tx.end do not match`
         )
       return false
     }
@@ -224,13 +206,14 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
         /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`shutdown condition: active node with id ${node.id} is already in txadd (nodeInitReward); this should not happen`)
         return null
       }
+      const txData: NodeInitTxData = {
+        startTime: record.start,
+        publicKey: node.publicKey,
+        nodeId: node.id,
+      }
       return {
         type: 'nodeInitReward',
-        txData: {
-          startTime: record.start,
-          publicKey: node.publicKey,
-          nodeId: node.id,
-        },
+        txData,
         priority: 1,
         subQueueKey: node.publicKey,
       }
@@ -253,15 +236,14 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
     }
     /** prettier-ignore */ if (LiberdusFlags.VerboseLogs)
       console.log(`Creating a shutdown reward tx`, Utils.safeStringify(txListEntry), Utils.safeStringify(node))
+    const txData: NodeRewardTxData = {
+      endTime: record.start,
+      publicKey: node.publicKey,
+      nodeId: node.id,
+    }
     return {
       type: 'nodeReward',
-      txData: {
-        start: node.activeCycle,
-        end: record.counter,
-        endTime: record.start,
-        publicKey: node.publicKey,
-        nodeId: node.id,
-      },
+      txData,
       priority: 0,
       subQueueKey: node.publicKey,
     }
