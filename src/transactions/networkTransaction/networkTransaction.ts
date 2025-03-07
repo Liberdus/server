@@ -72,17 +72,18 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
       return false
     }
 
-    const nodeAddress = tx.publicKey.toLowerCase()
-    const account = await dapp.getLocalOrRemoteAccount(nodeAddress)
-    if (!account) {
-      console.log(`registerBeforeAddVerifier - nodeReward: Account for node address ${nodeAddress} not found, do not add tx`)
-      return false
-    }
-    const nodeAccount = account.data as NodeAccount
-    if (!nodeAccount || !nodeAccount.nominator || nodeAccount.nominator === '') {
-      console.log(`registerBeforeAddVerifier - nodeReward: Account for node address ${nodeAddress} has null nominator, do not add tx`)
-      return false
-    }
+    // I think this is wrong. We may want to record nodeReward while the network is having data loss (safety/recovery)
+    // const nodeAddress = tx.publicKey.toLowerCase()
+    // const account = await dapp.getLocalOrRemoteAccount(nodeAddress)
+    // if (!account) {
+    //   console.log(`registerBeforeAddVerifier - nodeReward: Account for node address ${nodeAddress} not found, do not add tx`)
+    //   return false
+    // }
+    // const nodeAccount = account.data as NodeAccount
+    // if (!nodeAccount || !nodeAccount.nominator || nodeAccount.nominator === '') {
+    //   console.log(`registerBeforeAddVerifier - nodeReward: Account for node address ${nodeAddress} has null nominator, do not add tx`)
+    //   return false
+    // }
 
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward success', Utils.safeStringify(tx))
     return true
@@ -152,17 +153,18 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
       return false
     }
 
-    const nodeAddress = tx.publicKey.toLowerCase()
-    const account = await dapp.getLocalOrRemoteAccount(nodeAddress)
-    if (!account) {
-      console.log(`registerBeforeAddVerifier - nodeInitReward: Account for node address ${nodeAddress} not found, do not add tx`)
-      return false
-    }
-    const nodeAccount = account.data as NodeAccount
-    if (!nodeAccount || !nodeAccount.nominator || nodeAccount.nominator === '') {
-      console.log(`registerBeforeAddVerifier - nodeInitReward: Account for node address ${nodeAddress} has null nominator, do not add tx`)
-      return false
-    }
+    // I think this is wrong. We may want to record nodeInitReward while the network is having data loss (safety/recovery)
+    // const nodeAddress = tx.publicKey.toLowerCase()
+    // const account = await dapp.getLocalOrRemoteAccount(nodeAddress)
+    // if (!account) {
+    //   console.log(`registerBeforeAddVerifier - nodeInitReward: Account for node address ${nodeAddress} not found, do not add tx`)
+    //   return false
+    // }
+    // const nodeAccount = account.data as NodeAccount
+    // if (!nodeAccount || !nodeAccount.nominator || nodeAccount.nominator === '') {
+    //   console.log(`registerBeforeAddVerifier - nodeInitReward: Account for node address ${nodeAddress} has null nominator, do not add tx`)
+    //   return false
+    // }
 
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validate nodeInitReward success', Utils.safeStringify(tx))
     return true
