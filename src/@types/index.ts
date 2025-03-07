@@ -787,8 +787,6 @@ export interface AppJoinData {
 export interface NodeRewardTxData {
   publicKey: string
   nodeId: string
-  start: number
-  end: number
   endTime: number
 }
 
