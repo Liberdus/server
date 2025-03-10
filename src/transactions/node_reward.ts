@@ -3,7 +3,7 @@ import create from '../accounts'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, NodeAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
 
-export const validate_fields = (tx: Tx.NodeReward, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.NodeReward, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.from !== 'string') {
     response.success = false
     response.reason = 'tx "from" field must be a string'
