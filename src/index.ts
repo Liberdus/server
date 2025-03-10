@@ -29,6 +29,7 @@ import { toShardusAddress } from './utils/address'
 import { onActiveVersionChange } from './versioning/index'
 import genesis from './config/genesis.json'
 import rfdc = require('rfdc')
+import { safeStringify } from '@shardus/types/build/src/utils/functions/stringify'
 
 const { version } = require('./../package.json')
 
@@ -255,7 +256,8 @@ const shardusSetup = (): void => {
       if (errors != null) {
         nestedCountersInstance.countEvent('external', `ajv-failed-${tx.type}-tx`)
         response.success = false
-        response.reason = `AJV failed for ${tx.type} tx`
+        response.reason = `AJV failed for ${tx.type} tx, errors: ${Utils.safeStringify(errors)}`
+        if (LiberdusFlags.VerboseLogs) console.log(response.reason)
         throw new Error(response.reason)
       }
       return transactions[tx.type].validate_fields(tx, response, dapp)
@@ -2332,10 +2334,9 @@ async function updateConfigFromNetworkAccount(
     // TALLY: count the votes for the proposals (network params)
     // todo: we may not want to tally as soon as the grace window starts
     if (isInGraceWindow) {
-      // @ts-ignore
-      const issueWinner = issueAccount?.data?.winnerId
-      // @ts-ignore
-      const tallied = issueAccount?.data?.tallied
+      const issueAccountData = issueAccount?.data as LiberdusTypes.IssueAccount
+      const issueWinner = issueAccountData.winnerId
+      const tallied = issueAccountData.tallied
       if (!tallied) {
         dapp.log(`Issue is not tallied yet, we need to tally the votes for issue: ${network.issue}`)
         await utils.tallyVotes(nodeAddress, nodeId, dapp, skipConsensus)
@@ -2347,10 +2348,9 @@ async function updateConfigFromNetworkAccount(
 
     // DEV_TALLY: count the votes for the dev proposals (developer fund)
     if (isInDevGraceWindow) {
-      // @ts-ignore
-      const devIssueWinners = devIssueAccount?.data?.winners
-      // @ts-ignore
-      const tallied = devIssueAccount?.data?.tallied
+      const devIssueAccountData = devIssueAccount?.data as LiberdusTypes.DevIssueAccount
+      const devIssueWinners = devIssueAccountData.winners
+      const tallied = devIssueAccountData.tallied
       if (!tallied) {
         dapp.log(`devIssue is not tallied yet, we need to tally the votes for devIssue: ${network.devIssue}`)
         await utils._sleep(3000) // this is to wait a moment for above tally tx to be processed
@@ -2363,8 +2363,8 @@ async function updateConfigFromNetworkAccount(
 
     // PARAMETER tx should initiate apply_parameters tx (i.e. apply the winning network parameters)
     if (isInApplyWindow) {
-      // @ts-ignore
-      const isIssueActive = issueAccount?.data?.active
+      const issueAccountData = issueAccount?.data as LiberdusTypes.IssueAccount
+      const isIssueActive = issueAccountData.active
       if (isIssueActive) {
         // still active means it has not been applied the parameters
         dapp.log(`issueAccount is still active in applyWindows, we need to apply the parameters for issue: ${network.issue}`)
@@ -2377,8 +2377,8 @@ async function updateConfigFromNetworkAccount(
 
     // DEV_PARAMETER tx should initiate apply_dev_parameters tx (i.e. apply the winning fundings)
     if (isInDevApplyWindow) {
-      // @ts-ignore
-      const isDevIssueActive = devIssueAccount?.data?.active
+      const devIssueAccountData = devIssueAccount?.data as LiberdusTypes.DevIssueAccount
+      const isDevIssueActive = devIssueAccountData.active
       if (isDevIssueActive) {
         // still active means it has not been applied the dev parameters
         dapp.log(`devIssueAccount is still active in devApplyWindows, we need to apply the dev parameters for devIssue: ${network.devIssue}`)

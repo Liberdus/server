@@ -1,7 +1,7 @@
 import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as crypto from '../../crypto'
 import { LiberdusFlags } from '../../config'
-import { TXTypes, Tx, NodeAccount, WrappedStates, TransactionKeys, AppReceiptData } from '../../@types'
+import { TXTypes, NodeInitTxData, Tx, NodeAccount, WrappedStates, TransactionKeys, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { _sleep, generateTxId } from '../../utils'
 import { dapp } from '../..'
@@ -13,6 +13,7 @@ export async function injectInitRewardTx(shardus: Shardus, eventData: ShardusTyp
     nominee: eventData.publicKey,
     nodeActivatedTime: startTime,
     timestamp: shardus.shardusGetTime(),
+    txData: eventData.additionalData?.txData
   } as Tx.InitRewardTX
 
   // check if this node has node account data
@@ -60,7 +61,7 @@ export async function injectInitRewardTx(shardus: Shardus, eventData: ShardusTyp
   return await shardus.put(tx)
 }
 
-export const validate_fields = (tx: Tx.InitRewardTX, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.InitRewardTX, response: ShardusTypes.IncomingTransactionResult, shardus: Shardus): ShardusTypes.IncomingTransactionResult => {
   if (LiberdusFlags.VerboseLogs) console.log('Validating InitRewardTX fields', tx)
   if (!tx.nominee || tx.nominee === '' || tx.nominee.length !== 64) {
     if (LiberdusFlags.VerboseLogs) console.log('validateFields InitRewardTX fail invalid nominee field', tx)
@@ -91,14 +92,38 @@ export const validate_fields = (tx: Tx.InitRewardTX, response: ShardusTypes.Inco
     response.reason = 'invalid signature in setRewardTimes Tx'
     throw new Error(response.reason)
   }
+  // only allow init reward txs for tx data that is in the serviceQueue
+  if (!shardus.serviceQueue.containsTxData(tx.txData)) {
+    /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateFields InitRewardTimes fail node not in serviceQueue', tx)
+    /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validateFields InitRewardTimes fail node not in serviceQueue`)
+    response.success = false
+    response.reason = 'node not in serviceQueue'
+    throw new Error(response.reason)
+  }
+
+  // check txData matches tx
+  if (tx.txData.startTime !== tx.nodeActivatedTime) {
+    /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateFields InitRewardTimes fail txData.startTime does not match nodeActivatedTime', tx)
+    /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validateFields InitRewardTimes fail txData.startTime does not match nodeActivatedTime`)
+    response.success = false
+    response.reason = 'txData.startTime does not match nodeActivatedTime'
+    throw new Error(response.reason)
+  }
+
+  if (tx.txData.publicKey !== tx.nominee) {
+    /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validateFields InitRewardTimes fail txData.publicKey does not match tx.nominee`)
+    /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateFields InitRewardTimes fail txData.publicKey does not match tx.nominee', tx)
+    response.success = false
+    response.reason = 'txData.publicKey does not match tx.nominee'
+    throw new Error(response.reason)
+  }
   if (LiberdusFlags.VerboseLogs) console.log('validateFields InitRewardTX success', tx)
   return response
 }
 
-export const validate = (tx: Tx.InitRewardTX, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (tx: Tx.InitRewardTX, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (LiberdusFlags.VerboseLogs) console.log('Validating InitRewardTX', tx)
   const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
-  // TODO: make sure this is a valid node account
 
   // check if nodeAccount.rewardStartTime is already set to tx.nodeActivatedTime
   if (nodeAccount.rewardStartTime >= tx.nodeActivatedTime) {
@@ -149,7 +174,7 @@ export const apply = (
   dapp.log('Applied InitRewardTX for', tx.nominee)
 }
 
-export const keys = (tx: Tx.InitRewardTX, result: TransactionKeys) => {
+export const keys = (tx: Tx.InitRewardTX, result: TransactionKeys): TransactionKeys => {
   result.sourceKeys = [tx.nominee]
   result.targetKeys = []
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
