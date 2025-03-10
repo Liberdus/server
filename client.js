@@ -1755,6 +1755,7 @@ vorpal.command('deposit stake joining nodes', 'deposit the stake amount to the j
     const createTx = {
       type: 'create',
       from: accounts[i].address,
+      to: accounts[i].address,
       amount: libToWei(50), // extra 50 tokens
       timestamp: Date.now(),
     }

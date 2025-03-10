@@ -389,6 +389,7 @@ export namespace Tx {
   export interface InitRewardTX extends BaseLiberdusTx {
     nominee: string
     nodeActivatedTime: number
+    txData: NodeInitTxData
   }
 
   export interface ClaimRewardTX extends BaseLiberdusTx {
@@ -396,6 +397,7 @@ export namespace Tx {
     nominator: string
     deactivatedNodeId: string
     nodeDeactivatedTime: number
+    txData: NodeRewardTxData
   }
 
   export interface PenaltyTX extends BaseLiberdusTx {
