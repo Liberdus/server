@@ -2,7 +2,7 @@ import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardeum-foundat
 import * as crypto from '../../crypto'
 import { LiberdusFlags } from '../../config'
 import { logFlags } from '@shardeum-foundation/core/dist/logger'
-import { NodeAccount, TXTypes, UserAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../../@types'
+import { NodeAccount, NodeRewardTxData, TXTypes, UserAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { scaleByStabilityFactor, _sleep, generateTxId } from '../../utils'
 import { dapp } from '../..'
@@ -53,6 +53,7 @@ export async function injectClaimRewardTx(
     nodeDeactivatedTime: eventData.additionalData.txData.endTime,
     cycle: eventData.cycleNumber,
     type: TXTypes.claim_reward,
+    txData: eventData.additionalData?.txData
   } as Omit<Tx.ClaimRewardTX, 'sign'>
 
   // to make sure that differnt nodes all submit an equivalent tx that is counted as the same tx,
@@ -77,7 +78,7 @@ export async function injectClaimRewardTx(
   return injectResult
 }
 
-export const validate_fields = (tx: Tx.ClaimRewardTX, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.ClaimRewardTX, response: ShardusTypes.IncomingTransactionResult, shardus: Shardus): ShardusTypes.IncomingTransactionResult => {
   if (!tx.nominee || tx.nominee === '' || tx.nominee.length !== 64) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail tx.nominee address invalid`)
     if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail tx.nominee address invalid', tx)
@@ -120,6 +121,31 @@ export const validate_fields = (tx: Tx.ClaimRewardTX, response: ShardusTypes.Inc
     response.reason = 'Node is still active'
     throw new Error(response.reason)
   }
+  // only allow claim reward txs for nodes that are in the serviceQueue
+  if (!shardus.serviceQueue.containsTxData(tx.txData)) {
+    /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail txData not in serviceQueue`)
+    /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail txData not in serviceQueue', tx)
+    response.success = false
+    response.reason = 'txData not in serviceQueue for ClaimReward tx'
+    throw new Error(response.reason)
+  }
+
+  // check txData matches tx
+  if (tx.txData.endTime !== tx.nodeDeactivatedTime) {
+    /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail txData.endTime does not match tx.nodeDeactivatedTime`)
+    /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail txData.endTime does not match tx.nodeDeactivatedTime', tx)
+    response.success = false
+    response.reason = 'txData.endTime does not match tx.nodeDeactivatedTime'
+    throw new Error(response.reason)
+  }
+
+  if (tx.txData.publicKey !== tx.nominee) {
+    /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail txData.publicKey does not match tx.nominee`)
+    /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail txData.publicKey does not match tx.nominee', tx)
+    response.success = false
+    response.reason = 'txData.publicKey does not match tx.nominee'
+    throw new Error(response.reason)
+  }
   if (!tx.sign || !tx.sign.owner || !tx.sign.sig) {
     response.success = false
     response.reason = 'tx is not signed'
@@ -139,12 +165,9 @@ export const validate_fields = (tx: Tx.ClaimRewardTX, response: ShardusTypes.Inc
   return response
 }
 
-export const validate = (tx: Tx.ClaimRewardTX, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (tx: Tx.ClaimRewardTX, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus): ShardusTypes.IncomingTransactionResult => {
   if (LiberdusFlags.VerboseLogs) console.log('validating claimRewardTX', tx)
   const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
-  // TODO: make sure this is a valid node account
-  const operatorAccount = wrappedStates[tx.nominator].data as UserAccount
-  // TODO: make sure this is a valid user account
   // check if the rewardStartTime is negative
   if (nodeAccount.rewardStartTime < 0) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardState fail rewardStartTime < 0`)
@@ -262,7 +285,7 @@ export const apply = (
   if (logFlags.dapp_verbose) dapp.log('Applied ClaimRewardTX', tx.nominee)
 }
 
-export const keys = (tx: Tx.ClaimRewardTX, result: TransactionKeys) => {
+export const keys = (tx: Tx.ClaimRewardTX, result: TransactionKeys): TransactionKeys => {
   result.sourceKeys = [tx.nominee]
   result.targetKeys = [tx.nominator]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]

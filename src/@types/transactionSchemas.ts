@@ -561,9 +561,18 @@ export const schemaInitRewardTX = {
   type: 'object',
   properties: {
     ...baseTxProperties,
-    from: { type: 'string' },
     nominee: { type: 'string' },
-    nodeActivatedTime: { type: 'number' }
+    nodeActivatedTime: { type: 'number' },
+    txData: {
+      type: 'object',
+      properties: {
+        publicKey: { type: 'string' },
+        nodeId: { type: 'string' },
+        startTime: { type: 'number' }
+      },
+      required: ['publicKey', 'nodeId', 'startTime'],
+      additionalProperties: false
+    }
   },
   required: [...baseTxRequired, 'nominee', 'nodeActivatedTime'],
   additionalProperties: false
@@ -577,7 +586,20 @@ export const schemaClaimRewardTX = {
     nominee: { type: 'string' },
     nominator: { type: 'string' },
     deactivatedNodeId: { type: 'string' },
-    nodeDeactivatedTime: { type: 'number' }
+    nodeDeactivatedTime: { type: 'number' },
+    cycle: { type: 'number' },
+    txData: {
+      type: 'object',
+      properties: {
+        publicKey: { type: 'string' },
+        nodeId: { type: 'string' },
+        start: { type: 'number' },
+        end: { type: 'number' },
+        endTime: { type: 'number' }
+      },
+      required: ['publicKey', 'nodeId', 'start', 'end', 'endTime'],
+      additionalProperties: false
+    }
   },
   required: [...baseTxRequired, 'nominee', 'nominator', 'deactivatedNodeId', 'nodeDeactivatedTime'],
   additionalProperties: false

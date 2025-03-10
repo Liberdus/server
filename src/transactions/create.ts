@@ -3,7 +3,7 @@ import create from '../accounts'
 import * as config from '../config'
 import { Accounts, UserAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../@types'
 
-export const validate_fields = (tx: Tx.Create, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.Create, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.from !== 'string') {
     response.success = false
     response.reason = '"From" must be a string.'
@@ -17,7 +17,7 @@ export const validate_fields = (tx: Tx.Create, response: ShardusTypes.IncomingTr
   return response
 }
 
-export const validate = (tx: Tx.Create, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (tx: Tx.Create, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus): ShardusTypes.IncomingTransactionResult => {
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
   if (from === undefined || from === null) {
     response.reason = "target account doesn't exist"
