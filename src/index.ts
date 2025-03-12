@@ -1934,14 +1934,14 @@ const shardusSetup = (): void => {
 
       return { canStay: true, reason: '' }
     },
-    verifyMultiSigs: function(
+    verifyMultiSigs: function (
       rawPayload: object,
       sigs: ShardusTypes.Sign[],
       allowedPubkeys: { [pubkey: string]: ShardusTypes.DevSecurityLevel },
       minSigRequired: number,
       requiredSecurityLevel: ShardusTypes.DevSecurityLevel,
     ): boolean {
-      return false
+      return utils.verifyMultiSigs(rawPayload, sigs, allowedPubkeys, minSigRequired, requiredSecurityLevel)
     },
     binarySerializeObject(identifier: string, obj): Buffer {
       try {
