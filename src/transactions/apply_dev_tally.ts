@@ -3,7 +3,7 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import create from '../accounts'
 import * as config from '../config'
 import _ from 'lodash'
-import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
 
 export const validate_fields = (tx: Tx.ApplyDevTally, response: ShardusTypes.IncomingTransactionResult) => {
   if (!Array.isArray(tx.nextDeveloperFund)) {
@@ -25,11 +25,29 @@ export const validate = (tx: Tx.ApplyDevTally, wrappedStates: WrappedStates, res
   return response
 }
 
-export const apply = (tx: Tx.ApplyDevTally, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (
+  tx: Tx.ApplyDevTally,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+): void => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.nextDeveloperFund = tx.nextDeveloperFund
   network.nextDevWindows = tx.nextDevWindows
   network.timestamp = txTimestamp
+
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: true,
+    from: tx.from,
+    to: config.networkAccount,
+    type: tx.type,
+    transactionFee: BigInt(0),
+  }
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
   dapp.log('Applied apply_dev_tally tx', tx, network)
 }
 

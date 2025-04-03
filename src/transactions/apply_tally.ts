@@ -1,7 +1,7 @@
 import { Utils } from '@shardus/types'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import create from '../accounts'
-import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
 
 import _ from 'lodash'
 import * as config from '../config'
@@ -91,11 +91,28 @@ export const validate = (tx: Tx.ApplyTally, wrappedStates: WrappedStates, respon
   return response
 }
 
-export const apply = (tx: Tx.ApplyTally, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (
+  tx: Tx.ApplyTally,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+): void => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.next = tx.next
   network.nextWindows = tx.nextWindows
   network.timestamp = txTimestamp
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: true,
+    from: tx.from,
+    to: config.networkAccount,
+    type: tx.type,
+    transactionFee: BigInt(0),
+  }
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
   dapp.log(`APPLIED TALLY GLOBAL ${Utils.safeStringify(network)} ===`)
 }
 
