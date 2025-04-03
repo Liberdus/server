@@ -3,7 +3,7 @@ import _ from 'lodash'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import create from '../accounts'
 import * as config from '../config'
-import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
 
 export const validate_fields = (tx: Tx.ApplyParameters, response: ShardusTypes.IncomingTransactionResult) => {
   console.log('apply_parameters validate_fields tx', tx)
@@ -106,7 +106,14 @@ export const validate = (tx: Tx.ApplyParameters, wrappedStates: WrappedStates, r
   return response
 }
 
-export const apply = (tx: Tx.ApplyParameters, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (
+  tx: Tx.ApplyParameters,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+): void => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.current = tx.current
   network.next = tx.next
@@ -116,6 +123,17 @@ export const apply = (tx: Tx.ApplyParameters, txTimestamp: number, txId: string,
   if (tx.devWindows) network.devWindows = tx.devWindows
   if (tx.nextDevWindows) network.nextDevWindows = tx.nextDevWindows
   network.timestamp = txTimestamp
+
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: true,
+    from: tx.from,
+    to: config.networkAccount,
+    type: tx.type,
+    transactionFee: BigInt(0),
+  }
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
   dapp.log(`Applied apply_parameters tx ${txId}`, tx, network)
 }
 
