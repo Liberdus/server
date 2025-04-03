@@ -1,7 +1,7 @@
 import { Utils } from '@shardus/types'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as config from '../config'
-import { NetworkAccount, NodeAccount, TransactionKeys, Tx, WrappedStates } from '../@types'
+import { AppReceiptData, NetworkAccount, NodeAccount, TransactionKeys, Tx, WrappedStates } from '../@types'
 
 export const validate_fields = (tx: Tx.ApplyChangeNetworkParam, response: ShardusTypes.IncomingTransactionResult) => {
   return response
@@ -13,10 +13,28 @@ export const validate = (tx: Tx.ApplyChangeNetworkParam, wrappedStates: WrappedS
   return response
 }
 
-export const apply = (tx: Tx.ApplyChangeNetworkParam, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (
+  tx: Tx.ApplyChangeNetworkParam,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+): void => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.listOfChanges.push(tx.change)
   network.timestamp = txTimestamp
+
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: true,
+    from: tx.from,
+    to: config.networkAccount,
+    type: tx.type,
+    transactionFee: BigInt(0),
+  }
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
   dapp.log(`=== APPLIED CHANGE_NETWORK_PARAM GLOBAL ${Utils.safeStringify(network)} ===`)
 }
 
