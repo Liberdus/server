@@ -3,7 +3,7 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as config from '../config'
 import * as crypto from '../crypto'
 import { Utils } from '@shardus/types'
-import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
 
 export const validate_fields = (tx: Tx.ApplyDevParameters, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.devIssue !== 'number') {
@@ -40,7 +40,14 @@ export const validate = (tx: Tx.ApplyDevParameters, wrappedStates: WrappedStates
   return response
 }
 
-export const apply = (tx: Tx.ApplyDevParameters, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (
+  tx: Tx.ApplyDevParameters,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+): void => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.devWindows = tx.devWindows
   network.nextDevWindows = tx.nextDevWindows
@@ -48,6 +55,17 @@ export const apply = (tx: Tx.ApplyDevParameters, txTimestamp: number, txId: stri
   network.nextDeveloperFund = tx.nextDeveloperFund
   network.devIssue = tx.devIssue
   network.timestamp = txTimestamp
+
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: true,
+    from: tx.from,
+    to: config.networkAccount,
+    type: tx.type,
+    transactionFee: BigInt(0),
+  }
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
   dapp.log(`=== APPLIED DEV_PARAMETERS GLOBAL ${Utils.safeStringify(network)} ===`)
 }
 

@@ -120,6 +120,7 @@ export interface BaseLiberdusTx {
 }
 export namespace Tx {
   export interface ApplyParameters extends BaseLiberdusTx {
+    from: string
     current: NetworkParameters
     next: {}
     windows: Windows
@@ -130,6 +131,7 @@ export namespace Tx {
   }
 
   export interface ApplyDevParameters extends BaseLiberdusTx {
+    from: string
     timestamp: number
     devWindows: DevWindows
     nextDevWindows: {}
@@ -139,15 +141,18 @@ export namespace Tx {
   }
 
   export interface ApplyDevPayment extends BaseLiberdusTx {
+    from: string
     developerFund: DeveloperPayment[]
   }
 
   export interface ApplyTally extends BaseLiberdusTx {
+    from: string
     next: NetworkParameters
     nextWindows: Windows
   }
 
   export interface ApplyDevTally extends BaseLiberdusTx {
+    from: string
     nextDeveloperFund: DeveloperPayment[]
     nextDevWindows: Windows
   }
@@ -239,6 +244,7 @@ export namespace Tx {
   }
 
   export interface ApplyChangeConfig extends BaseLiberdusTx {
+    from: string
     change: any
   }
 
@@ -250,6 +256,7 @@ export namespace Tx {
   }
 
   export interface ApplyChangeNetworkParam extends BaseLiberdusTx {
+    from: string
     change: any
   }
 
