@@ -84,6 +84,9 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
     syncTimeoutPenaltyPercent: 0.2,
     nodeRefutedPenaltyPercent: 0.2,
   },
+  polygon_rpcs: [
+    'http://127.0.0.1:8545',
+  ]
 }
 
 function replaceAll(str, find, replace) {

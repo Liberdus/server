@@ -153,7 +153,7 @@ export const apply = (
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
   const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
-  const network = AccountsStorage.cachedNetworkAccount
+  const network = AccountsStorage.getCachedNetworkAccount()
   nodeAccount.rewardStartTime = tx.nodeActivatedTime
   nodeAccount.rewardEndTime = 0
   nodeAccount.timestamp = txTimestamp

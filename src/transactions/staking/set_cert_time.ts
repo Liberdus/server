@@ -9,8 +9,9 @@ import { logFlags } from '@shardeum-foundation/core/dist/logger'
 import { verifyObj } from '@shardus/crypto-utils'
 
 export function getCertCycleDuration(): number {
-  if (AccountsStorage.cachedNetworkAccount && AccountsStorage.cachedNetworkAccount.current.certCycleDuration !== null) {
-    return AccountsStorage.cachedNetworkAccount.current.certCycleDuration
+  const networkAccount = AccountsStorage.getCachedNetworkAccount()
+  if (networkAccount && networkAccount.current.certCycleDuration !== null) {
+    return networkAccount.current.certCycleDuration
   }
   return LiberdusFlags.certCycleDuration
 }
@@ -104,8 +105,9 @@ export const validate = (tx: Tx.SetCertTime, wrappedStates: WrappedStates, respo
   }
 
   committedStake = operatorAccount.operatorAccountInfo.stake
-  const minStakeRequiredUsd = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
-  const minStakeRequired = scaleByStabilityFactor(minStakeRequiredUsd, AccountsStorage.cachedNetworkAccount)
+  const networkAccount = AccountsStorage.getCachedNetworkAccount()
+  const minStakeRequiredUsd = networkAccount.current.stakeRequiredUsd
+  const minStakeRequired = scaleByStabilityFactor(minStakeRequiredUsd, networkAccount)
 
   if (LiberdusFlags.VerboseLogs)
     console.log('validate operator stake', committedStake, minStakeRequired, ' committedStake < minStakeRequired : ', committedStake < minStakeRequired)
@@ -163,7 +165,8 @@ export const apply = (
 
   let costTxFee = BigInt(0)
   if (shouldChargeTxFee) {
-    costTxFee = scaleByStabilityFactor(BigInt(AccountsStorage.cachedNetworkAccount.current.transactionFee), AccountsStorage.cachedNetworkAccount)
+    const networkAccount = AccountsStorage.getCachedNetworkAccount()
+    costTxFee = scaleByStabilityFactor(BigInt(networkAccount.current.transactionFee), networkAccount)
     operatorAccount.data.balance = operatorAccount.data.balance - costTxFee
   }
 

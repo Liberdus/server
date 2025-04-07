@@ -214,11 +214,11 @@ export const apply = (
   if (LiberdusFlags.VerboseLogs) console.log(`Running applyClaimRewardTx`, tx, wrappedStates)
   const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
   const operatorAccount = wrappedStates[tx.nominator].data as UserAccount
-  const network = AccountsStorage.cachedNetworkAccount
+  const network = AccountsStorage.getCachedNetworkAccount()
 
   const currentRate = network.current.nodeRewardAmountUsd
   const rate = nodeAccount.rewardRate > currentRate ? nodeAccount.rewardRate : currentRate
-  const nodeRewardAmount = scaleByStabilityFactor(rate, AccountsStorage.cachedNetworkAccount)
+  const nodeRewardAmount = scaleByStabilityFactor(rate, network)
   const nodeRewardInterval = BigInt(network.current.nodeRewardInterval)
 
   let durationInNetwork = tx.nodeDeactivatedTime - nodeAccount.rewardStartTime

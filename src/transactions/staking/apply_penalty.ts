@@ -143,17 +143,18 @@ export const validate_fields = (tx: Tx.PenaltyTX, response: ShardusTypes.Incomin
     response.reason = 'Invalid timestamp'
     throw new Error(response.reason)
   }
-  if (tx.violationType === ViolationType.LeftNetworkEarly && AccountsStorage.cachedNetworkAccount.current.slashing.enableLeftNetworkEarlySlashing === false) {
+  const networkAccount = AccountsStorage.getCachedNetworkAccount()
+  if (tx.violationType === ViolationType.LeftNetworkEarly && networkAccount.current.slashing.enableLeftNetworkEarlySlashing === false) {
     response.success = false
     response.reason = 'Left network early slashing is disabled'
     throw new Error(response.reason)
   }
-  if (tx.violationType === ViolationType.SyncingTooLong && AccountsStorage.cachedNetworkAccount.current.slashing.enableSyncTimeoutSlashing === false) {
+  if (tx.violationType === ViolationType.SyncingTooLong && networkAccount.current.slashing.enableSyncTimeoutSlashing === false) {
     response.success = false
     response.reason = 'Syncing timeout slashing is disabled'
     throw new Error(response.reason)
   }
-  if (tx.violationType === ViolationType.NodeRefuted && AccountsStorage.cachedNetworkAccount.current.slashing.enableNodeRefutedSlashing === false) {
+  if (tx.violationType === ViolationType.NodeRefuted && networkAccount.current.slashing.enableNodeRefutedSlashing === false) {
     response.success = false
     response.reason = 'Node refuted slashing is disabled'
     throw new Error(response.reason)
@@ -361,15 +362,17 @@ export function isLowStake(nodeAccount: NodeAccount): boolean {
    * USD value rather than SHM.
    */
 
-  const stakeRequiredUSD = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
+  const networkAccount = AccountsStorage.getCachedNetworkAccount()
+
+  const stakeRequiredUSD = networkAccount.current.stakeRequiredUsd
   const lowStakeThresholdUSD = (stakeRequiredUSD * BigInt(LiberdusFlags.lowStakePercent * 100)) / BigInt(100)
-  const lowStakeThreshold = scaleByStabilityFactor(lowStakeThresholdUSD, AccountsStorage.cachedNetworkAccount)
+  const lowStakeThreshold = scaleByStabilityFactor(lowStakeThresholdUSD, networkAccount)
 
   return nodeAccount.stakeLock < lowStakeThreshold
 }
 
 export function getPenaltyForViolation(tx: Tx.PenaltyTX, stakeLock: bigint): bigint {
-  const cachedNetworkAccount = AccountsStorage.cachedNetworkAccount
+  const cachedNetworkAccount = AccountsStorage.getCachedNetworkAccount()
   switch (tx.violationType) {
     case ViolationType.LeftNetworkEarly:
       return (stakeLock * BigInt(cachedNetworkAccount.current.slashing.leftNetworkEarlyPenaltyPercent * 100)) / BigInt(100) // 20% of stakeLock

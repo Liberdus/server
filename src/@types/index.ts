@@ -112,6 +112,7 @@ export enum TXTypes {
   init_reward = 'init_reward',
   claim_reward = 'claim_reward',
   apply_penalty = 'apply_penalty',
+  token_to_coin = 'token_to_coin',
 }
 export interface BaseLiberdusTx {
   timestamp: number
@@ -414,6 +415,13 @@ export namespace Tx {
     violationType: ViolationType
     violationData: LeftNetworkEarlyViolationData | SyncingTimeoutViolationData | NodeRefutedViolationData
   }
+
+  export interface TokenToCoinTX extends BaseLiberdusTx {
+    from: string
+    txHash: string
+    amount: bigint
+    receiver: string
+  }
 }
 
 export interface Signature {
@@ -438,6 +446,7 @@ export interface UserAccount {
     remove_stake_request: number | null
     // transactions: object[]
     payments: DeveloperPayment[]
+    claimedTxHashes: string[] // processed token_to_coin txs by the user
   }
   alias: string | null
   emailHash: string | null
@@ -671,6 +680,7 @@ export interface NetworkParameters {
     syncTimeoutPenaltyPercent: number
     nodeRefutedPenaltyPercent: number
   }
+  polygon_rpcs: string[]
 }
 
 export interface Windows {

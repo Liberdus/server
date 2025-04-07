@@ -6,7 +6,7 @@ import { Archiver } from '@shardus/archiver-discovery/dist/src/types'
 import axios from 'axios'
 import * as crypto from './crypto'
 import * as configs from './config'
-import config, { FilePaths, LiberdusFlags, networkAccount, TOTAL_DAO_DURATION } from './config'
+import config, { FilePaths, LiberdusFlags, networkAccount as NetworkAccountId, TOTAL_DAO_DURATION } from './config'
 import * as utils from './utils'
 import * as LiberdusTypes from './@types'
 import { TXTypes } from './@types'
@@ -23,6 +23,7 @@ import * as InitReward from './transactions/staking/init_reward'
 import * as ClaimReward from './transactions/staking/claim_reward'
 import * as Penalty from './transactions/staking/apply_penalty'
 import { configShardusNetworkTransactions } from './transactions/networkTransaction/networkTransaction'
+import { checkTransactionStatus } from './transactions/token_bridge/token_to_coin'
 import { initAjvSchemas, verifyPayload } from './@types/ajvHelper'
 import { operatorCLIVersion, operatorGUIVersion, readOperatorVersions } from './utils/versions'
 import { toShardusAddress } from './utils/address'
@@ -61,7 +62,6 @@ let lastCertTimeTxCycle: number | null = null
 
 let isReadyToJoinLatestValue = false
 let mustUseAdminCert = false
-
 
 function getNodeCountForCertSignatures(): number {
   let latestCycle: ShardusTypes.Cycle
@@ -675,14 +675,16 @@ const shardusSetup = (): void => {
           } else {
             if (statsDebugLogs)
               dapp.log(
-                `error: null balance attempt. dataSummaryUpdate UserAccount 1 ${accountDataAfter.data.balance} ${Utils.safeStringify(accountDataAfter.id)} ${accountDataBefore.data.balance
+                `error: null balance attempt. dataSummaryUpdate UserAccount 1 ${accountDataAfter.data.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
+                  accountDataBefore.data.balance
                 } ${Utils.safeStringify(accountDataBefore.id)}`,
               )
           }
         } else {
           if (statsDebugLogs)
             dapp.log(
-              `error: null balance attempt. dataSummaryUpdate UserAccount 2 ${accountDataAfter.data.balance} ${Utils.safeStringify(accountDataAfter.id)} ${accountDataBefore.data.balance
+              `error: null balance attempt. dataSummaryUpdate UserAccount 2 ${accountDataAfter.data.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
+                accountDataBefore.data.balance
               } ${Utils.safeStringify(accountDataBefore.id)}`,
             )
         }
@@ -696,14 +698,16 @@ const shardusSetup = (): void => {
           } else {
             if (statsDebugLogs)
               dapp.log(
-                `error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${accountDataBefore.balance
+                `error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
+                  accountDataBefore.balance
                 } ${Utils.safeStringify(accountDataBefore.id)}`,
               )
           }
         } else {
           if (statsDebugLogs)
             dapp.log(
-              `error: null balance attempt. dataSummaryUpdate NodeAccount 2 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${accountDataBefore.balance
+              `error: null balance attempt. dataSummaryUpdate NodeAccount 2 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
+                accountDataBefore.balance
               } ${Utils.safeStringify(accountDataBefore.id)}`,
             )
         }
@@ -712,14 +716,14 @@ const shardusSetup = (): void => {
     injectTxToConsensor(validatorDetails: any[], tx) {
       return utils.InjectTxToConsensor(validatorDetails, tx)
     },
-    getNonceFromTx: function(tx: ShardusTypes.OpaqueTransaction): bigint {
+    getNonceFromTx: function (tx: ShardusTypes.OpaqueTransaction): bigint {
       return BigInt(-1)
     },
-    getAccountNonce: function(accountId: string, wrappedData?: ShardusTypes.WrappedData): Promise<bigint> {
+    getAccountNonce: function (accountId: string, wrappedData?: ShardusTypes.WrappedData): Promise<bigint> {
       return new Promise((resolve) => resolve(BigInt(-1)))
     },
     // todo: consider a base liberdus tx type
-    getTxSenderAddress: function(tx: any): string {
+    getTxSenderAddress: function (tx: any): string {
       const result = {
         sourceKeys: [],
         targetKeys: [],
@@ -729,7 +733,7 @@ const shardusSetup = (): void => {
       const keys = transactions[tx.type].keys(tx, result)
       return keys.allKeys[0]
     },
-    isInternalTx: function(tx: LiberdusTypes.BaseLiberdusTx): boolean {
+    isInternalTx: function (tx: LiberdusTypes.BaseLiberdusTx): boolean {
       // todo: decide what is internal and what is external
       const internalTxTypes = [
         TXTypes.init_network,
@@ -806,8 +810,8 @@ const shardusSetup = (): void => {
         }
 
         promises.push(
-          dapp.getLocalOrRemoteAccount(networkAccount).then((queuedWrappedState) => {
-            wrappedStates[networkAccount] = {
+          dapp.getLocalOrRemoteAccount(NetworkAccountId).then((queuedWrappedState) => {
+            wrappedStates[NetworkAccountId] = {
               accountId: queuedWrappedState.accountId,
               stateId: queuedWrappedState.stateId,
               data: queuedWrappedState.data as LiberdusTypes.Accounts,
@@ -819,11 +823,18 @@ const shardusSetup = (): void => {
         await Promise.allSettled(promises)
 
         const res = transactions[tx.type].validate(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp)
+
         if (res.success === false) {
           return { status: false, reason: res.reason }
-        } else {
-          return { status: true, reason: 'Tx PreCrack Success' }
         }
+
+        if (tx.type === TXTypes.token_to_coin) {
+          const txStatus = await checkTransactionStatus(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp)
+          if (txStatus.success === false) {
+            return { status: false, reason: txStatus.reason }
+          }
+        }
+        return { status: true, reason: 'Tx PreCrack Success' }
       } catch (e) {
         console.error('Error in txPreCrackData', e)
         return { status: false, reason: 'Error in txPreCrackData - ' + e.message }
@@ -832,11 +843,11 @@ const shardusSetup = (): void => {
     calculateTxId(tx: ShardusTypes.OpaqueTransaction) {
       return utils.generateTxId(tx)
     },
-    getCachedRIAccountData: function(addressList: string[]): Promise<ShardusTypes.WrappedData[]> {
+    getCachedRIAccountData: function (addressList: string[]): Promise<ShardusTypes.WrappedData[]> {
       console.log(`Not implemented getCachedRIAccountData`)
       return null
     },
-    setCachedRIAccountData: function(accountRecords: unknown[]): Promise<void> {
+    setCachedRIAccountData: function (accountRecords: unknown[]): Promise<void> {
       console.log(`Not implemented setCachedRIAccountData`)
       return null
     },
@@ -851,6 +862,8 @@ const shardusSetup = (): void => {
       try {
         /* prettier-ignore */
         if (logFlags.dapp_verbose) console.log('Running signAppData', type, hash, nodesToSign, appData)
+
+        const networkAccount = AccountsStorage.getCachedNetworkAccount()
 
         if (type === 'sign-stake-cert') {
           if (nodesToSign != 5) return fail
@@ -869,8 +882,8 @@ const shardusSetup = (): void => {
             if (LiberdusFlags.VerboseLogs) console.log(`signAppData cert expired ${type} ${Utils.safeStringify(stakeCert)} `)
             return fail
           }
-          const minStakeRequiredUsd = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
-          const minStakeRequired = utils.scaleByStabilityFactor(minStakeRequiredUsd, AccountsStorage.cachedNetworkAccount)
+          const minStakeRequiredUsd = networkAccount.current.stakeRequiredUsd
+          const minStakeRequired = utils.scaleByStabilityFactor(minStakeRequiredUsd, networkAccount)
           const stakeAmount = stakeCert.stake
           if (stakeAmount < minStakeRequired) {
             /* prettier-ignore */
@@ -949,7 +962,7 @@ const shardusSetup = (): void => {
             /* prettier-ignore */
             nestedCountersInstance.countEvent('liberdus-remove-node', 'node locked stake is not below minStakeRequired')
             /* prettier-ignore */
-            if (LiberdusFlags.VerboseLogs) console.log(`node locked stake is not below minStakeRequired ${type} ${Utils.safeStringify(removeNodeCert)}, cachedNetworkAccount: ${Utils.safeStringify(AccountsStorage.cachedNetworkAccount)} `)
+            if (LiberdusFlags.VerboseLogs) console.log(`node locked stake is not below minStakeRequired ${type} ${Utils.safeStringify(removeNodeCert)}, cachedNetworkAccount: ${Utils.safeStringify(networkAccount)} `)
             return fail
           }
 
@@ -998,7 +1011,9 @@ const shardusSetup = (): void => {
 
         const appJoinData = data.appJoinData as LiberdusTypes.AppJoinData
 
-        const minVersion = AccountsStorage.cachedNetworkAccount.current.minVersion
+        const networkAccount = AccountsStorage.getCachedNetworkAccount()
+
+        const minVersion = networkAccount.current.minVersion
         if (!utils.isEqualOrNewerVersion(minVersion, appJoinData.version)) {
           /* prettier-ignore */
           if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: old version`)
@@ -1009,7 +1024,7 @@ const shardusSetup = (): void => {
           }
         }
 
-        const latestVersion = AccountsStorage.cachedNetworkAccount.current.latestVersion
+        const latestVersion = networkAccount.current.latestVersion
 
         if (latestVersion && appJoinData.version && !utils.isEqualOrOlderVersion(latestVersion, appJoinData.version)) {
           /* prettier-ignore */
@@ -1226,9 +1241,8 @@ const shardusSetup = (): void => {
               fatal: false,
             }
           }
-
-          const minStakeRequiredUsd = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
-          const minStakeRequired = utils.scaleByStabilityFactor(minStakeRequiredUsd, AccountsStorage.cachedNetworkAccount)
+          const minStakeRequiredUsd = networkAccount.current.stakeRequiredUsd
+          const minStakeRequired = utils.scaleByStabilityFactor(minStakeRequiredUsd, networkAccount)
 
           const stakedAmount = stake_cert.stake
 
@@ -1288,7 +1302,8 @@ const shardusSetup = (): void => {
           }
         }
         const { appData } = data
-        const { minVersion } = AccountsStorage.cachedNetworkAccount.current.archiver
+        const networkAccount = AccountsStorage.getCachedNetworkAccount()
+        const { minVersion } = networkAccount.current.archiver
         if (!utils.isEqualOrNewerVersion(minVersion, appData.version)) {
           /* prettier-ignore */
           if (LiberdusFlags.VerboseLogs) console.log(`validateArchiverJoinRequest() fail: old version`)
@@ -1299,7 +1314,7 @@ const shardusSetup = (): void => {
           }
         }
 
-        const { latestVersion } = AccountsStorage.cachedNetworkAccount.current.archiver
+        const { latestVersion } = networkAccount.current.archiver
         if (latestVersion && appData.version && !utils.isEqualOrOlderVersion(latestVersion, appData.version)) {
           /* prettier-ignore */
           if (LiberdusFlags.VerboseLogs) console.log(`validateArchiverJoinRequest() fail: version number is newer than latest`)
@@ -1332,7 +1347,7 @@ const shardusSetup = (): void => {
       activeNodes: P2P.P2PTypes.Node[],
       mode: P2P.ModesTypes.Record['mode'],
     ): Promise<boolean> {
-      const networkAccount = AccountsStorage.cachedNetworkAccount
+      const networkAccount = AccountsStorage.getCachedNetworkAccount()
       if (networkAccount) {
         if (!utils.isValidVersion(networkAccount.current.minVersion, networkAccount.current.latestVersion, version)) {
           const tag = 'version out-of-date; please update and restart'
@@ -1603,7 +1618,7 @@ const shardusSetup = (): void => {
       let minVersion = ''
       let activeVersion = ''
       let latestVersion = ''
-      const cachedNetworkAccount = AccountsStorage.cachedNetworkAccount
+      const cachedNetworkAccount = AccountsStorage.getCachedNetworkAccount()
       if (cachedNetworkAccount) {
         minVersion = cachedNetworkAccount.current.minVersion
         activeVersion = cachedNetworkAccount.current.activeVersion
@@ -1668,6 +1683,8 @@ const shardusSetup = (): void => {
         return
       }
 
+      const networkAccount = AccountsStorage.getCachedNetworkAccount()
+
       if (eventType === 'node-activated') {
         const closestNodes = dapp.getClosestNodes(data.publicKey, 5)
         for (const id of closestNodes) {
@@ -1703,8 +1720,8 @@ const shardusSetup = (): void => {
         }
       } else if (
         eventType === 'node-left-early' &&
-        AccountsStorage.cachedNetworkAccount.current.enableNodeSlashing === true &&
-        AccountsStorage.cachedNetworkAccount.current.slashing.enableLeftNetworkEarlySlashing
+        networkAccount.current.enableNodeSlashing === true &&
+        networkAccount.current.slashing.enableLeftNetworkEarlySlashing
       ) {
         let nodeLostCycle
         let nodeDroppedCycle
@@ -1730,8 +1747,8 @@ const shardusSetup = (): void => {
         }
       } else if (
         eventType === 'node-sync-timeout' &&
-        AccountsStorage.cachedNetworkAccount.current.enableNodeSlashing === true &&
-        AccountsStorage.cachedNetworkAccount.current.slashing.enableSyncTimeoutSlashing
+        networkAccount.current.enableNodeSlashing === true &&
+        networkAccount.current.slashing.enableSyncTimeoutSlashing
       ) {
         let violationData: LiberdusTypes.SyncingTimeoutViolationData
         for (const cycle of latestCycles) {
@@ -1750,8 +1767,8 @@ const shardusSetup = (): void => {
         }
       } else if (
         eventType === 'node-refuted' &&
-        AccountsStorage.cachedNetworkAccount.current.enableNodeSlashing === true &&
-        AccountsStorage.cachedNetworkAccount.current.slashing.enableNodeRefutedSlashing
+        networkAccount.current.enableNodeSlashing === true &&
+        networkAccount.current.slashing.enableNodeRefutedSlashing
       ) {
         let nodeRefutedCycle
         for (const cycle of latestCycles) {
@@ -1903,13 +1920,14 @@ const shardusSetup = (): void => {
       if (joinInfo) {
         const appJoinData = joinInfo?.appJoinData as LiberdusTypes.AppJoinData
 
-        if (AccountsStorage.cachedNetworkAccount == null) {
+        const networkAccount = AccountsStorage.getCachedNetworkAccount()
+        if (networkAccount == null) {
           //We need to enhance the early config getting to also get other values of the global account
           //so we know what versions the network is.  this is a stopgap!
           return { canStay: true, reason: 'dont have network account yet. cant boot anything!' }
         }
 
-        const minVersion = AccountsStorage.cachedNetworkAccount.current.minVersion
+        const minVersion = networkAccount.current.minVersion
         if (!utils.isEqualOrNewerVersion(minVersion, appJoinData.version)) {
           /* prettier-ignore */
           if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: old version`)
@@ -1919,7 +1937,7 @@ const shardusSetup = (): void => {
           }
         }
 
-        const latestVersion = AccountsStorage.cachedNetworkAccount.current.latestVersion
+        const latestVersion = networkAccount.current.latestVersion
 
         if (latestVersion && appJoinData.version && !utils.isEqualOrOlderVersion(latestVersion, appJoinData.version)) {
           /* prettier-ignore */
@@ -2127,7 +2145,7 @@ async function updateConfigFromNetworkAccount(
 }
 
 // CODE THAT GETS EXECUTED WHEN NODES START
-; (async (): Promise<void> => {
+;(async (): Promise<void> => {
   await setupArchiverDiscovery({
     customArchiverList: config.server.p2p?.existingArchivers,
   })
@@ -2216,7 +2234,7 @@ async function updateConfigFromNetworkAccount(
     try {
       const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
       network = account.data as LiberdusTypes.NetworkAccount
-        ;[cycleData] = dapp.getLatestCycles()
+      ;[cycleData] = dapp.getLatestCycles()
       luckyNodes = dapp.getClosestNodes(cycleData.previous, LiberdusFlags.numberOfLuckyNodes)
       nodeId = dapp.getNodeId()
       node = dapp.getNode(nodeId)

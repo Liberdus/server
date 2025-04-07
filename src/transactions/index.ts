@@ -45,6 +45,7 @@ import * as init_reward from './staking/init_reward'
 import * as claim_reward from './staking/claim_reward'
 import * as apply_penalty from './staking/apply_penalty'
 import * as admin_certificate from './admin_certificate'
+import * as token_to_coin from './token_bridge/token_to_coin'
 
 export default {
   init_network,
@@ -94,6 +95,7 @@ export default {
   claim_reward,
   apply_penalty,
   admin_certificate,
+  token_to_coin
 }
 
 export enum TXTypes {
@@ -143,4 +145,5 @@ export enum TXTypes {
   init_reward = 'init_reward',
   claim_reward = 'claim_reward',
   apply_penalty = 'apply_penalty',
+  token_to_coin = 'token_to_coin'
 }

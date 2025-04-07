@@ -611,6 +611,13 @@ export const isValidAddress = (address: string): boolean => {
   return address.length === 64
 }
 
+export const isValidEthereumTxHash = (txHash: string): boolean => {
+  if (typeof txHash !== 'string') return false
+
+  // Ethereum transaction hash is always 66 characters long (0x + 64 hex characters)
+  return /^0x([A-Fa-f0-9]{64})$/.test(txHash)
+}
+
 // From: https://stackoverflow.com/a/19270021
 export function getRandom<T>(arr: T[], n: number): T[] {
   let len = arr.length

@@ -108,10 +108,11 @@ export const apply = (
     reward = BigInt(0)
   }
 
-  const txFeeUsd = AccountsStorage.cachedNetworkAccount.current.transactionFee
-  const txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
+  const networkAccount = AccountsStorage.getCachedNetworkAccount()
+  const txFeeUsd = networkAccount.current.transactionFee
+  const txFee = utils.scaleByStabilityFactor(txFeeUsd, networkAccount)
   // [TODO] check if the maintainance fee is also needed in withdraw_stake tx
-  const maintenanceFee = utils.maintenanceAmount(txTimestamp, nominatorAccount, AccountsStorage.cachedNetworkAccount)
+  const maintenanceFee = utils.maintenanceAmount(txTimestamp, nominatorAccount, networkAccount)
   console.log('currentBalance', currentBalance, 'stake', stake, 'reward', reward, 'txFee', txFee, 'maintenanceFee', maintenanceFee)
   const newBalance = currentBalance + stake + reward - txFee - maintenanceFee
   console.log('newBalance', newBalance)

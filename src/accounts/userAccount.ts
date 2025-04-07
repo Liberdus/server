@@ -4,7 +4,7 @@ import * as crypto from '@shardus/crypto-utils'
 import { deserializeDeveloperPayment, SerdeTypeIdent, serializeDeveloperPayment } from '.'
 import * as utils from '../utils'
 
-export const userAccount = (accountId: string, timestamp: number) => {
+export const userAccount = (accountId: string, timestamp: number): UserAccount => {
   const account: UserAccount = {
     id: accountId,
     type: 'UserAccount',
@@ -17,6 +17,7 @@ export const userAccount = (accountId: string, timestamp: number) => {
       chatTimestamp: 0,
       friends: {},
       payments: [],
+      claimedTxHashes: [],
     },
     alias: null,
     emailHash: null,
@@ -77,6 +78,11 @@ export const serializeUserAccount = (stream: VectorBufferStream, inp: UserAccoun
   stream.writeUInt32(inp.data.payments.length)
   for (let i = 0; i < inp.data.payments.length; i++) {
     serializeDeveloperPayment(stream, inp.data.payments[i])
+  }
+
+  stream.writeUInt32(inp.data.claimedTxHashes.length)
+  for (let i = 0; i < inp.data.claimedTxHashes.length; i++) {
+    stream.writeString(inp.data.claimedTxHashes[i])
   }
 
   stream.writeUInt8(inp.alias ? 1 : 0)
@@ -158,6 +164,13 @@ export const deserializeUserAccount = (stream: VectorBufferStream, root = false)
     payments.push(deserializeDeveloperPayment(stream))
   }
 
+  // Deserialize claimedTxHashes
+  const claimedTxHashes = []
+  const claimedTxHashesLength = stream.readUInt32()
+  for (let i = 0; i < claimedTxHashesLength; i++) {
+    claimedTxHashes.push(stream.readString())
+  }
+
   // Optional alias
   let alias = null
   if (stream.readUInt8() === 1) {
@@ -199,6 +212,7 @@ export const deserializeUserAccount = (stream: VectorBufferStream, root = false)
       chatTimestamp,
       friends,
       payments,
+      claimedTxHashes,
     },
     alias,
     emailHash,

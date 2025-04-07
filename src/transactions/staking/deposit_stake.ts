@@ -61,7 +61,8 @@ export const validate = (tx: Tx.DepositStake, wrappedStates: WrappedStates, resp
       return response
     }
   }
-  const restakeCooldown = AccountsStorage.cachedNetworkAccount.current.restakeCooldown
+  const networkAccount = AccountsStorage.getCachedNetworkAccount()
+  const restakeCooldown = networkAccount.current.restakeCooldown
   if (nodeAccount && nodeAccount.stakeTimestamp + restakeCooldown > dapp.shardusGetTime()) {
     response.reason = `This node was staked within the last ${restakeCooldown / config.ONE_MINUTE} minutes. You can't stake more to this node yet!`
     return response
@@ -70,8 +71,8 @@ export const validate = (tx: Tx.DepositStake, wrappedStates: WrappedStates, resp
     response.reason = `Nominator account has balance ${nominatorAccount.data.balance} less than the stake amount ${tx.stake}`
     return response
   }
-  const minStakeAmountUsd = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
-  const minStakeAmount = utils.scaleByStabilityFactor(minStakeAmountUsd, AccountsStorage.cachedNetworkAccount)
+  const minStakeAmountUsd = networkAccount.current.stakeRequiredUsd
+  const minStakeAmount = utils.scaleByStabilityFactor(minStakeAmountUsd, networkAccount)
   if (tx.stake + existingStake < minStakeAmount) {
     response.reason = `Stake amount sent: ${tx.stake} is less than the minimum required stake amount: ${minStakeAmount}`
     return response
@@ -107,10 +108,11 @@ export const apply = (
       },
     }
   }
-  const txFeeUsd = AccountsStorage.cachedNetworkAccount.current.transactionFee
-  const txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
+  const networkAccount = AccountsStorage.getCachedNetworkAccount()
+  const txFeeUsd = networkAccount.current.transactionFee
+  const txFee = utils.scaleByStabilityFactor(txFeeUsd, networkAccount)
   // [TODO] check if the maintainance fee is also needed in deposit_stake tx
-  const maintenanceFee = utils.maintenanceAmount(txTimestamp, nominatorAccount, AccountsStorage.cachedNetworkAccount)
+  const maintenanceFee = utils.maintenanceAmount(txTimestamp, nominatorAccount, networkAccount)
   const totalAmountToDeduct = tx.stake + txFee + maintenanceFee
   if (nominatorAccount.data.balance < totalAmountToDeduct) {
     throw new Error('Nominator account does not have enough balance to stake')

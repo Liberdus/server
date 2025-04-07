@@ -67,9 +67,9 @@ export async function accountExists(address: string): Promise<boolean> {
   }
 }
 
-export let cachedNetworkAccount: NetworkAccount // an actual obj
+let cachedNetworkAccount: NetworkAccount // an actual obj
 
-export async function getCachedNetworkAccount(): Promise<NetworkAccount> {
+export function getCachedNetworkAccount(): NetworkAccount {
   return cachedNetworkAccount
 }
 
