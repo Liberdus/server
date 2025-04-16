@@ -25,7 +25,7 @@ export const chats =
             chats[address] = userAccount.data.chats[address].chatId
           }
         }
-        res.json({ chats })
+        res.json({ chats, accountTimestamp: userAccount.timestamp })
       } else {
         res.json({ error: 'No account with the given id' })
       }
