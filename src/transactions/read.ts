@@ -1,5 +1,5 @@
 import * as crypto from '../crypto'
-import { Shardus, ShardusTypes } from '@shardus/core'
+import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, Tx, TransactionKeys } from '../@types'

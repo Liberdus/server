@@ -114,6 +114,7 @@ export const apply = (
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const chat: ChatAccount = wrappedStates[tx.chatId].data
   let tollDeposited = 0n
+  let totalToll = 0n
 
   if (config.LiberdusFlags.VerboseLogs) {
     dapp.log(`Applying message tx: ${txId}`, tx, from, to, chat)
@@ -167,7 +168,7 @@ export const apply = (
     // replying to a message from the other party
     const readToll = chat.toll.payOnRead[senderIndex] // this can be zero if the person replying has read the message
     const replyToll = chat.toll.payOnReply[senderIndex]
-    const totalToll = readToll + replyToll
+    totalToll = readToll + replyToll
 
     // Calculate network fee
     const networkFee = (totalToll * BigInt(network.current.tollNetworkTaxPercent) * 10n ** 18n) / (100n * 10n ** 18n)
@@ -232,10 +233,10 @@ export const apply = (
     from: tx.from,
     to: tx.to,
     type: tx.type,
-    transactionFee,
+    transactionFee: network.current.transactionFee,
     additionalInfo: {
-      maintenanceFee,
-      tollFee,
+      maintenanceFee: network.current.maintenanceFee,
+      tollFee: totalToll,
     },
   }
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
