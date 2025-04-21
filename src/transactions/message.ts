@@ -163,6 +163,7 @@ export const apply = (
     lastMessage &&
     lastMessage.from === tx.to &&
     chat.toll.payOnReply[senderIndex] > 0n &&
+    chat.toll.required[senderIndex] === 1 && // toll is required by sender account
     lastMessage.timestamp + network.current.tollTimeout > txTimestamp
   ) {
     // replying to a message from the other party

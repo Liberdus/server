@@ -1,18 +1,17 @@
-import { addSchema } from './schemaHelper';
-import { ViolationType, AJVSchemaEnum, Signature, TXTypes } from './index';
-import * as Transactions from '../transactions';
-
+import { addSchema } from './schemaHelper'
+import { ViolationType, AJVSchemaEnum, Signature, TXTypes } from './index'
+import * as Transactions from '../transactions'
 
 // Basic schemas
 export const SignatureSchema = {
   type: 'object',
   properties: {
     owner: { type: 'string' },
-    sig: { type: 'string' }
+    sig: { type: 'string' },
   },
   required: ['owner', 'sig'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 // Violation data schemas
 export const schemaLeftNetworkEarlyViolationData = {
@@ -20,40 +19,40 @@ export const schemaLeftNetworkEarlyViolationData = {
   properties: {
     nodeLostCycle: { type: 'number' },
     nodeDroppedCycle: { type: 'number' },
-    nodeDroppedTime: { type: 'number' }
+    nodeDroppedTime: { type: 'number' },
   },
   required: ['nodeLostCycle', 'nodeDroppedCycle', 'nodeDroppedTime'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaSyncingTimeoutViolationData = {
   type: 'object',
   properties: {
     nodeLostCycle: { type: 'number' },
-    nodeDroppedTime: { type: 'number' }
+    nodeDroppedTime: { type: 'number' },
   },
   required: ['nodeLostCycle', 'nodeDroppedTime'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaNodeRefutedViolationData = {
   type: 'object',
   properties: {
     nodeRefutedCycle: { type: 'number' },
-    nodeRefutedTime: { type: 'number' }
+    nodeRefutedTime: { type: 'number' },
   },
   required: ['nodeRefutedCycle', 'nodeRefutedTime'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 // Base transaction fields to be inlined into every TX schema
 const baseTxProperties = {
   type: { enum: Object.values(TXTypes) },
   timestamp: { type: 'number', exclusiveMinimum: 0 },
-  sign: SignatureSchema
-};
+  sign: SignatureSchema,
+}
 
-const baseTxRequired = ['type', 'timestamp', 'sign'];
+const baseTxRequired = ['type', 'timestamp', 'sign']
 
 // Transaction schemas
 
@@ -65,11 +64,11 @@ export const schemaTransferTX = {
     to: { type: 'string', minLength: 64, maxLength: 64 },
     amount: { isBigInt: true },
     memo: { type: ['string', 'null'] },
-    chatId: { type: 'string' }
+    chatId: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'to', 'amount', 'chatId'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaPenaltyTX = {
   type: 'object',
@@ -84,13 +83,13 @@ export const schemaPenaltyTX = {
       anyOf: [
         { $ref: AJVSchemaEnum.left_network_early_violation_data },
         { $ref: AJVSchemaEnum.syncing_timeout_violation_data },
-        { $ref: AJVSchemaEnum.node_refuted_violation_data }
-      ]
-    }
+        { $ref: AJVSchemaEnum.node_refuted_violation_data },
+      ],
+    },
   },
   required: [...baseTxRequired, 'from', 'reportedNodeId', 'reportedNodePublickKey', 'nominator', 'violationType', 'violationData'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaCreateTX = {
   type: 'object',
@@ -98,11 +97,11 @@ export const schemaCreateTX = {
     ...baseTxProperties,
     from: { type: 'string' },
     to: { type: 'string' },
-    amount: { isBigInt: true }
+    amount: { isBigInt: true },
   },
   required: [...baseTxRequired, 'from', 'to', 'amount'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaDistributeTX = {
   type: 'object',
@@ -111,13 +110,13 @@ export const schemaDistributeTX = {
     from: { type: 'string' },
     recipients: {
       type: 'array',
-      items: { type: 'string' }
+      items: { type: 'string' },
     },
-    amount: { isBigInt: true }
+    amount: { isBigInt: true },
   },
   required: [...baseTxRequired, 'from', 'recipients', 'amount'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaEmailTX = {
   type: 'object',
@@ -128,16 +127,16 @@ export const schemaEmailTX = {
       properties: {
         emailHash: { type: 'string' },
         from: { type: 'string' },
-        sign: SignatureSchema
+        sign: SignatureSchema,
       },
       required: ['emailHash', 'from', 'sign'],
-      additionalProperties: false
+      additionalProperties: false,
     },
-    email: { type: 'string' }
+    email: { type: 'string' },
   },
   required: [...baseTxRequired, 'signedTx', 'email'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaFriendTX = {
   type: 'object',
@@ -145,11 +144,11 @@ export const schemaFriendTX = {
     ...baseTxProperties,
     from: { type: 'string' },
     to: { type: 'string' },
-    alias: { type: 'string' }
+    alias: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'to', 'alias'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaGossipEmailHashTX = {
   type: 'object',
@@ -159,32 +158,32 @@ export const schemaGossipEmailHashTX = {
     nodeId: { type: 'string' },
     account: { type: 'string' },
     emailHash: { type: 'string' },
-    verified: { type: 'string' }
+    verified: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'nodeId', 'account', 'emailHash', 'verified'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaInitNetworkTX = {
   type: 'object',
   properties: {
     type: { type: 'string' },
     network: { type: 'string' },
-    timestamp: { type: 'number', exclusiveMinimum: 0 }
+    timestamp: { type: 'number', exclusiveMinimum: 0 },
   },
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaNetworkWindowsTX = {
   type: 'object',
   properties: {
     ...baseTxProperties,
     from: { type: 'string' },
-    nodeId: { type: 'string' }
+    nodeId: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'nodeId'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaIssueTX = {
   type: 'object',
@@ -193,11 +192,11 @@ export const schemaIssueTX = {
     from: { type: 'string' },
     nodeId: { type: 'string' },
     issue: { type: 'string' },
-    proposal: { type: 'string' }
+    proposal: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'nodeId', 'issue', 'proposal'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaDevIssueTX = {
   type: 'object',
@@ -205,11 +204,11 @@ export const schemaDevIssueTX = {
     ...baseTxProperties,
     from: { type: 'string' },
     nodeId: { type: 'string' },
-    devIssue: { type: 'string' }
+    devIssue: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'nodeId', 'devIssue'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaMessageTX = {
   type: 'object',
@@ -218,11 +217,48 @@ export const schemaMessageTX = {
     from: { type: 'string' },
     to: { type: 'string' },
     chatId: { type: 'string' },
-    message: { type: 'string' }
+    message: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'to', 'chatId', 'message'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
+
+export const schemaReadTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    to: { type: 'string' },
+    chatId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'to', 'chatId'],
+  additionalProperties: false,
+}
+
+export const schemaUpdateChatTollTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    to: { type: 'string' },
+    chatId: { type: 'string' },
+    required: { type: 'number', minimum: 0, maximum: 2 },
+  },
+  required: [...baseTxRequired, 'from', 'to', 'chatId', 'required'],
+  additionalProperties: false,
+}
+
+export const schemeReclaimTollTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    to: { type: 'string' },
+    chatId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'to', 'chatId'],
+  additionalProperties: false,
+}
 
 export const schemaNodeRewardTX = {
   type: 'object',
@@ -230,11 +266,11 @@ export const schemaNodeRewardTX = {
     ...baseTxProperties,
     from: { type: 'string' },
     nodeId: { type: 'string' },
-    to: { type: 'string' }
+    to: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'nodeId', 'to'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaParametersTX = {
   type: 'object',
@@ -242,11 +278,11 @@ export const schemaParametersTX = {
     ...baseTxProperties,
     from: { type: 'string' },
     nodeId: { type: 'string' },
-    issue: { type: 'string' }
+    issue: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'nodeId', 'issue'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaChangeConfigTX = {
   type: 'object',
@@ -257,22 +293,22 @@ export const schemaChangeConfigTX = {
     config: { type: 'string' },
     signs: {
       type: 'array',
-      items: SignatureSchema
-    }
+      items: SignatureSchema,
+    },
   },
   required: ['type', 'timestamp', 'from', 'cycle', 'config', 'signs'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaApplyChangeConfigTX = {
   type: 'object',
   properties: {
     ...baseTxProperties,
-    change: { type: 'object' }
+    change: { type: 'object' },
   },
   required: ['type', 'timestamp', 'change'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaChangeNetworkParamTX = {
   type: 'object',
@@ -283,22 +319,22 @@ export const schemaChangeNetworkParamTX = {
     config: { type: 'string' },
     signs: {
       type: 'array',
-      items: SignatureSchema
-    }
+      items: SignatureSchema,
+    },
   },
   required: ['type', 'timestamp', 'from', 'cycle', 'config', 'signs'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaApplyChangeNetworkParamTX = {
   type: 'object',
   properties: {
     ...baseTxProperties,
-    change: { type: 'object' }
+    change: { type: 'object' },
   },
   required: ['type', 'timestamp', 'change'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaDevParametersTX = {
   type: 'object',
@@ -306,11 +342,11 @@ export const schemaDevParametersTX = {
     ...baseTxProperties,
     from: { type: 'string' },
     nodeId: { type: 'string' },
-    devIssue: { type: 'string' }
+    devIssue: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'nodeId', 'devIssue'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaProposalTX = {
   type: 'object',
@@ -319,11 +355,11 @@ export const schemaProposalTX = {
     from: { type: 'string' },
     proposal: { type: 'string' },
     issue: { type: 'string' },
-    parameters: { type: 'object' }
+    parameters: { type: 'object' },
   },
   required: [...baseTxRequired, 'from', 'proposal', 'issue', 'parameters'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaDevProposalTX = {
   type: 'object',
@@ -335,15 +371,15 @@ export const schemaDevProposalTX = {
     totalAmount: { isBigInt: true },
     payments: {
       type: 'array',
-      items: { type: 'object' }
+      items: { type: 'object' },
     },
     title: { type: 'string' },
     description: { type: 'string' },
-    payAddress: { type: 'string' }
+    payAddress: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'devProposal', 'devIssue', 'totalAmount', 'payments', 'title', 'description', 'payAddress'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaRegisterTX = {
   type: 'object',
@@ -353,76 +389,76 @@ export const schemaRegisterTX = {
     aliasHash: { type: 'string' },
     alias: { type: 'string' },
     publicKey: { type: 'string' },
-    pqPublicKey: { type: 'string' }
+    pqPublicKey: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'aliasHash', 'alias', 'publicKey'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaRemoveFriendTX = {
   type: 'object',
   properties: {
     ...baseTxProperties,
     from: { type: 'string' },
-    to: { type: 'string' }
+    to: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'to'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaRemoveStakeRequestTX = {
   type: 'object',
   properties: {
     ...baseTxProperties,
     from: { type: 'string' },
-    stake: { isBigInt: true }
+    stake: { isBigInt: true },
   },
   required: [...baseTxRequired, 'from', 'stake'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaRemoveStakeTX = {
   type: 'object',
   properties: {
     ...baseTxProperties,
     from: { type: 'string' },
-    stake: { isBigInt: true }
+    stake: { isBigInt: true },
   },
   required: [...baseTxRequired, 'from', 'stake'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaSnapshotClaimTX = {
   type: 'object',
   properties: {
     ...baseTxProperties,
-    from: { type: 'string' }
+    from: { type: 'string' },
   },
   required: [...baseTxRequired, 'from'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaSnapshotTX = {
   type: 'object',
   properties: {
     ...baseTxProperties,
     from: { type: 'string' },
-    snapshot: { type: 'object' }
+    snapshot: { type: 'object' },
   },
   required: [...baseTxRequired, 'from', 'snapshot'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaStakeTX = {
   type: 'object',
   properties: {
     ...baseTxProperties,
     from: { type: 'string' },
-    stake: { isBigInt: true }
+    stake: { isBigInt: true },
   },
   required: [...baseTxRequired, 'from', 'stake'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaTallyTX = {
   type: 'object',
@@ -433,12 +469,12 @@ export const schemaTallyTX = {
     issue: { type: 'string' },
     proposals: {
       type: 'array',
-      items: { type: 'string' }
-    }
+      items: { type: 'string' },
+    },
   },
   required: [...baseTxRequired, 'from', 'nodeId', 'issue', 'proposals'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaDevTallyTX = {
   type: 'object',
@@ -449,34 +485,34 @@ export const schemaDevTallyTX = {
     devIssue: { type: 'string' },
     devProposals: {
       type: 'array',
-      items: { type: 'string' }
-    }
+      items: { type: 'string' },
+    },
   },
   required: [...baseTxRequired, 'from', 'nodeId', 'devIssue', 'devProposals'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaTollTX = {
   type: 'object',
   properties: {
     ...baseTxProperties,
     from: { type: 'string' },
-    toll: { isBigInt: true }
+    toll: { isBigInt: true },
   },
   required: [...baseTxRequired, 'from', 'toll'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaVerifyTX = {
   type: 'object',
   properties: {
     ...baseTxProperties,
     from: { type: 'string' },
-    code: { type: 'string' }
+    code: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'code'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaVoteTX = {
   type: 'object',
@@ -485,11 +521,11 @@ export const schemaVoteTX = {
     from: { type: 'string' },
     issue: { type: 'string' },
     proposal: { type: 'string' },
-    amount: { isBigInt: true }
+    amount: { isBigInt: true },
   },
   required: [...baseTxRequired, 'from', 'issue', 'proposal', 'amount'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaDevVoteTX = {
   type: 'object',
@@ -499,11 +535,11 @@ export const schemaDevVoteTX = {
     devIssue: { type: 'string' },
     devProposal: { type: 'string' },
     approve: { type: 'boolean' },
-    amount: { isBigInt: true }
+    amount: { isBigInt: true },
   },
   required: [...baseTxRequired, 'from', 'devIssue', 'devProposal', 'approve', 'amount'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaDevPaymentTX = {
   type: 'object',
@@ -512,11 +548,11 @@ export const schemaDevPaymentTX = {
     from: { type: 'string' },
     nodeId: { type: 'string' },
     developer: { type: 'string' },
-    payment: { type: 'object' }
+    payment: { type: 'object' },
   },
   required: [...baseTxRequired, 'from', 'nodeId', 'developer', 'payment'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaSetCertTimeTX = {
   type: 'object',
@@ -525,11 +561,11 @@ export const schemaSetCertTimeTX = {
     from: { type: 'string' },
     nominee: { type: 'string' },
     nominator: { type: 'string' },
-    duration: { type: 'number' }
+    duration: { type: 'number' },
   },
   required: [...baseTxRequired, 'nominee', 'nominator', 'duration'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaDepositStakeTX = {
   type: 'object',
@@ -538,11 +574,11 @@ export const schemaDepositStakeTX = {
     from: { type: 'string' },
     nominee: { type: 'string' },
     nominator: { type: 'string' },
-    stake: { isBigInt: true }
+    stake: { isBigInt: true },
   },
   required: [...baseTxRequired, 'nominee', 'nominator', 'stake'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaWithdrawStakeTX = {
   type: 'object',
@@ -551,11 +587,11 @@ export const schemaWithdrawStakeTX = {
     from: { type: 'string' },
     nominee: { type: 'string' },
     nominator: { type: 'string' },
-    force: { type: 'boolean' }
+    force: { type: 'boolean' },
   },
   required: [...baseTxRequired, 'nominee', 'nominator', 'force'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaInitRewardTX = {
   type: 'object',
@@ -568,15 +604,15 @@ export const schemaInitRewardTX = {
       properties: {
         publicKey: { type: 'string' },
         nodeId: { type: 'string' },
-        startTime: { type: 'number' }
+        startTime: { type: 'number' },
       },
       required: ['publicKey', 'nodeId', 'startTime'],
-      additionalProperties: false
-    }
+      additionalProperties: false,
+    },
   },
   required: [...baseTxRequired, 'nominee', 'nodeActivatedTime'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaClaimRewardTX = {
   type: 'object',
@@ -595,15 +631,15 @@ export const schemaClaimRewardTX = {
         nodeId: { type: 'string' },
         start: { type: 'number' },
         end: { type: 'number' },
-        endTime: { type: 'number' }
+        endTime: { type: 'number' },
       },
       required: ['publicKey', 'nodeId', 'start', 'end', 'endTime'],
-      additionalProperties: false
-    }
+      additionalProperties: false,
+    },
   },
   required: [...baseTxRequired, 'nominee', 'nominator', 'deactivatedNodeId', 'nodeDeactivatedTime'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaApplyParametersTX = {
   type: 'object',
@@ -615,11 +651,11 @@ export const schemaApplyParametersTX = {
     nextWindows: { type: 'object' },
     issue: { type: 'number' },
     devWindows: { type: 'object' },
-    nextDevWindows: { type: 'object' }
+    nextDevWindows: { type: 'object' },
   },
   required: [...baseTxRequired, 'current', 'next', 'windows', 'nextWindows', 'issue'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaApplyDevParametersTX = {
   type: 'object',
@@ -629,17 +665,17 @@ export const schemaApplyDevParametersTX = {
     nextDevWindows: { type: 'object' },
     developerFund: {
       type: 'array',
-      items: { type: 'object' }
+      items: { type: 'object' },
     },
     nextDeveloperFund: {
       type: 'array',
-      items: { type: 'object' }
+      items: { type: 'object' },
     },
-    devIssue: { type: 'number' }
+    devIssue: { type: 'number' },
   },
   required: [...baseTxRequired, 'devWindows', 'nextDevWindows', 'developerFund', 'nextDeveloperFund', 'devIssue'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaApplyDevPaymentTX = {
   type: 'object',
@@ -647,23 +683,23 @@ export const schemaApplyDevPaymentTX = {
     ...baseTxProperties,
     developerFund: {
       type: 'array',
-      items: { type: 'object' }
-    }
+      items: { type: 'object' },
+    },
   },
   required: [...baseTxRequired, 'developerFund'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaApplyTallyTX = {
   type: 'object',
   properties: {
     ...baseTxProperties,
     next: { type: 'object' },
-    nextWindows: { type: 'object' }
+    nextWindows: { type: 'object' },
   },
   required: [...baseTxRequired, 'next', 'nextWindows'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export const schemaApplyDevTallyTX = {
   type: 'object',
@@ -671,18 +707,18 @@ export const schemaApplyDevTallyTX = {
     ...baseTxProperties,
     nextDeveloperFund: {
       type: 'array',
-      items: { type: 'object' }
+      items: { type: 'object' },
     },
-    nextDevWindows: { type: 'object' }
+    nextDevWindows: { type: 'object' },
   },
   required: [...baseTxRequired, 'nextDeveloperFund', 'nextDevWindows'],
-  additionalProperties: false
-};
+  additionalProperties: false,
+}
 
 export function initSchemas(): void {
   try {
-    addSchemas();
-    console.log('All transaction schemas have been registered');
+    addSchemas()
+    console.log('All transaction schemas have been registered')
   } catch (e) {
     throw new Error(`Error while adding ajv schema: ${e.message}`)
   }
@@ -691,10 +727,10 @@ export function initSchemas(): void {
 // Function to register all schemas
 function addSchemas(): void {
   // Add reference schemas (these aren't part of TXTypes so add manually)
-  addSchema(AJVSchemaEnum.signature, SignatureSchema);
-  addSchema(AJVSchemaEnum.left_network_early_violation_data, schemaLeftNetworkEarlyViolationData);
-  addSchema(AJVSchemaEnum.syncing_timeout_violation_data, schemaSyncingTimeoutViolationData);
-  addSchema(AJVSchemaEnum.node_refuted_violation_data, schemaNodeRefutedViolationData);
+  addSchema(AJVSchemaEnum.signature, SignatureSchema)
+  addSchema(AJVSchemaEnum.left_network_early_violation_data, schemaLeftNetworkEarlyViolationData)
+  addSchema(AJVSchemaEnum.syncing_timeout_violation_data, schemaSyncingTimeoutViolationData)
+  addSchema(AJVSchemaEnum.node_refuted_violation_data, schemaNodeRefutedViolationData)
   // Create a mapping of TXTypes to schema objects
   const txSchemaMap = {
     [TXTypes.transfer]: schemaTransferTX,
@@ -708,6 +744,9 @@ function addSchemas(): void {
     [TXTypes.issue]: schemaIssueTX,
     [TXTypes.dev_issue]: schemaDevIssueTX,
     [TXTypes.message]: schemaMessageTX,
+    [TXTypes.read]: schemaReadTX,
+    [TXTypes.reclaim_toll]: schemeReclaimTollTX,
+    [TXTypes.update_chat_toll]: schemaUpdateChatTollTX,
     [TXTypes.node_reward]: schemaNodeRewardTX,
     [TXTypes.parameters]: schemaParametersTX,
     [TXTypes.change_config]: schemaChangeConfigTX,
@@ -742,16 +781,15 @@ function addSchemas(): void {
     [TXTypes.apply_tally]: schemaApplyTallyTX,
     [TXTypes.apply_dev_tally]: schemaApplyDevTallyTX,
     [TXTypes.apply_penalty]: schemaPenaltyTX,
-  };
+  }
   // Loop through TXTypes and register corresponding schemas
   Object.entries(txSchemaMap).forEach(([txType, schema]) => {
     // Convert TXType to the corresponding AJVSchemaEnum value (append "_tx")
-    const schemaKey = `${txType}` as keyof typeof AJVSchemaEnum;
+    const schemaKey = `${txType}` as keyof typeof AJVSchemaEnum
     if (schemaKey in AJVSchemaEnum) {
-      addSchema(AJVSchemaEnum[schemaKey], schema);
+      addSchema(AJVSchemaEnum[schemaKey], schema)
     } else {
-      console.warn(`no ajvschemaenum found for ${schemaKey}`);
+      console.warn(`no ajvschemaenum found for ${schemaKey}`)
     }
-  });
+  })
 }
-

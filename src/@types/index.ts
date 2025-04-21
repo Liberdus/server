@@ -28,6 +28,9 @@ export enum AJVSchemaEnum {
   transfer = 'transfer',
   distribute = 'distribute',
   message = 'message',
+  read = 'read',
+  reclaim_toll = 'reclaim_toll',
+  update_chat_toll = 'update_chat_toll',
   toll = 'toll',
   friend = 'friend',
   remove_friend = 'remove_friend',
@@ -62,7 +65,7 @@ export enum AJVSchemaEnum {
   query_certificate = 'query_certificate',
   init_reward = 'init_reward',
   claim_reward = 'claim_reward',
-  apply_penalty = 'apply_penalty'
+  apply_penalty = 'apply_penalty',
 }
 
 export enum TXTypes {
@@ -77,6 +80,9 @@ export enum TXTypes {
   transfer = 'transfer',
   distribute = 'distribute',
   message = 'message',
+  read = 'read',
+  reclaim_toll = 'reclaim_toll',
+  update_chat_toll = 'update_chat_toll',
   toll = 'toll',
   friend = 'friend',
   remove_friend = 'remove_friend',

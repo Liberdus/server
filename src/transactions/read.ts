@@ -96,8 +96,8 @@ export const apply = (tx: Tx.Read, txTimestamp: number, txId: string, wrappedSta
   // Update read timestamp
   chat.read[readerIndex] = tx.timestamp
 
-  // Handle payOnRead tolls if available
-  if (chat.toll.payOnRead[readerIndex] > 0n) {
+  // Handle payOnRead tolls if available and toll is required
+  if (chat.toll.payOnRead[readerIndex] > 0n && chat.toll.required[readerIndex] === 1) {
     const readToll = chat.toll.payOnRead[readerIndex]
     const networkFee = (readToll * BigInt(network.current.tollNetworkTaxPercent) * 10n ** 18n) / (100n * 10n ** 18n)
     const userEarnedAmount = readToll - networkFee
