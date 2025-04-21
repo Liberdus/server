@@ -102,6 +102,7 @@ export const validate = (tx: Tx.UpdateChatToll, wrappedStates: WrappedStates, re
 
 export const apply = (tx: Tx.UpdateChatToll, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
   const from: UserAccount = wrappedStates[tx.from].data
+  const to: UserAccount = wrappedStates[tx.to].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const chat: ChatAccount = wrappedStates[tx.chatId].data
 
@@ -115,7 +116,19 @@ export const apply = (tx: Tx.UpdateChatToll, txTimestamp: number, txId: string, 
   // Update toll requirement
   chat.toll.required[userIndex] = tx.required
 
-  // todo: consider what will happen to pending toll pools
+  // refund pending toll pools to other party
+  if (chat.toll.payOnRead[userIndex] > 0n) {
+    dapp.log('UpdateChatToll: Refunding payOnRead toll to other party')
+    to.data.balance += chat.toll.payOnRead[userIndex]
+    chat.toll.payOnRead[userIndex] = 0n
+    to.timestamp = txTimestamp
+  }
+  if (chat.toll.payOnReply[userIndex] > 0n) {
+    dapp.log('UpdateChatToll: Refunding payOnReply toll to other party')
+    to.data.balance += chat.toll.payOnReply[userIndex]
+    chat.toll.payOnReply[userIndex] = 0n
+    to.timestamp = txTimestamp
+  }
 
   // Update timestamps
   chat.timestamp = txTimestamp
@@ -125,7 +138,7 @@ export const apply = (tx: Tx.UpdateChatToll, txTimestamp: number, txId: string, 
 }
 
 export const keys = (tx: Tx.Read, result: TransactionKeys) => {
-  result.sourceKeys = [tx.chatId, tx.from]
+  result.sourceKeys = [tx.chatId, tx.from, tx.to]
   result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
@@ -133,7 +146,7 @@ export const keys = (tx: Tx.Read, result: TransactionKeys) => {
 
 export const memoryPattern = (tx: Tx.Read, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
-    rw: [tx.from, tx.chatId], // to account is not really needed
+    rw: [tx.from, tx.to, tx.chatId], // to account is somewhat needed
     wo: [],
     on: [],
     ri: [],

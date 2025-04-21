@@ -222,6 +222,7 @@ interface LiberdusFlags {
   fetchNetworkAccountFromArchiver: boolean
   enableArchiverNetworkAccountValidation: boolean
   enableDAOTransactions: boolean
+  enableAJVValidation: boolean
 }
 
 export const LiberdusFlags: LiberdusFlags = {
@@ -249,6 +250,7 @@ export const LiberdusFlags: LiberdusFlags = {
   fetchNetworkAccountFromArchiver: true,
   enableArchiverNetworkAccountValidation: false,
   enableDAOTransactions: false,
+  enableAJVValidation: false,
 }
 
 export function updateLiberdusFlag(key: string, value: string | number | boolean): void {

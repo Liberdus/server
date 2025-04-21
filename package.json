@@ -52,7 +52,7 @@
     "ajv": "^6.12.6"
   },
   "devDependencies": {
-    "@shardus/archiver": "git+https://github.com/liberdus/archiver",
+    "@shardus/archiver": "git+https://github.com/liberdus/archiver#dev",
     "@shardus/monitor-server": "2.8.5",
     "@types/decimal.js": "^7.4.0",
     "@types/express": "^4.17.2",
