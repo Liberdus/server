@@ -201,13 +201,12 @@ export const apply = (
       chatId: tx.chatId,
     }
   }
-
-  if (!to.data.chats[tx.from]) {
-    to.data.chats[tx.from] = {
-      receivedTimestamp: txTimestamp,
-      chatId: tx.chatId,
-    }
+  from.data.chatTimestamp = txTimestamp
+  to.data.chats[tx.from] = {
+    receivedTimestamp: txTimestamp,
+    chatId: tx.chatId,
   }
+  to.data.chatTimestamp = txTimestamp
 
   // Add message to chat
   const messageRecord: Tx.MessageRecord = {
