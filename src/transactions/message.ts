@@ -201,7 +201,6 @@ export const apply = (
       chatId: tx.chatId,
     }
   }
-  from.data.chatTimestamp = txTimestamp
   to.data.chats[tx.from] = {
     receivedTimestamp: txTimestamp,
     chatId: tx.chatId,
