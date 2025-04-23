@@ -15,7 +15,7 @@ import {
   Tx,
   TransactionKeys,
   AppReceiptData,
-  AJVSchemaEnum
+  AJVSchemaEnum,
 } from '../@types'
 import { toShardusAddress, toShardusAddressWithKey } from '../utils/address'
 
@@ -58,7 +58,12 @@ export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.Incoming
   return response
 }
 
-export const validate = (tx: Tx.Transfer, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus): ShardusTypes.IncomingTransactionResult => {
+export const validate = (
+  tx: Tx.Transfer,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const clonedTx = { ...tx }
   if (config.LiberdusFlags.useEthereumAddress) {
     clonedTx.from = toShardusAddress(tx.from)
@@ -120,7 +125,6 @@ export const apply = (
       chatId: tx.chatId,
     }
   }
-  from.data.chatTimestamp = txTimestamp
   to.data.chats[tx.from] = {
     receivedTimestamp: txTimestamp,
     chatId: tx.chatId,
