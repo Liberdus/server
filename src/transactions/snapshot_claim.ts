@@ -79,8 +79,8 @@ export const apply = (
       claimedSnapshotAmount,
     },
   }
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
-
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log('Applied snapshot_claim tx', from, network)
 }
 

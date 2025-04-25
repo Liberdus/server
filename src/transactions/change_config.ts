@@ -3,6 +3,7 @@ import config, { networkAccount, ONE_SECOND } from '../config'
 import { NetworkAccount, TXTypes, OurAppDefinedData, Signature, TransactionKeys, Tx, UserAccount, WrappedStates, AppReceiptData } from '../@types'
 import { Utils } from '@shardus/types'
 import * as utils from '../utils'
+import * as crypto from '../crypto'
 
 export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   if (typeof tx.from !== 'string') {
@@ -139,8 +140,8 @@ export const apply = (
     type: tx.type,
     transactionFee: BigInt(0),
   }
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
-
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log(`Applied change_config tx: ${txId}, value: ${Utils.safeStringify(value)}`)
 }
 

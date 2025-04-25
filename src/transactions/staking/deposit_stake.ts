@@ -143,8 +143,8 @@ export const apply = (
     },
   }
 
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
-
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log('Applied deposit_stake tx', nominatorAccount, nodeAccount)
 }
 

@@ -81,8 +81,8 @@ export const apply = (
       faucetAmount: network.current.faucetAmount,
     },
   }
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
-
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log('Applied verify tx', from)
 }
 

@@ -279,7 +279,8 @@ export const apply = (
     },
   }
 
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 
   nestedCountersInstance.countEvent('liberdus-staking', `Applied ClaimRewardTX`)
   if (logFlags.dapp_verbose) dapp.log('Applied ClaimRewardTX', tx.nominee)

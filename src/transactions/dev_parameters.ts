@@ -74,7 +74,7 @@ export const apply = (
   wrappedStates: WrappedStates,
   dapp: Shardus,
   applyResponse: ShardusTypes.ApplyResponse,
-) : void => {
+): void => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue].data
@@ -110,7 +110,8 @@ export const apply = (
     type: tx.type,
     transactionFee: BigInt(0),
   }
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log('Applied dev_parameters tx', from, devIssue, value)
 }
 

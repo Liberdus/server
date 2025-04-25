@@ -115,7 +115,8 @@ export const apply = (
       maintenanceFee,
     },
   }
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log('Applied vote tx', from, proposal)
 }
 

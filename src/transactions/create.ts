@@ -2,6 +2,7 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import create from '../accounts'
 import * as config from '../config'
 import { Accounts, UserAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import * as crypto from '../crypto'
 
 export const validate_fields = (tx: Tx.Create, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.from !== 'string') {
@@ -17,7 +18,12 @@ export const validate_fields = (tx: Tx.Create, response: ShardusTypes.IncomingTr
   return response
 }
 
-export const validate = (tx: Tx.Create, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus): ShardusTypes.IncomingTransactionResult => {
+export const validate = (
+  tx: Tx.Create,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
   if (from === undefined || from === null) {
     response.reason = "target account doesn't exist"
@@ -50,8 +56,8 @@ export const apply = (
     type: tx.type,
     transactionFee: BigInt(0),
   }
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
-
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log('Applied create tx', from)
 }
 

@@ -2,6 +2,7 @@ import { Utils } from '@shardus/types'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as config from '../config'
 import { AppReceiptData, NetworkAccount, NodeAccount, TransactionKeys, Tx, WrappedStates } from '../@types'
+import * as crypto from '../crypto'
 
 export const validate_fields = (tx: Tx.ApplyChangeNetworkParam, response: ShardusTypes.IncomingTransactionResult) => {
   return response
@@ -34,7 +35,8 @@ export const apply = (
     type: tx.type,
     transactionFee: BigInt(0),
   }
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log(`=== APPLIED CHANGE_NETWORK_PARAM GLOBAL ${Utils.safeStringify(network)} ===`)
 }
 

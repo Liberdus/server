@@ -3,6 +3,7 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as config from '../config'
 import create from '../accounts'
 import { NodeAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import * as crypto from '../crypto'
 
 export const validate_fields = (tx: Tx.InitNetwork, response: ShardusTypes.IncomingTransactionResult) => {
   return response
@@ -42,7 +43,8 @@ export const apply = (
     type: tx.type,
     transactionFee: BigInt(0),
   }
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log('Applied init_network transaction', network)
 }
 
