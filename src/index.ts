@@ -336,7 +336,21 @@ const shardusSetup = (): void => {
       const { tx } = timestampedTx
       const txId: string = utils.generateTxId(tx)
       try {
+        // call the transaction receipt pass for the global tx
         if (transactions[tx.type].transactionReceiptPass) transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
+        if (applyResponse == null || applyResponse.appReceiptData == null) return
+        const appReceiptData = applyResponse.appReceiptData
+
+        if (LiberdusFlags.VerboseLogs) console.log('_transactionReceiptPass appReceiptData for tx', txId, applyResponse.appReceiptDataHash, appReceiptData)
+        const dataId = appReceiptData.txId
+        dapp
+          .sendCorrespondingCachedAppData('receipt', dataId, appReceiptData, dapp.stateManager.currentCycleShardData.cycleNumber, tx.from, appReceiptData.txId)
+          .then(() => {
+            if (LiberdusFlags.VerboseLogs) console.log('_transactionReceiptPass appReceiptData sent', dataId)
+          })
+          .catch((err) => {
+            throw new Error(`Error in sending receipt for transfer tx: ${err.message}`)
+          })
       } catch (e) {
         console.log(`Error in transactionReceiptPass: ${e.message}`)
       }

@@ -153,28 +153,6 @@ export const apply = (
   dapp.log('Applied transfer tx', from, to)
 }
 
-export const transactionReceiptPass = (tx: Tx.Transfer, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
-  if (applyResponse == null) return
-  const appReceiptData = applyResponse.appReceiptData
-
-  if (config.LiberdusFlags.VerboseLogs) {
-    console.log('_transactionReceiptPass appReceiptData for transfer tx', txId, appReceiptData)
-    console.log('_transactionReceiptPass appReceiptDataHash for transfer tx', txId, crypto.hashObj(appReceiptData))
-  }
-
-  if (appReceiptData) {
-    const dataId = appReceiptData.txId
-    dapp
-      .sendCorrespondingCachedAppData('receipt', dataId, appReceiptData, dapp.stateManager.currentCycleShardData.cycleNumber, tx.from, appReceiptData.txId)
-      .then(() => {
-        dapp.log('PostApplied transfer tx', tx, appReceiptData)
-      })
-      .catch((err) => {
-        throw new Error(`Error in sending receipt for transfer tx: ${err.message}`)
-      })
-  }
-}
-
 export const keys = (tx: Tx.Transfer, result: TransactionKeys) => {
   result.sourceKeys = [tx.chatId, tx.from]
   result.targetKeys = [tx.to, config.networkAccount]
