@@ -47,10 +47,8 @@ export default (dapp: Shardus) => {
 
   dapp.registerExternalGet('messages/:chatId/:timestamp', messages(dapp))
 
-  dapp.registerExternalGet('timestamp', () => {
-    return {
-      timestamp: dapp.shardusGetTime(),
-    }
+  dapp.registerExternalGet('timestamp', (req, res) => {
+    res.json({ timestamp: dapp.shardusGetTime() })
   })
 
   dapp.registerExternalGet('debug/dump', debug.dump(dapp))
