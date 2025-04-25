@@ -350,7 +350,7 @@ const shardusSetup = (): void => {
             if (LiberdusFlags.VerboseLogs) console.log('_transactionReceiptPass appReceiptData sent', dataId)
           })
           .catch((err) => {
-            throw new Error(`Error in sending receipt for transfer tx: ${err.message}`)
+            throw new Error(`Error in sending appReceiptData for tx ${txId}: ${err.message}`)
           })
       } catch (e) {
         console.log(`Error in transactionReceiptPass: ${e.message}`)
