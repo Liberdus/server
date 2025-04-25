@@ -336,8 +336,9 @@ const shardusSetup = (): void => {
       const { tx } = timestampedTx
       const txId: string = utils.generateTxId(tx)
       try {
-        // call the transaction receipt pass for the global tx
+        // Call the transaction receipt pass for the global txs
         if (transactions[tx.type].transactionReceiptPass) transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
+        // Send the appReceiptData to cache in the network
         if (applyResponse == null || applyResponse.appReceiptData == null) return
         const appReceiptData = applyResponse.appReceiptData
 
