@@ -1,7 +1,7 @@
 import { Utils } from '@shardus/types'
 import _ from 'lodash'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
-import create from '../accounts'
+import * as crypto from '../crypto'
 import * as config from '../config'
 import { NetworkAccount, NodeAccount, WrappedStates, Tx, TransactionKeys, UserAccount, AppReceiptData } from '../@types'
 
@@ -35,7 +35,8 @@ export const apply = (
     type: tx.type,
     transactionFee: BigInt(0),
   }
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log(`=== APPLIED CHANGE_CONFIG GLOBAL ${Utils.safeStringify(network)} ===`)
 }
 

@@ -151,7 +151,8 @@ export const apply = (
       totalUnstakeAmount: stake + reward,
     },
   }
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log('Applied withdraw_stake tx', nominatorAccount, nodeAccount)
 }
 

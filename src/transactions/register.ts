@@ -3,7 +3,18 @@ import { Shardus, ShardusTypes, nestedCountersInstance } from '@shardeum-foundat
 import create from '../accounts'
 import { isValidUncompressedPublicKey, validatePQPublicKey, getAddressFromPublicKey } from '../utils/address'
 import * as config from '../config'
-import { AliasAccount, UserAccount, NetworkAccount, IssueAccount, AJVSchemaEnum, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import {
+  AliasAccount,
+  UserAccount,
+  NetworkAccount,
+  IssueAccount,
+  AJVSchemaEnum,
+  WrappedStates,
+  ProposalAccount,
+  Tx,
+  TransactionKeys,
+  AppReceiptData,
+} from '../@types'
 import * as ajvHelper from '../@types/ajvHelper'
 
 export const validate_fields = (tx: Tx.Register, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
@@ -134,7 +145,8 @@ export const apply = (
     type: tx.type,
     transactionFee: BigInt(0),
   }
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log('Applied register tx', from, alias)
 }
 

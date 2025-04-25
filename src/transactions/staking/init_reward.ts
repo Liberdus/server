@@ -13,7 +13,7 @@ export async function injectInitRewardTx(shardus: Shardus, eventData: ShardusTyp
     nominee: eventData.publicKey,
     nodeActivatedTime: startTime,
     timestamp: shardus.shardusGetTime(),
-    txData: eventData.additionalData?.txData
+    txData: eventData.additionalData?.txData,
   } as Tx.InitRewardTX
 
   // check if this node has node account data
@@ -61,7 +61,11 @@ export async function injectInitRewardTx(shardus: Shardus, eventData: ShardusTyp
   return await shardus.put(tx)
 }
 
-export const validate_fields = (tx: Tx.InitRewardTX, response: ShardusTypes.IncomingTransactionResult, shardus: Shardus): ShardusTypes.IncomingTransactionResult => {
+export const validate_fields = (
+  tx: Tx.InitRewardTX,
+  response: ShardusTypes.IncomingTransactionResult,
+  shardus: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   if (LiberdusFlags.VerboseLogs) console.log('Validating InitRewardTX fields', tx)
   if (!tx.nominee || tx.nominee === '' || tx.nominee.length !== 64) {
     if (LiberdusFlags.VerboseLogs) console.log('validateFields InitRewardTX fail invalid nominee field', tx)
@@ -121,7 +125,11 @@ export const validate_fields = (tx: Tx.InitRewardTX, response: ShardusTypes.Inco
   return response
 }
 
-export const validate = (tx: Tx.InitRewardTX, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
+export const validate = (
+  tx: Tx.InitRewardTX,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+): ShardusTypes.IncomingTransactionResult => {
   if (LiberdusFlags.VerboseLogs) console.log('Validating InitRewardTX', tx)
   const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
 
@@ -168,8 +176,8 @@ export const apply = (
     type: tx.type,
     transactionFee: BigInt(0),
   }
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
-
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   nestedCountersInstance.countEvent('liberdus-staking', `Applied InitRewardTX`)
   dapp.log('Applied InitRewardTX for', tx.nominee)
 }

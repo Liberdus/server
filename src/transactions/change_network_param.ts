@@ -3,6 +3,7 @@ import * as config from '../config'
 import { AppReceiptData, NetworkAccount, OurAppDefinedData, Signature, TXTypes, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
 import { Utils } from '@shardus/types'
 import * as utils from '../utils'
+import * as crypto from '../crypto'
 
 export const validate_fields = (tx: Tx.ChangeNetworkParam, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   if (typeof tx.from !== 'string') {
@@ -127,7 +128,8 @@ export const apply = (
     type: tx.type,
     transactionFee: BigInt(0),
   }
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log(`Applied change_network_param tx: ${txId}, value: ${Utils.safeStringify(value)}`)
 }
 

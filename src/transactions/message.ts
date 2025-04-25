@@ -238,8 +238,8 @@ export const apply = (
       tollFee: totalToll,
     },
   }
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
-
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log('Applied message tx', chat, from, to)
 }
 

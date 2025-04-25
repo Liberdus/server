@@ -7,6 +7,7 @@ import { getRandom, scaleByStabilityFactor, InjectTxToConsensor } from '../../ut
 import { Utils } from '@shardus/types'
 import { logFlags } from '@shardeum-foundation/core/dist/logger'
 import { verifyObj } from '@shardus/crypto-utils'
+import * as crypto from '../../crypto'
 
 export function getCertCycleDuration(): number {
   if (AccountsStorage.cachedNetworkAccount && AccountsStorage.cachedNetworkAccount.current.certCycleDuration !== null) {
@@ -181,8 +182,8 @@ export const apply = (
     transactionFee: costTxFee,
   }
 
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
-  // nominator.data.transactions.push({ ...tx, txId })
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash) // nominator.data.transactions.push({ ...tx, txId })
   dapp.log('Applied set_cert_time tx', operatorAccount)
 }
 
