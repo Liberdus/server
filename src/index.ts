@@ -338,16 +338,16 @@ const shardusSetup = (): void => {
       try {
         // Call the transaction receipt pass for the global txs
         if (transactions[tx.type].transactionReceiptPass) transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
-        // Send the appReceiptData to cache in the network
+        // Send the appReceiptData of the tx to cache in the network
         if (applyResponse == null || applyResponse.appReceiptData == null) return
-        const appReceiptData = applyResponse.appReceiptData
+        const appReceiptData = applyResponse.appReceiptData as LiberdusTypes.AppReceiptData
 
         if (LiberdusFlags.VerboseLogs) console.log('_transactionReceiptPass appReceiptData for tx', txId, applyResponse.appReceiptDataHash, appReceiptData)
         const dataId = appReceiptData.txId
         dapp
-          .sendCorrespondingCachedAppData('receipt', dataId, appReceiptData, dapp.stateManager.currentCycleShardData.cycleNumber, tx.from, appReceiptData.txId)
+          .sendCorrespondingCachedAppData('receipt', dataId, appReceiptData, dapp.stateManager.currentCycleShardData.cycleNumber, appReceiptData.from, txId)
           .then(() => {
-            if (LiberdusFlags.VerboseLogs) console.log('_transactionReceiptPass appReceiptData sent', dataId)
+            if (LiberdusFlags.VerboseLogs) console.log('_transactionReceiptPass appReceiptData sent', txId)
           })
           .catch((err) => {
             throw new Error(`Error in sending appReceiptData for tx ${txId}: ${err.message}`)
