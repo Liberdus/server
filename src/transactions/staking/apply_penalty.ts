@@ -12,7 +12,7 @@ import {
   SyncingTimeoutViolationData,
   TransactionKeys,
   AppReceiptData,
-  TXTypes
+  TXTypes,
 } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { _sleep, generateTxId, scaleByStabilityFactor } from '../../utils'
@@ -299,8 +299,8 @@ export const apply = (
       nodeEndTime: nodeAccount.rewardEndTime,
     }
   }
-
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 
   nestedCountersInstance.countEvent('liberdus-penalty', `Applied PenaltyTX`)
   if (logFlags.dapp_verbose) dapp.log('Applied PenaltyTX', tx.reportedNodePublickKey)

@@ -87,7 +87,8 @@ export const apply = (
       stakeRemovalStatus,
     },
   }
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, txId)
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log('Applied remove_stake tx marked as requested', from)
 }
 
