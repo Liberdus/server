@@ -124,6 +124,10 @@ async function getSeedNodes() {
   }
   return seedNodes
 }
+async function getFullNodeList() {
+  const result = await axios.get(`http://${ARCHIVESERVER}/full-nodelist`)
+  return result.data?.nodeList || []
+}
 
 function saveEntries(entries, file) {
   const stringifiedEntries = JSON.stringify(entries, null, 2)
@@ -1844,9 +1848,9 @@ vorpal
     callback()
   })
 
-// Add a vorpal command for depositing stake to the joining nodes in the network.
+// Add a vorpal command for depositing stake to the joining/active nodes in the network.
 // First argument is the amount of tokens to stake.
-vorpal.command('deposit stake joining nodes', 'deposit the stake amount to the joining nodes in the network').action(async function(args, callback) {
+vorpal.command('deposit stake to nodes', 'deposit the stake amount to the joining/active nodes in the network').action(async function(args, callback) {
   const answers = await this.prompt([
     {
       type: 'number',
@@ -1863,8 +1867,6 @@ vorpal.command('deposit stake joining nodes', 'deposit the stake amount to the j
       choices: ['joining', 'active'],
     },
   ])
-  // Get the joining nodes from the monitor
-  // If the nodeType is "active" then get the active nodes
   const nodeList = answers.nodeType === 'joining' ? await getJoiningNodes() : await getActiveNodes()
   if (nodeList.length === 0) {
     this.log('No nodes')
@@ -2002,9 +2004,9 @@ const getJoiningNodes = async () => {
 }
 
 const getActiveNodes = async () => {
-  const res = await axios.get(`http://${MONITORSERVER}/api/report`)
-  if (!res.data.nodes) return []
-  const active = Object.keys(res.data.nodes.active)
+  const nodes = await getFullNodeList()
+  if (!nodes || nodes.length === 0) return []
+  const active = nodes.map(({ publicKey }) => publicKey)
   console.log('Active nodes: ', active)
   return active
 }
