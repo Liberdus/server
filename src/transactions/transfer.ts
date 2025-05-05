@@ -146,6 +146,7 @@ export const apply = (
     type: tx.type,
     transactionFee,
     additionalInfo: {
+      amount: tx.amount,
       maintenanceFee,
     },
   }

@@ -139,6 +139,7 @@ export const apply = (
     transactionFee: txFee,
     additionalInfo: {
       maintenanceFee,
+      stake: tx.stake,
       totalStake: nodeAccount.stakeLock,
     },
   }
