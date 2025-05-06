@@ -882,6 +882,7 @@ export interface AppReceiptData {
   txId: string
   timestamp: number
   success: boolean
+  reason?: string // Can be undefined if the transaction was successful
   from: string
   to?: string // Can be undefined if the transaction is not directed to any account or is directed more than one account
   type: string
