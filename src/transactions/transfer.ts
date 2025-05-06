@@ -166,7 +166,7 @@ export const createFailedAppReceiptData = (
 ): void => {
   // Deduct transaction fee from the sender's balance
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
-  const from = wrappedStates[tx.from].data
+  const from: UserAccount = wrappedStates[tx.from].data
   let transactionFee = BigInt(0)
   if (from !== undefined && from !== null) {
     if (from.data.balance >= network.current.transactionFee) {
@@ -185,9 +185,9 @@ export const createFailedAppReceiptData = (
     success: false,
     reason,
     from: tx.from,
-    to: tx.from,
+    to: tx.to,
     type: tx.type,
-    transactionFee: transactionFee,
+    transactionFee,
     additionalInfo: {
       amount: tx.amount,
     },

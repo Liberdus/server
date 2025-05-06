@@ -176,6 +176,29 @@ export const apply = (
   dapp.log('Applied dev_tally tx', devIssue, devProposals, value)
 }
 
+export const createFailedAppReceiptData = (
+  tx: Tx.DevTally,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+  reason: string,
+): void => {
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: false,
+    reason,
+    from: tx.from,
+    to: tx.devIssue,
+    type: tx.type,
+    transactionFee: BigInt(0),
+  }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
+}
+
 export const transactionReceiptPass = (tx: Tx.DevTally, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
   const { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
   dapp.setGlobal(address, addressHash, value, when, source)

@@ -133,6 +133,29 @@ export const apply = (
   dapp.log(`Applied change_network_param tx: ${txId}, value: ${Utils.safeStringify(value)}`)
 }
 
+export const createFailedAppReceiptData = (
+  tx: Tx.ChangeNetworkParam,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+  reason: string,
+): void => {
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: false,
+    reason,
+    from: tx.from,
+    to: config.networkAccount,
+    type: tx.type,
+    transactionFee: BigInt(0),
+  }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
+}
+
 export const transactionReceiptPass = (tx: Tx.ChangeNetworkParam, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
   const { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
   dapp.setGlobal(address, addressHash, value, when, source)

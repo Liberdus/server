@@ -156,6 +156,44 @@ export const apply = (
   dapp.log('Applied withdraw_stake tx', nominatorAccount, nodeAccount)
 }
 
+export const createFailedAppReceiptData = (
+  tx: Tx.WithdrawStake,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+  reason: string,
+): void => {
+  // Deduct transaction fee from the sender's balance
+  const from: UserAccount = wrappedStates[tx.nominator].data
+  let transactionFee = BigInt(0)
+  if (from !== undefined && from !== null) {
+    const txFeeUsd = AccountsStorage.cachedNetworkAccount.current.transactionFee
+    const txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
+    if (from.data.balance >= txFee) {
+      transactionFee = txFee
+      from.data.balance -= transactionFee
+    } else {
+      transactionFee = from.data.balance
+      from.data.balance = BigInt(0)
+    }
+    from.timestamp = txTimestamp
+  }
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: false,
+    reason,
+    from: tx.nominator,
+    to: tx.nominee,
+    type: tx.type,
+    transactionFee,
+  }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
+}
+
 export const keys = (tx: Tx.WithdrawStake, result: TransactionKeys) => {
   result.sourceKeys = [tx.nominator]
   result.targetKeys = [tx.nominee]

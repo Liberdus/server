@@ -182,6 +182,30 @@ export const apply = (
   dapp.log('Applied InitRewardTX for', tx.nominee)
 }
 
+export const createFailedAppReceiptData = (
+  tx: Tx.InitRewardTX,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+  reason: string,
+): void => {
+  const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: false,
+    reason,
+    from: tx.nominee,
+    to: nodeAccount ? nodeAccount.nominator : '',
+    type: tx.type,
+    transactionFee: BigInt(0),
+  }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
+}
+
 export const keys = (tx: Tx.InitRewardTX, result: TransactionKeys): TransactionKeys => {
   result.sourceKeys = [tx.nominee]
   result.targetKeys = []

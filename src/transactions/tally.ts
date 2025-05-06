@@ -173,6 +173,29 @@ export const apply = (
   dapp.log('Applied tally tx', txId, issue, winner, ourAppDefinedData)
 }
 
+export const createFailedAppReceiptData = (
+  tx: Tx.Tally,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+  reason: string,
+): void => {
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: false,
+    reason,
+    from: tx.from,
+    to: tx.issue,
+    type: tx.type,
+    transactionFee: BigInt(0),
+  }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
+}
+
 export const transactionReceiptPass = (tx: Tx.Tally, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
   // we should be careful, "wrappedStates" is only accountWrites at this point
   const issue: IssueAccount = wrappedStates[tx.issue].data

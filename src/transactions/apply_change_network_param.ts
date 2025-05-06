@@ -34,10 +34,39 @@ export const apply = (
     to: config.networkAccount,
     type: tx.type,
     transactionFee: BigInt(0),
+    additionalInfo: {
+      change: tx.change,
+    },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log(`=== APPLIED CHANGE_NETWORK_PARAM GLOBAL ${Utils.safeStringify(network)} ===`)
+}
+
+export const createFailedAppReceiptData = (
+  tx: Tx.ApplyChangeNetworkParam,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+  reason: string,
+): void => {
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: false,
+    reason,
+    from: tx.from,
+    to: config.networkAccount,
+    type: tx.type,
+    transactionFee: BigInt(0),
+    additionalInfo: {
+      change: tx.change,
+    },
+  }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
 export const keys = (tx: Tx.ApplyChangeNetworkParam, result: TransactionKeys) => {

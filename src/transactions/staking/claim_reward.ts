@@ -286,6 +286,29 @@ export const apply = (
   if (logFlags.dapp_verbose) dapp.log('Applied ClaimRewardTX', tx.nominee)
 }
 
+export const createFailedAppReceiptData = (
+  tx: Tx.ClaimRewardTX,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+  reason: string,
+): void => {
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: false,
+    reason,
+    from: tx.nominee,
+    to: tx.nominator,
+    type: tx.type,
+    transactionFee: BigInt(0),
+  }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
+}
+
 export const keys = (tx: Tx.ClaimRewardTX, result: TransactionKeys): TransactionKeys => {
   result.sourceKeys = [tx.nominee]
   result.targetKeys = [tx.nominator]
