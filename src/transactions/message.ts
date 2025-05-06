@@ -235,12 +235,54 @@ export const apply = (
     transactionFee: network.current.transactionFee,
     additionalInfo: {
       maintenanceFee: network.current.maintenanceFee,
+      message: tx.message,
       tollFee: totalToll,
     },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log('Applied message tx', chat, from, to)
+}
+
+export const createFailedAppReceiptData = (
+  tx: Tx.Message,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+  reason: string,
+): void => {
+  // Deduct transaction fee from the sender's balance
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
+  const from = wrappedStates[tx.from].data
+  let transactionFee = BigInt(0)
+  if (from !== undefined && from !== null) {
+    if (from.data.balance >= network.current.transactionFee) {
+      transactionFee = network.current.transactionFee
+      from.data.balance -= transactionFee
+    } else {
+      transactionFee = from.data.balance
+      from.data.balance = BigInt(0)
+    }
+    from.timestamp = txTimestamp
+  }
+
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: false,
+    reason,
+    from: tx.from,
+    to: tx.from,
+    type: tx.type,
+    transactionFee: transactionFee,
+    additionalInfo: {
+      message: tx.message,
+    },
+  }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
 export const keys = (tx: Tx.Message, result: TransactionKeys) => {

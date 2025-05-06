@@ -291,16 +291,22 @@ const shardusSetup = (): void => {
       const txTimestamp = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
       const { success, reason } = this.validateTransaction(tx, wrappedStates)
 
-      if (success !== true) {
-        throw new Error(`invalid transaction, reason: ${reason}. tx: ${Utils.safeStringify(tx)}`)
-      }
-
       // Create an applyResponse which will be used to tell Shardus that the tx has been applied
       const txId: string = utils.generateTxId(tx)
 
       const applyResponse: ShardusTypes.ApplyResponse = dapp.createApplyResponse(txId, txTimestamp)
 
-      transactions[tx.type].apply(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse)
+      if (success === true) {
+        try {
+          transactions[tx.type].apply(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse)
+        } catch (e) {
+          // Create the appReceiptData for the tx
+          transactions[tx.type].createFailedAppReceiptData(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse, e.message)
+        }
+      } else {
+        // Create the appReceiptData for the tx
+        transactions[tx.type].createFailedAppReceiptData(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse, reason)
+      }
 
       for (const accountId in wrappedStates) {
         // only add the accounts that have changed
