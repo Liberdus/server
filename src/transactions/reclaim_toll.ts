@@ -3,7 +3,7 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 import create from '../accounts'
 import * as config from '../config'
-import { Accounts, ChatAccount, NetworkAccount, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
+import { Accounts, AppReceiptData, ChatAccount, NetworkAccount, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
 import { toShardusAddress } from '../utils/address'
 
 export const validate_fields = (tx: Tx.ReclaimToll, response: ShardusTypes.IncomingTransactionResult) => {
@@ -75,7 +75,14 @@ export const validate = (tx: Tx.ReclaimToll, wrappedStates: WrappedStates, respo
   return response
 }
 
-export const apply = (tx: Tx.ReclaimToll, txTimestamp: number, txId: string, wrappedStates: WrappedStates, dapp: Shardus) => {
+export const apply = (
+  tx: Tx.ReclaimToll,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+): void => {
   const from: UserAccount = wrappedStates[tx.from].data
   const to: UserAccount = wrappedStates[tx.to].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
@@ -152,7 +159,56 @@ export const apply = (tx: Tx.ReclaimToll, txTimestamp: number, txId: string, wra
   chat.timestamp = txTimestamp
   from.timestamp = txTimestamp
 
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: true,
+    from: tx.from,
+    to: tx.to,
+    type: tx.type,
+    transactionFee: network.current.transactionFee,
+  }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
+
   dapp.log('Applied reclaim_toll tx', chat, from)
+}
+
+export const createFailedAppReceiptData = (
+  tx: Tx.ReclaimToll,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+  reason: string,
+): void => {
+  // Deduct transaction fee from the sender's balance
+  const network: NetworkAccount = wrappedStates[config.networkAccount].data
+  const from: UserAccount = wrappedStates[tx.from].data
+  let transactionFee = BigInt(0)
+  if (from !== undefined && from !== null) {
+    if (from.data.balance >= network.current.transactionFee) {
+      transactionFee = network.current.transactionFee
+      from.data.balance -= transactionFee
+    } else {
+      transactionFee = from.data.balance
+      from.data.balance = BigInt(0)
+    }
+    from.timestamp = txTimestamp
+  }
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: false,
+    reason,
+    from: tx.from,
+    to: tx.to,
+    type: tx.type,
+    transactionFee,
+  }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
 export const keys = (tx: Tx.ReclaimToll, result: TransactionKeys) => {

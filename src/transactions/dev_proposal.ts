@@ -184,6 +184,30 @@ export const apply = (
   dapp.log('Applied dev_proposal tx', from, devIssue, devProposal)
 }
 
+export const createFailedAppReceiptData = (
+  tx: Tx.DevProposal,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+  reason: string,
+): void => {
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: false,
+    reason,
+    from: tx.from,
+    // the actual txTo seems to be two accounts ( devIssue and devProposal )
+    // to: tx.devIssue,
+    type: tx.type,
+    transactionFee: BigInt(0),
+  }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
+}
+
 export const keys = (tx: Tx.DevProposal, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [tx.devIssue, tx.devProposal, config.networkAccount]

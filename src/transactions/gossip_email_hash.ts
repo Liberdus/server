@@ -67,6 +67,29 @@ export const apply = (
   dapp.log('Applied gossip_email_hash tx', account)
 }
 
+export const createFailedAppReceiptData = (
+  tx: Tx.GossipEmailHash,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+  reason: string,
+): void => {
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: false,
+    reason,
+    from: tx.account,
+    to: tx.account,
+    type: tx.type,
+    transactionFee: BigInt(0),
+  }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
+}
+
 export const keys = (tx: Tx.GossipEmailHash, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [tx.account]

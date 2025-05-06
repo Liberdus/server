@@ -306,6 +306,29 @@ export const apply = (
   if (logFlags.dapp_verbose) dapp.log('Applied PenaltyTX', tx.reportedNodePublickKey)
 }
 
+export const createFailedAppReceiptData = (
+  tx: Tx.PenaltyTX,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+  reason: string,
+): void => {
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: false,
+    reason,
+    from: tx.reportedNodePublickKey,
+    to: tx.nominator,
+    type: tx.type,
+    transactionFee: BigInt(0),
+  }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
+}
+
 export const keys = (tx: Tx.PenaltyTX, result: TransactionKeys) => {
   result.sourceKeys = [tx.reportedNodePublickKey]
   result.targetKeys = [tx.nominator]
