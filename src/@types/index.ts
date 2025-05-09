@@ -493,6 +493,7 @@ export interface OperatorAccountInfo {
   stake: bigint
   nominee: string
   certExp: number
+  lastStakeTimestamp: number
   operatorStats: OperatorStats
 }
 
@@ -712,6 +713,7 @@ export interface NetworkParameters {
     syncTimeoutPenaltyPercent: number
     nodeRefutedPenaltyPercent: number
   }
+  stakeLockTime: number
 }
 
 export interface Windows {

@@ -5,7 +5,7 @@ import { Utils } from '@shardus/types'
 import { logFlags } from '@shardeum-foundation/core/dist/logger'
 import { ValidatorError } from '../../@types'
 
-export const queryCertificateEndpoint =
+export const queryCertificate =
   (dapp: Shardus) =>
   async (req, res): Promise<void> => {
     try {

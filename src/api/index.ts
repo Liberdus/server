@@ -5,7 +5,7 @@ import proposals from './proposals'
 import accounts from './accounts'
 import messages from './messages'
 import debug from './debug'
-import { queryCertificateEndpoint } from './staking/query-certificate'
+import staking from './staking'
 import { handlePutAdminCertificate } from './admin_certificate'
 import { debug_liberdus_flags, set_liberdus_flag } from './liberdus_flags'
 import { Shardus } from '@shardeum-foundation/core'
@@ -54,7 +54,11 @@ export default (dapp: Shardus) => {
   dapp.registerExternalGet('debug/dump', debug.dump(dapp))
   dapp.registerExternalPost('debug/exit', debug.exit)
 
-  dapp.registerExternalPut('query-certificate', queryCertificateEndpoint(dapp))
+  dapp.registerExternalGet('staking', staking.stake())
+  dapp.registerExternalGet('canStake/:nominee', staking.canStake(dapp))
+  dapp.registerExternalGet('canUnstake/:nominee/:nominator', staking.canUnstake(dapp))
+
+  dapp.registerExternalPut('query-certificate', staking.queryCertificate(dapp))
   dapp.registerExternalPut('admin-certificate', handlePutAdminCertificate(dapp))
 
   // Liberdus Flags
