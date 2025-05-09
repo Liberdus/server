@@ -86,6 +86,8 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
     syncTimeoutPenaltyPercent: 0.2,
     nodeRefutedPenaltyPercent: 0.2,
   },
+  // stakeLockTime: 1000 * 60 * 60 * 24 * 14, // 1000 ms * 60s * 60m * 24h * 14d = 2 weeks in ms
+  stakeLockTime: 30 * ONE_MINUTE,
 }
 
 function replaceAll(str, find, replace) {

@@ -89,6 +89,7 @@ export const validate = (tx: Tx.SetCertTime, wrappedStates: WrappedStates, respo
   let committedStake = BigInt(0)
 
   const operatorAccount = wrappedStates[tx.nominator].data as UserAccount
+  const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
   /* prettier-ignore */ if (logFlags.dapp_verbose) console.log('validateSetCertTime', tx, operatorAccount)
   if (operatorAccount == undefined) {
     response.reason = `Found no wrapped state for operator account ${tx.nominator}`
@@ -101,6 +102,24 @@ export const validate = (tx: Tx.SetCertTime, wrappedStates: WrappedStates, respo
   }
   if (operatorAccount.type !== 'UserAccount') {
     response.reason = `Operator account type is not UserAccount: ${Utils.safeStringify(operatorAccount)}`
+    return response
+  }
+
+  if (nodeAccount == undefined) {
+    response.reason = `Found no wrapped state for node account ${tx.nominee}`
+    return response
+  }
+  if (nodeAccount.type !== 'NodeAccount') {
+    response.reason = `Node account type is not NodeAccount: ${Utils.safeStringify(nodeAccount)}`
+    return response
+  }
+
+  if (operatorAccount.operatorAccountInfo.nominee !== tx.nominee) {
+    response.reason = `Operator account has staked to a different node: ${tx.nominee} != ${operatorAccount.operatorAccountInfo.nominee}`
+    return response
+  }
+  if (nodeAccount.nominator !== tx.nominator) {
+    response.reason = `Node account has been staked by another nominator: ${tx.nominator} != ${nodeAccount.nominator}`
     return response
   }
 

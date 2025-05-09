@@ -395,6 +395,7 @@ const shardusSetup = (): void => {
       }
     },
     async getRelevantData(accountId: string, timestampedTx: any): Promise<ShardusTypes.WrappedResponse> {
+      console.log('getRelevantData', accountId, timestampedTx)
       const { tx } = timestampedTx
       const account = await AccountsStorage.getAccount(accountId)
       const accountCreated = false

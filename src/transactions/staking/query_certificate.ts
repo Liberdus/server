@@ -181,7 +181,7 @@ export async function queryCertificate(
   const accountQueryResponse = (await getAccountWithRetry(publicKey, activeNodes)) as AccountQueryResponse
   if (!accountQueryResponse.success) return accountQueryResponse
 
-  const nominator = accountQueryResponse.account?.nominator
+  const nominator = ''
 
   const certRequest = {
     nominee: publicKey,

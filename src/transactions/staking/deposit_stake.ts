@@ -4,7 +4,7 @@ import * as utils from './../../utils'
 import * as config from './../../config'
 import * as AccountsStorage from '../../storage/accountStorage'
 import create from './../../accounts'
-import { UserAccount, WrappedStates, Tx, TransactionKeys, NodeAccount, Accounts, AppReceiptData } from './../../@types'
+import { UserAccount, WrappedStates, Tx, TransactionKeys, NodeAccount, Accounts, AppReceiptData, NetworkAccount } from './../../@types'
 
 export const validate_fields = (tx: Tx.DepositStake, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.nominator !== 'string' && utils.isValidAddress(tx.nominator) === false) {
@@ -12,7 +12,7 @@ export const validate_fields = (tx: Tx.DepositStake, response: ShardusTypes.Inco
     response.reason = 'tx "nominator" field must be a string or valid address.'
     throw new Error(response.reason)
   }
-  if (typeof tx.nominee !== 'string') {
+  if (typeof tx.nominee !== 'string' && utils.isValidAddress(tx.nominee) === false) {
     response.success = false
     response.reason = 'tx "nominee" field must be a string or valid address.'
     throw new Error(response.reason)
@@ -57,12 +57,12 @@ export const validate = (tx: Tx.DepositStake, wrappedStates: WrappedStates, resp
 
   if (nodeAccount && nodeAccount.nominator) {
     if (nodeAccount.nominator !== tx.nominator) {
-      response.reason = 'nominee account has already been staked to another nominator'
+      response.reason = 'nominee account has already been staked by another nominator'
       return response
     }
   }
   const restakeCooldown = AccountsStorage.cachedNetworkAccount.current.restakeCooldown
-  if (nodeAccount && nodeAccount.stakeTimestamp + restakeCooldown > dapp.shardusGetTime()) {
+  if (nodeAccount && isRestakingAllowed(nodeAccount, dapp.shardusGetTime()).restakeAllowed === false) {
     response.reason = `This node was staked within the last ${restakeCooldown / config.ONE_MINUTE} minutes. You can't stake more to this node yet!`
     return response
   }
@@ -96,6 +96,7 @@ export const apply = (
       stake: BigInt(0),
       nominee: '',
       certExp: 0,
+      lastStakeTimestamp: 0,
       operatorStats: {
         totalNodeReward: BigInt(0),
         totalNodePenalty: BigInt(0),
@@ -119,10 +120,11 @@ export const apply = (
   nominatorAccount.operatorAccountInfo.stake += tx.stake
   nominatorAccount.operatorAccountInfo.nominee = tx.nominee
   nominatorAccount.operatorAccountInfo.certExp = 0
-  nodeAccount.nominator = tx.nominator
+  nominatorAccount.operatorAccountInfo.lastStakeTimestamp = txTimestamp
 
   console.log('nodeAccount.stakeLock', nodeAccount.stakeLock, tx.stake)
   nodeAccount.stakeLock += tx.stake
+  nodeAccount.nominator = tx.nominator
   nodeAccount.stakeTimestamp = txTimestamp
 
   nominatorAccount.timestamp = txTimestamp
@@ -217,4 +219,38 @@ export const createRelevantAccount = (dapp: Shardus, account: UserAccount | Node
     accountCreated = true
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
+}
+
+export function isRestakingAllowed(
+  nomineeAccount: NodeAccount,
+  currentTime: number,
+): {
+  restakeAllowed: boolean
+  reason: string
+  remainingTime: number
+} {
+  if (nomineeAccount == null) {
+    return {
+      restakeAllowed: false,
+      reason: 'Nominee account not found.',
+      remainingTime: 0,
+    }
+  }
+  if (nomineeAccount.stakeTimestamp === 0) {
+    return {
+      restakeAllowed: true,
+      reason: 'Nominee account stake timestamp not found.',
+      remainingTime: 0,
+    }
+  }
+  const restakeCooldown = AccountsStorage.cachedNetworkAccount.current.restakeCooldown
+  const restakeAllowedTime = nomineeAccount.stakeTimestamp + restakeCooldown
+  const remainingTime = Math.max(restakeAllowedTime - currentTime, 0)
+  const reason = `Restaking is not allowed yet. Please wait ${Math.ceil(remainingTime / 1000)} seconds.`
+  const restakeAllowed = remainingTime <= 0
+  return {
+    restakeAllowed,
+    reason: restakeAllowed ? '' : reason,
+    remainingTime,
+  }
 }

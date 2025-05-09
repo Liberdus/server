@@ -21,7 +21,8 @@ export const validate_fields = (tx: Tx.WithdrawStake, response: ShardusTypes.Inc
     response.reason = 'tx "force" field must be a boolean.'
     throw new Error(response.reason)
   }
-  if (tx.sign.owner !== tx.nominator) {
+  if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.nominator) {
+    response.success = false
     response.reason = 'not signed by nominator account'
     throw new Error(response.reason)
   }
@@ -67,21 +68,13 @@ export const validate = (tx: Tx.WithdrawStake, wrappedStates: WrappedStates, res
     response.reason = 'Node account has zero stake'
     return response
   }
-
-  if (dapp.isOnStandbyList(nodeAccount.id) === true) {
-    response.reason = `This node is in the network's Standby list. You can unstake only after the node leaves the Standby list!`
-    return response
-  }
-  if (dapp.isNodeActiveByPubKey(nodeAccount.id) === true) {
-    response.reason = `This node is still active in the network. You can unstake only after the node leaves the network!`
-    return response
-  }
   if (nodeAccount.rewardEndTime === 0 && nodeAccount.rewardStartTime > 0 && !(tx.force && config.LiberdusFlags.allowForceUnstake)) {
     response.reason = `No reward endTime set, can't unstake node yet`
     return response
   }
-  if (nominatorAccount.operatorAccountInfo.certExp > tx.timestamp) {
-    response.reason = `Unable to apply Unstake tx because stake cert has not yet expired. Expiry timestamp ${nominatorAccount.operatorAccountInfo.certExp}`
+  const { unlocked, reason } = isStakeUnlocked(nominatorAccount, nodeAccount, dapp)
+  if (!unlocked) {
+    response.reason = reason
     return response
   }
   response.success = true
@@ -215,4 +208,103 @@ export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accou
     throw new Error('Account must already exist in order to perform the withdraw_stake transaction')
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
+}
+
+export function isStakeUnlocked(
+  nominatorAccount: UserAccount,
+  nomineeAccount: NodeAccount,
+  shardus: Shardus,
+): { unlocked: boolean; reason: string; remainingTime: number } {
+  if (shardus.isOnStandbyList(nomineeAccount.id) === true) {
+    return {
+      unlocked: false,
+      reason: "This node is in the network's Standby list. Stake is locked until the node leaves the Standby list!",
+      remainingTime: -1,
+    }
+  } else if (shardus.isNodeActiveByPubKey(nomineeAccount.id) === true) {
+    return {
+      unlocked: false,
+      reason: 'This node is still active in the network. Stake is locked until the node leaves the network!',
+      remainingTime: -1,
+    }
+  } else if (shardus.isNodeSelectedByPubKey(nomineeAccount.id)) {
+    return {
+      unlocked: false,
+      reason: 'This node is still selected in the network. Stake is locked until the node leaves the network!',
+      remainingTime: -1,
+    }
+  } else if (shardus.isNodeReadyByPubKey(nomineeAccount.id)) {
+    return {
+      unlocked: false,
+      reason: 'This node is still in ready state in the network. Stake is locked until the node leaves the network!',
+      remainingTime: -1,
+    }
+  } else if (shardus.isNodeSyncingByPubKey(nomineeAccount.id)) {
+    return {
+      unlocked: false,
+      reason: 'This node is still syncing in the network. Stake is locked until the node leaves the network!',
+      remainingTime: -1,
+    }
+  }
+
+  const currentTime = shardus.shardusGetTime()
+  if (nominatorAccount.operatorAccountInfo.certExp && nominatorAccount.operatorAccountInfo.certExp > currentTime) {
+    const remainingMinutes = Math.ceil((nominatorAccount.operatorAccountInfo.certExp - currentTime) / 60000)
+    return {
+      unlocked: false,
+      reason: `Your node is currently registered in the network. Deregistration will be completed in ${remainingMinutes} minute${
+        remainingMinutes === 1 ? '' : 's'
+      }. You'll be able to unstake once this completed.`,
+      remainingTime: nominatorAccount.operatorAccountInfo.certExp - currentTime,
+    }
+  }
+
+  const stakeLockTime = AccountsStorage.cachedNetworkAccount.current.stakeLockTime
+  const timeSinceLastStake = currentTime - nominatorAccount.operatorAccountInfo.lastStakeTimestamp
+  if (timeSinceLastStake < stakeLockTime) {
+    return {
+      unlocked: false,
+      reason: 'Stake lock period active from last staking/unstaking action.',
+      remainingTime: stakeLockTime - timeSinceLastStake,
+    }
+  }
+
+  // SLT from when node was selected to go active (started syncing)
+  const node = shardus.getNodeByPubKey(nomineeAccount.id)
+  if (node) {
+    const timeSinceSyncing = currentTime - node.syncingTimestamp * 1000
+    if (timeSinceSyncing < stakeLockTime) {
+      return {
+        unlocked: false,
+        reason: 'Stake lock period active from node starting to sync.',
+        remainingTime: stakeLockTime - timeSinceSyncing,
+      }
+    }
+  }
+
+  const timeSinceActive = currentTime - nomineeAccount.rewardStartTime * 1000
+  if (timeSinceActive < stakeLockTime) {
+    return {
+      unlocked: false,
+      reason: 'Stake lock period active from last active state.',
+      remainingTime: stakeLockTime - timeSinceActive,
+    }
+  }
+
+  // SLT from time of last went active
+  const timeSinceInactive = currentTime - nomineeAccount.rewardEndTime * 1000
+  if (timeSinceInactive < stakeLockTime) {
+    return {
+      unlocked: false,
+      reason: 'Stake lock period active from last inactive/exit state.',
+      remainingTime: stakeLockTime - timeSinceInactive,
+    }
+  }
+
+  // SLT from time of last went inactive/exit
+  return {
+    unlocked: true,
+    reason: '',
+    remainingTime: 0,
+  }
 }
