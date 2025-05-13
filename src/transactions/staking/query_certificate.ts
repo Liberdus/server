@@ -181,7 +181,11 @@ export async function queryCertificate(
   const accountQueryResponse = (await getAccountWithRetry(publicKey, activeNodes)) as AccountQueryResponse
   if (!accountQueryResponse.success) return accountQueryResponse
 
-  const nominator = ''
+  const nominator = accountQueryResponse.account?.nominator
+  if (!nominator || nominator == '') {
+    /* prettier-ignore */ if (logFlags.dapp_verbose) console.log(`Nominator for this node account ${publicKey} is not found!`)
+    return { success: false, reason: `Nominator for this node account ${publicKey} is not found!` }
+  }
 
   const certRequest = {
     nominee: publicKey,

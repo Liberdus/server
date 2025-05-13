@@ -68,13 +68,13 @@ export const validate = (tx: Tx.WithdrawStake, wrappedStates: WrappedStates, res
     response.reason = 'Node account has zero stake'
     return response
   }
-  if (nodeAccount.rewardEndTime === 0 && nodeAccount.rewardStartTime > 0 && !(tx.force && config.LiberdusFlags.allowForceUnstake)) {
-    response.reason = `No reward endTime set, can't unstake node yet`
-    return response
-  }
   const { unlocked, reason } = isStakeUnlocked(nominatorAccount, nodeAccount, dapp)
   if (!unlocked) {
     response.reason = reason
+    return response
+  }
+  if (nodeAccount.rewardEndTime === 0 && nodeAccount.rewardStartTime > 0 && !(tx.force && config.LiberdusFlags.allowForceUnstake)) {
+    response.reason = `No reward endTime set, can't unstake node yet`
     return response
   }
   response.success = true

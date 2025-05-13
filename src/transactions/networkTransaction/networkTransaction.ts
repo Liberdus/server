@@ -72,18 +72,17 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
       return false
     }
 
-    // I think this is wrong. We may want to record nodeReward while the network is having data loss (safety/recovery)
-    // const nodeAddress = tx.publicKey.toLowerCase()
-    // const account = await dapp.getLocalOrRemoteAccount(nodeAddress)
-    // if (!account) {
-    //   console.log(`registerBeforeAddVerifier - nodeReward: Account for node address ${nodeAddress} not found, do not add tx`)
-    //   return false
-    // }
-    // const nodeAccount = account.data as NodeAccount
-    // if (!nodeAccount || !nodeAccount.nominator || nodeAccount.nominator === '') {
-    //   console.log(`registerBeforeAddVerifier - nodeReward: Account for node address ${nodeAddress} has null nominator, do not add tx`)
-    //   return false
-    // }
+    const nodeAddress = tx.publicKey
+    const account = await dapp.getLocalOrRemoteAccount(nodeAddress)
+    if (!account) {
+      console.log(`registerBeforeAddVerifier - nodeReward: Account for node address ${nodeAddress} not found, do not add tx`)
+      return false
+    }
+    const nodeAccount = account.data as NodeAccount
+    if (!nodeAccount || !nodeAccount.nominator || nodeAccount.nominator === '') {
+      console.log(`registerBeforeAddVerifier - nodeReward: Account for node address ${nodeAddress} has null nominator, do not add tx`)
+      return false
+    }
 
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward success', Utils.safeStringify(tx))
     return true
@@ -91,7 +90,7 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
   dapp.serviceQueue.registerApplyVerifier('nodeReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeRewardTxData>) => {
     const tx = txEntry.txData
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Validating nodeReward applied', Utils.safeStringify(tx))
-    const shardusAddress = tx.publicKey.toLowerCase()
+    const shardusAddress = tx.publicKey
     const account = await dapp.getLocalOrRemoteAccount(shardusAddress)
     if (!account) {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeReward fail account not found', Utils.safeStringify(tx))
@@ -153,18 +152,17 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
       return false
     }
 
-    // I think this is wrong. We may want to record nodeInitReward while the network is having data loss (safety/recovery)
-    // const nodeAddress = tx.publicKey.toLowerCase()
-    // const account = await dapp.getLocalOrRemoteAccount(nodeAddress)
-    // if (!account) {
-    //   console.log(`registerBeforeAddVerifier - nodeInitReward: Account for node address ${nodeAddress} not found, do not add tx`)
-    //   return false
-    // }
-    // const nodeAccount = account.data as NodeAccount
-    // if (!nodeAccount || !nodeAccount.nominator || nodeAccount.nominator === '') {
-    //   console.log(`registerBeforeAddVerifier - nodeInitReward: Account for node address ${nodeAddress} has null nominator, do not add tx`)
-    //   return false
-    // }
+    const nodeAddress = tx.publicKey
+    const account = await dapp.getLocalOrRemoteAccount(nodeAddress)
+    if (!account) {
+      console.log(`registerBeforeAddVerifier - nodeInitReward: Account for node address ${nodeAddress} not found, do not add tx`)
+      return false
+    }
+    const nodeAccount = account.data as NodeAccount
+    if (!nodeAccount || !nodeAccount.nominator || nodeAccount.nominator === '') {
+      console.log(`registerBeforeAddVerifier - nodeInitReward: Account for node address ${nodeAddress} has null nominator, do not add tx`)
+      return false
+    }
 
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validate nodeInitReward success', Utils.safeStringify(tx))
     return true
@@ -177,7 +175,7 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
       /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerApplyVerify nodeInitReward fail invalid publicKey field`)
       return true
     }
-    const shardusAddress = tx.publicKey.toLowerCase()
+    const shardusAddress = tx.publicKey
     const account = await dapp.getLocalOrRemoteAccount(shardusAddress)
     if (!account) {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeInitReward fail account not found', Utils.safeStringify(tx))
