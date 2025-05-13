@@ -19,7 +19,7 @@ export const ONE_DAY = 24 * ONE_HOUR
 // export const ONE_YEAR = 365 * ONE_DAY
 
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
-export const cycleDuration = 16
+export const cycleDuration = 60
 const reduceTimeFromTxTimestamp = cycleDuration * ONE_SECOND
 const halfCycleDuration = (cycleDuration * 1000) / 2
 

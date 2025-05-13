@@ -18,10 +18,10 @@ export const transactions =
         } else {
           /* prettier-ignore */ if (LiberdusFlags) console.log(`cachedAppData: Unable to find tx receipt for ${txId} ${Date.now()}`)
         }
-        return res.json({ account: null })
+        return res.json({ transaction: null })
       } catch (error) {
         /* prettier-ignore */ if (LiberdusFlags) console.log('cachedAppData: Unable to get tx receipt: ', error.message)
-        return res.json({ account: null })
+        return res.json({ transaction: null })
       }
     } catch (error) {
       dapp.log(error)
