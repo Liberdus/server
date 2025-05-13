@@ -951,7 +951,7 @@ vorpal.command('deposit stake', 'deposit the stake amount to the node').action(a
   })
 })
 
-vorpal.command('withdraw_stake', 'withdraw the stake from the node').action(async function(args, callback) {
+vorpal.command('withdraw stake', 'withdraw the stake from the node').action(async function(args, callback) {
   const answers = await this.prompt([
     {
       type: 'input',
@@ -1850,21 +1850,21 @@ vorpal
 
 // Add a vorpal command for depositing stake to the joining/active nodes in the network.
 // First argument is the amount of tokens to stake.
-vorpal.command('deposit stake to nodes', 'deposit the stake amount to the joining/active nodes in the network').action(async function(args, callback) {
+vorpal.command('deposit stake all', 'deposit the stake amount to the joining/active nodes in the network').action(async function(args, callback) {
   const answers = await this.prompt([
-    {
-      type: 'number',
-      name: 'amount',
-      message: 'Enter number of tokens to stake: ',
-      default: 10,
-      filter: (value) => BigInt(value),
-    },
     // ask the node type "joining" or "active"
     {
       type: 'list',
       name: 'nodeType',
       message: 'Enter the node type to stake: ',
       choices: ['joining', 'active'],
+    },
+    {
+      type: 'number',
+      name: 'amount',
+      message: 'Enter number of tokens to stake: ',
+      default: 10,
+      filter: (value) => BigInt(value),
     },
   ])
   const nodeList = answers.nodeType === 'joining' ? await getJoiningNodes() : await getActiveNodes()

@@ -786,10 +786,9 @@ const shardusSetup = (): void => {
       return false
     },
     async txPreCrackData(tx: any, appData: any): Promise<{ status: boolean; reason: string }> {
-      if (tx.type != TXTypes.transfer && tx.type != TXTypes.message && tx.type != TXTypes.deposit_stake) {
+      if (tx.type != TXTypes.transfer && tx.type != TXTypes.message && tx.type != TXTypes.deposit_stake && tx.type != TXTypes.withdraw_stake) {
         return { status: true, reason: 'Tx PreCrack Skipped' }
       }
-      console.log('txPreCrackData', tx)
       try {
         const txTimestamp = utils.getInjectedOrGeneratedTimestamp({ tx: tx }, dapp)
         const wrappedStates: LiberdusTypes.WrappedStates = {}
@@ -800,7 +799,7 @@ const shardusSetup = (): void => {
         let from = tx.from
         let to = tx.to
 
-        if (tx.type === TXTypes.deposit_stake) {
+        if (tx.type === TXTypes.deposit_stake || tx.type === TXTypes.withdraw_stake) {
           from = tx.nominator
           to = tx.nominee
         }
@@ -906,38 +905,37 @@ const shardusSetup = (): void => {
             if (LiberdusFlags.VerboseLogs) console.log(`signAppData stake amount lower than required ${type} ${Utils.safeStringify(stakeCert)} `)
             return fail
           }
-          if (LiberdusFlags.FullCertChecksEnabled) {
-            const nominatorAccount = await dapp.getLocalOrRemoteAccount(stakeCert.nominator)
-            if (!nominatorAccount) {
-              /* prettier-ignore */
-              nestedCountersInstance.countEvent('liberdus-staking', 'could not find nominator account')
-              /* prettier-ignore */
-              if (LiberdusFlags.VerboseLogs) console.log(`could not find nominator account ${type} ${Utils.safeStringify(stakeCert)} `)
-              return fail
-            }
-            const nominatorUserAccount = nominatorAccount.data as LiberdusTypes.UserAccount
-            if (!nominatorUserAccount.operatorAccountInfo) {
-              /* prettier-ignore */
-              nestedCountersInstance.countEvent('liberdus-staking', 'operatorAccountInfo missing from nominator')
-              /* prettier-ignore */
-              if (LiberdusFlags.VerboseLogs) console.log(`operatorAccountInfo missing from nominator ${type} ${Utils.safeStringify(stakeCert)} `)
-              return fail
-            }
-            if (stakeCert.stake != nominatorUserAccount.operatorAccountInfo.stake) {
-              /* prettier-ignore */
-              nestedCountersInstance.countEvent('liberdus-staking', 'operatorAccountInfo missing from nominator')
-              /* prettier-ignore */
-              if (LiberdusFlags.VerboseLogs) console.log(`stake amount in cert and operator account does not match ${type} ${Utils.safeStringify(stakeCert)} ${Utils.safeStringify(nominatorUserAccount)} `)
-              return fail
-            }
-            if (stakeCert.nominee != nominatorUserAccount.operatorAccountInfo.nominee) {
-              /* prettier-ignore */
-              nestedCountersInstance.countEvent('liberdus-staking', 'nominee in cert and operator account does not match')
-              /* prettier-ignore */
-              if (LiberdusFlags.VerboseLogs) console.log(`nominee in cert and operator account does not match ${type} ${Utils.safeStringify(stakeCert)} ${Utils.safeStringify(nominatorUserAccount)} `)
-              return fail
-            }
+          const nominatorAccount = await dapp.getLocalOrRemoteAccount(stakeCert.nominator)
+          if (!nominatorAccount) {
+            /* prettier-ignore */
+            nestedCountersInstance.countEvent('liberdus-staking', 'could not find nominator account')
+            /* prettier-ignore */
+            if (LiberdusFlags.VerboseLogs) console.log(`could not find nominator account ${type} ${Utils.safeStringify(stakeCert)} `)
+            return fail
           }
+          const nominatorUserAccount = nominatorAccount.data as LiberdusTypes.UserAccount
+          if (!nominatorUserAccount.operatorAccountInfo) {
+            /* prettier-ignore */
+            nestedCountersInstance.countEvent('liberdus-staking', 'operatorAccountInfo missing from nominator')
+            /* prettier-ignore */
+            if (LiberdusFlags.VerboseLogs) console.log(`operatorAccountInfo missing from nominator ${type} ${Utils.safeStringify(stakeCert)} `)
+            return fail
+          }
+          if (stakeCert.stake != nominatorUserAccount.operatorAccountInfo.stake) {
+            /* prettier-ignore */
+            nestedCountersInstance.countEvent('liberdus-staking', 'operatorAccountInfo missing from nominator')
+            /* prettier-ignore */
+            if (LiberdusFlags.VerboseLogs) console.log(`stake amount in cert and operator account does not match ${type} ${Utils.safeStringify(stakeCert)} ${Utils.safeStringify(nominatorUserAccount)} `)
+            return fail
+          }
+          if (stakeCert.nominee != nominatorUserAccount.operatorAccountInfo.nominee) {
+            /* prettier-ignore */
+            nestedCountersInstance.countEvent('liberdus-staking', 'nominee in cert and operator account does not match')
+            /* prettier-ignore */
+            if (LiberdusFlags.VerboseLogs) console.log(`nominee in cert and operator account does not match ${type} ${Utils.safeStringify(stakeCert)} ${Utils.safeStringify(nominatorUserAccount)} `)
+            return fail
+          }
+
           delete stakeCert.sign
           delete stakeCert.signs
           const signedCert: StakeCert = dapp.signAsNode(stakeCert)
@@ -1048,33 +1046,80 @@ const shardusSetup = (): void => {
           }
         }
 
-        const numActiveNodes = latestCycle.active
-        const numTotalNodes = latestCycle.active + latestCycle.syncing // total number of nodes in the network
+        // Staking is only enabled when flag is on
+        const stakingEnabled = LiberdusFlags.StakingEnabled
+        // If staking is not enabled, we don't need to check for stake certificate
+        if (!stakingEnabled) {
+          /* prettier-ignore */
+          if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest success: staking is not enabled`)
+          return {
+            success: true,
+            reason: 'Join Request validated',
+            fatal: false,
+          }
+        }
 
-        // Staking is only enabled when flag is on and
-        const stakingEnabled = LiberdusFlags.StakingEnabled && numActiveNodes >= LiberdusFlags.minActiveNodesForStaking
+        if (LiberdusFlags.ModeEnabled && (mode === 'forming' || mode === 'restart')) {
+          /* prettier-ignore */
+          if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest success: mode is forming or restart`)
+          return {
+            success: true,
+            reason: 'Join Request validated',
+            fatal: false,
+          }
+        }
 
-        //Checks for golden ticket
-        if (appJoinData.adminCert?.goldenTicket === true) {
+        const nodeAcc = data.sign.owner
+        //Checks for adminCert or goldenTicket
+        if (LiberdusFlags.AdminCertEnabled && appJoinData.adminCert && appJoinData.mustUseAdminCert) {
           const adminCert: AdminCert = appJoinData.adminCert
           /* prettier-ignore */
-          nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest: Golden ticket is enabled, node about to enter processing check')
+          nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest: adminCert exists')
+
+          if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest: adminCert ${Utils.safeStringify(adminCert)}`)
 
           const currentTimestamp = dapp.shardusGetTime()
-          if (!adminCert || adminCert.certExp < currentTimestamp) {
+          if (!adminCert.certExp || adminCert.certExp < currentTimestamp) {
             /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: !adminCert || adminCert.certExp < currentTimestamp')
+            nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: !adminCert.certExp || adminCert.certExp < currentTimestamp')
             return {
               success: false,
-              reason: 'No admin cert found in mode: ' + mode,
+              reason: 'No admin certificate or certificate has expired',
               fatal: false,
             }
           }
-          /* prettier-ignore */
-          if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest: adminCert ${Utils.safeStringify(adminCert)}`)
+
+          if (!adminCert.nominee) {
+            /* prettier-ignore */
+            nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: !adminCert.nominee')
+            return {
+              success: false,
+              reason: 'No nominee in admin certificate',
+              fatal: true,
+            }
+          }
+
+          if (!adminCert.sign || !adminCert.sign.owner || !adminCert.sign.sig) {
+            /* prettier-ignore */
+            nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: !adminCert.sign')
+            return {
+              success: false,
+              reason: 'No signature in admin certificate',
+              fatal: true,
+            }
+          }
+
+          if (typeof adminCert.goldenTicket === 'boolean') {
+            /* prettier-ignore */
+            nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: typeof adminCert.goldenTicket === boolean')
+            return {
+              success: false,
+              reason: 'No goldenTicket in admin certificate',
+              fatal: true,
+            }
+          }
 
           // check for adminCert nominee
-          const nodeAcc = data.sign.owner
           if (nodeAcc !== adminCert.nominee) {
             /* prettier-ignore */
             nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: nodeAcc !== adminCert.nominee')
@@ -1113,181 +1158,101 @@ const shardusSetup = (): void => {
           }
         }
 
-        // if condition true and if none of this triggers it'll go past the staking checks and return true...
-        if (
-          stakingEnabled &&
-          LiberdusFlags.AdminCertEnabled === true &&
-          mode !== 'processing' &&
-          numTotalNodes < minNodes //if node is about to enter processing check for stake as expected not admin cert
-        ) {
-          const adminCert: AdminCert = appJoinData.adminCert
-          /* prettier-ignore */
-          nestedCountersInstance.countEvent(
-            'liberdus-mode',
-            'validateJoinRequest: mode is not processing, AdminCertEnabled enabled, node about to enter processing check',
-          )
+        const stake_cert: StakeCert = appJoinData.stakeCert
+        if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest ${Utils.safeStringify(stake_cert)}`)
 
-          const currentTimestamp = dapp.shardusGetTime()
-          if (!adminCert || adminCert.certExp < currentTimestamp) {
-            /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: !adminCert || adminCert.certExp < currentTimestamp')
-            return {
-              success: false,
-              reason: 'No admin cert found in mode: ' + mode,
-              fatal: false,
-            }
-          }
-          /* prettier-ignore */
-          if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest: adminCert ${Utils.safeStringify(adminCert)}`)
+        const tx_time = data.joinRequestTimestamp as number
 
-          // check for adminCert nominee
-          const nodeAcc = data.sign.owner
-          if (nodeAcc !== adminCert.nominee) {
-            /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: nodeAcc !== adminCert.nominee')
-            return {
-              success: false,
-              reason: 'Nominator mismatch',
-              fatal: true,
-            }
+        if (stake_cert == null) {
+          /* prettier-ignore */
+          nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: stake_cert == null')
+          /* prettier-ignore */
+          if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: stake_cert == null`)
+          return {
+            success: false,
+            reason: `Join request node doesn't provide the stake certificate.`,
+            fatal: true,
           }
+        }
 
-          const pkClearance = dapp.getDevPublicKey(adminCert.sign.owner)
-          // check for invalid signature for AdminCert
-          if (pkClearance == null) {
-            return {
-              success: false,
-              reason: 'Unauthorized! no getDevPublicKey defined',
-              fatal: true,
-            }
-          }
-          if (pkClearance && (!dapp.crypto.verify(adminCert, pkClearance) || dapp.ensureKeySecurity(pkClearance, DevSecurityLevel.High) === false)) {
-            // check for invalid signature for AdminCert
-            /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: !shardus.crypto.verify(adminCert, shardus.getDevPublicKeyMaxLevel())')
-            return {
-              success: false,
-              reason: 'Invalid signature for AdminCert',
-              fatal: true,
-            }
-          }
+        if (!stake_cert.nominee || nodeAcc !== stake_cert.nominee) {
           /* prettier-ignore */
-          nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest success: adminCert')
+          nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: nodeAcc !== stake_cert.nominee')
           /* prettier-ignore */
-          if (LiberdusFlags.VerboseLogs) console.log('validateJoinRequest success: adminCert')
+          if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: nodeAcc !== stake_cert.nominee`)
+          return {
+            success: false,
+            reason: `Nominated address and tx signature owner doesn't match, nominee: ${stake_cert.nominee}, sign owner: ${nodeAcc}`,
+            fatal: true,
+          }
+        }
+
+        if (!stake_cert.certExp || tx_time > stake_cert.certExp) {
+          /* prettier-ignore */
+          nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: tx_time > stake_cert.certExp')
+          /* prettier-ignore */
+          if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: tx_time > stake_cert.certExp ${tx_time} > ${stake_cert.certExp}`)
+          return {
+            success: false,
+            reason: `Certificate has expired at ${stake_cert.certExp}`,
+            fatal: false,
+          }
+        }
+
+        const serverConfig = config.server
+        const two_cycle_ms = serverConfig.p2p.cycleDuration * 2 * 1000
+
+        // stake certification should not expired for at least 2 cycle.
+        if (dapp.shardusGetTime() + two_cycle_ms > stake_cert.certExp) {
+          /* prettier-ignore */
+          nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: cert expires soon')
+          /* prettier-ignore */
+          if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: cert expires soon ${dapp.shardusGetTime() + two_cycle_ms} > ${stake_cert.certExp}`)
+          return {
+            success: false,
+            reason: `Certificate will be expired really soon.`,
+            fatal: false,
+          }
+        }
+
+        const minStakeRequiredUsd = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
+        const minStakeRequired = utils.scaleByStabilityFactor(minStakeRequiredUsd, AccountsStorage.cachedNetworkAccount)
+
+        const stakedAmount = stake_cert.stake
+
+        if (!stakedAmount || stakedAmount === BigInt(0) || stakedAmount < minStakeRequired) {
+          /* prettier-ignore */
+          nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: stake_cert.stake < minStakeRequired')
+          /* prettier-ignore */
+          if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: stake_cert.stake < minStakeRequired ${stakedAmount} < ${minStakeRequired}`)
+          return {
+            success: false,
+            reason: `Minimum stake amount requirement does not meet.`,
+            fatal: false,
+          }
+        }
+
+        const requiredSig = getNodeCountForCertSignatures()
+        const { success, reason } = dapp.validateClosestActiveNodeSignatures(stake_cert, stake_cert.signs, requiredSig, 5, 2)
+        if (success) {
+          /* prettier-ignore */
+          nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest success: stake_cert')
+          /* prettier-ignore */
+          if (LiberdusFlags.VerboseLogs) console.log('validateJoinRequest success: stake_cert')
           return {
             success: true,
             reason: 'Join Request validated',
             fatal: false,
           }
         }
-
-        if ((LiberdusFlags.ModeEnabled === true && mode === 'processing' && stakingEnabled) || (LiberdusFlags.ModeEnabled === false && stakingEnabled)) {
-          /* prettier-ignore */
-          nestedCountersInstance.countEvent('liberdus-staking', 'validating join request with staking enabled')
-
-          if (appJoinData.mustUseAdminCert) {
-            /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: appJoinData.mustUseAdminCert')
-            return {
-              success: false,
-              reason: 'Join Request wont have a stake certificate',
-              fatal: false,
-            }
-          }
-
-          const nodeAcc = data.sign.owner
-          const stake_cert: StakeCert = appJoinData.stakeCert
-          if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest ${Utils.safeStringify(stake_cert)}`)
-
-          const tx_time = data.joinRequestTimestamp as number
-
-          if (stake_cert == null) {
-            /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: stake_cert == null')
-            /* prettier-ignore */
-            if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: stake_cert == null`)
-            return {
-              success: false,
-              reason: `Join request node doesn't provide the stake certificate.`,
-              fatal: true,
-            }
-          }
-
-          if (nodeAcc !== stake_cert.nominee) {
-            /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: nodeAcc !== stake_cert.nominee')
-            /* prettier-ignore */
-            if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: nodeAcc !== stake_cert.nominee`)
-            return {
-              success: false,
-              reason: `Nominated address and tx signature owner doesn't match, nominee: ${stake_cert.nominee}, sign owner: ${nodeAcc}`,
-              fatal: true,
-            }
-          }
-
-          if (tx_time > stake_cert.certExp) {
-            /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: tx_time > stake_cert.certExp')
-            /* prettier-ignore */
-            if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: tx_time > stake_cert.certExp ${tx_time} > ${stake_cert.certExp}`)
-            return {
-              success: false,
-              reason: `Certificate has expired at ${stake_cert.certExp}`,
-              fatal: false,
-            }
-          }
-
-          const serverConfig = config.server
-          const two_cycle_ms = serverConfig.p2p.cycleDuration * 2 * 1000
-
-          // stake certification should not expired for at least 2 cycle.
-          if (dapp.shardusGetTime() + two_cycle_ms > stake_cert.certExp) {
-            /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: cert expires soon')
-            /* prettier-ignore */
-            if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: cert expires soon ${dapp.shardusGetTime() + two_cycle_ms} > ${stake_cert.certExp}`)
-            return {
-              success: false,
-              reason: `Certificate will be expired really soon.`,
-              fatal: false,
-            }
-          }
-
-          const minStakeRequiredUsd = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
-          const minStakeRequired = utils.scaleByStabilityFactor(minStakeRequiredUsd, AccountsStorage.cachedNetworkAccount)
-
-          const stakedAmount = stake_cert.stake
-
-          if (stakedAmount < minStakeRequired) {
-            /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: stake_cert.stake < minStakeRequired')
-            /* prettier-ignore */
-            if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: stake_cert.stake < minStakeRequired ${stakedAmount} < ${minStakeRequired}`)
-            return {
-              success: false,
-              reason: `Minimum stake amount requirement does not meet.`,
-              fatal: false,
-            }
-          }
-
-          const requiredSig = getNodeCountForCertSignatures()
-          const { success, reason } = dapp.validateClosestActiveNodeSignatures(stake_cert, stake_cert.signs, requiredSig, 5, 2)
-          if (!success) {
-            /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: invalid signature')
-            /* prettier-ignore */
-            if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: invalid signature`, reason)
-            return { success, reason, fatal: false }
-          }
-        }
-
         /* prettier-ignore */
-        if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest success!!!`)
+        nestedCountersInstance.countEvent('liberdus-staking', `validateJoinRequest fail: ${reason}`)
+        /* prettier-ignore */
+        if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: ${reason}`)
         return {
-          success: true,
-          reason: 'Join Request validated',
-          fatal: false,
+          success: false,
+          reason,
+          fatal: true,
         }
       } catch (e) {
         /* prettier-ignore */
@@ -1390,11 +1355,10 @@ const shardusSetup = (): void => {
         return true
       }
 
-      const numTotalNodes = latestCycle.active + latestCycle.syncing // total number of nodes in the network
-      if (numTotalNodes < LiberdusFlags.minActiveNodesForStaking) {
-        isReadyToJoinLatestValue = true
+      if (LiberdusFlags.ModeEnabled === true && (mode === 'forming' || mode === 'restart')) {
         /* prettier-ignore */
-        nestedCountersInstance.countEvent('liberdus-staking', 'numTotalNodes < LiberdusFlags.minActiveNodesForStaking, isReadyToJoin = true')
+        nestedCountersInstance.countEvent('liberdus-staking', 'staking enabled, network in forming/restart mode, isReadyToJoin = true')
+        isReadyToJoinLatestValue = true
         return true
       }
       /* prettier-ignore */

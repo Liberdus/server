@@ -207,9 +207,7 @@ interface LiberdusFlags {
   ModeEnabled: boolean
   StakingEnabled: boolean
   AdminCertEnabled: boolean
-  minActiveNodesForStaking: number
   MinStakeCertSig: number
-  FullCertChecksEnabled: boolean // do we run all of the cert checks when signing.  This config may go away soon after testing.
   certCycleDuration: number
   lowStakePercent: number
   allowForceUnstake: boolean
@@ -235,9 +233,7 @@ export const LiberdusFlags: LiberdusFlags = {
   AdminCertEnabled: true,
   StakingEnabled: true,
   ModeEnabled: true,
-  minActiveNodesForStaking: 5,
   MinStakeCertSig: 1, // this is the minimum amount of signature required for stake certification. will move to network param in future.
-  FullCertChecksEnabled: true,
   certCycleDuration: 30,
   lowStakePercent: 0.2,
   allowForceUnstake: true,

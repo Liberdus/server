@@ -54,7 +54,7 @@ export default (dapp: Shardus) => {
   dapp.registerExternalGet('debug/dump', debug.dump(dapp))
   dapp.registerExternalPost('debug/exit', debug.exit)
 
-  dapp.registerExternalGet('staking', staking.stake())
+  dapp.registerExternalGet('stake', staking.stake())
   dapp.registerExternalGet('canStake/:nominee', staking.canStake(dapp))
   dapp.registerExternalGet('canUnstake/:nominee/:nominator', staking.canUnstake(dapp))
 
