@@ -1,4 +1,15 @@
-import { DeveloperPayment, DevIssueAccount, InjectTxResponse, IssueAccount, NetworkAccount, UserAccount, ValidatorError } from '../@types'
+import {
+  DeveloperPayment,
+  DevIssueAccount,
+  InjectTxResponse,
+  IssueAccount,
+  NetworkAccount,
+  TollUnit,
+  Tx,
+  TXTypes,
+  UserAccount,
+  ValidatorError,
+} from '../@types'
 import * as crypto from '../crypto'
 import * as configs from '../config'
 import { LiberdusFlags } from '../config'
@@ -6,7 +17,6 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import { DevSecurityLevel, Sign } from '@shardeum-foundation/core/dist/shardus/shardus-types'
 import { shardusPostToNode } from './request'
 import { Utils } from '@shardus/types'
-import { TXTypes, Tx } from '../@types'
 
 export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): bigint => {
   let amount: bigint
@@ -643,6 +653,28 @@ export function libToWei(lib: number): bigint {
 
 export function weiToLib(wei: bigint): number {
   return Number(wei) / 10 ** 18
+}
+
+export function usdToWei(usd: bigint, networkAccount: NetworkAccount): bigint {
+  const scaleMul = BigInt(networkAccount.current.stabilityScaleMul)
+  const scaleDiv = BigInt(networkAccount.current.stabilityScaleDiv)
+  const libPerUsd = (usd * scaleDiv) / scaleMul
+  return libPerUsd
+}
+
+export function weiToUsd(lib: bigint, networkAccount: NetworkAccount): bigint {
+  const scaleMul = BigInt(networkAccount.current.stabilityScaleMul)
+  const scaleDiv = BigInt(networkAccount.current.stabilityScaleDiv)
+  const usdPerLib = (lib * scaleMul) / scaleDiv
+  return usdPerLib
+}
+
+export function calculateRequiredTollInWei(account: UserAccount, network: NetworkAccount): bigint {
+  let requiredTollInWei = account.data.toll || BigInt(0)
+  if (account.data.tollUnit === TollUnit.usd) {
+    requiredTollInWei = usdToWei(requiredTollInWei, network)
+  }
+  return requiredTollInWei
 }
 
 /**

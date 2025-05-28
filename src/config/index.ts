@@ -63,6 +63,7 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   devProposalFee: utils.libToWei(50),
   faucetAmount: utils.libToWei(10),
   defaultToll: utils.libToWei(1),
+  minToll: utils.libToWei(1),
   tollNetworkTaxPercent: 1, // 1%
   tollTimeout: 7 * ONE_DAY,
   minVersion: '2.3.4',
@@ -73,7 +74,7 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
     activeVersion: '3.5.6',
     latestVersion: '3.5.6',
   },
-  stabilityScaleMul: 1000,
+  stabilityScaleMul: 8,
   stabilityScaleDiv: 1000,
   txPause: false,
   certCycleDuration: 30,

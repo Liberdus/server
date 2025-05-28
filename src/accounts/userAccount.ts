@@ -1,10 +1,12 @@
-import { UserAccount } from '../@types'
+import { TollUnit, UserAccount, NetworkAccount } from '../@types'
 import { VectorBufferStream } from '@shardeum-foundation/core'
 import * as crypto from '@shardus/crypto-utils'
 import { deserializeDeveloperPayment, SerdeTypeIdent, serializeDeveloperPayment } from '.'
 import * as utils from '../utils'
+import * as AccountsStorage from '../storage/accountStorage'
+import { INITIAL_PARAMETERS } from '../config'
 
-export const userAccount = (accountId: string, timestamp: number) => {
+export const userAccount = (accountId: string, timestamp: number): UserAccount => {
   const account: UserAccount = {
     id: accountId,
     type: 'UserAccount',
@@ -12,7 +14,8 @@ export const userAccount = (accountId: string, timestamp: number) => {
       balance: utils.libToWei(50),
       stake: BigInt(0),
       remove_stake_request: null,
-      toll: null,
+      toll: AccountsStorage.cachedNetworkAccount ? AccountsStorage.cachedNetworkAccount.current.defaultToll : INITIAL_PARAMETERS.defaultToll,
+      tollUnit: TollUnit.lib,
       chats: {},
       chatTimestamp: 0,
       friends: {},
@@ -45,6 +48,9 @@ export const serializeUserAccount = (stream: VectorBufferStream, inp: UserAccoun
   if (inp.data.toll) {
     stream.writeBigInt64(inp.data.toll)
   }
+  // serialize tollUnit
+  stream.writeString(inp.data.tollUnit)
+
   stream.writeUInt32(Object.keys(inp.data.chats).length)
   for (const key in inp.data.chats) {
     stream.writeString(key)
@@ -112,6 +118,8 @@ export const deserializeUserAccount = (stream: VectorBufferStream, root = false)
   if (stream.readUInt8() === 1) {
     toll = stream.readBigInt64()
   }
+  // Deserialize tollUnit
+  const tollUnit = stream.readString() as TollUnit
 
   // Deserialize chats
   const chats = {} as UserAccount['data']['chats']
@@ -195,6 +203,7 @@ export const deserializeUserAccount = (stream: VectorBufferStream, root = false)
       stake,
       remove_stake_request,
       toll,
+      tollUnit,
       chats,
       chatTimestamp,
       friends,
