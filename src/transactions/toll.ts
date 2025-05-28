@@ -1,9 +1,9 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
-import create from '../accounts'
 import * as config from '../config'
-import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { Accounts, AppReceiptData, NetworkAccount, TollUnit, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
+import * as AccountsStorage from '../storage/accountStorage'
 
 export const validate_fields = (tx: Tx.Toll, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -16,14 +16,24 @@ export const validate_fields = (tx: Tx.Toll, response: ShardusTypes.IncomingTran
     response.reason = 'tx "toll" field must be a bigint.'
     throw new Error(response.reason)
   }
-  if (tx.toll < BigInt(1)) {
+  if (tx.tollUnit && !Object.values(TollUnit).includes(tx.tollUnit)) {
     response.success = false
-    response.reason = 'Minimum "toll" allowed is 1 token'
+    response.reason = 'tx "tollUnit" field must be a valid TollUnit enum value.'
     throw new Error(response.reason)
   }
-  if (tx.toll > BigInt(1000000)) {
+  let tollInLib = tx.toll
+  if (tx.tollUnit === TollUnit.usd) {
+    tollInLib = utils.usdToWei(tx.toll, AccountsStorage.cachedNetworkAccount)
+  }
+  if (tollInLib < AccountsStorage.cachedNetworkAccount.current.minToll) {
+    const minTollInLib = utils.weiToLib(AccountsStorage.cachedNetworkAccount.current.minToll)
     response.success = false
-    response.reason = 'Maximum toll allowed is 1,000,000 tokens.'
+    response.reason = `Minimum "toll" allowed is ${minTollInLib} LIB`
+    throw new Error(response.reason)
+  }
+  if (tx.toll > utils.libToWei(1000000)) {
+    response.success = false
+    response.reason = 'Maximum toll allowed is 1,000,000 LIB or USD.'
     throw new Error(response.reason)
   }
   return response
@@ -52,8 +62,16 @@ export const validate = (tx: Tx.Toll, wrappedStates: WrappedStates, response: Sh
     response.reason = 'Toll was not defined in the transaction'
     return response
   }
-  if (tx.toll < 1) {
-    response.reason = 'Toll must be greater than or equal to 1'
+  let tollInWei = tx.toll
+  if (tx.tollUnit === TollUnit.usd) {
+    tollInWei = utils.usdToWei(tx.toll, network)
+  }
+  if (tollInWei < network.current.minToll) {
+    response.reason = `Minimum "toll" allowed is ${utils.weiToLib(network.current.minToll)} LIB`
+    return response
+  }
+  if (tollInWei > utils.libToWei(1000000)) {
+    response.reason = 'Maximum toll allowed is 1,000,000 LIB'
     return response
   }
   response.success = true
@@ -74,8 +92,8 @@ export const apply = (
   const transactionFee = network.current.transactionFee
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
   from.data.balance -= transactionFee + maintenanceFee
+  from.data.tollUnit = tx.tollUnit
   from.data.toll = tx.toll
-  // from.data.transactions.push({ ...tx, txId })
   from.timestamp = txTimestamp
 
   const appReceiptData: AppReceiptData = {

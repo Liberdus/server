@@ -370,6 +370,7 @@ export namespace Tx {
   export interface Toll extends BaseLiberdusTx {
     from: string
     toll: bigint
+    tollUnit: TollUnit
   }
 
   export interface Transfer extends BaseLiberdusTx {
@@ -453,6 +454,11 @@ export interface Signature {
   sig: string
 }
 
+export enum TollUnit {
+  lib = 'LIB',
+  usd = 'USD',
+}
+
 /**
  * ---------------------- ACCOUNT export interfaceS ----------------------
  */
@@ -463,6 +469,7 @@ export interface UserAccount {
   data: {
     balance: bigint
     toll: bigint | null
+    tollUnit: TollUnit
     chats: chatMessages
     chatTimestamp: number
     friends: object
@@ -685,7 +692,6 @@ export interface NetworkParameters {
   proposalFee: bigint
   devProposalFee: bigint
   faucetAmount: bigint
-  defaultToll: bigint
   nodeRewardAmountUsd: bigint
   nodePenaltyUsd: bigint
   stakeRequiredUsd: bigint
@@ -703,6 +709,8 @@ export interface NetworkParameters {
   txPause: boolean
   certCycleDuration: number
   enableNodeSlashing: boolean
+  defaultToll: bigint
+  minToll: bigint
   tollNetworkTaxPercent: number
   tollTimeout: number
   slashing: {

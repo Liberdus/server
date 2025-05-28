@@ -3,7 +3,7 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 import create from '../accounts'
 import * as config from '../config'
-import { Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData, TollUnit } from '../@types'
 import { toShardusAddress } from '../utils/address'
 
 export const validate_fields = (tx: Tx.Message, response: ShardusTypes.IncomingTransactionResult) => {
@@ -75,7 +75,7 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
   }
 
   // Calculate required toll based on chat account state
-  let requiredToll = BigInt(0)
+  let requiredTollInWei = BigInt(0)
   if (chat && chat.hasChats) {
     // Get sender index based on sorted addresses
     const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
@@ -83,16 +83,16 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
 
     // Check if sender needs to pay toll
     if (chat.toll.required[senderIndex] === 1) {
-      requiredToll = to.data.toll === null ? network.current.defaultToll : to.data.toll
+      requiredTollInWei = utils.calculateRequiredTollInWei(to, network)
     }
   } else {
     // For new chats, sender always pays toll
-    requiredToll = to.data.toll === null ? network.current.defaultToll : to.data.toll
+    requiredTollInWei = utils.calculateRequiredTollInWei(to, network)
   }
 
   // Validate balance covers toll + transaction fee
-  if (from.data.balance < requiredToll + network.current.transactionFee) {
-    response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the toll (${requiredToll}) + transaction fee (${network.current.transactionFee}).`
+  if (from.data.balance < requiredTollInWei + network.current.transactionFee) {
+    response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the toll (${requiredTollInWei}) + transaction fee (${network.current.transactionFee}).`
     return response
   }
 
@@ -185,11 +185,11 @@ export const apply = (
   } else if (chat.toll.required[receiverIndex] === 1) {
     // receiver demands toll
     // Handle toll for new or existing chat when required
-    tollDeposited = to.data.toll === null ? network.current.defaultToll : to.data.toll
+    tollDeposited = utils.calculateRequiredTollInWei(to, network)
     from.data.balance -= tollDeposited
 
     // Deposit toll in read and reply pools
-    const halfToll = BigInt(tollDeposited) / 2n
+    const halfToll = tollDeposited / 2n
     chat.toll.payOnRead[receiverIndex] += halfToll
     chat.toll.payOnReply[receiverIndex] += halfToll
   }
