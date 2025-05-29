@@ -9,7 +9,7 @@ import staking from './staking'
 import { handlePutAdminCertificate } from './admin_certificate'
 import { debug_liberdus_flags, set_liberdus_flag } from './liberdus_flags'
 import { Shardus } from '@shardeum-foundation/core'
-export default (dapp: Shardus) => {
+export default (dapp: Shardus): void => {
   dapp.registerExternalPost('inject', inject(dapp))
 
   dapp.registerExternalGet('network/parameters', network.current(dapp))
@@ -45,7 +45,8 @@ export default (dapp: Shardus) => {
 
   dapp.registerExternalGet('transaction/:id', accounts.transactions(dapp))
 
-  dapp.registerExternalGet('messages/:chatId/:timestamp', messages(dapp))
+  dapp.registerExternalGet('messages/:chatId/:timestamp', messages.messages(dapp))
+  dapp.registerExternalGet('messages/:chatId/toll', messages.toll(dapp))
 
   dapp.registerExternalGet('timestamp', (req, res) => {
     res.json({ timestamp: dapp.shardusGetTime() })
