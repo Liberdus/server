@@ -224,6 +224,9 @@ interface LiberdusFlags {
   enableArchiverNetworkAccountValidation: boolean
   enableDAOTransactions: boolean
   enableAJVValidation: boolean
+  versionFlags: {
+    replierNoToll?: boolean
+  }
 }
 
 export const LiberdusFlags: LiberdusFlags = {
@@ -250,6 +253,9 @@ export const LiberdusFlags: LiberdusFlags = {
   enableArchiverNetworkAccountValidation: false,
   enableDAOTransactions: false,
   enableAJVValidation: false,
+  versionFlags: {
+    replierNoToll: false, // turn on by 2.3.5
+  },
 }
 
 export function updateLiberdusFlag(key: string, value: string | number | boolean): void {

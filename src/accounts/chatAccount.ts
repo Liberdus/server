@@ -2,9 +2,11 @@ import * as crypto from '../crypto'
 import { VectorBufferStream } from '@shardeum-foundation/core'
 import { Utils } from '@shardus/types'
 import { SerdeTypeIdent } from '.'
-import { ChatAccount } from '../@types'
+import { ChatAccount, Tx } from '../@types'
+import * as utils from '../utils'
+import { LiberdusFlags } from '../config'
 
-export const chatAccount = (accountId: string): ChatAccount => {
+export const chatAccount = (accountId: string, tx: Tx.Message): ChatAccount => {
   const chat: ChatAccount = {
     id: accountId,
     type: 'ChatAccount',
@@ -20,6 +22,14 @@ export const chatAccount = (accountId: string): ChatAccount => {
     hash: '',
     hasChats: false,
   }
+
+  if (LiberdusFlags.versionFlags.replierNoToll) {
+    const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
+    // set the required toll of the sender to 0 so that replier will not have to pay toll
+    const senderIndex = addr1 === tx.from ? 0 : 1
+    chat.toll.required[senderIndex] = 0
+  }
+
   chat.hash = crypto.hashObj(chat)
   return chat
 }
