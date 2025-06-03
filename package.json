@@ -1,6 +1,6 @@
 {
   "name": "liberdus",
-  "version": "2.3.4",
+  "version": "2.3.5",
   "description": "Liberdus is a payment network that allows users to govern their own money system in a democratic fashion",
   "main": "dist/index.js",
   "scripts": {
