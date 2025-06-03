@@ -305,7 +305,7 @@ export const memoryPattern = (tx: Tx.Message, result: TransactionKeys): ShardusT
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount | ChatAccount, accountId: string, tx: Tx.Message, accountCreated = false) => {
   if (!account) {
     if (accountId === tx.chatId) {
-      account = create.chatAccount(accountId)
+      account = create.chatAccount(accountId, tx)
     } else {
       throw Error('Account must exist in order to send a message transaction')
     }

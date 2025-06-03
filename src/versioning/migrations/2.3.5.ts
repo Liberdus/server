@@ -10,7 +10,7 @@ export const migrate: Migration = async () => {
   console.log('migrate 2.3.5')
   nestedCountersInstance.countEvent('migrate', 'calling migrate 2.3.5')
 
-  LiberdusFlags.enableAJVValidation = true
+  LiberdusFlags.versionFlags.replierNoToll = true
 }
 
 //WARNING if you add a new one of these migration files you must add it to the migrations list in
