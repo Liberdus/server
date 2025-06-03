@@ -6,7 +6,7 @@ import { ChatAccount, Tx } from '../@types'
 import * as utils from '../utils'
 import { LiberdusFlags } from '../config'
 
-export const chatAccount = (accountId: string, tx: Tx.Message): ChatAccount => {
+export const chatAccount = (accountId: string, tx: Tx.Message | Tx.Transfer | Tx.ReclaimToll): ChatAccount => {
   const chat: ChatAccount = {
     id: accountId,
     type: 'ChatAccount',
