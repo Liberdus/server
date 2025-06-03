@@ -31,6 +31,7 @@ export enum AJVSchemaEnum {
   read = 'read',
   reclaim_toll = 'reclaim_toll',
   update_chat_toll = 'update_chat_toll',
+  update_toll_required = 'update_toll_required',
   toll = 'toll',
   friend = 'friend',
   remove_friend = 'remove_friend',
@@ -83,6 +84,7 @@ export enum TXTypes {
   read = 'read',
   reclaim_toll = 'reclaim_toll',
   update_chat_toll = 'update_chat_toll',
+  update_toll_required = 'update_toll_required',
   toll = 'toll',
   friend = 'friend',
   remove_friend = 'remove_friend',
@@ -242,6 +244,14 @@ export namespace Tx {
   }
 
   export interface UpdateChatToll extends BaseLiberdusTx {
+    from: string
+    to: string
+    chatId: string
+    required: number // 1 if toll required, 0 if not nd 2 to block other party
+    timestamp: number // timestamp up to which messages are considered read
+  }
+
+  export interface UpdateTollRequired extends BaseLiberdusTx {
     from: string
     to: string
     chatId: string
