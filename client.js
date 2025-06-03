@@ -957,7 +957,7 @@ vorpal.command('deposit stake', 'deposit the stake amount to the node').action(a
   })
 })
 
-vorpal.command('withdraw stake', 'withdraw the stake from the node').action(async function(args, callback) {
+vorpal.command('withdraw stake', 'withdraw the stake from the node').action(async function (args, callback) {
   const answers = await this.prompt([
     {
       type: 'input',
@@ -1149,7 +1149,7 @@ vorpal.command('update chat toll', 'set the toll requirement or block').action(a
 
   if (answer.required) {
     const tx = {
-      type: 'update_chat_toll',
+      type: 'update_toll_required',
       from: USER.address,
       to: to,
       required: parseInt(answer.required),
@@ -1865,7 +1865,7 @@ vorpal
 
 // Add a vorpal command for depositing stake to the joining/active nodes in the network.
 // First argument is the amount of tokens to stake.
-vorpal.command('deposit stake all', 'deposit the stake amount to the joining/active nodes in the network').action(async function(args, callback) {
+vorpal.command('deposit stake all', 'deposit the stake amount to the joining/active nodes in the network').action(async function (args, callback) {
   const answers = await this.prompt([
     // ask the node type "joining" or "active"
     {

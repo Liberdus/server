@@ -276,6 +276,25 @@ const shardusSetup = (): void => {
         timestamp: txnTimestamp,
       } as LiberdusTypes.TransactionKeys
       const keys = transactions[tx.type].keys(tx, result)
+
+      // TODO: this can be removed after we passed version 2.3.4
+      if (
+        AccountsStorage?.cachedNetworkAccount &&
+        utils.isEqualOrOlderVersion('2.3.4', AccountsStorage.cachedNetworkAccount.current.activeVersion) &&
+        tx.type === TXTypes.update_toll_required
+      ) {
+        // this tx is not supported yet in versions less than 2.3.5
+        throw new Error('Tx crack failed - update_toll_required not supported in this version')
+      }
+      if (
+        AccountsStorage?.cachedNetworkAccount &&
+        utils.isEqualOrNewerVersion('2.3.5', AccountsStorage.cachedNetworkAccount.current.activeVersion) &&
+        tx.type === TXTypes.update_chat_toll
+      ) {
+        // this tx is deprecated in versions 2.3.5 and later
+        throw new Error('Tx crack failed - update_chat_toll is deprecated in this version')
+      }
+
       const memoryPattern = transactions[tx.type].memoryPattern ? transactions[tx.type].memoryPattern(tx, result) : null
       const txId = utils.generateTxId(tx)
       return {
@@ -844,6 +863,22 @@ const shardusSetup = (): void => {
 
         await Promise.allSettled(promises)
 
+        if (
+          AccountsStorage?.cachedNetworkAccount &&
+          utils.isEqualOrOlderVersion('2.3.4', AccountsStorage.cachedNetworkAccount.current.activeVersion) &&
+          tx.type === TXTypes.update_toll_required
+        ) {
+          // this tx is not supported yet in versions less than 2.3.5
+          return { status: false, reason: 'Tx PreCrack Skipped - update_toll_required not supported in this version' }
+        }
+        if (
+          AccountsStorage?.cachedNetworkAccount &&
+          utils.isEqualOrNewerVersion('2.3.5', AccountsStorage.cachedNetworkAccount.current.activeVersion) &&
+          tx.type === TXTypes.update_chat_toll
+        ) {
+          // this tx is deprecated in versions 2.3.5 and later
+          return { status: false, reason: 'Tx PreCrack Skipped - update_chat_toll deprecated in this version' }
+        }
         const res = transactions[tx.type].validate(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp)
         if (res.success === false) {
           return { status: false, reason: res.reason }
