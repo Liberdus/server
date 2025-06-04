@@ -93,6 +93,7 @@ export const validate = (
     response.reason = "from account doesn't have sufficient balance to cover the transaction"
     return response
   }
+  // TODO: if there is a memo, check if the amount is larger than the Toll required for the chat
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
