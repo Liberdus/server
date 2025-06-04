@@ -80,9 +80,10 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
     // Get sender index based on sorted addresses
     const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
     const senderIndex = addr1 === tx.from ? 0 : 1
+    const receiverIndex = 1 - senderIndex
 
-    // Check if sender needs to pay toll
-    if (chat.toll.required[senderIndex] === 1) {
+    // Check if receiver demands toll
+    if (chat.toll.required[receiverIndex] === 1) {
       requiredTollInWei = utils.calculateRequiredTollInWei(to, network)
     }
   } else {
@@ -192,6 +193,13 @@ export const apply = (
     const halfToll = tollDeposited / 2n
     chat.toll.payOnRead[receiverIndex] += halfToll
     chat.toll.payOnReply[receiverIndex] += halfToll
+  }
+  // fail if the sender balance is negative after toll deduction
+  if (from.data.balance < 0n) {
+    dapp.log(`txId: ${txId} sender balance is negative after toll deduction`, from.data.balance, tollDeposited, network.current.transactionFee)
+    from.timestamp = txTimestamp
+    dapp.log('Applied message tx', chat, from, to)
+    return
   }
 
   // Update chat references
