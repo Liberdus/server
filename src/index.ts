@@ -850,6 +850,26 @@ const shardusSetup = (): void => {
           )
         }
 
+        if (
+          tx.type === TXTypes.transfer ||
+          tx.type === TXTypes.message ||
+          tx.type === TXTypes.read ||
+          tx.type === TXTypes.toll ||
+          tx.type === TXTypes.update_toll_required ||
+          tx.type === TXTypes.reclaim_toll
+        ) {
+          promises.push(
+            dapp.getLocalOrRemoteAccount(tx.chatId).then((queuedWrappedState) => {
+              wrappedStates[tx.chatId] = {
+                accountId: queuedWrappedState.accountId,
+                stateId: queuedWrappedState.stateId,
+                data: queuedWrappedState.data as LiberdusTypes.Accounts,
+                timestamp: txTimestamp,
+              }
+            }),
+          )
+        }
+
         promises.push(
           dapp.getLocalOrRemoteAccount(networkAccount).then((queuedWrappedState) => {
             wrappedStates[networkAccount] = {
