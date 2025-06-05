@@ -254,7 +254,7 @@ export const LiberdusFlags: LiberdusFlags = {
   enableDAOTransactions: false,
   enableAJVValidation: false,
   versionFlags: {
-    replierNoToll: false, // turn on by 2.3.5
+    replierNoToll: true, // turn on by 2.3.5
   },
 }
 
