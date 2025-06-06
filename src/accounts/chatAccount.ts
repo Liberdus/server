@@ -23,12 +23,10 @@ export const chatAccount = (accountId: string, tx: Tx.Message | Tx.Transfer | Tx
     hasChats: false,
   }
 
-  if (LiberdusFlags.versionFlags.replierNoToll) {
-    const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
-    // set the required toll of the sender to 0 so that replier will not have to pay toll
-    const senderIndex = addr1 === tx.from ? 0 : 1
-    chat.toll.required[senderIndex] = 0
-  }
+  const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
+  // set the required toll of the sender to 0 so that replier will not have to pay toll
+  const senderIndex = addr1 === tx.from ? 0 : 1
+  chat.toll.required[senderIndex] = 0
 
   chat.hash = crypto.hashObj(chat)
   return chat

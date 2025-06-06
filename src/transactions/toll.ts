@@ -2,6 +2,7 @@ import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 import * as config from '../config'
+import { LiberdusFlags } from '../config'
 import { Accounts, AppReceiptData, NetworkAccount, TollUnit, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
 import * as AccountsStorage from '../storage/accountStorage'
 
@@ -63,16 +64,34 @@ export const validate = (tx: Tx.Toll, wrappedStates: WrappedStates, response: Sh
     return response
   }
   let tollInWei = tx.toll
-  if (tx.tollUnit === TollUnit.usd) {
-    tollInWei = utils.usdToWei(tx.toll, network)
-  }
-  if (tollInWei < network.current.minToll) {
-    response.reason = `Minimum "toll" allowed is ${utils.weiToLib(network.current.minToll)} LIB`
+  if (tollInWei < 0) {
+    response.reason = 'Toll cannot be negative'
     return response
   }
-  if (tollInWei > utils.libToWei(1000000)) {
-    response.reason = 'Maximum toll allowed is 1,000,000 LIB'
-    return response
+  if (LiberdusFlags.versionFlags.allowZeroToll === false) {
+    if (tx.tollUnit === TollUnit.usd) {
+      tollInWei = utils.usdToWei(tx.toll, network)
+    }
+    if (tollInWei < network.current.minToll) {
+      response.reason = `Minimum "toll" allowed is ${utils.weiToLib(network.current.minToll)} LIB`
+      return response
+    }
+    if (tollInWei > utils.libToWei(1000000)) {
+      response.reason = 'Maximum toll allowed is 1,000,000 LIB'
+      return response
+    }
+  } else if (LiberdusFlags.versionFlags.allowZeroToll && tollInWei > 0n) {
+    if (tx.tollUnit === TollUnit.usd) {
+      tollInWei = utils.usdToWei(tx.toll, network)
+    }
+    if (tollInWei < network.current.minToll) {
+      response.reason = `Minimum "toll" allowed is ${utils.weiToLib(network.current.minToll)} LIB`
+      return response
+    }
+    if (tollInWei > utils.libToWei(1000000)) {
+      response.reason = 'Maximum toll allowed is 1,000,000 LIB'
+      return response
+    }
   }
   response.success = true
   response.reason = 'This transaction is valid!'

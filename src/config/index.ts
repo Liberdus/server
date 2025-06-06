@@ -68,7 +68,7 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   tollTimeout: 7 * ONE_DAY,
   minVersion: '2.3.5',
   activeVersion: '2.3.5',
-  latestVersion: '2.3.5',
+  latestVersion: '2.3.6',
   archiver: {
     minVersion: '3.5.6',
     activeVersion: '3.5.6',
@@ -226,6 +226,8 @@ interface LiberdusFlags {
   enableAJVValidation: boolean
   versionFlags: {
     replierNoToll?: boolean
+    allowZeroToll?: boolean
+    minTransferAmountCheck?: boolean
   }
 }
 
@@ -255,6 +257,8 @@ export const LiberdusFlags: LiberdusFlags = {
   enableAJVValidation: false,
   versionFlags: {
     replierNoToll: true, // turn on by 2.3.5
+    allowZeroToll: false, // turn on by 2.3.6
+    minTransferAmountCheck: false, // turn on by 2.3.6
   },
 }
 
