@@ -26,7 +26,7 @@ export const validate_fields = (tx: Tx.Toll, response: ShardusTypes.IncomingTran
   if (tx.tollUnit === TollUnit.usd) {
     tollInLib = utils.usdToWei(tx.toll, AccountsStorage.cachedNetworkAccount)
   }
-  if (tollInLib < AccountsStorage.cachedNetworkAccount.current.minToll) {
+  if (tollInLib > 0 && tollInLib < AccountsStorage.cachedNetworkAccount.current.minToll) {
     const minTollInLib = utils.weiToLib(AccountsStorage.cachedNetworkAccount.current.minToll)
     response.success = false
     response.reason = `Minimum "toll" allowed is ${minTollInLib} LIB`
@@ -59,7 +59,7 @@ export const validate = (tx: Tx.Toll, wrappedStates: WrappedStates, response: Sh
     response.reason = 'from account does not have sufficient funds to complete toll transaction'
     return response
   }
-  if (!tx.toll) {
+  if (tx.toll === undefined || tx.toll === null) {
     response.reason = 'Toll was not defined in the transaction'
     return response
   }
