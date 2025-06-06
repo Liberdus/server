@@ -16,6 +16,7 @@ import {
   TransactionKeys,
   AppReceiptData,
   AJVSchemaEnum,
+  TollUnit,
 } from '../@types'
 import { toShardusAddress, toShardusAddressWithKey } from '../utils/address'
 
@@ -69,8 +70,9 @@ export const validate = (
     clonedTx.from = toShardusAddress(tx.from)
     clonedTx.to = toShardusAddress(tx.to)
   }
-  const from: Accounts = wrappedStates[clonedTx.from] && wrappedStates[clonedTx.from].data
-  const to: Accounts = wrappedStates[clonedTx.to] && wrappedStates[clonedTx.to].data
+  const from: UserAccount = wrappedStates[clonedTx.from] && wrappedStates[clonedTx.from].data
+  const to: UserAccount = wrappedStates[clonedTx.to] && wrappedStates[clonedTx.to].data
+  const chatAccount: ChatAccount = wrappedStates[tx.chatId] && wrappedStates[tx.chatId].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   if (tx.sign.owner !== tx.from) {
     response.reason = 'not signed by from account'
@@ -93,7 +95,45 @@ export const validate = (
     response.reason = "from account doesn't have sufficient balance to cover the transaction"
     return response
   }
-  // TODO: if there is a memo, check if the amount is larger than the Toll required for the chat
+  // if there is a memo, check if the amount is larger than the Toll required for the chat
+  if (config.LiberdusFlags.versionFlags.minTransferAmountCheck) {
+    const hasMemo = tx.memo && tx.memo.length > 0
+    if (hasMemo) {
+      const chatAccountExist = chatAccount == null
+      let shouldSendMinToll = false
+      if (!chatAccountExist) {
+        // new chat. sender should send at least the toll set by the receiver
+        shouldSendMinToll = true
+      } else {
+        // chat account exists, check the required toll
+        const [address1, address2] = utils.sortAddresses(tx.from, tx.to)
+        const receiverIndex = tx.to === address1 ? 0 : 1
+        const receiverBlockedSender = chatAccount.toll.required[receiverIndex] === 2
+
+        // if the receiver has blocked the sender, they cannot send messages or coins
+        if (receiverBlockedSender) {
+          response.reason = 'Receiver has blocked the sender from sending messages or coins.'
+          return response
+        }
+
+        const receiverDemandsToll = chatAccount.toll.required[receiverIndex] === 1
+        if (receiverDemandsToll) {
+          // receiver demands toll, so sender should send at least the minimum amount
+          shouldSendMinToll = true
+        }
+      }
+      if (shouldSendMinToll) {
+        let tollInWei = to.data.toll
+        if (to.data.tollUnit === TollUnit.usd) {
+          tollInWei = utils.usdToWei(to.data.toll, network)
+        }
+        if (tx.amount < tollInWei) {
+          response.reason = `You must send at least ${utils.weiToLib(tollInWei)} LIB to this user.`
+          return response
+        }
+      }
+    }
+  }
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
