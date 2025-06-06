@@ -66,8 +66,8 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   minToll: utils.libToWei(1),
   tollNetworkTaxPercent: 1, // 1%
   tollTimeout: 7 * ONE_DAY,
-  minVersion: '2.3.5',
-  activeVersion: '2.3.5',
+  minVersion: '2.3.6',
+  activeVersion: '2.3.6',
   latestVersion: '2.3.6',
   archiver: {
     minVersion: '3.5.6',
@@ -257,8 +257,8 @@ export const LiberdusFlags: LiberdusFlags = {
   enableAJVValidation: false,
   versionFlags: {
     replierNoToll: true, // turn on by 2.3.5
-    allowZeroToll: false, // turn on by 2.3.6
-    minTransferAmountCheck: false, // turn on by 2.3.6
+    allowZeroToll: true, // turn on by 2.3.6
+    minTransferAmountCheck: true, // turn on by 2.3.6
   },
 }
 
