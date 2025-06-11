@@ -97,7 +97,7 @@ export const validate = (
   }
   // if there is a memo, check if the amount is larger than the Toll required for the chat
   if (config.LiberdusFlags.versionFlags.minTransferAmountCheck) {
-    const hasMemo = tx.memo && tx.memo.length > 0
+    const hasMemo = (tx.memo && tx.memo.length > 0) || (tx.xmemo && tx.xmemo.length > 0)
     if (hasMemo) {
       const chatAccountExist = chatAccount == null
       let shouldSendMinToll = false

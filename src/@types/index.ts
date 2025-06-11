@@ -388,6 +388,7 @@ export namespace Tx {
     to: string
     amount: bigint
     memo?: string
+    xmemo?: string
     chatId: string
   }
 
