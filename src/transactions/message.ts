@@ -86,6 +86,11 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
     if (chat.toll.required[receiverIndex] === 1) {
       requiredTollInWei = utils.calculateRequiredTollInWei(to, network)
     }
+    // check if the sender is blocked by the receiver
+    if (chat.toll.required[receiverIndex] === 2) {
+      response.reason = 'Chat is blocked by the receiver.'
+      return response
+    }
   } else {
     // For new chats, sender always pays toll
     requiredTollInWei = utils.calculateRequiredTollInWei(to, network)
