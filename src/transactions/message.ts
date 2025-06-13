@@ -95,8 +95,8 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
     // For new chats, sender always pays toll
     requiredTollInWei = utils.calculateRequiredTollInWei(to, network)
   }
-  if (requiredTollInWei > 0 && tx.amount > requiredTollInWei) {
-    response.reason = `Message amount (${tx.amount}) exceeds required toll (${requiredTollInWei}).`
+  if (requiredTollInWei > 0 && tx.amount < requiredTollInWei) {
+    response.reason = `Message amount (${tx.amount}) is less than required toll (${requiredTollInWei}).`
     return response
   }
   if (network) {
@@ -203,6 +203,7 @@ export const apply = (
     // Handle toll for new or existing chat when required
     tollDeposited = utils.calculateRequiredTollInWei(to, network)
     from.data.balance -= tollDeposited
+    totalToll = tollDeposited
 
     // Deposit toll in read and reply pools
     const halfToll = tollDeposited / 2n
