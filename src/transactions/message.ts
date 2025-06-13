@@ -95,7 +95,7 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
     // For new chats, sender always pays toll
     requiredTollInWei = utils.calculateRequiredTollInWei(to, network)
   }
-  if (tx.amount > requiredTollInWei) {
+  if (requiredTollInWei > 0 && tx.amount > requiredTollInWei) {
     response.reason = `Message amount (${tx.amount}) exceeds required toll (${requiredTollInWei}).`
     return response
   }
