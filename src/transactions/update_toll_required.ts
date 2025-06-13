@@ -96,6 +96,13 @@ export const validate = (
     response.reason = 'tx "timestamp" field must be greater than the chat timestamp.'
     return response
   }
+  if (network) {
+    if (network.current.transactionFee > tx.fee) {
+      response.success = false
+      response.reason = `The network transaction fee (${network.current.transactionFee}) is greater than the transaction fee provided (${tx.fee}).`
+      return response
+    }
+  }
 
   response.success = true
   response.reason = 'This transaction is valid!'
