@@ -76,7 +76,7 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
 
   // Calculate required toll based on chat account state
   let requiredTollInWei = BigInt(0)
-  if (chat && chat.hasChats) {
+  if (chat) {
     // Get sender index based on sorted addresses
     const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
     const senderIndex = addr1 === tx.from ? 0 : 1
@@ -94,6 +94,10 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
   } else {
     // For new chats, sender always pays toll
     requiredTollInWei = utils.calculateRequiredTollInWei(to, network)
+  }
+  if (requiredTollInWei > 0 && tx.amount > requiredTollInWei) {
+    response.reason = `Message amount (${tx.amount}) exceeds required toll (${requiredTollInWei}).`
+    return response
   }
 
   // Validate balance covers toll + transaction fee

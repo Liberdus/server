@@ -10,7 +10,6 @@ import * as transfer from './transfer'
 import * as distribute from './distribute'
 import * as message from './message'
 import * as read from './read'
-import * as update_chat_toll from './update_chat_toll'
 import * as update_toll_required from './update_toll_required'
 import * as reclaim_toll from './reclaim_toll'
 import * as toll from './toll'
@@ -63,7 +62,6 @@ export default {
   distribute,
   message,
   read,
-  update_chat_toll,
   update_toll_required,
   reclaim_toll,
   toll,
