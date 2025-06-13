@@ -230,6 +230,8 @@ export namespace Tx {
     to: string
     chatId: string
     message: string
+    amount: bigint
+    fee: bigint
   }
 
   export interface MessageRecord extends Message {
@@ -388,7 +390,9 @@ export namespace Tx {
     to: string
     amount: bigint
     memo?: string
-    xmemo?: string
+    xmemo?: {
+      message?: string
+    }
     chatId: string
   }
 

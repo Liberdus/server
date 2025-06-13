@@ -97,40 +97,38 @@ export const validate = (
   }
   // if there is a memo, check if the amount is larger than the Toll required for the chat
   if (config.LiberdusFlags.versionFlags.minTransferAmountCheck) {
-    const hasMemo = (tx.memo && tx.memo.length > 0) || (tx.xmemo && tx.xmemo.length > 0)
-    if (hasMemo) {
-      const chatAccountExist = chatAccount == null
-      let shouldSendMinToll = false
-      if (!chatAccountExist) {
-        // new chat. sender should send at least the toll set by the receiver
-        shouldSendMinToll = true
-      } else {
-        // chat account exists, check the required toll
-        const [address1, address2] = utils.sortAddresses(tx.from, tx.to)
-        const receiverIndex = tx.to === address1 ? 0 : 1
-        const receiverBlockedSender = chatAccount.toll.required[receiverIndex] === 2
+    const hasMemo = (tx.memo && tx.memo.length > 0) || (tx.xmemo && tx.xmemo.message && tx.xmemo.message.length > 0)
+    const chatAccountExist = chatAccount == null
+    let shouldSendMinToll = false
+    if (!chatAccountExist) {
+      // new chat. sender should send at least the toll set by the receiver
+      shouldSendMinToll = true
+    } else {
+      // chat account exists, check the required toll
+      const [address1, address2] = utils.sortAddresses(tx.from, tx.to)
+      const receiverIndex = tx.to === address1 ? 0 : 1
+      const receiverBlockedSender = chatAccount.toll.required[receiverIndex] === 2
 
-        // if the receiver has blocked the sender, they cannot send messages or coins
-        if (receiverBlockedSender) {
-          response.reason = 'Receiver has blocked the sender from sending messages or coins.'
-          return response
-        }
-
-        const receiverDemandsToll = chatAccount.toll.required[receiverIndex] === 1
-        if (receiverDemandsToll) {
-          // receiver demands toll, so sender should send at least the minimum amount
-          shouldSendMinToll = true
-        }
+      // if the receiver has blocked the sender, they cannot send messages or coins
+      if (receiverBlockedSender) {
+        response.reason = 'Receiver has blocked the sender from sending messages or coins.'
+        return response
       }
-      if (shouldSendMinToll) {
-        let tollInWei = to.data.toll
-        if (to.data.tollUnit === TollUnit.usd) {
-          tollInWei = utils.usdToWei(to.data.toll, network)
-        }
-        if (tx.amount < tollInWei) {
-          response.reason = `You must send at least ${utils.weiToLib(tollInWei)} LIB to this user.`
-          return response
-        }
+
+      const receiverDemandsToll = chatAccount.toll.required[receiverIndex] === 1
+      if (hasMemo && receiverDemandsToll) {
+        // tx has a memo and receiver demands toll, so sender should send at least the minimum amount
+        shouldSendMinToll = true
+      }
+    }
+    if (shouldSendMinToll) {
+      let tollInWei = to.data.toll
+      if (to.data.tollUnit === TollUnit.usd) {
+        tollInWei = utils.usdToWei(to.data.toll, network)
+      }
+      if (tx.amount < tollInWei) {
+        response.reason = `You must send at least ${utils.weiToLib(tollInWei)} LIB to this user.`
+        return response
       }
     }
   }

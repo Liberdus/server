@@ -212,6 +212,11 @@ const shardusSetup = (): void => {
         txnTimestamp: tx.timestamp,
       }
 
+      if (AccountsStorage.cachedNetworkAccount && tx.fee && tx.fee < AccountsStorage.cachedNetworkAccount.current.transactionFee) {
+        response.success = false
+        response.reason = `Network tx fee ${AccountsStorage.cachedNetworkAccount.current.transactionFee} is higher than the tx fee ${tx.fee}`
+        return response
+      }
       return transactions[tx.type].validate(tx, wrappedStates, response, dapp)
     },
     // THIS NEEDS TO BE FAST, BUT PROVIDES BETTER RESPONSE IF SOMETHING GOES WRONG

@@ -4,6 +4,7 @@ import * as utils from '../utils'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../@types'
 import { toShardusAddress } from '../utils/address'
+import create from '../accounts'
 
 export const validate_fields = (tx: Tx.UpdateTollRequired, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.from !== 'string' && utils.isValidAddress(tx.from) === false) {
@@ -69,10 +70,6 @@ export const validate = (
   }
   if (typeof from === 'undefined' || from === null) {
     response.reason = '"from" account does not exist.'
-    return response
-  }
-  if (typeof chat === 'undefined' || chat === null) {
-    response.reason = 'chat account does not exist.'
     return response
   }
 
@@ -217,7 +214,12 @@ export const memoryPattern = (tx: Tx.Read, result: TransactionKeys): ShardusType
 
 export const createRelevantAccount = (dapp: Shardus, account: UserAccount | ChatAccount, accountId: string, tx: Tx.Read, accountCreated = false) => {
   if (!account) {
-    throw Error('Both chat and user accounts must exist for read transactions')
+    if (accountId === tx.chatId) {
+      account = create.chatAccount(accountId, tx)
+    } else {
+      throw Error('Account must exist in order to send a message transaction')
+    }
+    accountCreated = true
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }
