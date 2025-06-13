@@ -99,7 +99,7 @@ export const validate = (
   if (config.LiberdusFlags.versionFlags.minTransferAmountCheck) {
     const hasMemo = (tx.memo && tx.memo.length > 0) || (tx.xmemo && tx.xmemo.message && tx.xmemo.message.length > 0)
     let shouldSendMinToll = false
-    if (chatAccount == null) {
+    if (chatAccount == null && hasMemo) {
       // new chat. sender should send at least the toll set by the receiver
       shouldSendMinToll = true
     } else {
