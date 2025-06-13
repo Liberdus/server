@@ -98,11 +98,12 @@ export const validate = (
   // if there is a memo, check if the amount is larger than the Toll required for the chat
   if (config.LiberdusFlags.versionFlags.minTransferAmountCheck) {
     const hasMemo = (tx.memo && tx.memo.length > 0) || (tx.xmemo && tx.xmemo.message && tx.xmemo.message.length > 0)
+    console.log('hasMemo', tx, hasMemo)
     let shouldSendMinToll = false
     if (chatAccount == null && hasMemo) {
       // new chat. sender should send at least the toll set by the receiver
       shouldSendMinToll = true
-    } else {
+    } else if (chatAccount !== undefined && chatAccount !== null) {
       // chat account exists, check the required toll
       const [address1, address2] = utils.sortAddresses(tx.from, tx.to)
       const receiverIndex = tx.to === address1 ? 0 : 1
