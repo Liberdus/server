@@ -243,6 +243,7 @@ export namespace Tx {
     to: string
     chatId: string
     timestamp: number // timestamp up to which messages are considered read
+    fee?: bigint // Optional fee for the read transaction
   }
 
   export interface UpdateChatToll extends BaseLiberdusTx {
@@ -259,6 +260,7 @@ export namespace Tx {
     chatId: string
     required: number // 1 if toll required, 0 if not nd 2 to block other party
     timestamp: number // timestamp up to which messages are considered read
+    fee?: bigint // Optional fee for the update toll transaction
   }
 
   export interface ReclaimToll extends BaseLiberdusTx {
@@ -383,6 +385,7 @@ export namespace Tx {
     from: string
     toll: bigint
     tollUnit: TollUnit
+    fee?: bigint // Optional fee for the toll transaction
   }
 
   export interface Transfer extends BaseLiberdusTx {
@@ -394,6 +397,7 @@ export namespace Tx {
       message?: string
     }
     chatId: string
+    fee?: bigint // Optional fee for the transfer
   }
 
   export interface Verify extends BaseLiberdusTx {

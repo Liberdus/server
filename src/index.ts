@@ -212,11 +212,6 @@ const shardusSetup = (): void => {
         txnTimestamp: tx.timestamp,
       }
 
-      if (AccountsStorage.cachedNetworkAccount && tx.fee && tx.fee < AccountsStorage.cachedNetworkAccount.current.transactionFee) {
-        response.success = false
-        response.reason = `Network tx fee ${AccountsStorage.cachedNetworkAccount.current.transactionFee} is higher than the tx fee ${tx.fee}`
-        return response
-      }
       return transactions[tx.type].validate(tx, wrappedStates, response, dapp)
     },
     // THIS NEEDS TO BE FAST, BUT PROVIDES BETTER RESPONSE IF SOMETHING GOES WRONG
@@ -904,6 +899,7 @@ const shardusSetup = (): void => {
           // this tx is deprecated in versions 2.3.5 and later
           return { status: false, reason: 'Tx PreCrack Skipped - update_chat_toll deprecated in this version' }
         }
+        console.log('Running txPreCrackData', tx, wrappedStates)
         const res = transactions[tx.type].validate(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp)
         if (res.success === false) {
           return { status: false, reason: res.reason }

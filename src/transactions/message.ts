@@ -95,11 +95,17 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
     // For new chats, sender always pays toll
     requiredTollInWei = utils.calculateRequiredTollInWei(to, network)
   }
-  if (requiredTollInWei > 0 && tx.amount > requiredTollInWei) {
+  if (tx.amount > requiredTollInWei) {
     response.reason = `Message amount (${tx.amount}) exceeds required toll (${requiredTollInWei}).`
     return response
   }
-
+  if (network) {
+    if (network.current.transactionFee > tx.fee) {
+      response.success = false
+      response.reason = `The network transaction fee (${network.current.transactionFee}) is greater than the transaction fee provided (${tx.fee}).`
+      return response
+    }
+  }
   // Validate balance covers toll + transaction fee
   if (from.data.balance < requiredTollInWei + network.current.transactionFee) {
     response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the toll (${requiredTollInWei}) + transaction fee (${network.current.transactionFee}).`
