@@ -6,15 +6,14 @@ import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, Pro
 
 export const validate_fields = (tx: Tx.Snapshot, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = 'tx "from" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.snapshot !== 'object') {
-    response.success = false
     response.reason = 'tx "snapshot" field must be an object.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

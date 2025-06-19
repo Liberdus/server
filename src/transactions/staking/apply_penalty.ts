@@ -101,62 +101,53 @@ export const validate_fields = (tx: Tx.PenaltyTX, response: ShardusTypes.Incomin
   if (!tx.reportedNodeId || tx.reportedNodeId === '' || tx.reportedNodeId.length !== 64) {
     nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail tx.reportedNode address invalid`)
     if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail tx.reportedNode address invalid`, tx)
-    response.success = false
     response.reason = 'Invalid reportedNode ID'
-    throw new Error(response.reason)
+    return response
   }
   if (!tx.reportedNodePublickKey || tx.reportedNodePublickKey === '' || tx.reportedNodePublickKey.length !== 64) {
     nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail tx.reportedNode publicKey invalid`)
     if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail tx.reportedNode publicKey invalid`, tx)
-    response.success = false
     response.reason = 'Invalid reportedNode public key'
-    throw new Error(response.reason)
+    return response
   }
   if (!tx.nominator || tx.nominator === '' || tx.nominator.length !== 64) {
     nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail tx.nominator address invalid`)
     if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail tx.nominator address invalid`, tx)
-    response.success = false
     response.reason = 'Invalid nominator address'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.violationType < ViolationType.LiberdusMinID || tx.violationType > ViolationType.LiberdusMaxID) {
     nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail tx.violationType invalid`)
     if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail tx.violationType invalid`, tx)
-    response.success = false
     response.reason = 'Invalid violation type'
-    throw new Error(response.reason)
+    return response
   }
   if (!tx.violationData) {
     //TODO validate violation data using violation types
 
     nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail tx.violationData invalid`)
     if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail tx.violationData invalid`, tx)
-    response.success = false
     response.reason = 'Invalid violation data'
-    throw new Error(response.reason)
+    return response
   }
 
   if (tx.timestamp <= 0) {
     nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail tx.timestamp invalid`)
     if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail tx.timestamp invalid`, tx)
-    response.success = false
     response.reason = 'Invalid timestamp'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.violationType === ViolationType.LeftNetworkEarly && AccountsStorage.cachedNetworkAccount.current.slashing.enableLeftNetworkEarlySlashing === false) {
-    response.success = false
     response.reason = 'Left network early slashing is disabled'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.violationType === ViolationType.SyncingTooLong && AccountsStorage.cachedNetworkAccount.current.slashing.enableSyncTimeoutSlashing === false) {
-    response.success = false
     response.reason = 'Syncing timeout slashing is disabled'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.violationType === ViolationType.NodeRefuted && AccountsStorage.cachedNetworkAccount.current.slashing.enableNodeRefutedSlashing === false) {
-    response.success = false
     response.reason = 'Node refuted slashing is disabled'
-    throw new Error(response.reason)
+    return response
   }
   const txId = generateTxId(tx)
   // check if we have this penalty tx stored in the Map
@@ -168,9 +159,8 @@ export const validate_fields = (tx: Tx.PenaltyTX, response: ShardusTypes.Incomin
   if (!isValid) {
     nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail tx.signature invalid`)
     if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail tx.signature invalid`, tx)
-    response.success = false
     response.reason = 'Invalid signature'
-    throw new Error(response.reason)
+    return response
   }
   if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX success`, tx)
   nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX success`)

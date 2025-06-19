@@ -7,45 +7,39 @@ import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, Pro
 
 export const validate_fields = (tx: Tx.Email, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.signedTx !== 'object') {
-    response.success = false
     response.reason = 'tx "signedTx" field must be an object.'
-    throw new Error(response.reason)
+    return response
   }
 
   const signedTx = tx.signedTx
 
   if (signedTx) {
     if (typeof signedTx !== 'object') {
-      response.success = false
       response.reason = '"signedTx" must be a object.'
-      throw new Error(response.reason)
+      return response
     }
     if (typeof signedTx.sign !== 'object') {
-      response.success = false
       response.reason = '"sign" property on signedTx must be an object.'
-      throw new Error(response.reason)
+      return response
     }
     if (typeof signedTx.from !== 'string') {
-      response.success = false
       response.reason = '"From" must be a string.'
-      throw new Error(response.reason)
+      return response
     }
     if (typeof signedTx.emailHash !== 'string') {
-      response.success = false
       response.reason = '"emailHash" must be a string.'
-      throw new Error(response.reason)
+      return response
     }
   }
   if (typeof tx.email !== 'string') {
-    response.success = false
     response.reason = '"email" must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.email.length > 30) {
-    response.success = false
     response.reason = '"Email" length must be less than 31 characters (30 max)'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

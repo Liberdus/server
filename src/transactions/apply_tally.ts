@@ -9,80 +9,66 @@ import * as config from '../config'
 
 export const validate_fields = (tx: Tx.ApplyTally, response: ShardusTypes.IncomingTransactionResult) => {
   if (_.isEmpty(tx.next) || typeof tx.next !== 'object') {
-    response.success = false
     response.reason = 'tx "next" field must be a non empty object'
-    throw new Error(response.reason)
+    return response
   }
   if (_.isEmpty(tx.nextWindows) || typeof tx.nextWindows !== 'object') {
-    response.success = false
     response.reason = 'tx "nextWindows" field must be a non empty object'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.next.title !== 'string') {
-    response.success = false
     response.reason = 'tx "next parameter title" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.next.description !== 'string') {
-    response.success = false
     response.reason = 'tx "next parameter description" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.next.nodeRewardInterval !== 'number') {
-    response.success = false
     response.reason = 'tx "next parameter nodeRewardInterval" field must be a number.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.next.nodeRewardAmountUsd !== 'bigint') {
-    response.success = false
     response.reason = 'tx "next parameter nodeRewardAmount" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.next.nodePenaltyUsd !== 'bigint') {
-    response.success = false
     response.reason = 'tx "next parameter nodePenalty" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.next.transactionFee !== 'bigint') {
-    response.success = false
     response.reason = 'tx "next parameter transactionFee" field must be a number.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.next.stakeRequiredUsd !== 'bigint') {
-    response.success = false
     response.reason = 'tx "next parameter stakeRequired" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.next.maintenanceInterval !== 'number') {
-    response.success = false
     response.reason = 'tx "next parameter maintenanceInterval" field must be a number.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.next.maintenanceFee !== 'bigint') {
-    response.success = false
     response.reason = 'tx "next parameter maintenanceFee" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.next.proposalFee !== 'bigint') {
-    response.success = false
     response.reason = 'tx "next parameter proposalFee" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.next.devProposalFee !== 'bigint') {
-    response.success = false
     response.reason = 'tx "next parameter devProposalFee" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.next.faucetAmount !== 'bigint') {
-    response.success = false
     response.reason = 'tx "next parameter faucetAmount" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.next.transactionFee !== 'bigint') {
-    response.success = false
     response.reason = 'tx "next parameter defaultToll" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

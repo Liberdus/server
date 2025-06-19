@@ -48,40 +48,34 @@ export async function injectSetCertTimeTx(shardus: Shardus, publicKey: string, a
 
 export const validate_fields = (tx: Tx.SetCertTime, response: ShardusTypes.IncomingTransactionResult) => {
   if (!tx.nominee || tx.nominee.length !== 64) {
-    response.success = false
     response.reason = 'Invalid nominee address'
-    throw new Error(response.reason)
+    return response
   }
   if (!tx.nominator || tx.nominator.length !== 64) {
-    response.success = false
     response.reason = 'Invalid nominator address'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.duration <= 0) {
-    response.success = false
     response.reason = 'Duration in cert tx must be > 0'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.duration > getCertCycleDuration()) {
-    response.success = false
     response.reason = 'Duration in cert tx must be not greater than certCycleDuration'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.timestamp <= 0) {
-    response.success = false
     response.reason = 'Timestamp in cert tx must be > 0'
-    throw new Error(response.reason)
+    return response
   }
   if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.nominee) {
-    response.success = false
     response.reason = 'not signed by nominee account'
-    throw new Error(response.reason)
+    return response
   }
   if (!verifyObj(tx)) {
-    response.success = false
     response.reason = 'Invalid signature for SetCertTime tx'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

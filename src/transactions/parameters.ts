@@ -6,20 +6,18 @@ import * as crypto from '../crypto'
 
 export const validate_fields = (tx: Tx.Parameters, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = 'tx "from" field must be a string'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.nodeId !== 'string') {
-    response.success = false
     response.reason = 'tx "nodeId" field must be a string'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.issue !== 'string') {
-    response.success = false
     response.reason = 'tx "issue" field must be a string'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

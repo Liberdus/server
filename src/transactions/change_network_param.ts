@@ -7,33 +7,28 @@ import * as crypto from '../crypto'
 
 export const validate_fields = (tx: Tx.ChangeNetworkParam, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = 'tx "from" field must be a string'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.cycle !== 'number') {
-    response.success = false
     response.reason = 'tx "cycle" field must be a number'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.config !== 'string') {
-    response.success = false
     response.reason = 'tx "config" field must be a string'
-    throw new Error(response.reason)
+    return response
   }
   try {
     const parsedNetworkParam = JSON.parse(tx.config)
     dapp.log('validate_fields Tx.ChangeNetworkParam: ', parsedNetworkParam)
   } catch (err) {
-    response.success = false
     response.reason = 'tx "change_network_param" field must be a valid JSON string'
     console.log('validate_fields tx "change_network_param" field must be a valid JSON string', err)
-    throw new Error(response.reason)
+    return response
   }
   if (!tx.signs || (tx.signs instanceof Array && tx.signs.length === 0)) {
-    response.success = false
     response.reason = 'No signature array found'
-    throw new Error(response.reason)
+    return response
   }
 
   const allowedPublicKeys = dapp.getMultisigPublicKeys()
@@ -45,10 +40,11 @@ export const validate_fields = (tx: Tx.ChangeNetworkParam, response: ShardusType
 
   const sigsAreValid = utils.verifyMultiSigs(txWithoutSign, sigs, allowedPublicKeys, requiredSigs, DevSecurityLevel.High)
   if (!sigsAreValid) {
-    response.success = false
     response.reason = 'Invalid signatures'
-    throw new Error(response.reason)
+    return response
   }
+
+  response.success = true
   return response
 }
 
@@ -62,7 +58,6 @@ export const validate = (tx: Tx.ChangeNetworkParam, wrappedStates: WrappedStates
   if (utils.comparePropertiesTypes(givenNetworkParams, network.current)) {
     dapp.log('Valid network parameters', givenNetworkParams)
   } else {
-    response.success = false
     response.reason = 'Invalid network parameters'
     dapp.log('Invalid network parameters', givenNetworkParams)
     return response
@@ -77,7 +72,6 @@ export const validate = (tx: Tx.ChangeNetworkParam, wrappedStates: WrappedStates
 
   const sigsAreValid = utils.verifyMultiSigs(txWithoutSign, sigs, allowedPublicKeys, requiredSigs, DevSecurityLevel.High)
   if (!sigsAreValid) {
-    response.success = false
     response.reason = 'Invalid signatures'
     return response
   }

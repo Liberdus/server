@@ -20,75 +20,62 @@ import {
 
 export const validate_fields = (tx: Tx.DevProposal, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.devIssue !== 'string') {
-    response.success = false
     response.reason = 'tx "devIssue" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.devProposal !== 'string') {
-    response.success = false
     response.reason = 'tx "devProposal" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.totalAmount !== 'bigint') {
-    response.success = false
     response.reason = 'tx "totalAmount" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.totalAmount < 1) {
-    response.success = false
     response.reason = 'Minimum "tx totalAmount" allowed for a developer proposal is 1 token'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.totalAmount > 100000) {
-    response.success = false
     response.reason = 'Maximum "tx totalAmount" allowed for a developer proposal is 100,000 tokens'
-    throw new Error(response.reason)
+    return response
   }
   if (_.isEmpty(tx.payments) || !Array.isArray(tx.payments)) {
-    response.success = false
     response.reason = 'tx "payments" field must be a non empty array.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.title !== 'string') {
-    response.success = false
     response.reason = 'tx "title" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.title.length < 1) {
-    response.success = false
     response.reason = 'Minimum "tx title" field character count is 1'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.title.length > 100) {
-    response.success = false
     response.reason = 'Maximum "tx title" field character count is 100'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.description !== 'string') {
-    response.success = false
     response.reason = 'tx "description" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.description.length < 1) {
-    response.success = false
     response.reason = 'Minimum "tx description" field character count is 1'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.description.length > 1000) {
-    response.success = false
     response.reason = 'Maximum "tx description" field character count is 1000'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.payAddress !== 'string') {
-    response.success = false
     response.reason = 'tx "payAddress" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.payAddress.length !== 64) {
-    response.success = false
     response.reason = 'tx "payAddress" field length must be 64 characters (A valid public hex address)'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

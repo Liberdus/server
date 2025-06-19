@@ -6,6 +6,7 @@ import { NodeAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, 
 import * as crypto from '../crypto'
 
 export const validate_fields = (tx: Tx.NetworkWindows, response: ShardusTypes.IncomingTransactionResult) => {
+  response.success = true
   return response
 }
 

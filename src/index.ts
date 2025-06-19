@@ -247,18 +247,12 @@ const shardusSetup = (): void => {
             return validationResult
           }
         }
-        // Change `success: true` before feeding it to validate_fields
-        // The validate_fields function will set success to false if the tx is not valid
-        validationResult.success = true
         const res = transactions[tx.type].validate_fields(tx, validationResult, dapp)
         if (res.success) {
-          validationResult.success = true
           validationResult.reason = 'This transaction is valid!'
           validationResult.status = 200
-        } else {
-          validationResult.reason = res.reason
-          if (LiberdusFlags.VerboseLogs) console.log('Tx validation failed:', validationResult.reason)
         }
+        if (LiberdusFlags.VerboseLogs) console.log('Tx validation status:', tx, validationResult.success, validationResult.reason)
       } catch (e) {
         validationResult.success = false
         validationResult.reason = e.message

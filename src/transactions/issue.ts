@@ -8,25 +8,22 @@ import { Utils } from '@shardus/types'
 
 export const validate_fields = (tx: Tx.Issue, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.nodeId !== 'string') {
-    response.success = false
     response.reason = 'tx "nodeId" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = 'tx "from field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.issue !== 'string') {
-    response.success = false
     response.reason = 'tx "issue" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.proposal !== 'string') {
-    response.success = false
     response.reason = 'tx "proposal" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 
