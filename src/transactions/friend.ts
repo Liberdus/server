@@ -7,20 +7,18 @@ import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, Pro
 
 export const validate_fields = (tx: Tx.Friend, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = 'tx "from" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.to !== 'string') {
-    response.success = false
     response.reason = 'tx "to" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.alias !== 'string') {
-    response.success = false
     response.reason = 'tx "alias" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

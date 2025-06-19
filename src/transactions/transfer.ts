@@ -22,40 +22,34 @@ import { toShardusAddress, toShardusAddressWithKey } from '../utils/address'
 
 export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.from !== 'string' && utils.isValidAddress(tx.from) === false) {
-    response.success = false
     response.reason = 'tx "from" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.to !== 'string' && utils.isValidAddress(tx.to) === false) {
-    response.success = false
     response.reason = 'tx "to" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.amount !== 'bigint' || tx.amount <= BigInt(0)) {
-    response.success = false
     response.reason = 'tx "amount" field must be a bigint and greater than 0.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.chatId !== 'string' && utils.isValidAddress(tx.chatId) === false) {
-    response.success = false
     response.reason = 'tx "chatId" field must be a valid address string.'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.chatId !== utils.calculateChatId(tx.from, tx.to)) {
-    response.success = false
     response.reason = 'chatId is not calculated correctly for from and to addresses'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.memo && typeof tx.memo !== 'string') {
-    response.success = false
     response.reason = 'tx "memo" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.memo && tx.memo.length > config.LiberdusFlags.transferMemoLimit) {
-    response.success = false
     response.reason = `tx "memo" size must be less than ${config.LiberdusFlags.transferMemoLimit} characters.`
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

@@ -6,15 +6,14 @@ import { Accounts, UserAccount, NetworkAccount, WrappedStates, Tx, TransactionKe
 
 export const validate_fields = (tx: Tx.Stake, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = 'tx "from" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.stake !== 'bigint') {
-    response.success = false
     response.reason = 'tx "stake" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

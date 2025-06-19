@@ -8,19 +8,16 @@ import * as AccountsStorage from '../storage/accountStorage'
 
 export const validate_fields = (tx: Tx.Toll, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = 'tx "from" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.toll !== 'bigint') {
-    response.success = false
     response.reason = 'tx "toll" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.tollUnit && !Object.values(TollUnit).includes(tx.tollUnit)) {
-    response.success = false
     response.reason = 'tx "tollUnit" field must be a valid TollUnit enum value.'
-    throw new Error(response.reason)
+    return response
   }
   let tollInLib = tx.toll
   if (tx.tollUnit === TollUnit.usd) {
@@ -28,15 +25,14 @@ export const validate_fields = (tx: Tx.Toll, response: ShardusTypes.IncomingTran
   }
   if (tollInLib > 0 && tollInLib < AccountsStorage.cachedNetworkAccount.current.minToll) {
     const minTollInLib = utils.weiToLib(AccountsStorage.cachedNetworkAccount.current.minToll)
-    response.success = false
     response.reason = `Minimum "toll" allowed is ${minTollInLib} LIB`
-    throw new Error(response.reason)
+    return response
   }
   if (tx.toll > utils.libToWei(1000000)) {
-    response.success = false
     response.reason = 'Maximum toll allowed is 1,000,000 LIB or USD.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

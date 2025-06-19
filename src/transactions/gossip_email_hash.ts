@@ -6,30 +6,26 @@ import * as crypto from '../crypto'
 
 export const validate_fields = (tx: Tx.GossipEmailHash, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.nodeId !== 'string') {
-    response.success = false
     response.reason = 'tx "nodeId" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = 'tx "from" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.account !== 'string') {
-    response.success = false
     response.reason = 'tx "account" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.emailHash !== 'string') {
-    response.success = false
     response.reason = 'tx "emailHash" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.verified !== 'string') {
-    response.success = false
     response.reason = 'tx "verified" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

@@ -7,32 +7,27 @@ import * as crypto from '../crypto'
 
 export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = 'tx "from" field must be a string'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.cycle !== 'number') {
-    response.success = false
     response.reason = 'tx "cycle" field must be a number'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.config !== 'string') {
-    response.success = false
     response.reason = 'tx "config" field must be a string'
-    throw new Error(response.reason)
+    return response
   }
   try {
     const parsed = Utils.safeJsonParse(tx.config)
     dapp.log('validate_fields Tx.ChangeConfig: ', parsed)
   } catch (err) {
-    response.success = false
     response.reason = 'tx "change_config" field must be a valid JSON string'
-    throw new Error(response.reason)
+    return response
   }
   if (!tx.signs) {
-    response.success = false
     response.reason = 'No signature array found'
-    throw new Error(response.reason)
+    return response
   }
 
   const allowedPublicKeys = dapp.getMultisigPublicKeys()
@@ -44,10 +39,11 @@ export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.Inco
 
   const sigsAreValid = utils.verifyMultiSigs(txWithoutSign, sigs, allowedPublicKeys, requiredSigs, DevSecurityLevel.High)
   if (!sigsAreValid) {
-    response.success = false
     response.reason = 'Invalid signatures'
-    throw new Error(response.reason)
+    return response
   }
+
+  response.success = true
   return response
 }
 
@@ -64,7 +60,6 @@ export const validate = (tx: Tx.ChangeConfig, wrappedStates: WrappedStates, resp
   ) {
     dapp.log('Valid config', givenConfig)
   } else {
-    response.success = false
     response.reason = 'Invalid server config'
     dapp.log('Invalid config', givenConfig)
     return response
@@ -79,7 +74,6 @@ export const validate = (tx: Tx.ChangeConfig, wrappedStates: WrappedStates, resp
 
   const sigsAreValid = utils.verifyMultiSigs(txWithoutSign, sigs, allowedPublicKeys, requiredSigs, DevSecurityLevel.High)
   if (!sigsAreValid) {
-    response.success = false
     response.reason = 'Invalid signatures'
     return response
   }

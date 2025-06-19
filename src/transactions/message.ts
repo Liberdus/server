@@ -8,36 +8,31 @@ import { toShardusAddress } from '../utils/address'
 
 export const validate_fields = (tx: Tx.Message, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string' && utils.isValidAddress(tx.from) === false) {
-    response.success = false
     response.reason = 'tx "from" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.to !== 'string' && utils.isValidAddress(tx.to) === false) {
-    response.success = false
     response.reason = 'tx "to" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.chatId !== 'string' && utils.isValidAddress(tx.chatId) === false) {
-    response.success = false
     response.reason = 'tx "chatId" field must be a valid address string.'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.chatId !== utils.calculateChatId(tx.from, tx.to)) {
-    response.success = false
     response.reason = 'chatId is not calculated correctly for from and to addresses'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.message !== 'string') {
-    response.success = false
     response.reason = 'tx "message" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   const messageSizeInKb = Buffer.byteLength(tx.message, 'utf8') / 1024
   if (messageSizeInKb > config.LiberdusFlags.messageSizeLimit) {
-    response.success = false
     response.reason = `tx "message" size must be less than ${config.LiberdusFlags.messageSizeLimit} kB.`
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

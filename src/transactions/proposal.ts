@@ -18,90 +18,74 @@ import {
 
 export const validate_fields = (tx: Tx.Proposal, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = 'tx "from" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.proposal !== 'string') {
-    response.success = false
     response.reason = 'tx "proposal" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.issue !== 'string') {
-    response.success = false
     response.reason = 'tx "issue" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.parameters !== 'object') {
-    response.success = false
     response.reason = 'tx "parameters" field must be an object.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.parameters.title !== 'string') {
-    response.success = false
     response.reason = 'tx "parameter title" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.parameters.description !== 'string') {
-    response.success = false
     response.reason = 'tx "parameter description" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.parameters.nodeRewardInterval !== 'number') {
-    response.success = false
     response.reason = 'tx "parameter nodeRewardInterval" field must be a number.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.parameters.nodeRewardAmountUsd !== 'bigint') {
-    response.success = false
     response.reason = 'tx "parameter nodeRewardAmount" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.parameters.nodePenaltyUsd !== 'bigint') {
-    response.success = false
     response.reason = 'tx "parameter nodePenalty" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.parameters.transactionFee !== 'bigint') {
-    response.success = false
     response.reason = 'tx "parameter transactionFee" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.parameters.stakeRequiredUsd !== 'bigint') {
-    response.success = false
     response.reason = 'tx "parameter stakeRequired" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.parameters.maintenanceInterval !== 'number') {
-    response.success = false
     response.reason = 'tx "parameter maintenanceInterval" field must be a number.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.parameters.maintenanceFee !== 'bigint') {
-    response.success = false
     response.reason = 'tx "parameter maintenanceFee" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.parameters.proposalFee !== 'bigint') {
-    response.success = false
     response.reason = 'tx "parameter proposalFee" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.parameters.devProposalFee !== 'bigint') {
-    response.success = false
     response.reason = 'tx "parameter devProposalFee" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.parameters.faucetAmount !== 'bigint') {
-    response.success = false
     response.reason = 'tx "parameter faucetAmount" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.parameters.transactionFee !== 'bigint') {
-    response.success = false
     response.reason = 'tx "parameter defaultToll" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

@@ -6,25 +6,22 @@ import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, Pro
 
 export const validate_fields = (tx: Tx.Verify, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = 'tx "from" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.code !== 'string') {
-    response.success = false
     response.reason = 'tx "code" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.code.length !== 6) {
-    response.success = false
     response.reason = 'tx "code" length must be 6 digits.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof parseInt(tx.code) !== 'number') {
-    response.success = false
     response.reason = 'tx "code" field must be parseable to an integer.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

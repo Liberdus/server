@@ -7,30 +7,26 @@ import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, Pro
 
 export const validate_fields = (tx: Tx.ApplyDevParameters, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.devIssue !== 'number') {
-    response.success = false
     response.reason = 'tx "devIssue" field must be a number.'
-    throw new Error(response.reason)
+    return response
   }
   if (_.isEmpty(tx.devWindows)) {
-    response.success = false
     response.reason = 'tx "devWindows" field must not be empty.'
-    throw new Error(response.reason)
+    return response
   }
   if (!_.isEmpty(tx.nextDevWindows)) {
-    response.success = false
     response.reason = 'tx "nextDevWindows" field must be an empty object.'
-    throw new Error(response.reason)
+    return response
   }
   if (!Array.isArray(tx.developerFund)) {
-    response.success = false
     response.reason = 'tx "developerFund" field must be an array.'
-    throw new Error(response.reason)
+    return response
   }
   if (!_.isEmpty(tx.nextDeveloperFund) || !Array.isArray(tx.nextDeveloperFund)) {
-    response.success = false
     response.reason = 'tx "nextDeveloperFund" field must be an empty array.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

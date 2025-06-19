@@ -7,30 +7,26 @@ import * as config from '../config'
 
 export const validate_fields = (tx: Tx.Vote, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = 'tx "from" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.amount !== 'bigint') {
-    response.success = false
     response.reason = 'tx "amount" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.amount < BigInt(1)) {
-    response.success = false
     response.reason = 'Minimum voting "amount" allowed is 1 token'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.issue !== 'string') {
-    response.success = false
     response.reason = 'tx "issue" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.proposal !== 'string') {
-    response.success = false
     response.reason = 'tx "proposal" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

@@ -6,6 +6,7 @@ import * as config from '../config'
 import { NetworkAccount, NodeAccount, WrappedStates, Tx, TransactionKeys, UserAccount, AppReceiptData } from '../@types'
 
 export const validate_fields = (tx: Tx.ApplyChangeConfig, response: ShardusTypes.IncomingTransactionResult) => {
+  response.success = true
   return response
 }
 

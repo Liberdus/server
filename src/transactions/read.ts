@@ -7,30 +7,26 @@ import { toShardusAddress } from '../utils/address'
 
 export const validate_fields = (tx: Tx.Read, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string' && utils.isValidAddress(tx.from) === false) {
-    response.success = false
     response.reason = 'tx "from" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.to !== 'string' && utils.isValidAddress(tx.to) === false) {
-    response.success = false
     response.reason = 'tx "from" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.chatId !== 'string' && utils.isValidAddress(tx.chatId) === false) {
-    response.success = false
     response.reason = 'tx "chatId" field must be a valid address string.'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.chatId !== utils.calculateChatId(tx.from, tx.to)) {
-    response.success = false
     response.reason = 'chatId is not calculated correctly for from and to addresses'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.timestamp !== 'number') {
-    response.success = false
     response.reason = 'tx "timestamp" field must be a number.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

@@ -9,95 +9,78 @@ import * as crypto from '../crypto'
 export const validate_fields = (tx: Tx.ApplyParameters, response: ShardusTypes.IncomingTransactionResult) => {
   console.log('apply_parameters validate_fields tx', tx)
   if (_.isEmpty(tx.current) || typeof tx.current !== 'object') {
-    response.success = false
     response.reason = 'tx "current" field must not be a non empty object'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.current.title !== 'string') {
-    response.success = false
     response.reason = 'tx "current parameter title" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.current.description !== 'string') {
-    response.success = false
     response.reason = 'tx "current parameter description" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.current.nodeRewardInterval !== 'number') {
-    response.success = false
     response.reason = 'tx "current parameter nodeRewardInterval" field must be a number.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.current.nodeRewardAmountUsd !== 'bigint') {
-    response.success = false
     response.reason = 'tx "current parameter nodeRewardAmount" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.current.nodePenaltyUsd !== 'bigint') {
-    response.success = false
     response.reason = 'tx "current parameter nodePenalty" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.current.transactionFee !== 'bigint') {
-    response.success = false
     response.reason = 'tx "current parameter transactionFee" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.current.stakeRequiredUsd !== 'bigint') {
-    response.success = false
     response.reason = 'tx "current parameter stakeRequired" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.current.maintenanceInterval !== 'number') {
-    response.success = false
     response.reason = 'tx "current parameter maintenanceInterval" field must be a number.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.current.maintenanceFee !== 'bigint') {
-    response.success = false
     response.reason = 'tx "current parameter maintenanceFee" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.current.proposalFee !== 'bigint') {
-    response.success = false
     response.reason = 'tx "current parameter proposalFee" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.current.devProposalFee !== 'bigint') {
-    response.success = false
     response.reason = 'tx "current parameter devProposalFee" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.current.faucetAmount !== 'bigint') {
-    response.success = false
     response.reason = 'tx "current parameter faucetAmount" field must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.current.transactionFee !== 'bigint') {
-    response.success = false
     response.reason = 'tx "current parameter defaultToll" field must be a number.'
-    throw new Error(response.reason)
+    return response
   }
   if (!_.isEmpty(tx.next) || typeof tx.next !== 'object') {
-    response.success = false
     response.reason = 'tx "next" field must be an empty object.'
-    throw new Error(response.reason)
+    return response
   }
   if (_.isEmpty(tx.windows) || typeof tx.windows !== 'object') {
-    response.success = false
     response.reason = 'tx "windows" field must be a non empty object.'
-    throw new Error(response.reason)
+    return response
   }
   if (!_.isEmpty(tx.nextWindows)) {
-    response.success = false
     response.reason = 'tx "nextWindows" field must be an empty object.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.issue !== 'number') {
-    response.success = false
     response.reason = 'tx "issue" field must be a number.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

@@ -7,29 +7,26 @@ import { UserAccount, WrappedStates, Tx, TransactionKeys, NodeAccount, AppReceip
 
 export const validate_fields = (tx: Tx.WithdrawStake, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.nominator !== 'string' && utils.isValidAddress(tx.nominator) === false) {
-    response.success = false
     response.reason = 'tx "nominator" field must be a string and valid address.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.nominee !== 'string' && utils.isValidAddress(tx.nominee) === false) {
-    response.success = false
     response.reason = 'tx "nominee" field must be a string and valid address.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.force !== 'boolean') {
-    response.success = false
     response.reason = 'tx "force" field must be a boolean.'
-    throw new Error(response.reason)
+    return response
   }
   if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.nominator) {
-    response.success = false
     response.reason = 'not signed by nominator account'
-    throw new Error(response.reason)
+    return response
   }
   if (crypto.verifyObj(tx) === false) {
     response.reason = 'incorrect signing'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

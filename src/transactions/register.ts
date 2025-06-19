@@ -19,35 +19,29 @@ import * as ajvHelper from '../@types/ajvHelper'
 
 export const validate_fields = (tx: Tx.Register, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.aliasHash !== 'string') {
-    response.success = false
     response.reason = 'tx "aliasHash" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = 'tx "from" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.alias !== 'string') {
-    response.success = false
     response.reason = 'tx "alias" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.alias.length > 20) {
-    response.success = false
     response.reason = 'tx "alias" field must be less than 21 characters (20 max)'
-    throw new Error(response.reason)
+    return response
   }
   if (/[^A-Za-z0-9]+/g.test(tx.alias)) {
-    response.success = false
     response.reason = 'tx "alias" field may only contain alphanumeric characters'
-    throw new Error(response.reason)
+    return response
   }
 
   if (tx.aliasHash !== crypto.hash(tx.alias)) {
-    response.success = false
     response.reason = 'alias hash does not match alias'
-    throw new Error(response.reason)
+    return response
   }
 
   if (isValidUncompressedPublicKey(tx.publicKey) === false) {
@@ -61,11 +55,11 @@ export const validate_fields = (tx: Tx.Register, response: ShardusTypes.Incoming
   }
 
   if (crypto.verifyObj(tx) === false) {
-    response.success = false
     response.reason = 'tx signature is incorrect'
-    throw new Error(response.reason)
+    return response
   }
 
+  response.success = true
   return response
 }
 

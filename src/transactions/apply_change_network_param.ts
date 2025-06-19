@@ -5,6 +5,7 @@ import { AppReceiptData, NetworkAccount, NodeAccount, TransactionKeys, Tx, Wrapp
 import * as crypto from '../crypto'
 
 export const validate_fields = (tx: Tx.ApplyChangeNetworkParam, response: ShardusTypes.IncomingTransactionResult) => {
+  response.success = true
   return response
 }
 

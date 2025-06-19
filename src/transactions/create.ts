@@ -6,15 +6,14 @@ import * as crypto from '../crypto'
 
 export const validate_fields = (tx: Tx.Create, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = '"From" must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.amount !== 'bigint' || tx.amount <= BigInt(0)) {
-    response.success = false
     response.reason = 'tx "amount" field must be a bigint and greater than 0.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

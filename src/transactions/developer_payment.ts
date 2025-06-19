@@ -18,50 +18,42 @@ import {
 
 export const validate_fields = (tx: Tx.DevPayment, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = 'tx "from" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.nodeId !== 'string') {
-    response.success = false
     response.reason = 'tx "nodeId" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.payment !== 'object') {
-    response.success = false
     response.reason = 'tx "payment" field must be an object.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.developer !== 'string') {
-    response.success = false
     response.reason = 'tx "developer" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.payment.id !== 'string') {
-    response.success = false
     response.reason = 'tx "payment.id" must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.payment.address !== 'string') {
-    response.success = false
     response.reason = 'tx "payment.address" must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.payment.amount !== 'bigint') {
-    response.success = false
     response.reason = 'tx "payment.amount" must be a bigint.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.payment.delay !== 'number') {
-    response.success = false
     response.reason = 'tx "payment.delay" must be a number.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.payment.timestamp !== 'number') {
-    response.success = false
     response.reason = 'tx "payment.timestamp" must be a number.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

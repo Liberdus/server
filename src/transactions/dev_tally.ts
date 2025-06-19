@@ -19,25 +19,22 @@ import {
 
 export const validate_fields = (tx: Tx.DevTally, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.nodeId !== 'string') {
-    response.success = false
     response.reason = 'tx "nodeId" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.from !== 'string') {
-    response.success = false
     response.reason = 'tx "from" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (typeof tx.devIssue !== 'string') {
-    response.success = false
     response.reason = 'tx "devIssue" field must be a string.'
-    throw new Error(response.reason)
+    return response
   }
   if (!Array.isArray(tx.devProposals)) {
-    response.success = false
     response.reason = 'tx "devProposals" field must be an array.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

@@ -7,10 +7,10 @@ import * as crypto from '../crypto'
 
 export const validate_fields = (tx: Tx.ApplyDevPayment, response: ShardusTypes.IncomingTransactionResult) => {
   if (!Array.isArray(tx.developerFund)) {
-    response.success = false
     response.reason = 'tx "developerFund" field must be an array.'
-    throw new Error(response.reason)
+    return response
   }
+  response.success = true
   return response
 }
 

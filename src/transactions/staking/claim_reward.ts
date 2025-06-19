@@ -82,82 +82,71 @@ export const validate_fields = (tx: Tx.ClaimRewardTX, response: ShardusTypes.Inc
   if (!tx.nominee || tx.nominee === '' || tx.nominee.length !== 64) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail tx.nominee address invalid`)
     if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail tx.nominee address invalid', tx)
-    response.success = false
     response.reason = 'Invalid nominee address'
-    throw new Error(response.reason)
+    return response
   }
   if (!tx.deactivatedNodeId || tx.deactivatedNodeId === '' || tx.deactivatedNodeId.length !== 64) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail tx.deactivatedNodeId address invalid`)
     if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail tx.deactivatedNodeId address invalid', tx)
-    response.success = false
     response.reason = 'Invalid deactivatedNodeId'
-    throw new Error(response.reason)
+    return response
   }
   if (!tx.nominator || tx.nominator === '' || tx.nominator.length !== 64) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail tx.nominator address invalid`)
     if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail tx.nominator address invalid', tx)
-    response.success = false
     response.reason = 'Invalid nominator address'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.nodeDeactivatedTime <= 0) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail tx.duration <= 0`)
     if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail tx.duration <= 0', tx)
-    response.success = false
     response.reason = 'Invalid duration'
-    throw new Error(response.reason)
+    return response
   }
   if (tx.timestamp <= 0) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail tx.timestamp <= 0`)
     if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail tx.timestamp <= 0', tx)
-    response.success = false
     response.reason = 'Invalid timestamp'
-    throw new Error(response.reason)
+    return response
   }
   if (dapp.getNode(tx.deactivatedNodeId)) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail node still active`)
     if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail node still active', tx)
-    response.success = false
     response.reason = 'Node is still active'
-    throw new Error(response.reason)
+    return response
   }
   // only allow claim reward txs for nodes that are in the serviceQueue
   if (!shardus.serviceQueue.containsTxData(tx.txData)) {
     /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail txData not in serviceQueue`)
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail txData not in serviceQueue', tx)
-    response.success = false
     response.reason = 'txData not in serviceQueue for ClaimReward tx'
-    throw new Error(response.reason)
+    return response
   }
 
   // check txData matches tx
   if (tx.txData.endTime !== tx.nodeDeactivatedTime) {
     /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail txData.endTime does not match tx.nodeDeactivatedTime`)
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail txData.endTime does not match tx.nodeDeactivatedTime', tx)
-    response.success = false
     response.reason = 'txData.endTime does not match tx.nodeDeactivatedTime'
-    throw new Error(response.reason)
+    return response
   }
 
   if (tx.txData.publicKey !== tx.nominee) {
     /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail txData.publicKey does not match tx.nominee`)
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail txData.publicKey does not match tx.nominee', tx)
-    response.success = false
     response.reason = 'txData.publicKey does not match tx.nominee'
-    throw new Error(response.reason)
+    return response
   }
   if (!tx.sign || !tx.sign.owner || !tx.sign.sig) {
-    response.success = false
     response.reason = 'tx is not signed'
-    throw new Error(response.reason)
+    return response
   }
   const isValid = crypto.verifyObj(tx, true)
   if (!isValid) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail invalid signature`)
     if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail invalid signature', tx)
-    response.success = false
     response.reason = 'Invalid signature'
-    throw new Error(response.reason)
+    return response
   }
   if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx success', tx)
   nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx success`)
