@@ -228,6 +228,8 @@ interface LiberdusFlags {
     replierNoToll?: boolean
     allowZeroToll?: boolean
     minTransferAmountCheck?: boolean
+    enforceTxTimestamp?: boolean
+    stakingAppReceiptUpdate?: boolean
   }
 }
 
@@ -259,6 +261,8 @@ export const LiberdusFlags: LiberdusFlags = {
     replierNoToll: true, // turn on by 2.3.5
     allowZeroToll: true, // turn on by 2.3.6
     minTransferAmountCheck: true, // turn on by 2.3.6
+    enforceTxTimestamp: false, // turn on by 2.3.7
+    stakingAppReceiptUpdate: false, // turn on by 2.3.7
   },
 }
 

@@ -1,7 +1,7 @@
 import * as crypto from '../../crypto'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from './../../utils'
-import * as config from './../../config'
+import { LiberdusFlags } from './../../config'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { UserAccount, WrappedStates, Tx, TransactionKeys, NodeAccount, AppReceiptData } from './../../@types'
 
@@ -73,7 +73,7 @@ export const validate = (tx: Tx.WithdrawStake, wrappedStates: WrappedStates, res
     response.reason = reason
     return response
   }
-  if (nodeAccount.rewardEndTime === 0 && nodeAccount.rewardStartTime > 0 && !(tx.force && config.LiberdusFlags.allowForceUnstake)) {
+  if (nodeAccount.rewardEndTime === 0 && nodeAccount.rewardStartTime > 0 && !(tx.force && LiberdusFlags.allowForceUnstake)) {
     response.reason = `No reward endTime set, can't unstake node yet`
     return response
   }
@@ -145,6 +145,12 @@ export const apply = (
       totalUnstakeAmount: stake + reward - penalty,
     },
   }
+
+  if (LiberdusFlags.versionFlags.stakingAppReceiptUpdate === false) {
+    if ('penalty' in appReceiptData.additionalInfo) delete appReceiptData.additionalInfo.penalty
+    if ('totalUnstakeAmount' in appReceiptData.additionalInfo) appReceiptData.additionalInfo.totalUnstakeAmount = stake + reward
+  }
+
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log('Applied withdraw_stake tx', nominatorAccount, nodeAccount)

@@ -204,6 +204,10 @@ export const apply = (
     },
   }
 
+  if (LiberdusFlags.versionFlags.stakingAppReceiptUpdate === false) {
+    delete appReceiptData.additionalInfo
+  }
+
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash) // nominator.data.transactions.push({ ...tx, txId })
   dapp.log('Applied set_cert_time tx', operatorAccount)
