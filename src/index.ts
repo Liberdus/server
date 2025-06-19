@@ -206,9 +206,9 @@ const shardusSetup = (): void => {
     // THIS NEEDS TO BE FAST, BUT PROVIDES BETTER RESPONSE IF SOMETHING GOES WRONG
     validate(timestampedTx: any, appData: any): { success: boolean; reason: string; status: number } {
       const validationResult = {
-        success: true,
-        reason: 'This transaction is valid!',
-        status: 200,
+        success: false,
+        reason: 'Invalid transaction',
+        status: 400,
       }
       try {
         const { tx } = timestampedTx
@@ -216,58 +216,55 @@ const shardusSetup = (): void => {
 
         // Validate tx fields here
         if (!txnTimestamp) {
-          validationResult.success = false
           validationResult.reason = 'Invalid transaction timestamp'
-          validationResult.status = 400
           return validationResult
         }
 
         if (typeof txnTimestamp !== 'number' || !Number.isFinite(txnTimestamp) || txnTimestamp < 1) {
-          validationResult.success = false
           validationResult.reason = 'Tx "timestamp" field must be a valid number.'
-          validationResult.status = 400
           return validationResult
         }
 
         if (typeof tx.type !== 'string') {
-          validationResult.success = false
           validationResult.reason = 'Tx "type" field must be a string.'
-          validationResult.status = 400
           return validationResult
         }
         if (transactions[tx.type] == undefined) {
-          validationResult.success = false
           validationResult.reason = `The tx type ${tx.type} does not exist in the network.`
-          validationResult.status = 400
           return validationResult
         }
 
         if (Object.values(LiberdusTypes.TXTypes).includes(tx.type) === false) {
-          validationResult.success = false
           validationResult.reason = 'Tx type is not recognized'
-          validationResult.status = 400
           return validationResult
         }
         if (LiberdusFlags.enableAJVValidation) {
           const errors = verifyPayload(tx.type, tx)
           if (errors != null) {
             nestedCountersInstance.countEvent('external', `ajv-failed-${tx.type}-tx`)
-            validationResult.success = false
             validationResult.reason = `AJV failed for ${tx.type} tx, errors: ${Utils.safeStringify(errors)}`
-            validationResult.status = 400
             if (LiberdusFlags.VerboseLogs) console.log(validationResult.reason)
             return validationResult
           }
         }
-        return transactions[tx.type].validate_fields(tx, validationResult, dapp)
+        // Change `success: true` before feeding it to validate_fields
+        // The validate_fields function will set success to false if the tx is not valid
+        validationResult.success = true
+        const res = transactions[tx.type].validate_fields(tx, validationResult, dapp)
+        if (res.success) {
+          validationResult.success = true
+          validationResult.reason = 'This transaction is valid!'
+          validationResult.status = 200
+        } else {
+          validationResult.reason = res.reason
+          if (LiberdusFlags.VerboseLogs) console.log('Tx validation failed:', validationResult.reason)
+        }
       } catch (e) {
-        const reason = e instanceof Error ? e.message : 'Unexpected validation error'
         validationResult.success = false
-        validationResult.reason = reason
-        validationResult.status = 400
+        validationResult.reason = e.message
         if (LiberdusFlags.VerboseLogs) console.log('Tx validation failed:', validationResult.reason)
-        return validationResult
       }
+      return validationResult
     },
     getTimestampFromTransaction(tx): number {
       if (LiberdusFlags.versionFlags.enforceTxTimestamp === false) {
