@@ -24,6 +24,7 @@ const useEthereumSigning = true
 
 // BEFORE TESTING LOCALLY, CHANGE THE ADMIN_ADDRESS IN LIBERDUS-SERVER TO ONE YOU HAVE LOCALLY
 let USER
+const PROTOCOL = 'http'
 let HOST = process.argv[2] || 'localhost:9001'
 const HOST_IP = HOST.split(':')[0]
 const ARCHIVESERVER = process.argv[3] || 'localhost:4000'
@@ -418,7 +419,7 @@ async function sendTx(tx, node = null, verbose = true) {
       target = node
     }
     console.log(target, node)
-    const { data } = await axios.post(`http://${target}/inject`, tx)
+    const { data } = await axios.post(`${PROTOCOL}://${target}/inject`, tx)
     console.log('Got response:', data)
     return data
   } catch (err) {
@@ -462,7 +463,7 @@ async function injectTx(tx) {
   const data = Utils.safeStringify(tx)
   console.log('Tx data', data)
   try {
-    const res = await axios.post(`http://${HOST}/inject`, { tx: data })
+    const res = await axios.post(`${PROTOCOL}://${HOST}/inject`, { tx: data })
     return res.data
   } catch (err) {
     console.log('Error injecting tx:', err.message)
@@ -481,7 +482,7 @@ async function takeSnapshot(host) {
 
 async function getAccountData(id) {
   try {
-    const res = await axios.get(`http://${HOST}/${id ? 'account/' + id : 'accounts'}`)
+    const res = await axios.get(`${PROTOCOL}://${HOST}/${id ? 'account/' + id : 'accounts'}`)
     if (res.data) return Utils.safeJsonParse(Utils.safeStringify(res.data))
     return res.data
   } catch (err) {
@@ -508,7 +509,7 @@ async function getToll(friendId, yourId) {
 async function getAddress(handle) {
   if (handle.length === 64) return handle
   try {
-    const res = await axios.get(`http://${HOST}/address/${crypto.hash(handle)}`)
+    const res = await axios.get(`${PROTOCOL}://${HOST}/address/${crypto.hash(handle)}`)
     const { address, error } = res.data
     if (error) {
       console.log(error)
@@ -526,7 +527,7 @@ function calculateChatId(to, from) {
 
 async function queryMessages(to, from) {
   try {
-    const res = await axios.get(`http://${HOST}/messages/${calculateChatId(USER.address, to)}`)
+    const res = await axios.get(`${PROTOCOL}://${HOST}/messages/${calculateChatId(USER.address, to)}`)
     const { messages } = res.data
     return messages
   } catch (error) {
@@ -537,7 +538,7 @@ async function queryMessages(to, from) {
 // QUERY'S THE TRANSACTIONS OF THE CURRENT WALLET
 async function queryTransactions() {
   try {
-    const res = await axios.get(`http://${HOST}/account/${USER.address}/transactions`)
+    const res = await axios.get(`${PROTOCOL}://${HOST}/account/${USER.address}/transactions`)
     const { transactions } = res.data
     return transactions
   } catch (error) {
@@ -547,7 +548,7 @@ async function queryTransactions() {
 
 // QUERY'S THE CURRENT NETWORK PARAMETERS
 async function queryParameters() {
-  const res = await axios.get(`http://${HOST}/network/parameters`)
+  const res = await axios.get(`${PROTOCOL}://${HOST}/network/parameters`)
   if (res.data.error) {
     return res.data.error
   } else {
@@ -557,7 +558,7 @@ async function queryParameters() {
 
 // QUERY'S THE CURRENT PHASE OF THE DYNAMIC PARAMETER SYSTEM
 async function queryWindow() {
-  const res = await axios.get(`http://${HOST}/network/windows/all`)
+  const res = await axios.get(`${PROTOCOL}://${HOST}/network/windows/all`)
   if (res.data.error) {
     return res.data.error
   } else {
@@ -584,7 +585,7 @@ async function queryWindow() {
 
 // QUERY'S THE CURRENT NETWORK PARAMETERS ON HOST NODE (TESTING)
 async function queryNodeParameters() {
-  const res = await axios.get(`http://${HOST}/network/parameters/node`)
+  const res = await axios.get(`${PROTOCOL}://${HOST}/network/parameters/node`)
   if (res.data.error) {
     return res.data.error
   } else {
@@ -594,73 +595,73 @@ async function queryNodeParameters() {
 
 // QUERY'S ALL NETWORK ISSUES
 async function queryIssues() {
-  const res = await axios.get(`http://${HOST}/issues`)
+  const res = await axios.get(`${PROTOCOL}://${HOST}/issues`)
   return res.data.issues
 }
 
 // QUERY'S ALL NETWORK DEV_ISSUES
 async function queryDevIssues() {
-  const res = await axios.get(`http://${HOST}/issues/dev`)
+  const res = await axios.get(`${PROTOCOL}://${HOST}/issues/dev`)
   return res.data.devIssues
 }
 
 // QUERY'S THE MOST RECENT NETWORK ISSUE
 async function queryLatestIssue() {
-  const res = await axios.get(`http://${HOST}/issues/latest`)
+  const res = await axios.get(`${PROTOCOL}://${HOST}/issues/latest`)
   return res.data.issue
 }
 
 // QUERY'S THE MOST RECENT NETWORK DEV_ISSUE
 async function queryLatestDevIssue() {
-  const res = await axios.get(`http://${HOST}/issues/dev/latest`)
+  const res = await axios.get(`${PROTOCOL}://${HOST}/issues/dev/latest`)
   return res.data.devIssue
 }
 
 // QUERY'S THE CURRENT NETWORK ISSUE COUNT
 async function getIssueCount() {
-  const res = await axios.get(`http://${HOST}/issues/count`)
+  const res = await axios.get(`${PROTOCOL}://${HOST}/issues/count`)
   return res.data.count
 }
 
 // QUERY'S THE CURRENT NETWORK DEV_ISSUE COUNT
 async function getDevIssueCount() {
-  const res = await axios.get(`http://${HOST}/issues/dev/count`)
+  const res = await axios.get(`${PROTOCOL}://${HOST}/issues/dev/count`)
   return res.data.count
 }
 
 // QUERY'S ALL NETWORK PROPOSALS
 async function queryProposals() {
-  const res = await axios.get(`http://${HOST}/proposals`)
+  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals`)
   return res.data.proposals
 }
 
 // QUERY'S ALL NETWORK DEV_PROPOSALS
 async function queryDevProposals() {
-  const res = await axios.get(`http://${HOST}/proposals/dev`)
+  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals/dev`)
   return res.data.devProposals
 }
 
 // QUERY'S ALL PROPOSALS ON THE LATEST ISSUE
 async function queryLatestProposals() {
-  const res = await axios.get(`http://${HOST}/proposals/latest`)
+  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals/latest`)
   return res.data.proposals
 }
 
 // QUERY'S ALL PROPOSALS ON THE LATEST ISSUE
 async function queryLatestDevProposals() {
-  const res = await axios.get(`http://${HOST}/proposals/dev/latest`)
+  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals/dev/latest`)
   return res.data.devProposals
 }
 
 // QUERY'S THE CURRENT ISSUE'S PROPOSAL COUNT
 async function getProposalCount() {
-  const res = await axios.get(`http://${HOST}/proposals/count`)
+  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals/count`)
   return res.data.count
 }
 
 // QUERY'S THE CURRENT ISSUE'S PROPOSAL COUNT
 async function getDevProposalCount() {
-  const res = await axios.get(`http://${HOST}/proposals/dev/count`)
+  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals/dev/count`)
   return res.data.count
 }
 
@@ -701,7 +702,7 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
     {
       type: 'input',
       name: 'config',
-      message: 'Enter the stringified JSON config object: e.g. { "p2p": { "maxNodes": 300 } }',
+      message: 'Enter the stringified JSON config object - e.g. { "p2p": { "maxNodes": 300 } }: ',
       // default: '{ "p2p": { "minNodes": 15, "maxNodes": 30 } }', //JSON.stringify(testConfig),
       // default: '{ "p2p": { "initShutdown": true } }',
     },
@@ -743,7 +744,7 @@ vorpal.command('change network parameters', 'Send a stringified JSON config obje
     {
       type: 'input',
       name: 'config',
-      message: 'Enter the stringified JSON config object: e.g. { "latestVersion": "1.1.1" }',
+      message: 'Enter the stringified JSON config object - e.g. { "latestVersion": "1.1.1" }: ',
       // default: '{ "latestVersion": "2.3.2" }',
     },
   ])
@@ -880,7 +881,7 @@ vorpal.command('create', 'creates tokens for an account').action(async function 
     this.log('Target account address does not exist')
     callback()
   } else {
-    const tx = {
+        const tx = {
       type: 'create',
       from: to,
       amount: libToWei(answers.amount),
@@ -2011,7 +2012,7 @@ vorpal.command('admin certificate', 'put admin certificate').action(async functi
 const putAdminCert = async (adminCert) => {
   console.log(`Sending admin certificate to ${HOST}...`)
   try {
-    const res = await axios.put(`http://${HOST}/admin-certificate`, adminCert)
+    const res = await axios.put(`${PROTOCOL}://${HOST}/admin-certificate`, adminCert)
     return res.data
   } catch (err) {
     return err.message
