@@ -100,7 +100,7 @@ export const apply = (
     // This block will only be reached if the node is inactive and the force unstake flag has been set
     reward = BigInt(0)
   }
-
+  const penalty = nodeAccount.penalty
   const txFeeUsd = AccountsStorage.cachedNetworkAccount.current.transactionFee
   const txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
   // [TODO] check if the maintainance fee is also needed in withdraw_stake tx
@@ -141,7 +141,8 @@ export const apply = (
       maintenanceFee,
       stake,
       reward,
-      totalUnstakeAmount: stake + reward,
+      penalty,
+      totalUnstakeAmount: stake + reward - penalty,
     },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
