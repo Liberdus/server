@@ -264,6 +264,9 @@ const shardusSetup = (): void => {
       return transactions[tx.type].validate_fields(tx, response, dapp)
     },
     getTimestampFromTransaction(tx: any) {
+      if (!tx.timestamp) {
+        throw new Error('Tx has no timestamp')
+      }
       return tx.timestamp ? tx.timestamp : 0
     },
     crack(timestampedTx: any, appData: any): LiberdusTypes.KeyResult {
@@ -1053,7 +1056,6 @@ const shardusSetup = (): void => {
         version,
         stakeCert: QueryCertificate.stakeCert,
         adminCert,
-        mustUseAdminCert,
       }
       return joinData
     },
@@ -1127,7 +1129,16 @@ const shardusSetup = (): void => {
 
         const nodeAcc = data.sign.owner
         //Checks for adminCert or goldenTicket
-        if (LiberdusFlags.AdminCertEnabled && appJoinData.adminCert && appJoinData.mustUseAdminCert) {
+        if (appJoinData.adminCert) {
+          if (LiberdusFlags.AdminCertEnabled === false) {
+            /* prettier-ignore */
+            if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: adminCert is not enabled`)
+            return {
+              success: false,
+              reason: 'Admin certificate is not enabled',
+              fatal: true,
+            }
+          }
           const adminCert: AdminCert = appJoinData.adminCert
           /* prettier-ignore */
           nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest: adminCert exists')

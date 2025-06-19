@@ -199,6 +199,9 @@ export const apply = (
     to: tx.nominee,
     type: tx.type,
     transactionFee: costTxFee,
+    additionalInfo: {
+      certExp: operatorAccount.operatorAccountInfo.certExp,
+    },
   }
 
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
@@ -220,8 +223,8 @@ export const createFailedAppReceiptData = (
     timestamp: txTimestamp,
     success: false,
     reason,
-    from: tx.nominator,
-    to: tx.nominee,
+    from: tx.nominee,
+    to: tx.nominator,
     type: tx.type,
     transactionFee: BigInt(0),
   }
