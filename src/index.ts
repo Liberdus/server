@@ -205,46 +205,69 @@ const shardusSetup = (): void => {
     },
     // THIS NEEDS TO BE FAST, BUT PROVIDES BETTER RESPONSE IF SOMETHING GOES WRONG
     validate(timestampedTx: any, appData: any): { success: boolean; reason: string; status: number } {
-      const { tx } = timestampedTx
-      const txnTimestamp: number = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
-
-      // Validate tx fields here
-      const response: ShardusTypes.IncomingTransactionResult = {
+      const validationResult = {
         success: true,
         reason: 'This transaction is valid!',
+        status: 200,
       }
-      if (!txnTimestamp || typeof txnTimestamp !== 'number' || txnTimestamp < 1) {
-        response.success = false
-        response.reason = 'Invalid transaction timestamp'
-        throw new Error(response.reason)
-      }
+      try {
+        const { tx } = timestampedTx
+        const txnTimestamp: number = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
 
-      if (typeof tx.type !== 'string') {
-        response.success = false
-        response.reason = 'Tx "type" field must be a string.'
-        throw new Error(response.reason)
-      }
-      if (transactions[tx.type] == undefined) {
-        response.success = false
-        response.reason = `The tx type ${tx.type} does not exist in the network.`
-      }
-
-      if (Object.values(LiberdusTypes.TXTypes).includes(tx.type) === false) {
-        response.success = false
-        response.reason = 'Tx type is not recognized'
-        throw new Error(response.reason)
-      }
-      if (LiberdusFlags.enableAJVValidation) {
-        const errors = verifyPayload(tx.type, tx)
-        if (errors != null) {
-          nestedCountersInstance.countEvent('external', `ajv-failed-${tx.type}-tx`)
-          response.success = false
-          response.reason = `AJV failed for ${tx.type} tx, errors: ${Utils.safeStringify(errors)}`
-          if (LiberdusFlags.VerboseLogs) console.log(response.reason)
-          throw new Error(response.reason)
+        // Validate tx fields here
+        if (!txnTimestamp) {
+          validationResult.success = false
+          validationResult.reason = 'Invalid transaction timestamp'
+          validationResult.status = 400
+          return validationResult
         }
+
+        if (typeof txnTimestamp !== 'number' || !Number.isFinite(txnTimestamp) || txnTimestamp < 1) {
+          validationResult.success = false
+          validationResult.reason = 'Tx "timestamp" field must be a valid number.'
+          validationResult.status = 400
+          return validationResult
+        }
+
+        if (typeof tx.type !== 'string') {
+          validationResult.success = false
+          validationResult.reason = 'Tx "type" field must be a string.'
+          validationResult.status = 400
+          return validationResult
+        }
+        if (transactions[tx.type] == undefined) {
+          validationResult.success = false
+          validationResult.reason = `The tx type ${tx.type} does not exist in the network.`
+          validationResult.status = 400
+          return validationResult
+        }
+
+        if (Object.values(LiberdusTypes.TXTypes).includes(tx.type) === false) {
+          validationResult.success = false
+          validationResult.reason = 'Tx type is not recognized'
+          validationResult.status = 400
+          return validationResult
+        }
+        if (LiberdusFlags.enableAJVValidation) {
+          const errors = verifyPayload(tx.type, tx)
+          if (errors != null) {
+            nestedCountersInstance.countEvent('external', `ajv-failed-${tx.type}-tx`)
+            validationResult.success = false
+            validationResult.reason = `AJV failed for ${tx.type} tx, errors: ${Utils.safeStringify(errors)}`
+            validationResult.status = 400
+            if (LiberdusFlags.VerboseLogs) console.log(validationResult.reason)
+            return validationResult
+          }
+        }
+        return transactions[tx.type].validate_fields(tx, validationResult, dapp)
+      } catch (e) {
+        const reason = e instanceof Error ? e.message : 'Unexpected validation error'
+        validationResult.success = false
+        validationResult.reason = reason
+        validationResult.status = 400
+        if (LiberdusFlags.VerboseLogs) console.log('Tx validation failed:', validationResult.reason)
+        return validationResult
       }
-      return transactions[tx.type].validate_fields(tx, response, dapp)
     },
     getTimestampFromTransaction(tx): number {
       if (LiberdusFlags.versionFlags.enforceTxTimestamp === false) {
@@ -299,15 +322,15 @@ const shardusSetup = (): void => {
       const { tx } = timestampedTx
       const txTimestamp = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
 
-      const validationResult = {
+      const preApplyStatus = {
         success: false,
         reason: 'Transaction is not valid.',
       }
       try {
-        transactions[tx.type].validate(tx, wrappedStates, validationResult, dapp)
+        transactions[tx.type].validate(tx, wrappedStates, preApplyStatus, dapp)
       } catch (e) {
-        validationResult.success = false
-        validationResult.reason = e.message
+        preApplyStatus.success = false
+        preApplyStatus.reason = e.message
       }
 
       // Create an applyResponse which will be used to tell Shardus that the tx has been applied
@@ -315,7 +338,7 @@ const shardusSetup = (): void => {
 
       const applyResponse: ShardusTypes.ApplyResponse = dapp.createApplyResponse(txId, txTimestamp)
 
-      if (validationResult.success === true) {
+      if (preApplyStatus.success === true) {
         try {
           transactions[tx.type].apply(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse)
         } catch (e) {
@@ -324,7 +347,7 @@ const shardusSetup = (): void => {
         }
       } else {
         // Create the appReceiptData for the tx
-        transactions[tx.type].createFailedAppReceiptData(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse, reason)
+        transactions[tx.type].createFailedAppReceiptData(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse, preApplyStatus.reason)
       }
 
       for (const accountId in wrappedStates) {
