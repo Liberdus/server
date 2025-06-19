@@ -97,17 +97,8 @@ export const apply = (
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[networkAccount].data
   let changeOnCycle
   let cycleData: ShardusTypes.Cycle
-
-  const isValid = validate(tx, wrappedStates, { success: false, reason: '' }, dapp)
-  if (!isValid.success) {
-    dapp.log(`txId: ${txId} validation failed`, isValid.reason)
-    from.timestamp = txTimestamp
-    dapp.log('Applied change_config tx')
-    return
-  }
 
   if (tx.cycle === -1) {
     ;[cycleData] = dapp.getLatestCycles()

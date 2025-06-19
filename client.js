@@ -701,13 +701,17 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
     {
       type: 'input',
       name: 'config',
-      message: 'Enter the stringified JSON config object: ',
-      default: '{ "p2p": { "minNodes": 15, "maxNodes": 30 } }', //JSON.stringify(testConfig),
+      message: 'Enter the stringified JSON config object: e.g. { "p2p": { "maxNodes": 300 } }',
+      // default: '{ "p2p": { "minNodes": 15, "maxNodes": 30 } }', //JSON.stringify(testConfig),
       // default: '{ "p2p": { "initShutdown": true } }',
     },
   ])
   try {
-    this.log(JSON.parse(answers.config))
+    const config = JSON.parse(answers.config)
+    if (typeof config !== 'object') {
+      throw new Error('config must be an object')
+    }
+    this.log(config)
     const tx = {
       type: 'change_config',
       from: devKey.publicKey,
@@ -739,12 +743,16 @@ vorpal.command('change network parameters', 'Send a stringified JSON config obje
     {
       type: 'input',
       name: 'config',
-      message: 'Enter the stringified JSON config object: ',
-      default: '{ "latestVersion": "2.3.2" }',
+      message: 'Enter the stringified JSON config object: e.g. { "latestVersion": "1.1.1" }',
+      // default: '{ "latestVersion": "2.3.2" }',
     },
   ])
   try {
-    this.log(JSON.parse(answers.config))
+    const config = JSON.parse(answers.config)
+    if (typeof config !== 'object') {
+      throw new Error('config must be an object')
+    }
+    this.log(config)
     const tx = {
       type: 'change_network_param',
       from: devKey.publicKey,
@@ -878,10 +886,10 @@ vorpal.command('create', 'creates tokens for an account').action(async function 
       amount: libToWei(answers.amount),
       timestamp: Date.now(),
     }
-    injectTx(tx).then((res) => {
-      this.log(res)
-      callback()
-    })
+  injectTx(tx).then((res) => {
+    this.log(res)
+    callback()
+  })
   }
 })
 

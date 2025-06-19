@@ -203,17 +203,6 @@ const shardusSetup = (): void => {
         }
       }
     },
-    // looks like this interface is deprecated by newer shardus version and is not used
-    // some of the checks will be in validate() and txPreCrackData()
-    validateTransaction(tx: any, wrappedStates: LiberdusTypes.WrappedStates): ShardusTypes.IncomingTransactionResult {
-      const response: ShardusTypes.IncomingTransactionResult = {
-        success: false,
-        reason: 'Transaction is not valid.',
-        txnTimestamp: tx.timestamp,
-      }
-
-      return transactions[tx.type].validate(tx, wrappedStates, response, dapp)
-    },
     // THIS NEEDS TO BE FAST, BUT PROVIDES BETTER RESPONSE IF SOMETHING GOES WRONG
     validate(timestampedTx: any, appData: any): { success: boolean; reason: string; status: number } {
       const { tx } = timestampedTx
@@ -224,7 +213,7 @@ const shardusSetup = (): void => {
         success: true,
         reason: 'This transaction is valid!',
       }
-      if (!txnTimestamp || isNaN(txnTimestamp) || txnTimestamp < 1) {
+      if (!txnTimestamp || typeof txnTimestamp !== 'number' || txnTimestamp < 1) {
         response.success = false
         response.reason = 'Invalid transaction timestamp'
         throw new Error(response.reason)
@@ -240,11 +229,6 @@ const shardusSetup = (): void => {
         response.reason = `The tx type ${tx.type} does not exist in the network.`
       }
 
-      if (typeof txnTimestamp !== 'number') {
-        response.success = false
-        response.reason = 'Tx "timestamp" field must be a number.'
-        throw new Error(response.reason)
-      }
       if (Object.values(LiberdusTypes.TXTypes).includes(tx.type) === false) {
         response.success = false
         response.reason = 'Tx type is not recognized'
@@ -314,14 +298,24 @@ const shardusSetup = (): void => {
       //@ts-ignore
       const { tx } = timestampedTx
       const txTimestamp = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
-      const { success, reason } = this.validateTransaction(tx, wrappedStates)
+
+      const validationResult = {
+        success: false,
+        reason: 'Transaction is not valid.',
+      }
+      try {
+        transactions[tx.type].validate(tx, wrappedStates, validationResult, dapp)
+      } catch (e) {
+        validationResult.success = false
+        validationResult.reason = e.message
+      }
 
       // Create an applyResponse which will be used to tell Shardus that the tx has been applied
       const txId: string = utils.generateTxId(tx)
 
       const applyResponse: ShardusTypes.ApplyResponse = dapp.createApplyResponse(txId, txTimestamp)
 
-      if (success === true) {
+      if (validationResult.success === true) {
         try {
           transactions[tx.type].apply(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse)
         } catch (e) {
