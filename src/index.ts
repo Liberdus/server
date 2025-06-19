@@ -224,8 +224,7 @@ const shardusSetup = (): void => {
         success: true,
         reason: 'This transaction is valid!',
       }
-
-      if (!txnTimestamp) {
+      if (!txnTimestamp || isNaN(txnTimestamp) || txnTimestamp < 1) {
         response.success = false
         response.reason = 'Invalid transaction timestamp'
         throw new Error(response.reason)
@@ -263,11 +262,15 @@ const shardusSetup = (): void => {
       }
       return transactions[tx.type].validate_fields(tx, response, dapp)
     },
-    getTimestampFromTransaction(tx: any) {
-      if (!tx.timestamp) {
-        throw new Error('Tx has no timestamp')
+    getTimestampFromTransaction(tx): number {
+      if (LiberdusFlags.versionFlags.enforceTxTimestamp === false) {
+        return 'timestamp' in tx ? (tx.timestamp as number) : 0
       }
-      return tx.timestamp
+      // A missing timestamp or a value of 0/-1 reserved for network-generated timestamp, Liberdus does not support this
+      if ('timestamp' in tx && typeof tx.timestamp === 'number' && tx.timestamp > 0) {
+        return tx.timestamp
+      }
+      throw new Error('Tx has invalid timestamp')
     },
     crack(timestampedTx: any, appData: any): LiberdusTypes.KeyResult {
       const { tx } = timestampedTx
