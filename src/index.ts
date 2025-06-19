@@ -267,7 +267,7 @@ const shardusSetup = (): void => {
       if (!tx.timestamp) {
         throw new Error('Tx has no timestamp')
       }
-      return tx.timestamp ? tx.timestamp : 0
+      return tx.timestamp
     },
     crack(timestampedTx: any, appData: any): LiberdusTypes.KeyResult {
       const { tx } = timestampedTx
