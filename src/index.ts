@@ -9,7 +9,7 @@ import * as configs from './config'
 import config, { FilePaths, LiberdusFlags, networkAccount, TOTAL_DAO_DURATION } from './config'
 import * as utils from './utils'
 import * as LiberdusTypes from './@types'
-import { TXTypes } from './@types'
+import { TXTypes, WrappedStates } from './@types'
 import dotenv from 'dotenv'
 import transactions from './transactions'
 import registerAPI from './api'
@@ -309,7 +309,7 @@ const shardusSetup = (): void => {
         shardusMemoryPatterns: memoryPattern,
       }
     },
-    async apply(timestampedTx: ShardusTypes.OpaqueTransaction, wrappedStates) {
+    async apply(timestampedTx: ShardusTypes.OpaqueTransaction, wrappedStates: WrappedStates): Promise<ShardusTypes.ApplyResponse> {
       //@ts-ignore
       const { tx } = timestampedTx
       const txTimestamp = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
@@ -331,9 +331,13 @@ const shardusSetup = (): void => {
       const applyResponse: ShardusTypes.ApplyResponse = dapp.createApplyResponse(txId, txTimestamp)
 
       if (preApplyStatus.success === true) {
+        // Create a deep copy backup of the original wrapped states
+        const originalWrappedStates = utils.deepCloneWrappedStates(wrappedStates)
         try {
           transactions[tx.type].apply(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse)
         } catch (e) {
+          // Rollback to original state on failure
+          utils.rollbackWrappedStates(wrappedStates, originalWrappedStates)
           // Create the appReceiptData for the tx
           transactions[tx.type].createFailedAppReceiptData(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse, e.message)
         }
