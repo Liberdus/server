@@ -30,6 +30,7 @@ import { onActiveVersionChange } from './versioning/index'
 import genesis from './config/genesis.json'
 import rfdc = require('rfdc')
 import { safeStringify } from '@shardus/types/build/src/utils/functions/stringify'
+import create from './accounts'
 
 const { version } = require('./../package.json')
 
@@ -913,6 +914,19 @@ const shardusSetup = (): void => {
           // this tx is deprecated in versions 2.3.5 and later
           return { status: false, reason: 'Tx PreCrack Skipped - update_chat_toll deprecated in this version' }
         }
+
+        // if no chat account is provided, we create a temporary one
+        if (tx.chatId && wrappedStates[tx.chatId] == null) {
+          const tempChatAccount = create.chatAccount(tx.chatId, tx)
+          console.log('Creating temporary chat account for tx', tx.chatId, tempChatAccount)
+          wrappedStates[tx.chatId] = {
+            accountId: tempChatAccount.id,
+            stateId: tempChatAccount.hash,
+            data: tempChatAccount as LiberdusTypes.Accounts,
+            timestamp: tempChatAccount.timestamp,
+          }
+        }
+
         console.log('Running txPreCrackData', tx, wrappedStates)
         const res = transactions[tx.type].validate(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp)
         if (res.success === false) {
