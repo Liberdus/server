@@ -17,6 +17,7 @@ import {
 import * as AccountsStorage from '../../storage/accountStorage'
 import { _sleep, generateTxId, scaleByStabilityFactor } from '../../utils'
 import * as crypto from '../../crypto'
+import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 
 const penaltyTxsMap: Map<string, Tx.PenaltyTX> = new Map()
 
@@ -241,14 +242,16 @@ export const apply = (
   if (penaltyAmount > nodeAccount.stakeLock) penaltyAmount = nodeAccount.stakeLock
 
   // update operator account
-  operatorAccount.operatorAccountInfo.stake -= penaltyAmount
-  operatorAccount.operatorAccountInfo.operatorStats.totalNodePenalty += penaltyAmount
+  operatorAccount.operatorAccountInfo.stake = SafeBigIntMath.subtract(operatorAccount.operatorAccountInfo.stake, penaltyAmount)
+  operatorAccount.operatorAccountInfo.operatorStats.totalNodePenalty = SafeBigIntMath.add(
+    operatorAccount.operatorAccountInfo.operatorStats.totalNodePenalty,
+    penaltyAmount,
+  )
   operatorAccount.timestamp = txTimestamp
 
   // update node account
-  nodeAccount.stakeLock -= penaltyAmount
-  nodeAccount.penalty += penaltyAmount
-  nodeAccount.nodeAccountStats.totalPenalty += penaltyAmount
+  nodeAccount.stakeLock = SafeBigIntMath.subtract(nodeAccount.stakeLock, penaltyAmount)
+  nodeAccount.penalty = SafeBigIntMath.add(nodeAccount.penalty, penaltyAmount)
   nodeAccount.nodeAccountStats.penaltyHistory.push({
     type: tx.violationType,
     amount: penaltyAmount,
