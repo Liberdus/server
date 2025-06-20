@@ -881,16 +881,16 @@ vorpal.command('create', 'creates tokens for an account').action(async function 
     this.log('Target account address does not exist')
     callback()
   } else {
-        const tx = {
+    const tx = {
       type: 'create',
       from: to,
       amount: libToWei(answers.amount),
       timestamp: Date.now(),
     }
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
+    injectTx(tx).then((res) => {
+      this.log(res)
+      callback()
+    })
   }
 })
 
@@ -924,8 +924,12 @@ vorpal.command('transfer', 'transfers tokens to another account').action(async f
     from: USER.address,
     to,
     amount: amountInWei,
+    fee: libToWei(0.1), // Set a small fee for the transaction
     chatId: calculateChatId(to, USER.address),
     memo: answers.memo ? answers.memo : null,
+    xmemo: {
+      message: answers.memo ? answers.memo : '',
+    },
     timestamp: Date.now(),
     //test: false
   }
@@ -1070,6 +1074,8 @@ vorpal.command('message', 'sends a message to another user').action(async functi
         chatId: calculateChatId(to, USER.address),
         message: encryptedMsg,
         timestamp: Date.now(),
+        fee: libToWei(0.1),
+        amount: libToWei(result.toll),
       }
       signTransaction(tx)
       injectTx(tx).then((res) => {
@@ -1189,19 +1195,7 @@ vorpal.command('reclaim toll', 'Reclaim the toll from unread message').action(as
     callback()
   }
 
-  const answer = await this.prompt({
-    type: 'list',
-    name: 'reclaim',
-    message: `Set the required setting of the chat account`,
-    choices: [
-      { name: 'toll free', value: 0, short: true },
-      { name: 'toll required', value: 1, short: false },
-      { name: 'block', value: 2, short: false },
-    ],
-    default: '1',
-  })
-
-  if (answer.reclaim) {
+  if (true) {
     const tx = {
       type: 'reclaim_toll',
       from: USER.address,
@@ -1211,6 +1205,7 @@ vorpal.command('reclaim toll', 'Reclaim the toll from unread message').action(as
     }
     signTransaction(tx)
     injectTx(tx).then((res) => {
+      console.log(res)
       this.log(res)
       callback()
     })

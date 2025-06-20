@@ -67,6 +67,51 @@ export const validate = (tx: Tx.ReclaimToll, wrappedStates: WrappedStates, respo
     return response
   }
 
+  // Handle toll for new or existing chat
+  const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
+  const userIndex = addr1 === tx.from ? 0 : 1
+  const otherPartyIndex = 1 - userIndex
+  const txTimestamp = tx.timestamp
+  let reclaimTollAmount = 0n
+
+  if (chat.toll.payOnReply[otherPartyIndex] === 0n && chat.toll.payOnRead[otherPartyIndex] === 0n) {
+    response.reason = 'Chat has no toll to reclaim. Other party has read or replied to all messages.'
+    return response
+  }
+
+  const otherPartyLastReadTime = chat.read[otherPartyIndex]
+  const ourLastReclaimTime = chat.reclaimed[userIndex]
+
+  // loop through messages not read by the other party and reclaim toll
+  for (const message of chat.messages) {
+    const messageAge = txTimestamp - message.timestamp
+    const isMessageRecord = utils.isMessageRecord(message)
+    const isMessageFromSender = tx.from === message.from
+    const isMessageOlderThanTimeout = messageAge > network.current.tollTimeout
+    const isMessageNewerThanLastRead = message.timestamp > otherPartyLastReadTime
+    const isMessageNewerThanLastReclaim = message.timestamp > ourLastReclaimTime
+    if (config.LiberdusFlags.VerboseLogs) {
+      dapp.log(
+        `Checking message: ${message.timestamp}, age: ${messageAge}, isMessageRecord: ${isMessageRecord}, isMessageFromSender: ${isMessageFromSender}, isMessageOlderThanTimeout: ${isMessageOlderThanTimeout}, isMessageNewerThanLastRead: ${isMessageNewerThanLastRead}, isMessageNewerThanLastReclaim: ${isMessageNewerThanLastReclaim}`,
+      )
+    }
+    const isMessageReclaimable =
+      isMessageRecord && isMessageFromSender && isMessageOlderThanTimeout && isMessageNewerThanLastRead && isMessageNewerThanLastReclaim
+    if (isMessageReclaimable) {
+      reclaimTollAmount += message.tollDeposited
+    }
+  }
+
+  if (reclaimTollAmount === 0n) {
+    response.reason = 'No toll to reclaim. All messages have been read or replied to by the other party.'
+    return response
+  }
+
+  if (reclaimTollAmount > chat.toll.payOnReply[otherPartyIndex] + chat.toll.payOnRead[otherPartyIndex]) {
+    response.reason = 'Reclaim toll amount is greater than the total toll deposited.'
+    return response
+  }
+
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
@@ -87,7 +132,7 @@ export const apply = (
   let reclaimTollAmount = 0n
 
   if (config.LiberdusFlags.VerboseLogs) {
-    dapp.log(`Applying message tx: ${txId}`, tx, from, to, chat)
+    dapp.log(`Applying reclaim_toll tx: ${txId}`, tx, from, to, chat)
   }
 
   if (!chat) {
@@ -105,35 +150,22 @@ export const apply = (
   const userIndex = addr1 === tx.from ? 0 : 1
   const otherPartyIndex = 1 - userIndex
 
-  // fail if the toll poll for other party (user's messages) is empty
-  if (chat.toll.payOnReply[otherPartyIndex] === 0n) {
-    if (config.LiberdusFlags.VerboseLogs) dapp.log(`txId: ${txId} chat has no toll to reclaim`, chat)
-    from.timestamp = txTimestamp
-    dapp.log('Applied message tx', chat, from, to)
-    return
-  }
-
   const otherPartyLastReadTime = chat.read[otherPartyIndex]
+  const ourLastReclaimTime = chat.reclaimed[userIndex]
 
   // loop through messages not read by the other party and reclaim toll
   for (const message of chat.messages) {
     const messageAge = txTimestamp - message.timestamp
-    if (utils.isMessageRecord(message) && tx.from === message.from && messageAge > network.current.tollTimeout && message.timestamp > otherPartyLastReadTime) {
+    const isMessageRecord = utils.isMessageRecord(message)
+    const isMessageFromSender = tx.from === message.from
+    const isMessageOlderThanTimeout = messageAge > network.current.tollTimeout
+    const isMessageNewerThanLastRead = message.timestamp > otherPartyLastReadTime
+    const isMessageNewerThanLastReclaim = message.timestamp > ourLastReclaimTime
+    const isMessageReclaimable =
+      isMessageRecord && isMessageFromSender && isMessageOlderThanTimeout && isMessageNewerThanLastRead && isMessageNewerThanLastReclaim
+    if (isMessageReclaimable) {
       reclaimTollAmount += message.tollDeposited
     }
-  }
-
-  if (reclaimTollAmount > chat.toll.payOnReply[otherPartyIndex] + chat.toll.payOnRead[otherPartyIndex]) {
-    // fail because this should not happen
-    dapp.log(
-      `txId: ${txId} reclaimTollAmount is greater than the total toll deposited`,
-      reclaimTollAmount,
-      chat.toll.payOnReply[otherPartyIndex],
-      chat.toll.payOnRead[otherPartyIndex],
-    )
-    from.timestamp = txTimestamp
-    dapp.log('Applied message tx', chat, from, to)
-    return
   }
 
   // Transfer toll to the reclaiming party
@@ -155,6 +187,9 @@ export const apply = (
   // Update timestamps
   chat.timestamp = txTimestamp
   from.timestamp = txTimestamp
+
+  // Update chat's reclaimed timestamp for the user
+  chat.reclaimed[userIndex] = txTimestamp
 
   const appReceiptData: AppReceiptData = {
     txId,

@@ -579,6 +579,7 @@ export interface ChatAccount {
   }
   read: [number, number] // timestamps of last read
   replied: [number, number] // timestamps of last reply
+  reclaimed: [number, number] // timestamps of last reclaim
   hasChats: boolean // if chat has messages
 }
 

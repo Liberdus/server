@@ -18,6 +18,7 @@ export const chatAccount = (accountId: string, tx: Tx.Message | Tx.Transfer | Tx
     },
     read: [0, 0],
     replied: [0, 0],
+    reclaimed: [0, 0],
     timestamp: 0,
     hash: '',
     hasChats: false,
@@ -56,6 +57,8 @@ export const serializeChatAccount = (stream: VectorBufferStream, inp: ChatAccoun
   stream.writeBigUInt64(BigInt(inp.read[1]))
   stream.writeBigUInt64(BigInt(inp.replied[0]))
   stream.writeBigUInt64(BigInt(inp.replied[1]))
+  stream.writeBigUInt64(BigInt(inp.reclaimed[0]))
+  stream.writeBigUInt64(BigInt(inp.reclaimed[1]))
 
   stream.writeBigUInt64(BigInt(inp.timestamp))
   stream.writeString(inp.hash)
@@ -79,6 +82,7 @@ export const deserializeChatAccount = (stream: VectorBufferStream, root = false)
     },
     read: [Number(stream.readBigUInt64()), Number(stream.readBigUInt64())],
     replied: [Number(stream.readBigUInt64()), Number(stream.readBigUInt64())],
+    reclaimed: [Number(stream.readBigUInt64()), Number(stream.readBigUInt64())],
     timestamp: Number(stream.readBigUInt64()),
     hash: stream.readString(),
     hasChats: stream.readUInt8() === 1,
