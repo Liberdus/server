@@ -9,12 +9,12 @@ import {
   TXTypes,
   UserAccount,
   ValidatorError,
+  WrappedStates,
 } from '../@types'
 import * as crypto from '../crypto'
 import * as configs from '../config'
 import { LiberdusFlags } from '../config'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
-import { DevSecurityLevel, Sign } from '@shardeum-foundation/core/dist/shardus/shardus-types'
 import { shardusPostToNode } from './request'
 import { Utils } from '@shardus/types'
 
@@ -54,10 +54,10 @@ export function isMessageRecord(message: Tx.MessageRecord | Tx.Transfer | Tx.Rea
 
 export function verifyMultiSigs(
   rawPayload: object,
-  signatures: Sign[],
-  allowedPubkeys: { [pubkey: string]: DevSecurityLevel },
+  signatures: ShardusTypes.Sign[],
+  allowedPubkeys: { [pubkey: string]: ShardusTypes.DevSecurityLevel },
   minSigRequired: number,
-  requiredSecurityLevel: DevSecurityLevel,
+  requiredSecurityLevel: ShardusTypes.DevSecurityLevel,
 ): boolean {
   if (!rawPayload || !signatures || !allowedPubkeys || !Array.isArray(signatures)) {
     return false
@@ -247,7 +247,7 @@ export function isValidDevKeyAddition(givenConfig: any): boolean {
 
     // eslint-disable-next-line security/detect-object-injection
     const securityLevel = devPublicKeys[key]
-    if (!Object.values(DevSecurityLevel).includes(securityLevel)) {
+    if (!Object.values(ShardusTypes.DevSecurityLevel).includes(securityLevel)) {
       return false
     }
   }
@@ -267,7 +267,7 @@ export function isValidMultisigKeyAddition(givenConfig: any): boolean {
 
     // eslint-disable-next-line security/detect-object-injection
     const securityLevel = multisigKeys[key]
-    if (!Object.values(DevSecurityLevel).includes(securityLevel)) {
+    if (!Object.values(ShardusTypes.DevSecurityLevel).includes(securityLevel)) {
       return false
     }
   }
@@ -726,4 +726,34 @@ export function scaleByStabilityFactor(input: bigint, networkAccount: NetworkAcc
   const stabilityScaleMult = BigInt(networkAccount.current.stabilityScaleMul)
   const stabilityScaleDiv = BigInt(networkAccount.current.stabilityScaleDiv)
   return (input * stabilityScaleMult) / stabilityScaleDiv
+}
+
+export const deepCopy = <T>(obj: T): T => {
+  if (typeof obj !== 'object') {
+    throw Error('Given element is not of type object.')
+  }
+  return Utils.safeJsonParse(Utils.safeStringify(obj))
+}
+
+// Helper method to create a deep copy of wrapped states
+export const deepCloneWrappedStates = (wrappedStates: WrappedStates): WrappedStates => {
+  const cloned = {}
+  for (const accountId in wrappedStates) {
+    cloned[accountId] = {
+      ...wrappedStates[accountId],
+      data: deepCopy(wrappedStates[accountId].data),
+    }
+  }
+  return cloned
+}
+
+// Helper method to rollback wrapped states to original values
+export const rollbackWrappedStates = (wrappedStates: WrappedStates, originalWrappedStates: WrappedStates): void => {
+  for (const accountId in originalWrappedStates) {
+    if (wrappedStates[accountId]) {
+      wrappedStates[accountId].data = deepCopy(originalWrappedStates[accountId].data)
+      wrappedStates[accountId].timestamp = originalWrappedStates[accountId].timestamp
+      wrappedStates[accountId].stateId = originalWrappedStates[accountId].stateId
+    }
+  }
 }
