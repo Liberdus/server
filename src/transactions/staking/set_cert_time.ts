@@ -189,8 +189,8 @@ export const apply = (
     txId,
     timestamp: txTimestamp,
     success: true,
-    from: tx.nominator,
-    to: tx.nominee,
+    from: tx.nominee,
+    to: tx.nominator,
     type: tx.type,
     transactionFee: costTxFee,
     additionalInfo: {
@@ -199,6 +199,8 @@ export const apply = (
   }
 
   if (LiberdusFlags.versionFlags.stakingAppReceiptUpdate === false) {
+    appReceiptData.from = tx.nominator
+    appReceiptData.to = tx.nominee
     delete appReceiptData.additionalInfo
   }
 
@@ -225,6 +227,10 @@ export const createFailedAppReceiptData = (
     to: tx.nominator,
     type: tx.type,
     transactionFee: BigInt(0),
+  }
+  if (LiberdusFlags.versionFlags.stakingAppReceiptUpdate === false) {
+    appReceiptData.from = tx.nominator
+    appReceiptData.to = tx.nominee
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
