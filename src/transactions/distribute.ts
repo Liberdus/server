@@ -4,6 +4,7 @@ import * as utils from '../utils'
 import create from '../accounts'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.Distribute, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -67,15 +68,15 @@ export const apply = (
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const recipients: UserAccount[] = tx.recipients.map((id: string) => wrappedStates[id].data)
   const transactionFee = network.current.transactionFee
-  from.data.balance -= transactionFee
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
   // from.data.transactions.push({ ...tx, txId })
   for (const user of recipients) {
-    from.data.balance -= tx.amount
-    user.data.balance += tx.amount
+    from.data.balance = SafeBigIntMath.subtract(from.data.balance, tx.amount)
+    user.data.balance = SafeBigIntMath.add(user.data.balance, tx.amount)
     // user.data.transactions.push({ ...tx, txId })
   }
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
-  from.data.balance -= maintenanceFee
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)
 
   const appReceiptData: AppReceiptData = {
     txId,

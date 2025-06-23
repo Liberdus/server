@@ -4,6 +4,7 @@ import * as utils from '../utils'
 import create from '../accounts'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, DevProposalAccount, DevIssueAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.DevVote, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -93,14 +94,14 @@ export const apply = (
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devProposal: DevProposalAccount = wrappedStates[tx.devProposal].data
 
-  from.data.balance -= tx.amount
-  from.data.balance -= network.current.transactionFee
-  from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
+  from.data.balance = SafeBigIntMath.add(from.data.balance, tx.amount)
+  from.data.balance = SafeBigIntMath.add(from.data.balance, network.current.transactionFee)
+  from.data.balance = SafeBigIntMath.add(from.data.balance, utils.maintenanceAmount(txTimestamp, from, network))
 
   if (tx.approve) {
-    devProposal.approve += tx.amount
+    devProposal.approve = SafeBigIntMath.add(devProposal.approve, tx.amount)
   } else {
-    devProposal.reject += tx.amount
+    devProposal.reject = SafeBigIntMath.add(devProposal.reject, tx.amount)
   }
 
   devProposal.totalVotes++

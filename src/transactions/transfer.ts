@@ -19,6 +19,7 @@ import {
   TollUnit,
 } from '../@types'
 import { toShardusAddress, toShardusAddressWithKey } from '../utils/address'
+import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.from !== 'string' && utils.isValidAddress(tx.from) === false) {
@@ -154,9 +155,10 @@ export const apply = (
   // update balances
   const transactionFee = network.current.transactionFee
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
-  from.data.balance -= transactionFee + maintenanceFee
-  from.data.balance -= tx.amount
-  to.data.balance += tx.amount
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, tx.amount)
+  to.data.balance = SafeBigIntMath.add(to.data.balance, tx.amount)
 
   // store transfer data in chat
   if (!from.data.chats[tx.to]) {
@@ -211,7 +213,7 @@ export const createFailedAppReceiptData = (
   if (from !== undefined && from !== null) {
     if (from.data.balance >= network.current.transactionFee) {
       transactionFee = network.current.transactionFee
-      from.data.balance -= transactionFee
+      from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
     } else {
       transactionFee = from.data.balance
       from.data.balance = BigInt(0)

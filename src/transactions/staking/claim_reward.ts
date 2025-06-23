@@ -5,7 +5,7 @@ import { logFlags } from '@shardeum-foundation/core/dist/logger'
 import { NodeAccount, TXTypes, UserAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { scaleByStabilityFactor, _sleep, generateTxId } from '../../utils'
-import { dapp } from '../..'
+import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 
 export async function injectClaimRewardTx(
   shardus: Shardus,
@@ -53,7 +53,7 @@ export async function injectClaimRewardTx(
     nodeDeactivatedTime: eventData.additionalData.txData.endTime,
     cycle: eventData.cycleNumber,
     type: TXTypes.claim_reward,
-    txData: eventData.additionalData?.txData
+    txData: eventData.additionalData?.txData,
   } as Omit<Tx.ClaimRewardTX, 'sign'>
 
   // to make sure that differnt nodes all submit an equivalent tx that is counted as the same tx,
@@ -78,7 +78,11 @@ export async function injectClaimRewardTx(
   return injectResult
 }
 
-export const validate_fields = (tx: Tx.ClaimRewardTX, response: ShardusTypes.IncomingTransactionResult, shardus: Shardus): ShardusTypes.IncomingTransactionResult => {
+export const validate_fields = (
+  tx: Tx.ClaimRewardTX,
+  response: ShardusTypes.IncomingTransactionResult,
+  shardus: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   if (!tx.nominee || tx.nominee === '' || tx.nominee.length !== 64) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail tx.nominee address invalid`)
     if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail tx.nominee address invalid', tx)
@@ -109,7 +113,7 @@ export const validate_fields = (tx: Tx.ClaimRewardTX, response: ShardusTypes.Inc
     response.reason = 'Invalid timestamp'
     return response
   }
-  if (dapp.getNode(tx.deactivatedNodeId)) {
+  if (shardus.getNode(tx.deactivatedNodeId)) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail node still active`)
     if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail node still active', tx)
     response.reason = 'Node is still active'
@@ -154,7 +158,12 @@ export const validate_fields = (tx: Tx.ClaimRewardTX, response: ShardusTypes.Inc
   return response
 }
 
-export const validate = (tx: Tx.ClaimRewardTX, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus): ShardusTypes.IncomingTransactionResult => {
+export const validate = (
+  tx: Tx.ClaimRewardTX,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   if (LiberdusFlags.VerboseLogs) console.log('validating claimRewardTX', tx)
   const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
   // check if the rewardStartTime is negative
@@ -222,16 +231,16 @@ export const apply = (
   nodeAccount.rewardEndTime = tx.nodeDeactivatedTime
 
   // we multiply fist then devide to preserve precision
-  let rewardedAmount = nodeRewardAmount * BigInt(durationInNetwork * 1000) // Convert from seconds to milliseconds
+  let rewardedAmount = SafeBigIntMath.multiply(nodeRewardAmount, BigInt(durationInNetwork * 1000)) // Convert from seconds to milliseconds
   //update total reward var so it can be logged
-  rewardedAmount = rewardedAmount / nodeRewardInterval
+  rewardedAmount = SafeBigIntMath.divide(rewardedAmount, nodeRewardInterval)
   //re-parse reward since it was saved as hex
   //add the reward because nodes can cycle without unstaking
-  nodeAccount.reward = nodeAccount.reward + rewardedAmount
+  nodeAccount.reward = SafeBigIntMath.add(nodeAccount.reward, rewardedAmount)
   nodeAccount.timestamp = txTimestamp
 
   // update the node account historical stats
-  nodeAccount.nodeAccountStats.totalReward = nodeAccount.nodeAccountStats.totalReward + rewardedAmount
+  nodeAccount.nodeAccountStats.totalReward = SafeBigIntMath.add(nodeAccount.nodeAccountStats.totalReward, rewardedAmount)
   nodeAccount.nodeAccountStats.history.push({
     b: nodeAccount.rewardStartTime,
     e: nodeAccount.rewardEndTime,
@@ -242,7 +251,10 @@ export const apply = (
     b: nodeAccount.rewardStartTime,
     e: nodeAccount.rewardEndTime,
   })
-  operatorAccount.operatorAccountInfo.operatorStats.totalNodeReward = operatorAccount.operatorAccountInfo.operatorStats.totalNodeReward + rewardedAmount
+  operatorAccount.operatorAccountInfo.operatorStats.totalNodeReward = SafeBigIntMath.add(
+    operatorAccount.operatorAccountInfo.operatorStats.totalNodeReward,
+    rewardedAmount,
+  )
   operatorAccount.operatorAccountInfo.operatorStats.totalNodeTime += durationInNetwork
 
   operatorAccount.operatorAccountInfo.operatorStats.lastStakedNodeKey = operatorAccount.operatorAccountInfo.nominee

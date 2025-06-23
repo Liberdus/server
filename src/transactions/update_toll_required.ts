@@ -5,6 +5,7 @@ import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../@types'
 import { toShardusAddress } from '../utils/address'
 import create from '../accounts'
+import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.UpdateTollRequired, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.from !== 'string' && utils.isValidAddress(tx.from) === false) {
@@ -117,7 +118,8 @@ export const apply = (
   const chat: ChatAccount = wrappedStates[tx.chatId].data
 
   // Deduct transaction fee
-  from.data.balance -= network.current.transactionFee
+  const transactionFee = network.current.transactionFee
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
 
   // Get user index
   const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
@@ -129,13 +131,13 @@ export const apply = (
   // refund pending toll pools to other party
   if (chat.toll.payOnRead[userIndex] > 0n) {
     dapp.log('UpdateChatToll: Refunding payOnRead toll to other party')
-    to.data.balance += chat.toll.payOnRead[userIndex]
+    to.data.balance = SafeBigIntMath.add(to.data.balance, chat.toll.payOnRead[userIndex])
     chat.toll.payOnRead[userIndex] = 0n
     to.timestamp = txTimestamp
   }
   if (chat.toll.payOnReply[userIndex] > 0n) {
     dapp.log('UpdateChatToll: Refunding payOnReply toll to other party')
-    to.data.balance += chat.toll.payOnReply[userIndex]
+    to.data.balance = SafeBigIntMath.add(to.data.balance, chat.toll.payOnReply[userIndex])
     chat.toll.payOnReply[userIndex] = 0n
     to.timestamp = txTimestamp
   }
@@ -151,7 +153,7 @@ export const apply = (
     from: tx.from,
     to: tx.to,
     type: tx.type,
-    transactionFee: network.current.transactionFee,
+    transactionFee,
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
@@ -175,7 +177,7 @@ export const createFailedAppReceiptData = (
   if (from !== undefined && from !== null) {
     if (from.data.balance >= network.current.transactionFee) {
       transactionFee = network.current.transactionFee
-      from.data.balance -= transactionFee
+      from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
     } else {
       transactionFee = from.data.balance
       from.data.balance = BigInt(0)

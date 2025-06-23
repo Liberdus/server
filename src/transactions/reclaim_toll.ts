@@ -5,6 +5,7 @@ import create from '../accounts'
 import * as config from '../config'
 import { Accounts, AppReceiptData, ChatAccount, NetworkAccount, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
 import { toShardusAddress } from '../utils/address'
+import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.ReclaimToll, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string' && utils.isValidAddress(tx.from) === false) {
@@ -98,7 +99,7 @@ export const validate = (tx: Tx.ReclaimToll, wrappedStates: WrappedStates, respo
     const isMessageReclaimable =
       isMessageRecord && isMessageFromSender && isMessageOlderThanTimeout && isMessageNewerThanLastRead && isMessageNewerThanLastReclaim
     if (isMessageReclaimable) {
-      reclaimTollAmount += message.tollDeposited
+      reclaimTollAmount = SafeBigIntMath.add(reclaimTollAmount, message.tollDeposited)
     }
   }
 
@@ -140,10 +141,12 @@ export const apply = (
   }
 
   // Deduct transaction fee
-  from.data.balance -= network.current.transactionFee
+  const transactionFee = network.current.transactionFee
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
 
   // Deduct maintenance fee
-  from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
+  const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)
 
   // Handle toll for new or existing chat
   const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
@@ -164,25 +167,17 @@ export const apply = (
     const isMessageReclaimable =
       isMessageRecord && isMessageFromSender && isMessageOlderThanTimeout && isMessageNewerThanLastRead && isMessageNewerThanLastReclaim
     if (isMessageReclaimable) {
-      reclaimTollAmount += message.tollDeposited
+      reclaimTollAmount = SafeBigIntMath.add(reclaimTollAmount, message.tollDeposited)
     }
   }
 
   // Transfer toll to the reclaiming party
-  from.data.balance += reclaimTollAmount
+  from.data.balance = SafeBigIntMath.add(from.data.balance, reclaimTollAmount)
 
   // Clear the toll pools of the other party by 50% of the reclaimed amount
-  const halfReclaimTollAmount = reclaimTollAmount / 2n
-  chat.toll.payOnRead[otherPartyIndex] -= halfReclaimTollAmount
-  chat.toll.payOnReply[otherPartyIndex] -= halfReclaimTollAmount
-
-  // prevent negative toll
-  if (chat.toll.payOnRead[otherPartyIndex] < 0n) {
-    chat.toll.payOnRead[otherPartyIndex] = 0n
-  }
-  if (chat.toll.payOnReply[otherPartyIndex] < 0n) {
-    chat.toll.payOnReply[otherPartyIndex] = 0n
-  }
+  const halfReclaimTollAmount = SafeBigIntMath.divide(reclaimTollAmount, 2n)
+  chat.toll.payOnRead[otherPartyIndex] = SafeBigIntMath.subtract(chat.toll.payOnRead[otherPartyIndex], halfReclaimTollAmount)
+  chat.toll.payOnReply[otherPartyIndex] = SafeBigIntMath.subtract(chat.toll.payOnReply[otherPartyIndex], halfReclaimTollAmount)
 
   // Update timestamps
   chat.timestamp = txTimestamp
@@ -198,7 +193,7 @@ export const apply = (
     from: tx.from,
     to: tx.to,
     type: tx.type,
-    transactionFee: network.current.transactionFee,
+    transactionFee: transactionFee,
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
@@ -222,7 +217,7 @@ export const createFailedAppReceiptData = (
   if (from !== undefined && from !== null) {
     if (from.data.balance >= network.current.transactionFee) {
       transactionFee = network.current.transactionFee
-      from.data.balance -= transactionFee
+      from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
     } else {
       transactionFee = from.data.balance
       from.data.balance = BigInt(0)

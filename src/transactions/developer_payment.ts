@@ -15,6 +15,7 @@ import {
   TransactionKeys,
   AppReceiptData,
 } from '../@types'
+import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.DevPayment, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -113,7 +114,7 @@ export const apply = (
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const developer: UserAccount = wrappedStates[tx.developer].data
   developer.data.payments.push(tx.payment)
-  developer.data.balance += tx.payment.amount
+  developer.data.balance = SafeBigIntMath.add(developer.data.balance, tx.payment.amount)
   // developer.data.transactions.push({ ...tx, txId })
 
   const when = txTimestamp + config.ONE_SECOND * 10

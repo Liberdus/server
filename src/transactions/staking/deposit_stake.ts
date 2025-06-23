@@ -5,6 +5,7 @@ import * as config from './../../config'
 import * as AccountsStorage from '../../storage/accountStorage'
 import create from './../../accounts'
 import { UserAccount, WrappedStates, Tx, TransactionKeys, NodeAccount, Accounts, AppReceiptData, NetworkAccount } from './../../@types'
+import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.DepositStake, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.nominator !== 'string' && utils.isValidAddress(tx.nominator) === false) {
@@ -108,18 +109,19 @@ export const apply = (
   const txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
   // [TODO] check if the maintainance fee is also needed in deposit_stake tx
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, nominatorAccount, AccountsStorage.cachedNetworkAccount)
-  const totalAmountToDeduct = tx.stake + txFee + maintenanceFee
+  let totalAmountToDeduct = SafeBigIntMath.add(tx.stake, txFee)
+  totalAmountToDeduct = SafeBigIntMath.add(totalAmountToDeduct, maintenanceFee)
   if (nominatorAccount.data.balance < totalAmountToDeduct) {
     throw new Error('Nominator account does not have enough balance to stake')
   }
-  nominatorAccount.data.balance -= totalAmountToDeduct
-  nominatorAccount.operatorAccountInfo.stake += tx.stake
+  nominatorAccount.data.balance = SafeBigIntMath.subtract(nominatorAccount.data.balance, totalAmountToDeduct)
+  nominatorAccount.operatorAccountInfo.stake = SafeBigIntMath.add(nominatorAccount.operatorAccountInfo.stake, tx.stake)
   nominatorAccount.operatorAccountInfo.nominee = tx.nominee
   nominatorAccount.operatorAccountInfo.certExp = 0
   nominatorAccount.operatorAccountInfo.lastStakeTimestamp = txTimestamp
 
   console.log('nodeAccount.stakeLock', nodeAccount.stakeLock, tx.stake)
-  nodeAccount.stakeLock += tx.stake
+  nodeAccount.stakeLock = SafeBigIntMath.add(nodeAccount.stakeLock, tx.stake)
   nodeAccount.nominator = tx.nominator
   nodeAccount.stakeTimestamp = txTimestamp
 
@@ -164,7 +166,7 @@ export const createFailedAppReceiptData = (
     const txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
     if (from.data.balance >= txFee) {
       transactionFee = txFee
-      from.data.balance -= transactionFee
+      from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
     } else {
       transactionFee = from.data.balance
       from.data.balance = BigInt(0)

@@ -5,6 +5,7 @@ import * as config from '../config'
 import { LiberdusFlags } from '../config'
 import { Accounts, AppReceiptData, NetworkAccount, TollUnit, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
 import * as AccountsStorage from '../storage/accountStorage'
+import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.Toll, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -113,7 +114,8 @@ export const apply = (
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const transactionFee = network.current.transactionFee
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
-  from.data.balance -= transactionFee + maintenanceFee
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee )
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)
   from.data.tollUnit = tx.tollUnit
   from.data.toll = tx.toll
   from.timestamp = txTimestamp

@@ -4,6 +4,7 @@ import * as utils from './../../utils'
 import { LiberdusFlags } from './../../config'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { UserAccount, WrappedStates, Tx, TransactionKeys, NodeAccount, AppReceiptData } from './../../@types'
+import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.WithdrawStake, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.nominator !== 'string' && utils.isValidAddress(tx.nominator) === false) {
@@ -103,7 +104,10 @@ export const apply = (
   // [TODO] check if the maintainance fee is also needed in withdraw_stake tx
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, nominatorAccount, AccountsStorage.cachedNetworkAccount)
   console.log('currentBalance', currentBalance, 'stake', stake, 'reward', reward, 'txFee', txFee, 'maintenanceFee', maintenanceFee)
-  const newBalance = currentBalance + stake + reward - txFee - maintenanceFee
+  let newBalance = SafeBigIntMath.add(currentBalance, stake)
+  newBalance = SafeBigIntMath.add(newBalance, reward)
+  newBalance = SafeBigIntMath.subtract(newBalance, txFee)
+  newBalance = SafeBigIntMath.subtract(newBalance, maintenanceFee)
   console.log('newBalance', newBalance)
   nominatorAccount.data.balance = newBalance
   nominatorAccount.operatorAccountInfo.stake = BigInt(0)
@@ -111,7 +115,10 @@ export const apply = (
   nominatorAccount.operatorAccountInfo.certExp = 0
 
   // update the operator historical stats
-  nominatorAccount.operatorAccountInfo.operatorStats.totalUnstakeReward = nominatorAccount.operatorAccountInfo.operatorStats.totalUnstakeReward + reward
+  nominatorAccount.operatorAccountInfo.operatorStats.totalUnstakeReward = SafeBigIntMath.add(
+    nominatorAccount.operatorAccountInfo.operatorStats.totalUnstakeReward,
+    reward,
+  )
   nominatorAccount.operatorAccountInfo.operatorStats.unstakeCount += 1
   nominatorAccount.operatorAccountInfo.operatorStats.lastStakedNodeKey = tx.nominee
 
@@ -170,7 +177,7 @@ export const createFailedAppReceiptData = (
     const txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
     if (from.data.balance >= txFee) {
       transactionFee = txFee
-      from.data.balance -= transactionFee
+      from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
     } else {
       transactionFee = from.data.balance
       from.data.balance = BigInt(0)
