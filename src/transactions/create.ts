@@ -3,6 +3,7 @@ import create from '../accounts'
 import * as config from '../config'
 import { Accounts, UserAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../@types'
 import * as crypto from '../crypto'
+import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.Create, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.from !== 'string') {
@@ -42,7 +43,7 @@ export const apply = (
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
-  from.data.balance += tx.amount
+  from.data.balance = SafeBigIntMath.add(from.data.balance, tx.amount)
   from.timestamp = txTimestamp
   // from.data.transactions.push({ ...tx, txId })
 

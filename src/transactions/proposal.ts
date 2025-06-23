@@ -15,6 +15,7 @@ import {
   TransactionKeys,
   AppReceiptData,
 } from '../@types'
+import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.Proposal, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -200,9 +201,9 @@ export const apply = (
   const proposal: ProposalAccount = wrappedStates[tx.proposal].data
   const issue: IssueAccount = wrappedStates[tx.issue].data
 
-  from.data.balance -= network.current.proposalFee
-  from.data.balance -= network.current.transactionFee
-  from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, network.current.proposalFee)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, network.current.transactionFee)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, utils.maintenanceAmount(txTimestamp, from, network))
 
   proposal.parameters = tx.parameters
   issue.proposalCount++

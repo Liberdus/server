@@ -3,6 +3,7 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import create from '../accounts'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.RemoveStake, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -64,7 +65,7 @@ export const apply = (
     ? 'Applied remove_stake tx'
     : 'Cancelled remove_stake tx because `remove_stake_request` is null or earlier than 2 * nodeRewardInterval'
   if (shouldRemoveState) {
-    from.data.balance += network.current.stakeRequiredUsd
+    from.data.balance += SafeBigIntMath.add(from.data.balance, network.current.stakeRequiredUsd)
     from.data.stake = BigInt(0)
     from.timestamp = txTimestamp
     from.data.remove_stake_request = null
