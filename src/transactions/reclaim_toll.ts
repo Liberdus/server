@@ -5,6 +5,7 @@ import create from '../accounts'
 import * as config from '../config'
 import { Accounts, AppReceiptData, ChatAccount, NetworkAccount, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
 import { toShardusAddress } from '../utils/address'
+import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.ReclaimToll, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string' || utils.isValidAddress(tx.from) === false) {
@@ -100,10 +101,12 @@ export const apply = (
   }
 
   // Deduct transaction fee
-  from.data.balance -= network.current.transactionFee
+  const transactionFee = network.current.transactionFee
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
 
   // Deduct maintenance fee
-  from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
+  const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)
 
   // Handle toll for new or existing chat
   const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
@@ -112,7 +115,7 @@ export const apply = (
   const reclaimTollAmount = chat.toll.payOnReply[otherPartyIndex] + chat.toll.payOnRead[otherPartyIndex]
 
   // Transfer toll to the reclaiming party
-  from.data.balance += reclaimTollAmount
+  from.data.balance = SafeBigIntMath.add(from.data.balance, reclaimTollAmount)
 
   // clear the toll for the other party
   chat.toll.payOnRead[otherPartyIndex] = 0n
@@ -129,7 +132,7 @@ export const apply = (
     from: tx.from,
     to: tx.to,
     type: tx.type,
-    transactionFee: network.current.transactionFee,
+    transactionFee: transactionFee,
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
@@ -182,7 +185,7 @@ export const createFailedAppReceiptData = (
   if (from !== undefined && from !== null) {
     if (from.data.balance >= network.current.transactionFee) {
       transactionFee = network.current.transactionFee
-      from.data.balance -= transactionFee
+      from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
     } else {
       transactionFee = from.data.balance
       from.data.balance = BigInt(0)

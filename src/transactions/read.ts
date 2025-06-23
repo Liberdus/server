@@ -4,6 +4,7 @@ import * as utils from '../utils'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../@types'
 import { toShardusAddress } from '../utils/address'
+import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.Read, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string' || utils.isValidAddress(tx.from) === false) {
@@ -97,7 +98,8 @@ export const apply = (
   const chat: ChatAccount = wrappedStates[tx.chatId].data
 
   // Deduct transaction fee
-  from.data.balance -= network.current.transactionFee
+  const transactionFee = network.current.transactionFee
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
 
   // Get reader index
   const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
@@ -110,10 +112,10 @@ export const apply = (
   if (chat.toll.payOnRead[readerIndex] > 0n && chat.toll.required[readerIndex] === 1) {
     const readToll = chat.toll.payOnRead[readerIndex]
     const networkFee = (readToll * BigInt(network.current.tollNetworkTaxPercent) * 10n ** 18n) / (100n * 10n ** 18n)
-    const userEarnedAmount = readToll - networkFee
+    const userEarnedAmount = SafeBigIntMath.subtract(readToll, networkFee)
 
     // Transfer toll to reader
-    from.data.balance += userEarnedAmount
+    from.data.balance = SafeBigIntMath.add(from.data.balance, userEarnedAmount)
 
     // Clear the payOnRead amount
     chat.toll.payOnRead[readerIndex] = 0n
@@ -158,7 +160,7 @@ export const createFailedAppReceiptData = (
   if (from !== undefined && from !== null) {
     if (from.data.balance >= network.current.transactionFee) {
       transactionFee = network.current.transactionFee
-      from.data.balance -= transactionFee
+      from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
     } else {
       transactionFee = from.data.balance
       from.data.balance = BigInt(0)

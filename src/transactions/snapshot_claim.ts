@@ -3,6 +3,7 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import create from '../accounts'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.SnapshotClaim, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -60,7 +61,7 @@ export const apply = (
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const claimedSnapshotAmount = network.snapshot[tx.from]
-  from.data.balance += claimedSnapshotAmount
+  from.data.balance = SafeBigIntMath.add(from.data.balance, claimedSnapshotAmount)
   network.snapshot[tx.from] = 0
   // from.data.transactions.push({ ...tx, txId })
   from.claimedSnapshot = true

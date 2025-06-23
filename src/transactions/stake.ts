@@ -3,6 +3,7 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.Stake, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -56,10 +57,11 @@ export const apply = (
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const stakeAmount = network.current.stakeRequiredUsd
-  from.data.balance -= stakeAmount
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, stakeAmount)
   const transactionFee = network.current.transactionFee
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
-  from.data.balance -= transactionFee + maintenanceFee
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)
   from.data.stake = stakeAmount
   from.timestamp = txTimestamp
   // from.data.transactions.push({ ...tx, txId })

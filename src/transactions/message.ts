@@ -5,6 +5,7 @@ import create from '../accounts'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData, TollUnit } from '../@types'
 import { toShardusAddress } from '../utils/address'
+import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.Message, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string' || utils.isValidAddress(tx.from) === false) {
@@ -136,10 +137,12 @@ export const apply = (
   }
 
   // Deduct transaction fee
-  from.data.balance -= network.current.transactionFee
+  const transactionFee = network.current.transactionFee
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
 
   // Deduct maintenance fee
-  from.data.balance -= utils.maintenanceAmount(txTimestamp, from, network)
+  const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)
 
   // Handle toll for new or existing chat
   const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
@@ -180,37 +183,30 @@ export const apply = (
     // replying to a message from the other party
     const readToll = chat.toll.payOnRead[senderIndex] // this can be zero if the person replying has read the message
     const replyToll = chat.toll.payOnReply[senderIndex]
-    totalToll = readToll + replyToll
+    totalToll = SafeBigIntMath.add(readToll, replyToll)
 
     // Calculate network fee
     const networkFee = (totalToll * BigInt(network.current.tollNetworkTaxPercent) * 10n ** 18n) / (100n * 10n ** 18n)
-    const userAmount = totalToll - networkFee
+    const userAmount = SafeBigIntMath.subtract(totalToll, networkFee)
 
     // Clear the toll pools
     chat.toll.payOnRead[senderIndex] = 0n
     chat.toll.payOnReply[senderIndex] = 0n
 
     // Transfer toll to replier
-    from.data.balance += userAmount
+    from.data.balance = SafeBigIntMath.add(from.data.balance, userAmount)
     dapp.log(`txId: ${txId} transferring toll to replier`, userAmount, networkFee)
   } else if (chat.toll.required[receiverIndex] === 1) {
     // receiver demands toll
     // Handle toll for new or existing chat when required
     tollDeposited = utils.calculateRequiredTollInWei(to, network)
-    from.data.balance -= tollDeposited
+    from.data.balance = SafeBigIntMath.subtract(from.data.balance, tollDeposited)
     totalToll = tollDeposited
 
     // Deposit toll in read and reply pools
-    const halfToll = tollDeposited / 2n
-    chat.toll.payOnRead[receiverIndex] += halfToll
-    chat.toll.payOnReply[receiverIndex] += halfToll
-  }
-  // fail if the sender balance is negative after toll deduction
-  if (from.data.balance < 0n) {
-    dapp.log(`txId: ${txId} sender balance is negative after toll deduction`, from.data.balance, tollDeposited, network.current.transactionFee)
-    from.timestamp = txTimestamp
-    dapp.log('Applied message tx', chat, from, to)
-    return
+    const halfToll = SafeBigIntMath.divide(tollDeposited, 2n)
+    chat.toll.payOnRead[receiverIndex] = SafeBigIntMath.add(chat.toll.payOnRead[receiverIndex], halfToll)
+    chat.toll.payOnReply[receiverIndex] = SafeBigIntMath.add(chat.toll.payOnReply[receiverIndex], halfToll)
   }
 
   // Update chat references
@@ -251,9 +247,9 @@ export const apply = (
     from: tx.from,
     to: tx.to,
     type: tx.type,
-    transactionFee: network.current.transactionFee,
+    transactionFee,
     additionalInfo: {
-      maintenanceFee: network.current.maintenanceFee,
+      maintenanceFee,
       message: tx.message,
       tollFee: totalToll,
     },
@@ -279,7 +275,7 @@ export const createFailedAppReceiptData = (
   if (from !== undefined && from !== null) {
     if (from.data.balance >= network.current.transactionFee) {
       transactionFee = network.current.transactionFee
-      from.data.balance -= transactionFee
+      from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
     } else {
       transactionFee = from.data.balance
       from.data.balance = BigInt(0)
