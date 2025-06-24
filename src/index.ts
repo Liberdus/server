@@ -820,7 +820,18 @@ const shardusSetup = (): void => {
       return false
     },
     async txPreCrackData(tx: any, appData: any): Promise<{ status: boolean; reason: string }> {
-      if (tx.type != TXTypes.transfer && tx.type != TXTypes.message && tx.type != TXTypes.deposit_stake && tx.type != TXTypes.withdraw_stake) {
+      const preCrackableTxTypes = [
+        TXTypes.transfer,
+        TXTypes.message,
+        TXTypes.deposit_stake,
+        TXTypes.withdraw_stake,
+        TXTypes.read,
+        TXTypes.toll,
+        TXTypes.update_toll_required,
+        TXTypes.reclaim_toll,
+        TXTypes.update_chat_toll,
+      ]
+      if (preCrackableTxTypes.includes(tx.type) === false) {
         return { status: true, reason: 'Tx PreCrack Skipped' }
       }
       try {
