@@ -881,16 +881,16 @@ vorpal.command('create', 'creates tokens for an account').action(async function 
     this.log('Target account address does not exist')
     callback()
   } else {
-        const tx = {
+    const tx = {
       type: 'create',
       from: to,
       amount: libToWei(answers.amount),
       timestamp: Date.now(),
     }
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
+    injectTx(tx).then((res) => {
+      this.log(res)
+      callback()
+    })
   }
 })
 
@@ -1189,19 +1189,9 @@ vorpal.command('reclaim toll', 'Reclaim the toll from unread message').action(as
     callback()
   }
 
-  const answer = await this.prompt({
-    type: 'list',
-    name: 'reclaim',
-    message: `Set the required setting of the chat account`,
-    choices: [
-      { name: 'toll free', value: 0, short: true },
-      { name: 'toll required', value: 1, short: false },
-      { name: 'block', value: 2, short: false },
-    ],
-    default: '1',
-  })
+  const answer = true
 
-  if (answer.reclaim) {
+  if (answer) {
     const tx = {
       type: 'reclaim_toll',
       from: USER.address,

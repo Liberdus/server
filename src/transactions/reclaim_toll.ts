@@ -67,6 +67,12 @@ export const validate = (tx: Tx.ReclaimToll, wrappedStates: WrappedStates, respo
     return response
   }
 
+  const { isValid, reason } = isReclaimValid(clonedTx, chat, network, dapp)
+  if (!isValid) {
+    response.reason = reason || 'Reclaim toll transaction is not valid'
+    return response
+  }
+
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
@@ -84,7 +90,6 @@ export const apply = (
   const to: UserAccount = wrappedStates[tx.to].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const chat: ChatAccount = wrappedStates[tx.chatId].data
-  let reclaimTollAmount = 0n
 
   if (config.LiberdusFlags.VerboseLogs) {
     dapp.log(`Applying message tx: ${txId}`, tx, from, to, chat)
@@ -104,53 +109,14 @@ export const apply = (
   const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
   const userIndex = addr1 === tx.from ? 0 : 1
   const otherPartyIndex = 1 - userIndex
-
-  // fail if the toll poll for other party (user's messages) is empty
-  if (chat.toll.payOnReply[otherPartyIndex] === 0n) {
-    if (config.LiberdusFlags.VerboseLogs) dapp.log(`txId: ${txId} chat has no toll to reclaim`, chat)
-    from.timestamp = txTimestamp
-    dapp.log('Applied message tx', chat, from, to)
-    return
-  }
-
-  const otherPartyLastReadTime = chat.read[otherPartyIndex]
-
-  // loop through messages not read by the other party and reclaim toll
-  for (const message of chat.messages) {
-    const messageAge = txTimestamp - message.timestamp
-    if (utils.isMessageRecord(message) && tx.from === message.from && messageAge > network.current.tollTimeout && message.timestamp > otherPartyLastReadTime) {
-      reclaimTollAmount += message.tollDeposited
-    }
-  }
-
-  if (reclaimTollAmount > chat.toll.payOnReply[otherPartyIndex] + chat.toll.payOnRead[otherPartyIndex]) {
-    // fail because this should not happen
-    dapp.log(
-      `txId: ${txId} reclaimTollAmount is greater than the total toll deposited`,
-      reclaimTollAmount,
-      chat.toll.payOnReply[otherPartyIndex],
-      chat.toll.payOnRead[otherPartyIndex],
-    )
-    from.timestamp = txTimestamp
-    dapp.log('Applied message tx', chat, from, to)
-    return
-  }
+  const reclaimTollAmount = chat.toll.payOnReply[otherPartyIndex] + chat.toll.payOnRead[otherPartyIndex]
 
   // Transfer toll to the reclaiming party
   from.data.balance += reclaimTollAmount
 
-  // Clear the toll pools of the other party by 50% of the reclaimed amount
-  const halfReclaimTollAmount = reclaimTollAmount / 2n
-  chat.toll.payOnRead[otherPartyIndex] -= halfReclaimTollAmount
-  chat.toll.payOnReply[otherPartyIndex] -= halfReclaimTollAmount
-
-  // prevent negative toll
-  if (chat.toll.payOnRead[otherPartyIndex] < 0n) {
-    chat.toll.payOnRead[otherPartyIndex] = 0n
-  }
-  if (chat.toll.payOnReply[otherPartyIndex] < 0n) {
-    chat.toll.payOnReply[otherPartyIndex] = 0n
-  }
+  // clear the toll for the other party
+  chat.toll.payOnRead[otherPartyIndex] = 0n
+  chat.toll.payOnReply[otherPartyIndex] = 0n
 
   // Update timestamps
   chat.timestamp = txTimestamp
@@ -169,6 +135,35 @@ export const apply = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 
   dapp.log('Applied reclaim_toll tx', chat, from)
+}
+
+function isReclaimValid(tx, chat: ChatAccount, network: NetworkAccount, dapp: Shardus): { isValid: boolean; reason?: string } {
+  // Handle toll for new or existing chat
+  const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
+  const userIndex = addr1 === tx.from ? 0 : 1
+  const otherPartyIndex = 1 - userIndex
+
+  if (chat.toll.payOnReply[otherPartyIndex] === 0n && chat.toll.payOnRead[otherPartyIndex] === 0n) {
+    // fail if the other party has not paid any toll
+    dapp.log(`user is trying to reclaim toll but toll pool is empty`, chat)
+    return { isValid: false, reason: 'user is trying to reclaim toll but the toll pool is empty' }
+  }
+
+  let ourLastMessageTimestamp = 0
+  for (const message of chat.messages) {
+    if (utils.isMessageRecord(message) && message.from === tx.from) {
+      // find the last message sent by the user
+      if (message.timestamp > ourLastMessageTimestamp) {
+        ourLastMessageTimestamp = message.timestamp
+      }
+    }
+  }
+  if (Date.now() - ourLastMessageTimestamp < network.current.tollTimeout) {
+    // fail if the user is trying to reclaim toll too soon after sending a message
+    dapp.log(`user is trying to reclaim toll too soon after sending a message`, chat)
+    return { isValid: false, reason: 'user is trying to reclaim toll too soon after sending a message' }
+  }
+  return { isValid: true }
 }
 
 export const createFailedAppReceiptData = (
