@@ -1862,8 +1862,6 @@ vorpal
     callback()
   })
 
-// Add a vorpal command for depositing stake to the joining/active nodes in the network.
-// First argument is the amount of tokens to stake.
 vorpal.command('deposit stake all', 'deposit the stake amount to the joining/active nodes in the network').action(async function (args, callback) {
   const answers = await this.prompt([
     // ask the node type "joining" or "active"
@@ -1998,6 +1996,36 @@ vorpal.command('admin certificate', 'put admin certificate').action(async functi
   this.log(res)
   callback()
 })
+
+vorpal.command('set cert time', 'Create stake certificate for the staked node').action(async function (args, callback) {
+  const answers = await this.prompt([
+    {
+      type: 'input',
+      name: 'nominator',
+      message: 'Enter the norminator address: ',
+    },
+    {
+      type: 'number',
+      name: 'certDurationCycle',
+      message: 'Enter the cert expiry in cycles: ',
+      default: 30,
+      filter: (value) => parseInt(value),
+    },
+  ])
+  const tx = {
+    type: 'set_cert_time',
+    nominee: devKey.publicKey, // Note: The devKey is the nodeAcccount keypairs
+    nominator: answers.nominator,
+    duration: answers.certDurationCycle,
+    timestamp: Date.now(),
+  }
+  signTransaction(tx, devKey, true)
+  injectTx(tx).then((res) => {
+    this.log(res)
+    callback()
+  })
+})
+
 
 const putAdminCert = async (adminCert) => {
   console.log(`Sending admin certificate to ${HOST}...`)
