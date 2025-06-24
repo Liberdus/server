@@ -65,7 +65,7 @@ export const apply = (
     ? 'Applied remove_stake tx'
     : 'Cancelled remove_stake tx because `remove_stake_request` is null or earlier than 2 * nodeRewardInterval'
   if (shouldRemoveState) {
-    from.data.balance += SafeBigIntMath.add(from.data.balance, network.current.stakeRequiredUsd)
+    from.data.balance = SafeBigIntMath.add(from.data.balance, network.current.stakeRequiredUsd)
     from.data.stake = BigInt(0)
     from.timestamp = txTimestamp
     from.data.remove_stake_request = null
