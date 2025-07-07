@@ -693,15 +693,20 @@ export function isEqualOrNewerVersion(minimumVersion: string, testVersion: strin
 
   const minVerParts = minimumVersion.split('.')
   const testVerParts = testVersion.split('.')
+  const maxLen = Math.max(minVerParts.length, testVerParts.length)
+
   /* eslint-disable security/detect-object-injection */
-  for (let i = 0; i < testVerParts.length; i++) {
-    const testV = ~~testVerParts[i] // parse int
-    const minV = ~~minVerParts[i] // parse int
+  for (let i = 0; i < maxLen; i++) {
+    const testV = parseInt(testVerParts[i] || '0', 10)
+    const minV = parseInt(minVerParts[i] || '0', 10)
+
     if (testV > minV) return true
     if (testV < minV) return false
   }
   /* eslint-enable security/detect-object-injection */
-  return false
+
+  // Versions are equal
+  return true
 }
 
 /**
