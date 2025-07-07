@@ -7,7 +7,7 @@ import { toShardusAddress } from '../utils/address'
 import create from '../accounts'
 
 export const validate_fields = (tx: Tx.UpdateTollRequired, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
-  if (typeof tx.from !== 'string' && utils.isValidAddress(tx.from) === false) {
+  if (typeof tx.from !== 'string' || utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" field must be a string.'
     return response
   }

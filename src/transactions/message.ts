@@ -7,7 +7,7 @@ import { Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, Prop
 import { toShardusAddress } from '../utils/address'
 
 export const validate_fields = (tx: Tx.Message, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.from !== 'string' && utils.isValidAddress(tx.from) === false) {
+  if (typeof tx.from !== 'string' || utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" field must be a string.'
     return response
   }

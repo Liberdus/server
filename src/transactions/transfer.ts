@@ -21,7 +21,7 @@ import {
 import { toShardusAddress, toShardusAddressWithKey } from '../utils/address'
 
 export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
-  if (typeof tx.from !== 'string' && utils.isValidAddress(tx.from) === false) {
+  if (typeof tx.from !== 'string' || utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" field must be a string.'
     return response
   }
