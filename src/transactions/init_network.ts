@@ -92,7 +92,7 @@ export const memoryPattern = (tx: Tx.InitNetwork, result: TransactionKeys): Shar
 export const createRelevantAccount = (dapp: Shardus, account: NodeAccount | NetworkAccount, accountId: string, tx: Tx.InitNetwork, accountCreated = false) => {
   if (!account) {
     if (accountId === config.networkAccount) {
-      account = create.networkAccount(accountId, tx.timestamp)
+      account = create.networkAccount(accountId, tx.timestamp, dapp)
     } else {
       account = create.nodeAccount(accountId)
     }

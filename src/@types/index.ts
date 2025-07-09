@@ -593,6 +593,7 @@ export interface AliasAccount {
 
 export interface NetworkAccount {
   id: string
+  networkId: string
   type: string
   listOfChanges: Array<{
     cycle: number

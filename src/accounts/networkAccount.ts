@@ -4,8 +4,9 @@ import { NetworkAccount } from '../@types'
 import { VectorBufferStream } from '@shardeum-foundation/core'
 import { SerdeTypeIdent } from '.'
 import { Utils } from '@shardus/types'
+import { Shardus, nestedCountersInstance } from '@shardeum-foundation/core'
 
-export const networkAccount = (accountId: string, timestamp: number) => {
+export const networkAccount = (accountId: string, timestamp: number, dapp: Shardus): NetworkAccount => {
   // const proposalWindow = [timestamp, timestamp + config.TIME_FOR_PROPOSALS]
   // const votingWindow = [proposalWindow[1], proposalWindow[1] + config.TIME_FOR_VOTING]
   // const graceWindow = [votingWindow[1], votingWindow[1] + config.TIME_FOR_GRACE]
@@ -16,8 +17,12 @@ export const networkAccount = (accountId: string, timestamp: number) => {
   // const devGraceWindow = [devVotingWindow[1], devVotingWindow[1] + config.TIME_FOR_DEV_GRACE]
   // const devApplyWindow = [devGraceWindow[1], devGraceWindow[1] + config.TIME_FOR_DEV_APPLY]
 
+  const latestCycles = dapp.getLatestCycles()
+  const currentCycle = latestCycles[0]
+
   const account: NetworkAccount = {
     id: accountId,
+    networkId: currentCycle.networkId,
     type: 'NetworkAccount',
     listOfChanges: [],
     current: config.INITIAL_PARAMETERS,
@@ -38,7 +43,7 @@ export const networkAccount = (accountId: string, timestamp: number) => {
   return account
 }
 
-// we will have to do task to do detailed serialisation and deserialisation later with type reinforcements
+// todo: we will have to do task to do detailed serialisation and deserialisation later with type reinforcements
 export const serializeNetworkAccount = (stream: VectorBufferStream, inp: NetworkAccount, root = false) => {
   if (root) {
     stream.writeUInt16(SerdeTypeIdent.NetworkAccount)

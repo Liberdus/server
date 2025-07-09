@@ -125,7 +125,7 @@ export const createRelevantAccount = (
 ) => {
   if (!account) {
     if (accountId === config.networkAccount) {
-      account = create.networkAccount(accountId, tx.timestamp)
+      account = create.networkAccount(accountId, tx.timestamp, dapp)
     } else if (accountId === tx.from) {
       account = create.nodeAccount(accountId)
     }
