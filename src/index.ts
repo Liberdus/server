@@ -930,8 +930,11 @@ const shardusSetup = (): void => {
           return { status: false, reason: 'Tx PreCrack Skipped - update_chat_toll deprecated in this version' }
         }
 
+        // these txs require an existing chat account
+        const mandatoryExistingChatAccountTxs = [TXTypes.read, TXTypes.reclaim_toll]
+
         // if no chat account is provided, we create a temporary one
-        if (tx.chatId && wrappedStates[tx.chatId] == null) {
+        if (tx.chatId && wrappedStates[tx.chatId] == null && mandatoryExistingChatAccountTxs.includes(tx.type) === false) {
           const tempChatAccount = create.chatAccount(tx.chatId, tx)
           console.log('Creating temporary chat account for tx', tx.chatId, tempChatAccount)
           wrappedStates[tx.chatId] = {
