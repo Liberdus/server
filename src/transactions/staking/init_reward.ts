@@ -14,6 +14,7 @@ export async function injectInitRewardTx(shardus: Shardus, eventData: ShardusTyp
     nodeActivatedTime: startTime,
     timestamp: shardus.shardusGetTime(),
     txData: eventData.additionalData?.txData,
+    networkId: AccountsStorage.cachedNetworkAccount.networkId,
   } as Tx.InitRewardTX
 
   // check if this node has node account data

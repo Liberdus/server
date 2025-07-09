@@ -54,6 +54,7 @@ export async function injectClaimRewardTx(
     cycle: eventData.cycleNumber,
     type: TXTypes.claim_reward,
     txData: eventData.additionalData?.txData,
+    networkId: AccountsStorage.cachedNetworkAccount.networkId,
   } as Omit<Tx.ClaimRewardTX, 'sign'>
 
   // to make sure that differnt nodes all submit an equivalent tx that is counted as the same tx,

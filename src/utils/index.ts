@@ -10,6 +10,7 @@ import {
   UserAccount,
   ValidatorError,
   WrappedStates,
+  BaseLiberdusTx,
 } from '../@types'
 import * as crypto from '../crypto'
 import * as configs from '../config'
@@ -232,6 +233,20 @@ export function omitDevKeys(givenConfig: any): any {
   }
 
   return restOfConfig
+}
+
+export function isValidNetworkId(tx: BaseLiberdusTx, dapp: Shardus): boolean {
+  if (tx.networkId == null) {
+    return false
+  }
+  if (typeof tx.networkId !== 'string') {
+    return false // networkId is not a string
+  }
+  const cycleRecords = dapp.getLatestCycles(1)
+  if (cycleRecords.length === 0) {
+    return false
+  }
+  return tx.networkId === cycleRecords[0].networkId // check if the networkId matches the expected one
 }
 
 export function isValidDevKeyAddition(givenConfig: any): boolean {

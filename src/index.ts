@@ -97,6 +97,11 @@ const shardusSetup = (): void => {
          * fixed to check timestamps properly
          */
         // const when = dapp.shardusGetTime() + configs.ONE_SECOND * 10
+        const cycleRecords = dapp.getLatestCycles(1)
+        const latestCycle = cycleRecords.length > 0 ? cycleRecords[0] : null
+        if (latestCycle === null) {
+          throw new Error('No latest cycle found, cannot proceed with network account creation.')
+        }
         const when = dapp.shardusGetTime()
         dapp.setGlobal(
           configs.networkAccount,
@@ -105,6 +110,7 @@ const shardusSetup = (): void => {
             type: 'init_network',
             timestamp: when,
             network: configs.networkAccount,
+            networkId: latestCycle.networkId,
           },
           when,
           configs.networkAccount,
@@ -317,6 +323,11 @@ const shardusSetup = (): void => {
       const preApplyStatus = {
         success: false,
         reason: 'Transaction is not valid.',
+      }
+
+      if (utils.isValidNetworkId(tx, dapp) === false) {
+        preApplyStatus.reason = `Invalid network id for tx ${tx.type} with id ${tx.id}`
+        throw new Error(preApplyStatus.reason)
       }
       try {
         transactions[tx.type].validate(tx, wrappedStates, preApplyStatus, dapp)
@@ -824,6 +835,13 @@ const shardusSetup = (): void => {
       return false
     },
     async txPreCrackData(tx: any, appData: any): Promise<{ status: boolean; reason: string }> {
+      console.log('is Valid Network ID?', utils.isValidNetworkId(tx, dapp))
+      if (utils.isValidNetworkId(tx, dapp) === false) {
+        return {
+          status: false,
+          reason: `Invalid network id for tx ${tx.type} with id ${tx.id}. Expected network id: ${AccountsStorage?.cachedNetworkAccount?.networkId}`,
+        }
+      }
       const preCrackableTxTypes = [
         TXTypes.transfer,
         TXTypes.message,
@@ -946,6 +964,7 @@ const shardusSetup = (): void => {
         }
 
         console.log('Running txPreCrackData', tx, wrappedStates)
+
         const res = transactions[tx.type].validate(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp)
         if (res.success === false) {
           return { status: false, reason: res.reason }

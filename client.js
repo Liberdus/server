@@ -32,6 +32,7 @@ const MONITORSERVER = process.argv[4] || 'localhost:3000'
 console.log(`Using ${HOST} as node for queries and transactions.`)
 
 const network = '0'.repeat(64)
+let networkId = ''
 
 let testConfig = {
   server: {
@@ -125,6 +126,7 @@ async function getSeedNodes() {
   }
   return seedNodes
 }
+
 async function getFullNodeList() {
   const result = await axios.get(`http://${ARCHIVESERVER}/full-nodelist`)
   return result.data?.nodeList || []
@@ -248,6 +250,7 @@ function makeTxGenerator(accounts, total = 0, type) {
       if (!(total > 0)) break
     }
   }
+
   const generator = buildGenerator(buildTx, accounts, total, type)
   generator.length = total
   return generator
@@ -337,6 +340,7 @@ function toShardusAddress(addressStr) {
 }
 
 function signTransaction(tx, keys, useDefaultSigning = false) {
+  tx.networkId = networkId
   if (useEthereumSigning && !useDefaultSigning) {
     signEthereumTx(tx, keys ? keys : USER.keys)
   } else {
@@ -349,6 +353,7 @@ function signEthereumTx(tx, keys) {
     throw new Error('Keys are required for signing')
   }
 
+  tx.networkId = networkId
   // Create a copy of the tx without any existing sign field
   const dataToSign = Object.assign({}, tx)
   delete dataToSign.sign
@@ -578,6 +583,7 @@ async function queryWindow() {
     else devWindowTime = { devApply: Math.round((devWindows.devProposalWindow[0] - timestamp) / 1000) }
     return { window: windowTime, devWindow: devWindowTime }
   }
+
   function inRange(now, times) {
     return now > times[0] && now < times[1]
   }
@@ -1795,8 +1801,15 @@ vorpal.command('init', 'sets the user wallet if it exists, else creates it').act
       name: 'user',
       message: 'Enter wallet name: ',
     },
-    (result) => {
+    async (result) => {
       callback(null, vorpal.execSync('wallet create ' + result.user))
+      let res = await axios.get(`${PROTOCOL}://${HOST}/sync-newest-cycle`)
+      if (res.data == null || res.data.newestCycle == null) {
+        this.log('Error syncing with the network:')
+      } else {
+        networkId = res.data.newestCycle.networkId
+        this.log('Network ID: ', networkId)
+      }
     },
   )
 })
@@ -2026,7 +2039,6 @@ vorpal.command('set cert time', 'Create stake certificate for the staked node').
   })
 })
 
-
 const putAdminCert = async (adminCert) => {
   console.log(`Sending admin certificate to ${HOST}...`)
   try {
@@ -2074,6 +2086,7 @@ const jsonStringifyReplacer = (key, value) => {
   }
   return value
 }
+
 function libToWei(lib) {
   return BigInt(lib * 10 ** 18)
 }
@@ -2081,5 +2094,6 @@ function libToWei(lib) {
 function weiToLib(wei) {
   return Number(wei) / 10 ** 18
 }
+
 vorpal.delimiter('>').show()
 vorpal.exec('init').then((res) => (USER = res))

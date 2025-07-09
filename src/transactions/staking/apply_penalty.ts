@@ -41,6 +41,7 @@ export async function injectPenaltyTX(
     timestamp: dapp.shardusGetTime(),
     violationType,
     violationData,
+    networkId: AccountsStorage.cachedNetworkAccount.networkId,
   } as Tx.PenaltyTX
 
   const wrapeedNodeAccount: ShardusTypes.WrappedDataFromQueue = await dapp.getLocalOrRemoteAccount(unsignedTx.reportedNodePublickKey)

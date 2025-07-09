@@ -4,6 +4,7 @@ import { AppReceiptData, NetworkAccount, OurAppDefinedData, Signature, TXTypes, 
 import { Utils } from '@shardus/types'
 import * as utils from '../utils'
 import * as crypto from '../crypto'
+import * as AccountsStorage from '../storage/accountStorage'
 
 export const validate_fields = (tx: Tx.ChangeNetworkParam, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
   if (typeof tx.from !== 'string') {
@@ -102,6 +103,7 @@ export const apply = (
   const when = txTimestamp + config.ONE_SECOND * 10
   const value = {
     type: TXTypes.apply_change_network_param,
+    networkId: AccountsStorage.cachedNetworkAccount.networkId,
     timestamp: when,
     // network: config.networkAccount,
     change: { cycle: changeOnCycle, change: {}, appData: Utils.safeJsonParse(tx.config) },

@@ -125,6 +125,7 @@ export interface BaseLiberdusTx {
   timestamp: number
   type: TXTypes
   sign: Signature
+  networkId: string
 }
 export namespace Tx {
   export interface ApplyParameters extends BaseLiberdusTx {

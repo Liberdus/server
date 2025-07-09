@@ -40,6 +40,7 @@ export async function injectSetCertTimeTx(shardus: Shardus, publicKey: string, a
     nominator,
     duration: getCertCycleDuration(), //temp setting to 20 to make debugging easier
     timestamp: shardus.shardusGetTime(),
+    networkId: AccountsStorage.cachedNetworkAccount.networkId,
   } as Tx.SetCertTime
   tx = shardus.signAsNode(tx)
   const result = await InjectTxToConsensor([randomConsensusNode], tx)
