@@ -1,4 +1,5 @@
 import {
+  BaseLiberdusTx,
   DeveloperPayment,
   DevIssueAccount,
   InjectTxResponse,
@@ -10,7 +11,6 @@ import {
   UserAccount,
   ValidatorError,
   WrappedStates,
-  BaseLiberdusTx,
 } from '../@types'
 import * as crypto from '../crypto'
 import * as configs from '../config'
@@ -50,7 +50,7 @@ export function generateTxId(tx: any): string {
 }
 
 export function isMessageRecord(message: Tx.MessageRecord | Tx.Transfer | Tx.Read): message is Tx.MessageRecord {
-  return 'tollDeposited' in message
+  return message.type === TXTypes.message
 }
 
 export function verifyMultiSigs(

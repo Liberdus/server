@@ -235,9 +235,7 @@ export namespace Tx {
     fee: bigint
   }
 
-  export interface MessageRecord extends Message {
-    tollDeposited: bigint
-  }
+  export type MessageRecord = Message
 
   export interface Read extends BaseLiberdusTx {
     from: string

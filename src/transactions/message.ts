@@ -225,7 +225,6 @@ export const apply = (
   // Add message to chat
   const messageRecord: Tx.MessageRecord = {
     ...tx,
-    tollDeposited, // used for reclaiming toll
   }
   chat.messages.push(messageRecord)
   chat.hasChats = true
