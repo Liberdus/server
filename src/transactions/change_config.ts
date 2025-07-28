@@ -1,7 +1,7 @@
 import { DevSecurityLevel, Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import config, { networkAccount, ONE_SECOND } from '../config'
 import { NetworkAccount, TXTypes, OurAppDefinedData, Signature, TransactionKeys, Tx, UserAccount, WrappedStates, AppReceiptData } from '../@types'
-import { Utils } from '@shardus/types'
+import { Utils } from '@shardeum-foundation/lib-types'
 import * as utils from '../utils'
 import * as crypto from '../crypto'
 import * as AccountsStorage from '../storage/accountStorage'

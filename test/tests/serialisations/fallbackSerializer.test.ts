@@ -1,5 +1,5 @@
 import { VectorBufferStream } from '@shardeum-foundation/core'
-import { Utils } from '@shardus/types'
+import { Utils } from '@shardeum-foundation/lib-types'
 import { fallbackDeserializer, fallbackSerializer, SerdeTypeIdent } from '../../../src/accounts/index'
 import { networkAccount } from '../../../src/accounts/networkAccount'
 

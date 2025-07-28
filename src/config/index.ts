@@ -4,7 +4,7 @@ import Prop from 'dot-prop'
 import merge from 'deepmerge'
 import minimist from 'minimist'
 import { NetworkParameters } from '../@types'
-import { Utils } from '@shardus/types'
+import { Utils } from '@shardeum-foundation/lib-types'
 import { DevSecurityLevel, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 

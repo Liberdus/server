@@ -23,7 +23,7 @@ import {
   UserAccount,
   DevAccount,
 } from '../@types'
-import { Utils } from '@shardus/types'
+import { Utils } from '@shardeum-foundation/lib-types'
 
 export enum SerdeTypeIdent {
   AliasAccount = 1,

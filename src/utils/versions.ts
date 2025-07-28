@@ -1,6 +1,6 @@
 import fs from 'fs'
 import { FilePaths } from './../config'
-import { Utils } from '@shardus/types'
+import { Utils } from '@shardeum-foundation/lib-types'
 
 export let operatorCLIVersion = ''
 export let operatorGUIVersion = ''
