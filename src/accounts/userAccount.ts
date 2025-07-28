@@ -1,6 +1,6 @@
 import { TollUnit, UserAccount, NetworkAccount } from '../@types'
 import { VectorBufferStream } from '@shardeum-foundation/core'
-import * as crypto from '@shardus/crypto-utils'
+import * as crypto from '@shardeum-foundation/lib-crypto-utils'
 import { deserializeDeveloperPayment, SerdeTypeIdent, serializeDeveloperPayment } from '.'
 import * as utils from '../utils'
 import * as AccountsStorage from '../storage/accountStorage'

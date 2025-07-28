@@ -1,7 +1,7 @@
-import { Utils } from '@shardus/types'
+import { Utils } from '@shardeum-foundation/lib-types'
 import { ErrorObject } from 'ajv'
 import { getVerifyFunction } from './schemaHelper'
-import { initSchemas } from './transactionSchemas';
+import { initSchemas } from './transactionSchemas'
 
 export function initAjvSchemas(): void {
   initSchemas()

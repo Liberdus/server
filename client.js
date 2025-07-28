@@ -5,11 +5,11 @@ const fs = require('fs')
 const { resolve } = require('path')
 const path = require('path')
 const vorpal = require('vorpal')()
-const crypto = require('@shardus/crypto-utils')
+const crypto = require('@shardeum-foundation/lib-crypto-utils')
 const stringify = require('fast-stable-stringify')
 const axios = require('axios')
 const { ethers } = require('ethers')
-const { Utils } = require('@shardus/types')
+const { Utils } = require('@shardeum-foundation/lib-types')
 require('dotenv').config()
 
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
@@ -726,6 +726,7 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
       config: answers.config,
       networkId,
       timestamp: Date.now(),
+      networkId: networkId,
     }
     let signedTx = crypto.signObj(tx, devKey.secretKey, devKey.publicKey)
     signedTx.signs = [Object.assign({}, signedTx.sign)]

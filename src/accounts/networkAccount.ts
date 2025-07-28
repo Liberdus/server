@@ -3,7 +3,7 @@ import * as config from '../config'
 import { NetworkAccount } from '../@types'
 import { VectorBufferStream } from '@shardeum-foundation/core'
 import { SerdeTypeIdent } from '.'
-import { Utils } from '@shardus/types'
+import { Utils } from '@shardeum-foundation/lib-types'
 import { Shardus, nestedCountersInstance } from '@shardeum-foundation/core'
 
 export const networkAccount = (accountId: string, timestamp: number, dapp: Shardus): NetworkAccount => {
@@ -36,7 +36,7 @@ export const networkAccount = (accountId: string, timestamp: number, dapp: Shard
     issue: 1,
     devIssue: 1,
     hash: '',
-    timestamp: 0,
+    timestamp,
   }
   account.hash = crypto.hashObj(account)
   console.log('INITIAL_HASH: ', account.hash)
