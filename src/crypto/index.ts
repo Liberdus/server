@@ -1,5 +1,5 @@
 import { ethers } from 'ethers'
-import * as ShardusCrypto from '@shardus/crypto-utils'
+import * as ShardusCrypto from '@shardeum-foundation/lib-crypto-utils'
 import { LiberdusFlags } from '../config'
 import { ShardusTypes } from '@shardeum-foundation/core'
 import { toShardusAddress } from '../utils/address'

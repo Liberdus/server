@@ -1,4 +1,4 @@
-import { Utils } from '@shardus/types'
+import { Utils } from '@shardeum-foundation/lib-types'
 import _ from 'lodash'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as crypto from '../crypto'

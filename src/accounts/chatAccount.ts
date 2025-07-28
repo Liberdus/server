@@ -1,6 +1,6 @@
 import * as crypto from '../crypto'
 import { VectorBufferStream } from '@shardeum-foundation/core'
-import { Utils } from '@shardus/types'
+import { Utils } from '@shardeum-foundation/lib-types'
 import { SerdeTypeIdent } from '.'
 import { ChatAccount, Tx } from '../@types'
 import * as utils from '../utils'

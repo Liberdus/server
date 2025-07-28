@@ -1,4 +1,4 @@
-import { Utils } from '@shardus/types'
+import { Utils } from '@shardeum-foundation/lib-types'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as config from '../config'
 import create from '../accounts'
@@ -92,7 +92,7 @@ export const memoryPattern = (tx: Tx.InitNetwork, result: TransactionKeys): Shar
 export const createRelevantAccount = (dapp: Shardus, account: NodeAccount | NetworkAccount, accountId: string, tx: Tx.InitNetwork, accountCreated = false) => {
   if (!account) {
     if (accountId === config.networkAccount) {
-      account = create.networkAccount(accountId, tx.timestamp, dapp)
+      account = create.networkAccount(accountId, 0, dapp) // timestamp will be set in apply()
     } else {
       account = create.nodeAccount(accountId)
     }

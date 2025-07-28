@@ -2,7 +2,7 @@ import * as crypto from '../crypto'
 import { VectorBufferStream } from '@shardeum-foundation/core'
 import { SerdeTypeIdent } from '.'
 import { NodeAccount } from '../@types'
-import { Utils } from '@shardus/types'
+import { Utils } from '@shardeum-foundation/lib-types'
 
 export const nodeAccount = (accountId: string): NodeAccount => {
   const account: NodeAccount = {

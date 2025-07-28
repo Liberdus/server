@@ -18,8 +18,8 @@ import * as crypto from '../crypto'
 import * as configs from '../config'
 import { LiberdusFlags } from '../config'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
-import { shardusPostToNode, shardusPost } from './request'
-import { Utils } from '@shardus/types'
+import { shardusPostToNode } from './request'
+import { Utils } from '@shardeum-foundation/lib-types'
 import { ethers } from 'ethers'
 
 const WEI = 10n ** 18n

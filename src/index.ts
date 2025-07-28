@@ -1,6 +1,6 @@
 import { DevSecurityLevel, nestedCountersInstance, Shardus, shardusFactory, ShardusTypes } from '@shardeum-foundation/core'
 import account, { deserializeAccounts, serializeAccounts } from './accounts'
-import { P2P, Utils } from '@shardus/types'
+import { P2P, Utils } from '@shardeum-foundation/lib-types'
 import { getFinalArchiverList, setupArchiverDiscovery } from '@shardus/archiver-discovery'
 import { Archiver } from '@shardus/archiver-discovery/dist/src/types'
 import axios from 'axios'
@@ -36,8 +36,9 @@ import { toShardusAddress } from './utils/address'
 import { onActiveVersionChange } from './versioning/index'
 import genesis from './config/genesis.json'
 import rfdc = require('rfdc')
-import { safeStringify } from '@shardus/types/build/src/utils/functions/stringify'
+import { safeStringify } from '@shardeum-foundation/lib-types/build/src/utils/functions/stringify'
 import create from './accounts'
+import { OpaqueTransaction } from '@shardeum-foundation/core/dist/shardus/shardus-types'
 
 const { version } = require('./../package.json')
 
@@ -100,18 +101,24 @@ const shardusSetup = (): void => {
         if (latestCycle === null) {
           throw new Error('No latest cycle found, cannot proceed with network account creation.')
         }
+        await utils._sleep(configs.ONE_SECOND * 10)
         const when = dapp.shardusGetTime()
+        const newNetworkAccount = create.networkAccount(configs.networkAccount, when, dapp)
+        const afterStateHash = newNetworkAccount.hash
+        const value = {
+          type: 'init_network',
+          timestamp: when,
+          network: configs.networkAccount,
+          networkId: latestCycle.networkId,
+        }
+
         dapp.setGlobal(
           configs.networkAccount,
           '', // Setting addressHash = '' as the network account is not created yet.
-          {
-            type: 'init_network',
-            timestamp: when,
-            network: configs.networkAccount,
-            networkId: latestCycle.networkId,
-          },
+          value,
           when,
           configs.networkAccount,
+          afterStateHash,
         )
 
         dapp.log(`node ${nodeId} GENERATED_A_NEW_NETWORK_ACCOUNT: `)
@@ -345,6 +352,8 @@ const shardusSetup = (): void => {
         try {
           transactions[tx.type].apply(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse)
         } catch (e) {
+          console.error(`Error applying transaction ${txId} of type ${tx.type}:`, e.message)
+          dapp.log(`Error applying transaction ${txId} of type ${tx.type}:`, e.message)
           // Rollback to original state on failure
           utils.rollbackWrappedStates(wrappedStates, originalWrappedStates)
           // Create the appReceiptData for the tx
@@ -2131,6 +2140,12 @@ const shardusSetup = (): void => {
     verifyAppJoinData: (data: unknown): string[] | null => {
       // [TODO] Implement this function
       return null
+    },
+    isMultiSigFoundationTx(tx: ShardusTypes.OpaqueTransaction): boolean {
+      return false
+    },
+    isDestLimitTx(appData: any): boolean {
+      return false
     },
   })
 

@@ -1,7 +1,7 @@
 import { NetworkAccount } from '../@types'
 import Storage from '../storage/storage'
 import { networkAccount, LiberdusFlags } from '../config'
-import { Utils } from '@shardus/types'
+import { Utils } from '@shardeum-foundation/lib-types'
 import { Accounts } from '../@types'
 
 //Accounts

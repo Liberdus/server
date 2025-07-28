@@ -1,6 +1,6 @@
 import { Shardus, nestedCountersInstance } from '@shardeum-foundation/core'
 import * as crypto from '../../crypto'
-import { Utils, P2P } from '@shardus/types'
+import { Utils, P2P } from '@shardeum-foundation/lib-types'
 import { LiberdusFlags } from '../../config'
 import { NodeAccount, NodeInitTxData, NodeRewardTxData, SignedNodeInitTxData, SignedNodeRewardTxData } from '../../@types'
 
