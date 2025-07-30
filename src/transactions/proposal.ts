@@ -255,9 +255,6 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const transactionReceiptPass = (tx: Tx.Proposal, txId: string, wrappedStates: WrappedStates, dapp: any, applyResponse: ShardusTypes.ApplyResponse) => {
-  dapp.log('PostApplied proposal tx')
-}
 export const keys = (tx: Tx.Proposal, result: TransactionKeys) => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [tx.issue, tx.proposal, config.networkAccount]

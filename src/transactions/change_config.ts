@@ -112,9 +112,17 @@ export const apply = (
   } as Tx.ApplyChangeConfig
 
   const addressHash = wrappedStates[networkAccount].stateId
-  const ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
 
-  ourAppDefinedData.globalMsg = { address: networkAccount, addressHash, value, when, source: from.id }
+  // Calculate the hash of the network account after the change has been applied, so we can pass afterStateHash to global message
+  const network = wrappedStates[networkAccount].data
+  // Create a deep copy of the network account
+  const clonedNetworkAccount = utils.deepCopy(network)
+  clonedNetworkAccount.listOfChanges.push(value.change)
+  clonedNetworkAccount.timestamp = when
+  const afterStateHash = utils.calculateAccountHash(clonedNetworkAccount)
+
+  const ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
+  ourAppDefinedData.globalMsg = { address: networkAccount, addressHash, value, when, source: from.id, afterStateHash }
 
   from.timestamp = tx.timestamp
 
@@ -155,9 +163,15 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const transactionReceiptPass = (tx: Tx.ChangeConfig, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
-  const { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
-  dapp.setGlobal(address, addressHash, value, when, source)
+export const transactionReceiptPass = (
+  tx: Tx.ChangeConfig,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+): void => {
+  const { address, addressHash, value, when, source, afterStateHash } = (applyResponse.appDefinedData as OurAppDefinedData).globalMsg
+  dapp.setGlobal(address, addressHash, value, when, source, afterStateHash)
   dapp.log(`PostApplied change_config tx transactionReceiptPass: ${Utils.safeStringify({ address, addressHash, value, when, source })}`)
 }
 

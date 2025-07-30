@@ -12,6 +12,7 @@ import {
   ValidatorError,
   WrappedStates,
   GoldenTicketRequest,
+  Accounts,
 } from '../@types'
 import { AdminCert } from '../transactions/admin_certificate'
 import * as crypto from '../crypto'
@@ -52,6 +53,12 @@ export function generateTxId(tx: any): string {
     txId = crypto.hashObj(tx, true) // compute from tx
   }
   return txId
+}
+
+export function calculateAccountHash(account: Accounts): string {
+  account.hash = '' // Not sure this is really necessary
+  account.hash = crypto.hashObj(account)
+  return account.hash
 }
 
 export function isMessageRecord(message: Tx.MessageRecord | Tx.Transfer | Tx.Read): message is Tx.MessageRecord {

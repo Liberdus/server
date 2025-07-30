@@ -103,15 +103,24 @@ export const apply = (
   const when = txTimestamp + config.ONE_SECOND * 10
   const value = {
     type: TXTypes.apply_change_network_param,
-    networkId: AccountsStorage.cachedNetworkAccount.networkId,
+    networkId: config.networkAccount,
     timestamp: when,
-    // network: config.networkAccount,
+    from: tx.from,
     change: { cycle: changeOnCycle, change: {}, appData: Utils.safeJsonParse(tx.config) },
-  }
+  } as Tx.ApplyChangeNetworkParam
 
   const addressHash = wrappedStates[config.networkAccount].stateId
+  
+  // Calculate the hash of the network account after the change has been applied, so we can pass afterStateHash to global message
+  const network = wrappedStates[config.networkAccount].data
+  // Create a deep copy of the network account
+  const clonedNetworkAccount = utils.deepCopy(network)
+  clonedNetworkAccount.listOfChanges.push(value.change)
+  clonedNetworkAccount.timestamp = when
+  const afterStateHash = utils.calculateAccountHash(clonedNetworkAccount)
+
   const ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
-  ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id }
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id, afterStateHash }
 
   from.timestamp = tx.timestamp
 
@@ -152,9 +161,15 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const transactionReceiptPass = (tx: Tx.ChangeNetworkParam, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
-  const { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
-  dapp.setGlobal(address, addressHash, value, when, source)
+export const transactionReceiptPass = (
+  tx: Tx.ChangeNetworkParam,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+): void => {
+  const { address, addressHash, value, when, source, afterStateHash } = (applyResponse.appDefinedData as OurAppDefinedData).globalMsg
+  dapp.setGlobal(address, addressHash, value, when, source, afterStateHash)
   dapp.log(`PostApplied change_network_param tx transactionReceiptPass: ${Utils.safeStringify({ address, addressHash, value, when, source })}`)
 }
 

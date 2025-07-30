@@ -1,6 +1,7 @@
 // ---------------------- TRANSACTION export interfaceS ------------------
 
 import { shardusFactory, ShardusTypes } from '@shardeum-foundation/core'
+import { P2P } from '@shardeum-foundation/lib-types'
 import { StakeCert } from '../transactions/staking/query_certificate'
 import { AdminCert } from '../transactions/admin_certificate'
 
@@ -166,7 +167,7 @@ export namespace Tx {
   export interface ApplyDevTally extends BaseLiberdusTx {
     from: string
     nextDeveloperFund: DeveloperPayment[]
-    nextDevWindows: Windows
+    nextDevWindows: DevWindows
   }
 
   export interface Create extends BaseLiberdusTx {
@@ -824,14 +825,20 @@ export type KeyResult = {
   shardusMemoryPatterns: ShardusTypes.ShardusMemoryPatternsInput
 }
 
+export interface GlobalMessage extends Omit<P2P.GlobalAccountsTypes.SetGlobalTx, 'txId'> {
+  value:
+    | Tx.InitNetwork
+    | Tx.ApplyChangeConfig
+    | Tx.ApplyChangeConfig
+    | Tx.ApplyDevParameters
+    | Tx.ApplyDevTally
+    | Tx.ApplyDevPayment
+    | Tx.ApplyParameters
+    | Tx.ApplyTally
+}
+
 export interface OurAppDefinedData {
-  globalMsg: {
-    address: string
-    addressHash: string
-    value: any
-    when: number
-    source: string
-  }
+  globalMsg: GlobalMessage
 }
 
 export interface InjectTxResponse {
