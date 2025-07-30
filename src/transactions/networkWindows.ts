@@ -40,19 +40,20 @@ export const apply = (
   const value = {
     type: 'apply_parameters',
     timestamp: when,
-    network: config.networkAccount,
+    networkId: config.networkAccount,
     current: network.current,
     windows,
     devWindows,
     next: {},
     nextWindows: {},
     issue: network.issue,
-  }
+  } as Tx.ApplyParameters
 
   const addressHash = wrappedStates[config.networkAccount].stateId
   const ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
-
-  ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id }
+  // [TODO] - Calculate the afterStateHash if old DAO is active
+  const afterStateHash = ''
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id, afterStateHash }
 
   from.timestamp = txTimestamp
 
@@ -110,9 +111,15 @@ export const memoryPattern = (tx: Tx.NetworkWindows, result: TransactionKeys): S
   }
 }
 
-export const transactionReceiptPass = (tx: Tx.ChangeConfig, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
-  let { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
-  dapp.setGlobal(address, addressHash, value, when, source)
+export const transactionReceiptPass = (
+  tx: Tx.ChangeConfig,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+): void => {
+  const { address, addressHash, value, when, source, afterStateHash } = (applyResponse.appDefinedData as OurAppDefinedData).globalMsg
+  dapp.setGlobal(address, addressHash, value, when, source, afterStateHash)
   dapp.log('PostApplied network_windows tx', address, value)
 }
 

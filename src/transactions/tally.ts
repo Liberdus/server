@@ -139,15 +139,16 @@ export const apply = (
   const value = {
     type: 'apply_tally',
     timestamp: when,
-    network: config.networkAccount,
+    networkId: config.networkAccount,
     next,
     nextWindows,
-  }
+  } as Tx.ApplyTally
 
   const addressHash = wrappedStates[config.networkAccount].stateId
   const ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
-
-  ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id }
+  // [TODO] - Calculate the afterStateHash if old DAO is active
+  const afterStateHash = ''
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id, afterStateHash }
 
   issue.winnerId = winner.id
   issue.tallied = true
@@ -193,20 +194,26 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const transactionReceiptPass = (tx: Tx.Tally, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
+export const transactionReceiptPass = (
+  tx: Tx.Tally,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+): void => {
   // we should be careful, "wrappedStates" is only accountWrites at this point
   const issue: IssueAccount = wrappedStates[tx.issue].data
   const winnerId = issue.winnerId
   const winnerProposal: ProposalAccount = wrappedStates[winnerId]?.data
-  let winner = winnerProposal
+  const winner = winnerProposal
 
   if (winner == null) {
     dapp.log('ERROR: No winner proposal found for issue', issue, winnerId, wrappedStates)
     return
   }
 
-  let { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
-  dapp.setGlobal(address, addressHash, value, when, source)
+  const { address, addressHash, value, when, source, afterStateHash } = (applyResponse.appDefinedData as OurAppDefinedData).globalMsg
+  dapp.setGlobal(address, addressHash, value, when, source, afterStateHash)
   dapp.log('PostApplied tally tx', issue, winner, value)
 }
 
