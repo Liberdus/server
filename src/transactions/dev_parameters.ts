@@ -81,18 +81,19 @@ export const apply = (
   const value = {
     type: 'apply_dev_parameters',
     timestamp: when,
-    network: config.networkAccount,
+    networkId: config.networkAccount,
     devWindows: network.nextDevWindows,
     nextDevWindows: {},
     developerFund: [...network.developerFund, ...network.nextDeveloperFund].sort((a, b) => a.timestamp - b.timestamp),
     nextDeveloperFund: [],
     devIssue: network.devIssue + 1,
-  }
+  } as Tx.ApplyDevParameters
 
   const addressHash = wrappedStates[config.networkAccount].stateId
   const ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
-
-  ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id }
+  // [TODO] - Calculate the afterStateHash if old DAO is active
+  const afterStateHash = ''
+  ourAppDefinedData.globalMsg = { address: config.networkAccount, addressHash, value, when, source: from.id, afterStateHash }
 
   devIssue.active = false
 
@@ -136,9 +137,15 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const transactionReceiptPass = (tx: Tx.DevParameters, txId: string, wrappedStates: WrappedStates, dapp, applyResponse) => {
-  let { address, addressHash, value, when, source } = applyResponse.appDefinedData.globalMsg
-  dapp.setGlobal(address, addressHash, value, when, source)
+export const transactionReceiptPass = (
+  tx: Tx.DevParameters,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+): void => {
+  const { address, addressHash, value, when, source, afterStateHash } = (applyResponse.appDefinedData as OurAppDefinedData).globalMsg
+  dapp.setGlobal(address, addressHash, value, when, source, afterStateHash)
   dapp.log('PostApplied dev_parameters tx', tx, value)
 }
 

@@ -394,7 +394,7 @@ const shardusSetup = (): void => {
 
       return applyResponse
     },
-    transactionReceiptPass(timestampedTx: any, wrappedStates: { [id: string]: LiberdusTypes.WrappedAccount }, applyResponse: ShardusTypes.ApplyResponse) {
+    transactionReceiptPass(timestampedTx: any, wrappedStates: LiberdusTypes.WrappedStates, applyResponse: ShardusTypes.ApplyResponse) {
       const { tx } = timestampedTx
       const txId: string = utils.generateTxId(tx)
       try {
@@ -628,10 +628,8 @@ const shardusSetup = (): void => {
       results.sort((a, b) => parseInt(a.accountId, 16) - parseInt(b.accountId, 16))
       return results
     },
-    calculateAccountHash(account: any): string {
-      account.hash = '' // Not sure this is really necessary
-      account.hash = crypto.hashObj(account)
-      return account.hash
+    calculateAccountHash(account: LiberdusTypes.Accounts): string {
+      return utils.calculateAccountHash(account)
     },
     // TODO:Seems we don't use resetAccountData and deleteAccountData anymore
     async resetAccountData(accountBackupCopies: any[]): Promise<void> {
