@@ -216,6 +216,10 @@ export const apply = (
       chatId: tx.chatId,
     }
   }
+  // Update sender's receivedTimestamp and chatTimestamp when sending
+  from.data.chats[tx.to].receivedTimestamp = txTimestamp
+  from.data.chatTimestamp = txTimestamp
+
   to.data.chats[tx.from] = {
     receivedTimestamp: txTimestamp,
     chatId: tx.chatId,
