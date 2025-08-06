@@ -234,6 +234,7 @@ interface LiberdusFlags {
     minTransferAmountCheck?: boolean
     enforceTxTimestamp?: boolean
     stakingAppReceiptUpdate?: boolean
+    updateChatSenderTimestamp?: boolean
   }
 }
 
@@ -270,6 +271,7 @@ export const LiberdusFlags: LiberdusFlags = {
     // stakingAppReceiptUpdate: false, // turn on by 2.3.7
     enforceTxTimestamp: true, // turn on by 2.3.7
     stakingAppReceiptUpdate: true, // turn on by 2.3.7
+    updateChatSenderTimestamp: false, // turn on by 2.3.8
   },
 }
 
