@@ -673,9 +673,17 @@ export function weiToLib(wei: bigint): number {
   return Number(wei) / 10 ** 18
 }
 
+/*
+The stabilityFactor = stabilityScaleMul / stabilityScaleDiv;
+so only the Mul and Div parameters need to be changed when the price of LIB changes.
+If 100 LIB = 1 USD then Mul = 100 and Div = 1. In this case the price of LIB is $0.01 and the SF = 100
+ */
 export function usdToWei(usd: bigint, networkAccount: NetworkAccount): bigint {
   const scaleMul = BigInt(networkAccount.current.stabilityScaleMul)
   const scaleDiv = BigInt(networkAccount.current.stabilityScaleDiv)
+  if (isEqualOrNewerVersion('2.3.9', networkAccount.current.activeVersion)) {
+    return (usd * scaleMul) / scaleDiv
+  }
   const libPerUsd = (usd * scaleDiv) / scaleMul
   return libPerUsd
 }
@@ -683,6 +691,10 @@ export function usdToWei(usd: bigint, networkAccount: NetworkAccount): bigint {
 export function weiToUsd(lib: bigint, networkAccount: NetworkAccount): bigint {
   const scaleMul = BigInt(networkAccount.current.stabilityScaleMul)
   const scaleDiv = BigInt(networkAccount.current.stabilityScaleDiv)
+  if (isEqualOrNewerVersion('2.3.9', networkAccount.current.activeVersion)) {
+    // mul is usd, div is lib
+    return (lib * scaleDiv) / scaleMul
+  }
   const usdPerLib = (lib * scaleMul) / scaleDiv
   return usdPerLib
 }

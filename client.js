@@ -766,6 +766,7 @@ vorpal.command('change network parameters', 'Send a stringified JSON config obje
       cycle: answers.cycle,
       config: answers.config,
       timestamp: Date.now(),
+      networkId: networkId,
     }
     let signedTx = crypto.signObj(tx, devKey.secretKey, devKey.publicKey)
     signedTx.signs = [Object.assign({}, signedTx.sign)]
@@ -892,6 +893,7 @@ vorpal.command('create', 'creates tokens for an account').action(async function 
       from: to,
       amount: libToWei(answers.amount),
       timestamp: Date.now(),
+      networkId,
     }
     injectTx(tx).then((res) => {
       this.log(res)
@@ -1924,7 +1926,7 @@ vorpal.command('deposit stake all', 'deposit the stake amount to the joining/act
       type: 'create',
       from: accounts[i].address,
       to: accounts[i].address,
-      amount: libToWei(50), // extra 50 tokens
+      amount: libToWei(2000), // extra 2000 tokens
       timestamp: Date.now(),
     }
     signTransaction(createTx, accounts[i].keys)

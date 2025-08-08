@@ -67,11 +67,20 @@ export const validate = (tx: Tx.DepositStake, wrappedStates: WrappedStates, resp
     response.reason = `Nominator account has balance ${nominatorAccount.data.balance} less than the stake amount ${tx.stake}`
     return response
   }
-  const minStakeAmountUsd = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
-  const minStakeAmount = utils.scaleByStabilityFactor(minStakeAmountUsd, AccountsStorage.cachedNetworkAccount)
-  if (tx.stake + existingStake < minStakeAmount) {
-    response.reason = `Stake amount sent: ${tx.stake} is less than the minimum required stake amount: ${minStakeAmount}`
-    return response
+  if (utils.isEqualOrNewerVersion('2.3.9', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
+    const minStakeAmountUsd = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
+    const minStakeWei = utils.usdToWei(minStakeAmountUsd, AccountsStorage.cachedNetworkAccount)
+    if (tx.stake + existingStake < minStakeWei) {
+      response.reason = `Stake amount sent: ${tx.stake} is less than the minimum required stake amount: ${minStakeWei}`
+      return response
+    }
+  } else {
+    const minStakeAmountUsd = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
+    const minStakeAmount = utils.scaleByStabilityFactor(minStakeAmountUsd, AccountsStorage.cachedNetworkAccount)
+    if (tx.stake + existingStake < minStakeAmount) {
+      response.reason = `Stake amount sent: ${tx.stake} is less than the minimum required stake amount: ${minStakeAmount}`
+      return response
+    }
   }
   response.success = true
   response.reason = 'This transaction is valid!'

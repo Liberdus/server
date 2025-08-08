@@ -263,7 +263,7 @@ export function isStakeUnlocked(
     const remainingMinutes = Math.ceil((nominatorAccount.operatorAccountInfo.certExp - currentTime) / 60000)
     return {
       unlocked: false,
-      reason: `Your node is currently registered in the network. Deregistration will be completed in ${remainingMinutes} minute${
+      reason: `Your node is currently registered in the network with an active certificate. Deregistration will be completed in ${remainingMinutes} minute${
         remainingMinutes === 1 ? '' : 's'
       }. You'll be able to unstake once this completed.`,
       remainingTime: nominatorAccount.operatorAccountInfo.certExp - currentTime,
@@ -271,12 +271,24 @@ export function isStakeUnlocked(
   }
 
   const stakeLockTime = AccountsStorage.cachedNetworkAccount.current.stakeLockTime
-  const timeSinceLastStake = currentTime - nominatorAccount.operatorAccountInfo.lastStakeTimestamp
-  if (timeSinceLastStake < stakeLockTime) {
-    return {
-      unlocked: false,
-      reason: 'Stake lock period active from last staking/unstaking action.',
-      remainingTime: stakeLockTime - timeSinceLastStake,
+
+  if (utils.isEqualOrNewerVersion('2.3.9', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
+    const timeSinceRewardEndTime = currentTime - nomineeAccount.rewardEndTime * 1000
+    if (nomineeAccount.rewardEndTime > 0 && timeSinceRewardEndTime < stakeLockTime) {
+      return {
+        unlocked: false,
+        reason: 'Stake lock period active from last reward end time.',
+        remainingTime: stakeLockTime - timeSinceRewardEndTime,
+      }
+    }
+  } else {
+    const timeSinceLastStake = currentTime - nominatorAccount.operatorAccountInfo.lastStakeTimestamp
+    if (timeSinceLastStake < stakeLockTime) {
+      return {
+        unlocked: false,
+        reason: 'Stake lock period active from last staking/unstaking action.',
+        remainingTime: stakeLockTime - timeSinceLastStake,
+      }
     }
   }
 
