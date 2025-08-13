@@ -114,8 +114,13 @@ export const apply = (
       },
     }
   }
-  const txFeeUsd = AccountsStorage.cachedNetworkAccount.current.transactionFee
-  const txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
+  let txFee
+  if (utils.isEqualOrNewerVersion('2.4.0', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
+    txFee = AccountsStorage.cachedNetworkAccount.current.transactionFee
+  } else {
+    const txFeeUsd = AccountsStorage.cachedNetworkAccount.current.transactionFee
+    txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
+  }
   // [TODO] check if the maintainance fee is also needed in deposit_stake tx
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, nominatorAccount, AccountsStorage.cachedNetworkAccount)
   let totalAmountToDeduct = SafeBigIntMath.add(tx.stake, txFee)

@@ -99,9 +99,13 @@ export const apply = (
     reward = BigInt(0)
   }
   const penalty = nodeAccount.penalty
-  const txFeeUsd = AccountsStorage.cachedNetworkAccount.current.transactionFee
-  const txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
-  // [TODO] check if the maintainance fee is also needed in withdraw_stake tx
+  let txFee
+  if (utils.isEqualOrNewerVersion('2.4.0', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
+    txFee = AccountsStorage.cachedNetworkAccount.current.transactionFee
+  } else {
+    const txFeeUsd = AccountsStorage.cachedNetworkAccount.current.transactionFee
+    txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
+  } // [TODO] check if the maintainance fee is also needed in withdraw_stake tx
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, nominatorAccount, AccountsStorage.cachedNetworkAccount)
   console.log('currentBalance', currentBalance, 'stake', stake, 'reward', reward, 'txFee', txFee, 'maintenanceFee', maintenanceFee)
   let newBalance = SafeBigIntMath.add(currentBalance, stake)

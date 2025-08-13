@@ -68,7 +68,7 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   tollTimeout: 7 * ONE_DAY,
   minVersion: '2.3.9',
   activeVersion: '2.3.9',
-  latestVersion: '2.3.9',
+  latestVersion: '2.4.0',
   archiver: {
     minVersion: '3.5.6',
     activeVersion: '3.5.6',
