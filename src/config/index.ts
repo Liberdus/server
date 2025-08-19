@@ -225,12 +225,14 @@ interface LiberdusFlags {
   enableDAOTransactions: boolean
   enableAJVValidation: boolean
   versionFlags: {
-    replierNoToll?: boolean
-    allowZeroToll?: boolean
-    minTransferAmountCheck?: boolean
-    enforceTxTimestamp?: boolean
-    stakingAppReceiptUpdate?: boolean
-    updateChatSenderTimestamp?: boolean
+    replierNoToll: boolean
+    allowZeroToll: boolean
+    minTransferAmountCheck: boolean
+    enforceTxTimestamp: boolean
+    stakingAppReceiptUpdate: boolean
+    updateChatSenderTimestamp: boolean
+    tollTaxFeeinAppReceipt: boolean
+    createAppReceiptUpdate: boolean
   }
 }
 
@@ -262,12 +264,11 @@ export const LiberdusFlags: LiberdusFlags = {
     replierNoToll: true, // turn on by 2.3.5
     allowZeroToll: true, // turn on by 2.3.6
     minTransferAmountCheck: true, // turn on by 2.3.6
-    // Use this when 2.3.7 is released in the 2.3.6 network
-    // enforceTxTimestamp: false, // turn on by 2.3.7
-    // stakingAppReceiptUpdate: false, // turn on by 2.3.7
     enforceTxTimestamp: true, // turn on by 2.3.7
     stakingAppReceiptUpdate: true, // turn on by 2.3.7
     updateChatSenderTimestamp: false, // turn on by 2.3.8
+    tollTaxFeeinAppReceipt: false, // turn on by 2.4.1
+    createAppReceiptUpdate: false, // turn on by 2.4.1
   },
 }
 
