@@ -140,6 +140,8 @@ export const apply = (
   const transactionFee = network.current.transactionFee
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
 
+  let networkTollTaxFee = BigInt(0)
+
   // Deduct maintenance fee
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)
@@ -186,8 +188,8 @@ export const apply = (
     totalToll = SafeBigIntMath.add(readToll, replyToll)
 
     // Calculate network fee
-    const networkFee = (totalToll * BigInt(network.current.tollNetworkTaxPercent) * 10n ** 18n) / (100n * 10n ** 18n)
-    const userAmount = SafeBigIntMath.subtract(totalToll, networkFee)
+    networkTollTaxFee = (totalToll * BigInt(network.current.tollNetworkTaxPercent) * 10n ** 18n) / (100n * 10n ** 18n)
+    const userAmount = SafeBigIntMath.subtract(totalToll, networkTollTaxFee)
 
     // Clear the toll pools
     chat.toll.payOnRead[senderIndex] = 0n
@@ -195,7 +197,7 @@ export const apply = (
 
     // Transfer toll to replier
     from.data.balance = SafeBigIntMath.add(from.data.balance, userAmount)
-    dapp.log(`txId: ${txId} transferring toll to replier`, userAmount, networkFee)
+    dapp.log(`txId: ${txId} transferring toll to replier`, userAmount, networkTollTaxFee)
   } else if (chat.toll.required[receiverIndex] === 1) {
     // receiver demands toll
     // Handle toll for new or existing chat when required
@@ -257,7 +259,12 @@ export const apply = (
       maintenanceFee,
       message: tx.message,
       tollFee: totalToll,
+      networkTollTaxFee,
     },
+  }
+
+  if (config.LiberdusFlags.versionFlags.tollTaxFeeinAppReceipt === false) {
+    if ('networkTollTaxFee' in appReceiptData.additionalInfo) delete appReceiptData.additionalInfo.networkTollTaxFee
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)

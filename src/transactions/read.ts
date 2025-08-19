@@ -101,6 +101,8 @@ export const apply = (
   const transactionFee = network.current.transactionFee
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
 
+  let networkTollTaxFee = BigInt(0)
+
   // Get reader index
   const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
   const readerIndex = addr1 === tx.from ? 0 : 1
@@ -111,15 +113,15 @@ export const apply = (
   // Handle payOnRead tolls if available and toll is required
   if (chat.toll.payOnRead[readerIndex] > 0n && chat.toll.required[readerIndex] === 1) {
     const readToll = chat.toll.payOnRead[readerIndex]
-    const networkFee = (readToll * BigInt(network.current.tollNetworkTaxPercent) * 10n ** 18n) / (100n * 10n ** 18n)
-    const userEarnedAmount = SafeBigIntMath.subtract(readToll, networkFee)
+    networkTollTaxFee = (readToll * BigInt(network.current.tollNetworkTaxPercent) * 10n ** 18n) / (100n * 10n ** 18n)
+    const userEarnedAmount = SafeBigIntMath.subtract(readToll, networkTollTaxFee)
 
     // Transfer toll to reader
     from.data.balance = SafeBigIntMath.add(from.data.balance, userEarnedAmount)
 
     // Clear the payOnRead amount
     chat.toll.payOnRead[readerIndex] = 0n
-    dapp.log(`Reader ${tx.from} earned ${userEarnedAmount} for reading chat ${tx.chatId} and network earned ${networkFee}`)
+    dapp.log(`Reader ${tx.from} earned ${userEarnedAmount} for reading chat ${tx.chatId} and network earned ${networkTollTaxFee}`)
   }
 
   // Add read tx to chat
@@ -136,7 +138,14 @@ export const apply = (
     from: tx.from,
     to: tx.to,
     type: tx.type,
-    transactionFee: network.current.transactionFee,
+    transactionFee,
+    additionalInfo: {
+      networkTollTaxFee,
+    },
+  }
+
+  if (config.LiberdusFlags.versionFlags.tollTaxFeeinAppReceipt === false) {
+    delete appReceiptData.additionalInfo
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)

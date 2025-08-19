@@ -47,6 +47,8 @@ export const apply = (
   from.timestamp = txTimestamp
   // from.data.transactions.push({ ...tx, txId })
 
+  const newAccount = wrappedStates[tx.from].accountCreated || false
+
   const appReceiptData: AppReceiptData = {
     txId,
     timestamp: txTimestamp,
@@ -55,6 +57,14 @@ export const apply = (
     to: tx.from,
     type: tx.type,
     transactionFee: BigInt(0),
+    additionalInfo: {
+      newAccount,
+      amount: tx.amount,
+    },
+  }
+
+  if (config.LiberdusFlags.versionFlags.createAppReceiptUpdate === false) {
+    delete appReceiptData.additionalInfo
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)

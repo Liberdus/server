@@ -114,7 +114,7 @@ export const apply = (
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const transactionFee = network.current.transactionFee
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
-  from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee )
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)
   from.data.tollUnit = tx.tollUnit
   from.data.toll = tx.toll
@@ -127,7 +127,7 @@ export const apply = (
     from: tx.from,
     to: tx.from,
     type: tx.type,
-    transactionFee: transactionFee,
+    transactionFee,
     additionalInfo: {
       maintenanceFee,
     },
