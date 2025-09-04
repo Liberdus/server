@@ -1820,11 +1820,11 @@ const shardusSetup = (): void => {
         for (const id of closestNodes) {
           if (id === nodeId) {
             nestedCountersInstance.countEvent('liberdus-staking', `${eventType}: injectInitRewardTx`)
-            const txData = {
+            const txData: LiberdusTypes.NodeInitTxData = {
               startTime: data.time,
               publicKey: data.publicKey,
               nodeId: data.nodeId,
-            } as LiberdusTypes.NodeInitTxData
+            }
             console.log('node-activated', 'injectInitRewardTx', data.publicKey, txData)
             dapp.addNetworkTx('nodeInitReward', dapp.signAsNode(txData), data.publicKey)
           }
@@ -1836,15 +1836,13 @@ const shardusSetup = (): void => {
         const ourId = dapp.getNodeId()
         for (const id of closestNodes) {
           if (id === ourId) {
-            nestedCountersInstance.countEvent('liberdus-staking', `${eventType}: injectClaimRewardTx`)
-            const txData = {
-              start: data.activeCycle,
-              end: data.cycleNumber,
+            nestedCountersInstance.countEvent('liberdus-staking', `${eventType}: nodeReward`)
+            const txData: LiberdusTypes.NodeRewardTxData = {
               endTime: data.time,
               publicKey: data.publicKey,
               nodeId: data.nodeId,
-            } as LiberdusTypes.NodeRewardTxData
-            console.log('node-deactivates', 'injectClaimRewardTx', data.publicKey, txData)
+            }
+            console.log('node-deactivates', 'nodeReward', data.publicKey, txData)
             dapp.addNetworkTx('nodeReward', dapp.signAsNode(txData), data.publicKey)
           }
         }
