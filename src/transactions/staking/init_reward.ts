@@ -163,7 +163,6 @@ export const apply = (
   nodeAccount.rewardRate = network ? getNodeRewardRateWei(AccountsStorage.cachedNetworkAccount) : BigInt(0)
   nodeAccount.rewarded = false
 
-
   const appReceiptData: AppReceiptData = {
     txId,
     timestamp: txTimestamp,
