@@ -553,6 +553,7 @@ export interface NodeAccount {
   rewardEndTime: number
   penalty: bigint
   nodeAccountStats: NodeAccountStats
+  rewarded: boolean // This helps to prevent double rewards
   rewardRate: bigint
 }
 
