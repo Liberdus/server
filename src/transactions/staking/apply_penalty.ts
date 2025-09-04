@@ -18,6 +18,7 @@ import * as AccountsStorage from '../../storage/accountStorage'
 import { isEqualOrNewerVersion, _sleep, generateTxId, scaleByStabilityFactor, getStakeRequiredWei } from '../../utils'
 import * as crypto from '../../crypto'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
+import { RemoveNodeCert } from './query_certificate'
 
 const penaltyTxsMap: Map<string, Tx.PenaltyTX> = new Map()
 
@@ -318,6 +319,40 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
+export const transactionReceiptPass = async (
+  tx: Tx.PenaltyTX,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+): Promise<void> => {
+  dapp.log(`PostApplied apply_penalty tx transactionReceiptPass: ${txId}`)
+  const nodeAccount = wrappedStates[tx.reportedNodePublickKey].data as NodeAccount
+
+  if (isLowStake(nodeAccount)) {
+    if (LiberdusFlags.VerboseLogs) console.log(`isLowStake for nodeAccount ${nodeAccount.id}: true`, nodeAccount)
+    const latestCycles = dapp.getLatestCycles()
+    const currentCycle = latestCycles[0]
+    if (!currentCycle) {
+      /* prettier-ignore */ if (logFlags.error) console.log('No cycle records found', latestCycles)
+      return
+    }
+    const certData: RemoveNodeCert = {
+      nodePublicKey: tx.reportedNodePublickKey,
+      cycle: currentCycle.counter,
+    }
+    const signedAppData = await dapp.getAppDataSignatures('sign-remove-node-cert', crypto.hashObj(certData), 5, certData, 2)
+    if (!signedAppData.success) {
+      nestedCountersInstance.countEvent('shardeum', 'unable to get signs for remove node cert')
+      if (LiberdusFlags.VerboseLogs) console.log(`Unable to get signature for remove node cert`)
+      // todo: find a better way to retry this
+      return
+    }
+    certData.signs = signedAppData.signatures
+    dapp.removeNodeWithCertificiate(certData)
+  }
+}
+
 export const keys = (tx: Tx.PenaltyTX, result: TransactionKeys) => {
   result.sourceKeys = [tx.reportedNodePublickKey]
   result.targetKeys = [tx.nominator]
@@ -370,7 +405,7 @@ export function isLowStake(nodeAccount: NodeAccount): boolean {
   /**
    * IMPORTANT FUTURE TO-DO =:
    * This function's logic needs to be updated once `stakeRequiredUsd` actually represents
-   * USD value rather than SHM.
+   * USD value rather than LIB.
    */
 
   const stakeRequiredUSD = getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)
