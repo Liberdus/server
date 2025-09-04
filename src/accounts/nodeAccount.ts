@@ -52,6 +52,7 @@ export const serializeNodeAccount = (stream: VectorBufferStream, inp: NodeAccoun
   stream.writeBigUInt64(BigInt(inp.rewardEndTime))
   stream.writeBigUInt64(inp.reward)
   stream.writeBigUInt64(inp.rewardRate)
+  stream.writeUInt8(inp.rewarded ? 1 : 0) // Serialize boolean as UInt8
 }
 
 export const deserializeNodeAccount = (stream: VectorBufferStream, root = false): NodeAccount => {
@@ -75,5 +76,6 @@ export const deserializeNodeAccount = (stream: VectorBufferStream, root = false)
     rewardEndTime: Number(stream.readBigUInt64()),
     reward: stream.readBigUInt64(),
     rewardRate: stream.readBigUInt64(),
+    rewarded: stream.readUInt8() === 1,
   }
 }
