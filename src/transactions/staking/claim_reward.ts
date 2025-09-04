@@ -201,6 +201,11 @@ export const validate = (
     response.reason = 'applyClaimReward failed because durationInNetwork is less than 0'
     return response
   }
+  if (nodeAccount.rewarded === true) {
+    nestedCountersInstance.countEvent('liberdus-staking', `applyClaimRewardTx fail already rewarded`)
+    response.reason = `applyClaimReward failed already rewarded`
+    return response
+  }
 
   if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardState success', tx)
   response.success = true
@@ -271,6 +276,7 @@ export const apply = (
   //re-parse reward since it was saved as hex
   //add the reward because nodes can cycle without unstaking
   nodeAccount.reward = SafeBigIntMath.add(nodeAccount.reward, rewardAmountWei)
+  nodeAccount.rewarded = true
   nodeAccount.timestamp = txTimestamp
 
   // update the node account historical stats

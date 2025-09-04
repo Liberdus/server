@@ -27,6 +27,7 @@ export const nodeAccount = (accountId: string): NodeAccount => {
     rewardEndTime: 0,
     reward: BigInt(0),
     rewardRate: BigInt(0),
+    rewarded: false,
   }
   account.hash = crypto.hashObj(account)
   return account

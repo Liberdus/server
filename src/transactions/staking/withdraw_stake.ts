@@ -134,6 +134,7 @@ export const apply = (
   nodeAccount.reward = BigInt(0)
   nodeAccount.rewardStartTime = 0
   nodeAccount.rewardEndTime = 0
+  nodeAccount.rewarded = false
 
   nominatorAccount.timestamp = txTimestamp
   nodeAccount.timestamp = txTimestamp
