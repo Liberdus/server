@@ -258,17 +258,6 @@ export const apply = (
     amount: penaltyAmount,
     timestamp: eventTime,
   })
-  if (tx.violationType === ViolationType.LeftNetworkEarly && nodeAccount.rewardStartTime > 0) {
-    nodeAccount.rewardEndTime = eventTime
-    nodeAccount.nodeAccountStats.history.push({
-      b: nodeAccount.rewardStartTime,
-      e: nodeAccount.rewardEndTime,
-    })
-    operatorAccount.operatorAccountInfo.operatorStats.history.push({
-      b: nodeAccount.rewardStartTime,
-      e: nodeAccount.rewardEndTime,
-    })
-  }
   if (isEqualOrNewerVersion('2.4.3', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
     // prune history to last newest 100 entries
     if (nodeAccount.nodeAccountStats.penaltyHistory.length > 100) {
