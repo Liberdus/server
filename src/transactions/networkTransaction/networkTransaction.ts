@@ -39,24 +39,44 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
       return false
     }
     const latestCycles = dapp.getLatestCycles(5)
+    let nodeDeactivatedCycle: P2P.CycleCreatorTypes.CycleRecord
 
-    const nodeRemovedCycle = latestCycles.find(
-      (cycle) => cycle.removed.includes(tx.nodeId) || cycle.apoptosized.includes(tx.nodeId) || cycle.appRemoved.includes(tx.nodeId),
-    )
+    // Node has been removed due to rotation or the low stake after getting penalty ("removed" | "appRemoved")
+    const nodeRemovedCycle = latestCycles.find((cycle) => cycle.removed.includes(tx.nodeId) || cycle.appRemoved.includes(tx.nodeId))
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('nodeRemovedCycle', nodeRemovedCycle)
+
     if (!nodeRemovedCycle) {
-      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail !nodeRemovedCycle', Utils.safeStringify(tx))
-      /* prettier-ignore */ nestedCountersInstance.countEvent(
-          'liberdus-staking',
-          `registerBeforeAddVerify nodeReward fail !nodeRemovedCycle`
-        )
-      return false
+      // Node left network early ("apoptosized")
+      const nodeApoptosizedCycle = latestCycles.find((cycle) => cycle.apoptosized.includes(tx.nodeId))
+      if (!nodeApoptosizedCycle) {
+        /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail !nodeRemovedCycle && !nodeApoptosizedCycle', Utils.safeStringify(tx))
+        /* prettier-ignore */ nestedCountersInstance.countEvent(
+            'liberdus-staking',
+            `registerBeforeAddVerify nodeReward fail !nodeRemovedCycle && !nodeApoptosizedCycle`
+          )
+        return false
+      }
+      // Check if the node was reported as lost in earlier cycle ("lost" -> "apoptosized")
+      // Additionally, this prevents lost syncing nodes from being rewarded, they are also marked as apoptosized ("lostSyncing" -> "apoptosized")
+      const nodeLostCycle = latestCycles.find((cycle) => cycle.lost.includes(tx.nodeId))
+      if (!nodeLostCycle) {
+        /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail !nodeLostCycle', Utils.safeStringify(tx))
+        /* prettier-ignore */ nestedCountersInstance.countEvent(
+            'liberdus-staking',
+            `registerBeforeAddVerify nodeReward fail !nodeLostCycle`
+          )
+        return false
+      }
+      nodeDeactivatedCycle = nodeApoptosizedCycle
+    } else {
+      nodeDeactivatedCycle = nodeRemovedCycle
     }
-    if (nodeRemovedCycle.start !== tx.endTime) {
-      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail nodeRemovedCycle.start and tx.endTime do not match', Utils.safeStringify(tx))
+
+    if (nodeDeactivatedCycle.start !== tx.endTime) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail nodeDeactivatedCycle.start and tx.endTime do not match', Utils.safeStringify(tx))
       /* prettier-ignore */ nestedCountersInstance.countEvent(
           'liberdus-staking',
-          `registerBeforeAddVerify nodeReward fail nodeRemovedCycle.start and tx.endTime do not match`
+          `registerBeforeAddVerify nodeReward fail nodeDeactivatedCycle.start and tx.endTime do not match`
         )
       return false
     }
