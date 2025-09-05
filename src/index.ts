@@ -1819,13 +1819,13 @@ const shardusSetup = (): void => {
         const closestNodes = dapp.getClosestNodes(data.publicKey, 5)
         for (const id of closestNodes) {
           if (id === nodeId) {
-            nestedCountersInstance.countEvent('liberdus-staking', `${eventType}: injectInitRewardTx`)
+            nestedCountersInstance.countEvent('liberdus-staking', `${eventType}: nodeInitReward`)
             const txData: LiberdusTypes.NodeInitTxData = {
               startTime: data.time,
               publicKey: data.publicKey,
               nodeId: data.nodeId,
             }
-            console.log('node-activated', 'injectInitRewardTx', data.publicKey, txData)
+            console.log('node-activated', 'nodeInitReward', data.publicKey, txData)
             dapp.addNetworkTx('nodeInitReward', dapp.signAsNode(txData), data.publicKey)
           }
         }
@@ -1842,7 +1842,7 @@ const shardusSetup = (): void => {
               publicKey: data.publicKey,
               nodeId: data.nodeId,
             }
-            console.log('node-deactivates', 'nodeReward', data.publicKey, txData)
+            console.log('node-deactivated', 'nodeReward', data.publicKey, txData)
             dapp.addNetworkTx('nodeReward', dapp.signAsNode(txData), data.publicKey)
           }
         }
