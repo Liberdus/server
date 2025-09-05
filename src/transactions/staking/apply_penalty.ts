@@ -254,6 +254,7 @@ export const apply = (
   // update node account
   nodeAccount.stakeLock = SafeBigIntMath.subtract(nodeAccount.stakeLock, penaltyAmount)
   nodeAccount.penalty = SafeBigIntMath.add(nodeAccount.penalty, penaltyAmount)
+  nodeAccount.nodeAccountStats.totalPenalty = SafeBigIntMath.add(nodeAccount.nodeAccountStats.totalPenalty, penaltyAmount)
   nodeAccount.nodeAccountStats.penaltyHistory.push({
     type: tx.violationType,
     amount: penaltyAmount,
