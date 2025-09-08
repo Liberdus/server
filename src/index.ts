@@ -70,15 +70,6 @@ let lastCertTimeTxCycle: number | null = null
 let isReadyToJoinLatestValue = false
 let mustUseAdminCert = false
 
-function getNodeCountForCertSignatures(): number {
-  let latestCycle: ShardusTypes.Cycle
-  const latestCycles: ShardusTypes.Cycle[] = dapp.getLatestCycles()
-  if (latestCycles && latestCycles.length > 0) [latestCycle] = latestCycles
-  const activeNodeCount = latestCycle ? latestCycle.active : 1
-  if (LiberdusFlags.VerboseLogs) console.log(`Active node count computed for cert signs ${activeNodeCount}`)
-  return Math.min(LiberdusFlags.MinStakeCertSig, activeNodeCount)
-}
-
 const shardusSetup = (): void => {
   // SDK SETUP FUNCTIONS
   dapp.setup({
@@ -1006,12 +997,12 @@ const shardusSetup = (): void => {
         if (logFlags.dapp_verbose) console.log('Running signAppData', type, hash, nodesToSign, appData)
 
         if (type === 'sign-stake-cert') {
-          if (nodesToSign != 5) return fail
+          if (nodesToSign != LiberdusFlags.MinStakeCertSig) return fail
           const stakeCert = appData as StakeCert
-          if (!stakeCert.nominator || !stakeCert.nominee || !stakeCert.stake || !stakeCert.certExp) {
-            nestedCountersInstance.countEvent('liberdus-staking', 'signAppData format failed')
-            /* prettier-ignore */
-            if (LiberdusFlags.VerboseLogs) console.log(`signAppData format failed ${type} ${Utils.safeStringify(stakeCert)} `)
+          const errors = verifyPayload(LiberdusTypes.AJVSchemaEnum.stake_cert, stakeCert)
+          if (errors) {
+            nestedCountersInstance.countEvent('liberdus-staking', `signAppData ajv verification - type: ${type} failed`)
+            /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`signAppData ajv verification failed - type: ${type} stakeCert: ${Utils.safeStringify(stakeCert)} errors: ${Utils.safeStringify(errors)}`)
             return fail
           }
           const currentTimestamp = dapp.shardusGetTime()
@@ -1070,12 +1061,12 @@ const shardusSetup = (): void => {
           nestedCountersInstance.countEvent('liberdus-staking', 'sign-stake-cert - passed')
           return result
         } else if (type === 'sign-remove-node-cert') {
-          if (nodesToSign != 5) return fail
+          if (nodesToSign != LiberdusFlags.MinRemoveNodeCertSig) return fail
           const removeNodeCert = appData as RemoveNodeCert
-          if (!removeNodeCert.nodePublicKey || !removeNodeCert.cycle) {
-            nestedCountersInstance.countEvent('liberdus-remove-node', 'signAppData format failed')
-            /* prettier-ignore */
-            if (LiberdusFlags.VerboseLogs) console.log(`signAppData format failed ${type} ${Utils.safeStringify(removeNodeCert)} `)
+          const errors = verifyPayload(LiberdusTypes.AJVSchemaEnum.remove_node_cert, removeNodeCert)
+          if (errors) {
+            nestedCountersInstance.countEvent('liberdus-remove-node', `signAppData ajv verification failed - type: ${type}`)
+            /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`signAppData ajv verification failed - type: ${type} removeNodeCert: ${Utils.safeStringify(removeNodeCert)} errors: ${Utils.safeStringify(errors)}`)
             return fail
           }
           const latestCycles = dapp.getLatestCycles()
@@ -1365,8 +1356,25 @@ const shardusSetup = (): void => {
           }
         }
 
-        const requiredSig = getNodeCountForCertSignatures()
-        const { success, reason } = dapp.validateClosestActiveNodeSignatures(stake_cert, stake_cert.signs, requiredSig, 5, 2)
+        if (stake_cert.signs == null || stake_cert.signs.length < LiberdusFlags.MinStakeCertSig) {
+          /* prettier-ignore */
+          nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest fail: stake_cert.signs == null || stake_cert.signs.length < LiberdusFlags.MinStakeCertSig')
+          /* prettier-ignore */
+          if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: stake_cert.signs == null || stake_cert.signs.length < LiberdusFlags.MinStakeCertSig ${stake_cert.signs} || ${stake_cert.signs?.length} < ${LiberdusFlags.MinStakeCertSig}` )
+          return {
+            success: false,
+            reason: `Not enough signatures in the certificate.`,
+            fatal: true,
+          }
+        }
+
+        const { success, reason } = dapp.validateClosestActiveNodeSignatures(
+          stake_cert,
+          stake_cert.signs,
+          LiberdusFlags.MinStakeCertSig,
+          LiberdusFlags.MinStakeCertSig,
+          LiberdusFlags.ExtraNodesToSignStakeCert,
+        )
         if (success) {
           /* prettier-ignore */
           nestedCountersInstance.countEvent('liberdus-staking', 'validateJoinRequest success: stake_cert')
@@ -1514,7 +1522,6 @@ const shardusSetup = (): void => {
       if (LiberdusFlags.ModeEnabled === true && (mode === 'forming' || mode === 'restart')) {
         /* prettier-ignore */
         nestedCountersInstance.countEvent('liberdus-staking', 'staking enabled, network in forming/restart mode, isReadyToJoin = true')
-        isReadyToJoinLatestValue = true
         return true
       }
       /* prettier-ignore */
