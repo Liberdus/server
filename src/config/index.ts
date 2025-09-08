@@ -89,6 +89,12 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   },
   // stakeLockTime: 1000 * 60 * 60 * 24 * 14, // 1000 ms * 60s * 60m * 24h * 14d = 2 weeks in ms
   stakeLockTime: 30 * ONE_MINUTE,
+  // New network parameters
+  nodeRewardAmountUsdStr: '1.0',
+  nodePenaltyUsdStr: '10.0',
+  stakeRequiredUsdStr: '10.0',
+  transactionFeeUsdStr: '0.01',
+  stabilityFactorStr: '0.013',
 }
 
 function replaceAll(str, find, replace) {
@@ -233,6 +239,7 @@ interface LiberdusFlags {
     updateChatSenderTimestamp: boolean
     tollTaxFeeinAppReceipt: boolean
     createAppReceiptUpdate: boolean
+    addNewNetworkParameters: boolean
   }
 }
 
@@ -266,9 +273,10 @@ export const LiberdusFlags: LiberdusFlags = {
     minTransferAmountCheck: true, // turn on by 2.3.6
     enforceTxTimestamp: true, // turn on by 2.3.7
     stakingAppReceiptUpdate: true, // turn on by 2.3.7
-    updateChatSenderTimestamp: false, // turn on by 2.3.8
+    updateChatSenderTimestamp: true, // turn on by 2.3.8
     tollTaxFeeinAppReceipt: false, // turn on by 2.4.1
     createAppReceiptUpdate: false, // turn on by 2.4.1
+    addNewNetworkParameters: false, // turn on by 2.4.1
   },
 }
 

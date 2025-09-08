@@ -26,6 +26,15 @@ export const apply = (
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.listOfChanges.push(tx.change)
   network.timestamp = txTimestamp
+  if (config.LiberdusFlags.versionFlags.addNewNetworkParameters === true) {
+    if (network.current.nodeRewardAmountUsdStr === undefined || network.current.nodeRewardAmountUsdStr === null) {
+      network.current.nodeRewardAmountUsdStr = '1.0'
+      network.current.nodePenaltyUsdStr = '10.0'
+      network.current.stakeRequiredUsdStr = '10.0'
+      network.current.transactionFeeUsdStr = '0.01'
+      network.current.stabilityFactorStr = '0.013'
+    }
+  }
 
   const appReceiptData: AppReceiptData = {
     txId,
