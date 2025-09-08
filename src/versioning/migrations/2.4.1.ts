@@ -12,6 +12,7 @@ export const migrate: Migration = async () => {
 
   LiberdusFlags.versionFlags.tollTaxFeeinAppReceipt = true
   LiberdusFlags.versionFlags.createAppReceiptUpdate = true
+  LiberdusFlags.versionFlags.addNewNetworkParameters = true
 }
 
 //WARNING if you add a new one of these migration files you must add it to the migrations list in
