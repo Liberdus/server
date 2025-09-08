@@ -219,7 +219,10 @@ interface LiberdusFlags {
   ModeEnabled: boolean
   StakingEnabled: boolean
   AdminCertEnabled: boolean
-  MinStakeCertSig: number
+  MinStakeCertSig: number // this is the minimum amount of signature required for stake certification. will move to network param in future.
+  ExtraNodesToSignStakeCert: number // Extra nodes to ask for until the minStakeCertSig is met
+  MinRemoveNodeCertSig: number // this is the minimum amount of signature required for remove node certification. This should be shardus config
+  ExtraNodesToSignRemoveNodeCert: number // Extra nodes to ask for until the minRemoveNodeCertSig is met. This should be shardus config
   certCycleDuration: number
   lowStakePercent: number
   allowForceUnstake: boolean
@@ -256,7 +259,10 @@ export const LiberdusFlags: LiberdusFlags = {
   AdminCertEnabled: true,
   StakingEnabled: true,
   ModeEnabled: true,
-  MinStakeCertSig: 1, // this is the minimum amount of signature required for stake certification. will move to network param in future.
+  MinStakeCertSig: 5,
+  ExtraNodesToSignStakeCert: 2,
+  MinRemoveNodeCertSig: 5, // [TODO] This has to be shardus config, but it's hard-coded right now. https://github.com/shardeum/core/blob/1d6b52a2ebdb364315db5b9ae8f35ccbb6f7d783/src/p2p/Lost.ts#L1445
+  ExtraNodesToSignRemoveNodeCert: 2, // [TODO] This has to be shardus config, but it's hard-coded right now. https://github.com/shardeum/core/blob/1d6b52a2ebdb364315db5b9ae8f35ccbb6f7d783/src/p2p/Lost.ts#L1445
   certCycleDuration: 30,
   lowStakePercent: 0.2,
   allowForceUnstake: true,

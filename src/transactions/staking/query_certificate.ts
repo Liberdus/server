@@ -127,7 +127,13 @@ export async function getAccountWithRetry(
 }
 
 export async function getCertSignatures(shardus: Shardus, certData: StakeCert): Promise<CertSignaturesResult> {
-  const signedAppData = await shardus.getAppDataSignatures('sign-stake-cert', crypto.hashObj(certData), 5, certData, 2)
+  const signedAppData = await shardus.getAppDataSignatures(
+    'sign-stake-cert',
+    crypto.hashObj(certData),
+    LiberdusFlags.MinStakeCertSig,
+    certData,
+    LiberdusFlags.ExtraNodesToSignStakeCert,
+  )
   if (!signedAppData.success) {
     return {
       success: false,

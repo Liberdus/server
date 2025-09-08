@@ -16,6 +16,8 @@ export enum AJVSchemaEnum {
   signature = 'signature',
   app_join_data = 'app_join_data',
   stake_resp = 'stake_resp',
+  stake_cert = 'stake_cert',
+  remove_node_cert = 'remove_node_cert',
   // Transaction types with snake case values matching TXTypes
   init_network = 'init_network',
   network_windows = 'network_windows',
