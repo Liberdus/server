@@ -13,6 +13,39 @@ export const SignatureSchema = {
   additionalProperties: false,
 }
 
+// [TODO] Put non-txs schemas to separate file
+export const schemaStakeCert = {
+  type: 'object',
+  properties: {
+    nominator: { type: 'string' },
+    nominee: { type: 'string' },
+    stake: { isBigInt: true },
+    certExp: { type: 'number' },
+    sign: SignatureSchema,
+    signs: {
+      type: 'array',
+      items: SignatureSchema,
+    },
+  },
+  required: ['nominator', 'nominee', 'stake', 'certExp'],
+  additionalProperties: false,
+}
+
+export const schemaRemoveNodeCert = {
+  type: 'object',
+  properties: {
+    nodePublicKey: { type: 'string' },
+    cycle: { type: 'number' },
+    sign: SignatureSchema,
+    signs: {
+      type: 'array',
+      items: SignatureSchema,
+    },
+  },
+  required: ['nodePublicKey', 'cycle'],
+  additionalProperties: false,
+}
+
 // Violation data schemas
 export const schemaLeftNetworkEarlyViolationData = {
   type: 'object',
@@ -726,6 +759,8 @@ export function initSchemas(): void {
 
 // Function to register all schemas
 function addSchemas(): void {
+  addSchema(AJVSchemaEnum.stake_cert, schemaStakeCert)
+  addSchema(AJVSchemaEnum.remove_node_cert, schemaRemoveNodeCert)
   // Add reference schemas (these aren't part of TXTypes so add manually)
   addSchema(AJVSchemaEnum.signature, SignatureSchema)
   addSchema(AJVSchemaEnum.left_network_early_violation_data, schemaLeftNetworkEarlyViolationData)

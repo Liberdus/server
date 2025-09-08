@@ -342,7 +342,13 @@ export const transactionReceiptPass = async (
       nodePublicKey: tx.reportedNodePublickKey,
       cycle: currentCycle.counter,
     }
-    const signedAppData = await dapp.getAppDataSignatures('sign-remove-node-cert', crypto.hashObj(certData), 5, certData, 2)
+    const signedAppData = await dapp.getAppDataSignatures(
+      'sign-remove-node-cert',
+      crypto.hashObj(certData),
+      LiberdusFlags.MinRemoveNodeCertSig,
+      certData,
+      LiberdusFlags.ExtraNodesToSignRemoveNodeCert,
+    )
     if (!signedAppData.success) {
       nestedCountersInstance.countEvent('shardeum', 'unable to get signs for remove node cert')
       if (LiberdusFlags.VerboseLogs) console.log(`Unable to get signature for remove node cert`)
