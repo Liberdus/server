@@ -189,7 +189,7 @@ export async function queryCertificate(
 
   const nominator = accountQueryResponse.account?.nominator
   if (!nominator || nominator == '') {
-    /* prettier-ignore */ if (logFlags.dapp_verbose) console.log(`Nominator for this node account ${publicKey} is not found!`)
+    /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`Nominator for this node account ${publicKey} is not found!`)
     return { success: false, reason: `Nominator for this node account ${publicKey} is not found!` }
   }
 
@@ -199,7 +199,7 @@ export async function queryCertificate(
   }
   const signedCertRequest: QueryCertRequest = shardus.signAsNode(certRequest)
 
-  /* prettier-ignore */ if (logFlags.dapp_verbose) console.log('signedCertRequest', signedCertRequest)
+  /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('signedCertRequest', signedCertRequest)
 
   return await callQueryCertificate(signedCertRequest)
 }

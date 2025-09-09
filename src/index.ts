@@ -994,7 +994,7 @@ const shardusSetup = (): void => {
       const fail: ShardusTypes.SignAppDataResult = { success: false, signature: null }
       try {
         /* prettier-ignore */
-        if (logFlags.dapp_verbose) console.log('Running signAppData', type, hash, nodesToSign, appData)
+        if (LiberdusFlags.VerboseLogs) console.log('Running signAppData', type, hash, nodesToSign, appData)
 
         if (type === 'sign-stake-cert') {
           if (nodesToSign != LiberdusFlags.MinStakeCertSig) return fail
@@ -1103,8 +1103,8 @@ const shardusSetup = (): void => {
         }
       } catch (e) {
         /* prettier-ignore */
-        if (LiberdusFlags.VerboseLogs) console.log(`signAppData failed: ${type} ${Utils.safeStringify(QueryCertificate.stakeCert)}, error: ${Utils.safeStringify(e)}`)
-        nestedCountersInstance.countEvent('liberdus-staking', 'sign-stake-cert - fail uncaught')
+        if (LiberdusFlags.VerboseLogs) console.log(`signAppData failed: ${type} ${Utils.safeStringify(appData)}, error: ${Utils.safeStringify(e)}`)
+        nestedCountersInstance.countEvent('liberdus-staking', 'sign-app-data fail uncaught')
       }
       return fail
     },
@@ -1795,7 +1795,7 @@ const shardusSetup = (): void => {
 
       if (node.status !== 'active' && data.type !== 'node-activated') {
         /* prettier-ignore */
-        if (logFlags.dapp_verbose) console.log('This node is not active yet')
+        if (LiberdusFlags.VerboseLogs) console.log('This node is not active yet')
         console.log('eventNotify', 'This node is not active yet', data.publicKey)
         return
       }
@@ -1878,7 +1878,7 @@ const shardusSetup = (): void => {
         } else {
           nestedCountersInstance.countEvent('liberdus-staking', `node-left-early: event skipped`)
           /* prettier-ignore */
-          if (logFlags.dapp_verbose) console.log(`node-left-early event skipped`, data, nodeLostCycle, nodeDroppedCycle)
+          if (LiberdusFlags.VerboseLogs) console.log(`node-left-early event skipped`, data, nodeLostCycle, nodeDroppedCycle)
         }
       } else if (
         eventType === 'node-sync-timeout' &&
@@ -1921,11 +1921,11 @@ const shardusSetup = (): void => {
         } else {
           nestedCountersInstance.countEvent('liberdus-staking', `node-refuted: event skipped`)
           /* prettier-ignore */
-          if (logFlags.dapp_verbose) console.log(`node-refuted event skipped`, data, nodeRefutedCycle)
+          if (LiberdusFlags.VerboseLogs) console.log(`node-refuted event skipped`, data, nodeRefutedCycle)
         }
       } else if (eventType === 'try-network-transaction') {
         /* prettier-ignore */
-        if (logFlags.dapp_verbose) console.log('event', `try-network-transaction`, Utils.safeStringify(data))
+        if (LiberdusFlags.VerboseLogs) console.log('event', `try-network-transaction`, Utils.safeStringify(data))
         nestedCountersInstance.countEvent('event', `try-network-transaction`)
         if (data?.additionalData.type === 'nodeReward') {
           console.log('event', `running injectClaimrewardTxWithRetry nodeReward`, Utils.safeStringify(data))
@@ -1934,16 +1934,16 @@ const shardusSetup = (): void => {
             console.log('nodereward tx data 2', data.additionalData.hash)
             const result = await ClaimReward.injectClaimRewardTx(dapp, data)
             /* prettier-ignore */
-            if (logFlags.dapp_verbose) console.log('INJECTED_CLAIM_REWARD_TX', result)
+            if (LiberdusFlags.VerboseLogs) console.log('INJECTED_CLAIM_REWARD_TX', result)
           }
         } else if (data?.additionalData.type === 'nodeInitReward') {
           /* prettier-ignore */
-          if (logFlags.dapp_verbose) console.log('event', `running injectInitRewardTx nodeInitReward`, Utils.safeStringify(data))
+          if (LiberdusFlags.VerboseLogs) console.log('event', `running injectInitRewardTx nodeInitReward`, Utils.safeStringify(data))
           if (dapp.fastIsPicked(1)) {
             console.log('nodeInitReward tx data 2', data.additionalData.hash)
             const result = await InitReward.injectInitRewardTx(dapp, data)
             /* prettier-ignore */
-            if (logFlags.dapp_verbose) console.log('INJECTED_INIT_REWARD_TIMES_TX', result)
+            if (LiberdusFlags.VerboseLogs) console.log('INJECTED_INIT_REWARD_TIMES_TX', result)
           }
         }
       }
