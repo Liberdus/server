@@ -10,7 +10,6 @@ export const migrate: Migration = async () => {
   console.log('migrate 2.4.1')
   nestedCountersInstance.countEvent('migrate', 'calling migrate 2.4.1')
 
-  LiberdusFlags.versionFlags.tollTaxFeeinAppReceipt = true
   LiberdusFlags.versionFlags.createAppReceiptUpdate = true
   LiberdusFlags.versionFlags.addNewNetworkParameters = true
 }
