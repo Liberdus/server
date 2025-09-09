@@ -334,7 +334,7 @@ export const apply = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 
   nestedCountersInstance.countEvent('liberdus-staking', `Applied ClaimRewardTX`)
-  if (logFlags.dapp_verbose) dapp.log('Applied ClaimRewardTX', tx.nominee)
+  if (LiberdusFlags.VerboseLogs) dapp.log('Applied ClaimRewardTX', tx.nominee)
 }
 
 export const createFailedAppReceiptData = (

@@ -27,7 +27,7 @@ export async function injectSetCertTimeTx(shardus: Shardus, publicKey: string, a
   const nominator = nodeAccountQueryResponse.nominator
 
   if (!nominator) {
-    /* prettier-ignore */ if (logFlags.dapp_verbose) console.log(`Nominator for this node account ${publicKey} is not found!`)
+    /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`Nominator for this node account ${publicKey} is not found!`)
     return { success: false, reason: `Nominator for this node account ${publicKey} is not found!` }
   }
   // TODO: I think we can add another validation here that checks that nominator stakeAmount has enough for minStakeRequired in the network
@@ -44,7 +44,7 @@ export async function injectSetCertTimeTx(shardus: Shardus, publicKey: string, a
   } as Tx.SetCertTime
   tx = shardus.signAsNode(tx)
   const result = await InjectTxToConsensor([randomConsensusNode], tx)
-  /* prettier-ignore */ if (logFlags.dapp_verbose) console.log('INJECTED_SET_CERT_TIME_TX', result, tx)
+  /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('INJECTED_SET_CERT_TIME_TX', result, tx)
   return result
 }
 
@@ -86,7 +86,7 @@ export const validate = (tx: Tx.SetCertTime, wrappedStates: WrappedStates, respo
 
   const operatorAccount = wrappedStates[tx.nominator].data as UserAccount
   const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
-  /* prettier-ignore */ if (logFlags.dapp_verbose) console.log('validateSetCertTime', tx, operatorAccount)
+  /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateSetCertTime', tx, operatorAccount)
   if (operatorAccount == undefined) {
     response.reason = `Found no wrapped state for operator account ${tx.nominator}`
     return response
@@ -141,10 +141,10 @@ export const apply = (
   dapp: Shardus,
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
-  /* prettier-ignore */ if (logFlags.dapp_verbose) console.log(`applySetCertTimeTx txTimestamp:${txTimestamp}   tx.timestamp:${tx.timestamp}`, tx)
+  /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`applySetCertTimeTx txTimestamp:${txTimestamp}   tx.timestamp:${tx.timestamp}`, tx)
 
   const operatorAccount = wrappedStates[tx.nominator].data as UserAccount
-  /* prettier-ignore */ if (logFlags.dapp_verbose) console.log('operatorAccount Before', operatorAccount)
+  /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('operatorAccount Before', operatorAccount)
   // Update state
   const serverConfig = config.server
   let shouldChargeTxFee = true
@@ -156,7 +156,7 @@ export const apply = (
     //use tx timestampe for a deterministic result
     const expiredPercentage = (txTimestamp - certStartTimestamp) / (certExp - certStartTimestamp)
 
-    /* prettier-ignore */ if (logFlags.dapp_verbose) console.log(`applySetCertTimeTx expiredPercentage: ${expiredPercentage}`)
+    /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`applySetCertTimeTx expiredPercentage: ${expiredPercentage}`)
 
     if (expiredPercentage >= 0.5) {
       // don't charge gas after 50% of the cert has
@@ -174,7 +174,7 @@ export const apply = (
   operatorAccount.operatorAccountInfo.certExp = txTimestamp + serverConfig.p2p.cycleDuration * ONE_SECOND * duration
 
   // deduct tx fee if certExp is not set yet or far from expiration
-  /* prettier-ignore */ if (logFlags.dapp_verbose) console.log(`applySetCertTimeTx shouldChargeTxFee: ${shouldChargeTxFee}`)
+  /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`applySetCertTimeTx shouldChargeTxFee: ${shouldChargeTxFee}`)
 
   let costTxFee = BigInt(0)
   if (shouldChargeTxFee) {
@@ -182,7 +182,7 @@ export const apply = (
     operatorAccount.data.balance = SafeBigIntMath.subtract(operatorAccount.data.balance, costTxFee)
   }
 
-  /* prettier-ignore */ if (logFlags.dapp_verbose) console.log('operatorAccount After', operatorAccount)
+  /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('operatorAccount After', operatorAccount)
 
   operatorAccount.timestamp = txTimestamp
 

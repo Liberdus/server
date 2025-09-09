@@ -96,7 +96,7 @@ export async function injectPenaltyTX(
   }
 
   const result = await dapp.put(signedTx)
-  if (logFlags.dapp_verbose) dapp.log('INJECTED_PENALTY_TX', result)
+  if (LiberdusFlags.VerboseLogs) dapp.log('INJECTED_PENALTY_TX', result)
   return result
 }
 
@@ -201,7 +201,7 @@ export const validate = (tx: Tx.PenaltyTX, wrappedStates: WrappedStates, respons
     eventTime = (tx.violationData as SyncingTimeoutViolationData).nodeDroppedTime
   }
   if (isProcessed) {
-    if (logFlags.dapp_verbose)
+    if (LiberdusFlags.VerboseLogs)
       dapp.log(
         `Processed penaltyTX: for reportedNode ${tx.reportedNodePublickKey}, nominator ${tx.nominator}, violationType ${tx.violationType}, eventTime ${eventTime} vs lastPenaltyTime ${nodeAccount.nodeAccountStats.lastPenaltyTime}`,
       )
@@ -283,18 +283,11 @@ export const apply = (
       penaltyAmount,
     },
   }
-  if (tx.violationType === ViolationType.LeftNetworkEarly) {
-    appReceiptData.additionalInfo = {
-      ...appReceiptData.additionalInfo,
-      nodeStartTime: nodeAccount.rewardStartTime,
-      nodeEndTime: nodeAccount.rewardEndTime,
-    }
-  }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 
   nestedCountersInstance.countEvent('liberdus-penalty', `Applied PenaltyTX`)
-  if (logFlags.dapp_verbose) dapp.log('Applied PenaltyTX', tx.reportedNodePublickKey)
+  if (LiberdusFlags.VerboseLogs) dapp.log('Applied PenaltyTX', tx.reportedNodePublickKey)
 }
 
 export const createFailedAppReceiptData = (
