@@ -1,6 +1,6 @@
 import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import { logFlags } from '@shardeum-foundation/core/dist/logger'
-import { LiberdusFlags } from '../../config'
+import { LiberdusFlags, ONE_SECOND } from '../../config'
 import {
   NodeAccount,
   ViolationType,
@@ -326,6 +326,7 @@ export const transactionReceiptPass = async (
   if (isLowStake(nodeAccount)) {
     if (LiberdusFlags.VerboseLogs) console.log(`isLowStake for nodeAccount ${nodeAccount.id}: true`, nodeAccount)
     // Limit the nodes that will get signs for remove node cert to <LiberdusFlags.numberOfNodesToInjectPenaltyTx>, which are closest to the low stake node address ( publicKey )
+    // [TODO] This will make <LiberdusFlags.numberOfNodesToInjectPenaltyTx> nodes get signs; we can implement a cache system in the signer nodes to store the recent remove node cert signs they have signed for performance ( NOT URGENT )
     const closestNodes = dapp.getClosestNodes(tx.reportedNodePublickKey, LiberdusFlags.numberOfNodesToInjectPenaltyTx)
     const ourId = dapp.getNodeId()
     const isLuckyNode = closestNodes.some((nodeId) => nodeId === ourId)
@@ -343,6 +344,8 @@ export const transactionReceiptPass = async (
       nodePublicKey: tx.reportedNodePublickKey,
       cycle: currentCycle.counter,
     }
+    // Wait about 5 seconds before trying to get the signs, to give time for all nodes have gained the updated node account state
+    await _sleep(5 * ONE_SECOND)
     const signedAppData = await dapp.getAppDataSignatures(
       'sign-remove-node-cert',
       crypto.hashObj(certData),
