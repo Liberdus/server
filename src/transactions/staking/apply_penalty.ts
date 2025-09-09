@@ -325,10 +325,18 @@ export const transactionReceiptPass = async (
 
   if (isLowStake(nodeAccount)) {
     if (LiberdusFlags.VerboseLogs) console.log(`isLowStake for nodeAccount ${nodeAccount.id}: true`, nodeAccount)
+    // Limit the nodes that will get signs for remove node cert to <LiberdusFlags.numberOfNodesToInjectPenaltyTx>, which are closest to the low stake node address ( publicKey )
+    const closestNodes = dapp.getClosestNodes(tx.reportedNodePublickKey, LiberdusFlags.numberOfNodesToInjectPenaltyTx)
+    const ourId = dapp.getNodeId()
+    const isLuckyNode = closestNodes.some((nodeId) => nodeId === ourId)
+    if (!isLuckyNode) {
+      if (LiberdusFlags.VerboseLogs) console.log(`isLowStake: not lucky node, skipping getting signs for remove node cert`, ourId, closestNodes)
+      return
+    }
     const latestCycles = dapp.getLatestCycles()
     const currentCycle = latestCycles[0]
     if (!currentCycle) {
-      /* prettier-ignore */ if (logFlags.error) console.log('No cycle records found', latestCycles)
+      /* prettier-ignore */ if (logFlags.error) console.log('isLowStake, No cycle records found', latestCycles)
       return
     }
     const certData: RemoveNodeCert = {
@@ -343,12 +351,13 @@ export const transactionReceiptPass = async (
       LiberdusFlags.ExtraNodesToSignRemoveNodeCert,
     )
     if (!signedAppData.success) {
-      nestedCountersInstance.countEvent('shardeum', 'unable to get signs for remove node cert')
-      if (LiberdusFlags.VerboseLogs) console.log(`Unable to get signature for remove node cert`)
+      nestedCountersInstance.countEvent('isLowStake', 'unable to get signs for remove node cert')
+      if (LiberdusFlags.VerboseLogs) console.log(`isLowStake: Unable to get signature for remove node cert`)
       // todo: find a better way to retry this
       return
     }
     certData.signs = signedAppData.signatures
+    console.log(`isLowStake: Removing node with certData`, certData)
     dapp.removeNodeWithCertificiate(certData)
   }
 }
