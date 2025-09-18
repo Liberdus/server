@@ -3,7 +3,7 @@ import config, { ONE_SECOND, LiberdusFlags } from '../../config'
 import { getAccountWithRetry } from './query_certificate'
 import { AccountQueryResponse, TXTypes, WrappedStates, InjectTxResponse, NodeAccount, UserAccount, Tx, TransactionKeys, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
-import { getRandom, scaleByStabilityFactor, InjectTxToConsensor } from '../../utils'
+import { getRandom, scaleByStabilityFactor, InjectTxToConsensor, getStakeRequiredWei } from '../../utils'
 import { Utils } from '@shardus/types'
 import { logFlags } from '@shardeum-foundation/core/dist/logger'
 import { verifyObj } from '@shardus/crypto-utils'
@@ -120,8 +120,7 @@ export const validate = (tx: Tx.SetCertTime, wrappedStates: WrappedStates, respo
   }
 
   committedStake = operatorAccount.operatorAccountInfo.stake
-  const minStakeRequiredUsd = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
-  const minStakeRequired = scaleByStabilityFactor(minStakeRequiredUsd, AccountsStorage.cachedNetworkAccount)
+  const minStakeRequired = getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)
 
   if (LiberdusFlags.VerboseLogs)
     console.log('validate operator stake', committedStake, minStakeRequired, ' committedStake < minStakeRequired : ', committedStake < minStakeRequired)

@@ -24,20 +24,20 @@ export const validate_fields = (tx: Tx.ApplyParameters, response: ShardusTypes.I
     response.reason = 'tx "current parameter nodeRewardInterval" field must be a number.'
     return response
   }
-  if (typeof tx.current.nodeRewardAmountUsd !== 'bigint') {
+  if (typeof tx.current.nodeRewardAmountUsdStr !== 'string') {
     response.reason = 'tx "current parameter nodeRewardAmount" field must be a bigint.'
     return response
   }
-  if (typeof tx.current.nodePenaltyUsd !== 'bigint') {
-    response.reason = 'tx "current parameter nodePenalty" field must be a bigint.'
+  if (typeof tx.current.nodePenaltyUsdStr !== 'string') {
+    response.reason = 'tx "current parameter nodePenaltyUsdStr" field must be a string.'
     return response
   }
-  if (typeof tx.current.transactionFee !== 'bigint') {
-    response.reason = 'tx "current parameter transactionFee" field must be a bigint.'
+  if (typeof tx.current.transactionFeeUsdStr !== 'string') {
+    response.reason = 'tx "current parameter transactionFeeUsdStr" field must be a string.'
     return response
   }
-  if (typeof tx.current.stakeRequiredUsd !== 'bigint') {
-    response.reason = 'tx "current parameter stakeRequired" field must be a bigint.'
+  if (typeof tx.current.stakeRequiredUsdStr !== 'string') {
+    response.reason = 'tx "current parameter stakeRequiredUsdStr" field must be a string.'
     return response
   }
   if (typeof tx.current.maintenanceInterval !== 'number') {
@@ -60,8 +60,8 @@ export const validate_fields = (tx: Tx.ApplyParameters, response: ShardusTypes.I
     response.reason = 'tx "current parameter faucetAmount" field must be a bigint.'
     return response
   }
-  if (typeof tx.current.transactionFee !== 'bigint') {
-    response.reason = 'tx "current parameter defaultToll" field must be a number.'
+  if (typeof tx.current.transactionFeeUsdStr !== 'string') {
+    response.reason = 'tx "current parameter transactionFeeUsdStr" field must be a string.'
     return response
   }
   if (!_.isEmpty(tx.next) || typeof tx.next !== 'object') {

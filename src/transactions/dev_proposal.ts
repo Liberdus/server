@@ -18,6 +18,7 @@ import {
   AppReceiptData,
 } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
+import * as AccountsStorage from '../storage/accountStorage'
 
 export const validate_fields = (tx: Tx.DevProposal, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.devIssue !== 'string') {
@@ -109,7 +110,7 @@ export const validate = (tx: Tx.DevProposal, wrappedStates: WrappedStates, respo
     response.reason = 'Must give the next devIssue devProposalCount hash'
     return response
   }
-  if (from.data.balance < network.current.devProposalFee + network.current.transactionFee) {
+  if (from.data.balance < network.current.devProposalFee + utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)) {
     response.reason = 'From account has insufficient balance to submit a devProposal'
     return response
   }
@@ -140,7 +141,7 @@ export const apply = (
   const devProposal: DevProposalAccount = wrappedStates[tx.devProposal].data
 
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, network.current.devProposalFee)
-  from.data.balance = SafeBigIntMath.subtract(from.data.balance, network.current.transactionFee)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount))
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, utils.maintenanceAmount(txTimestamp, from, network))
 
   devProposal.totalAmount = tx.totalAmount

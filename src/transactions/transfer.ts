@@ -20,6 +20,7 @@ import {
 } from '../@types'
 import { toShardusAddress, toShardusAddressWithKey } from '../utils/address'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
+import * as AccountsStorage from '../storage/accountStorage'
 
 export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.from !== 'string' || utils.isValidAddress(tx.from) === false) {
@@ -86,7 +87,7 @@ export const validate = (
     return response
   }
 
-  if (from.data.balance < tx.amount + network.current.transactionFee) {
+  if (from.data.balance < tx.amount + utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)) {
     response.reason = "from account doesn't have sufficient balance to cover the transaction"
     return response
   }
@@ -128,9 +129,9 @@ export const validate = (
     }
   }
   if (network) {
-    if (network.current.transactionFee > tx.fee) {
+    if (utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount) > tx.fee) {
       response.success = false
-      response.reason = `The network transaction fee (${network.current.transactionFee}) is greater than the transaction fee provided (${tx.fee}).`
+      response.reason = `The network transaction fee (${utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)}) is greater than the transaction fee provided (${tx.fee}).`
       return response
     }
   }
@@ -153,7 +154,7 @@ export const apply = (
   const chat = wrappedStates[tx.chatId].data
 
   // update balances
-  const transactionFee = network.current.transactionFee
+  const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)
@@ -211,8 +212,8 @@ export const createFailedAppReceiptData = (
   const from: UserAccount = wrappedStates[tx.from].data
   let transactionFee = BigInt(0)
   if (from !== undefined && from !== null) {
-    if (from.data.balance >= network.current.transactionFee) {
-      transactionFee = network.current.transactionFee
+    if (from.data.balance >= utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)) {
+      transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
       from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
     } else {
       transactionFee = from.data.balance

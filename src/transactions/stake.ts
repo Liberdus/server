@@ -4,6 +4,8 @@ import * as utils from '../utils'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
+import * as AccountsStorage from '../storage/accountStorage'
+import { getStakeRequiredWei } from '../utils'
 
 export const validate_fields = (tx: Tx.Stake, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -33,12 +35,12 @@ export const validate = (tx: Tx.Stake, wrappedStates: WrappedStates, response: S
     response.reason = 'incorrect signing'
     return response
   }
-  if (from.data.balance < network.current.stakeRequiredUsd) {
-    response.reason = `From account has insufficient balance, the cost required to receive node rewards is ${network.current.stakeRequiredUsd}`
+  if (from.data.balance < getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)) {
+    response.reason = `From account has insufficient balance, the cost required to receive node rewards is ${getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)}`
     return response
   }
-  if (tx.stake < network.current.stakeRequiredUsd) {
-    response.reason = `Stake amount sent: ${tx.stake} is less than the cost required to operate a node: ${network.current.stakeRequiredUsd}`
+  if (tx.stake < getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)) {
+    response.reason = `Stake amount sent: ${tx.stake} is less than the cost required to operate a node: ${getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)}`
     return response
   }
   response.success = true
@@ -56,9 +58,9 @@ export const apply = (
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
-  const stakeAmount = network.current.stakeRequiredUsd
+  const stakeAmount = getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, stakeAmount)
-  const transactionFee = network.current.transactionFee
+  const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)

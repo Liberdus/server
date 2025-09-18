@@ -6,6 +6,7 @@ import * as config from '../config'
 import { Accounts, AppReceiptData, ChatAccount, NetworkAccount, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
 import { toShardusAddress } from '../utils/address'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
+import * as AccountsStorage from '../storage/accountStorage'
 
 export const validate_fields = (tx: Tx.ReclaimToll, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string' || utils.isValidAddress(tx.from) === false) {
@@ -63,8 +64,8 @@ export const validate = (tx: Tx.ReclaimToll, wrappedStates: WrappedStates, respo
   }
 
   // Validate balance covers transaction fee
-  if (from.data.balance < network.current.transactionFee) {
-    response.reason = `from account does not have sufficient funds ${from.data.balance} to cover transaction fee (${network.current.transactionFee}).`
+  if (from.data.balance < utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)) {
+    response.reason = `from account does not have sufficient funds ${from.data.balance} to cover transaction fee (${utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)}).`
     return response
   }
 
@@ -101,7 +102,7 @@ export const apply = (
   }
 
   // Deduct transaction fee
-  const transactionFee = network.current.transactionFee
+  const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
 
   // Deduct maintenance fee
@@ -183,8 +184,8 @@ export const createFailedAppReceiptData = (
   const from: UserAccount = wrappedStates[tx.from].data
   let transactionFee = BigInt(0)
   if (from !== undefined && from !== null) {
-    if (from.data.balance >= network.current.transactionFee) {
-      transactionFee = network.current.transactionFee
+    if (from.data.balance >= utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)) {
+      transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
       from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
     } else {
       transactionFee = from.data.balance

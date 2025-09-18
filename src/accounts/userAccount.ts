@@ -14,7 +14,7 @@ export const userAccount = (accountId: string, timestamp: number): UserAccount =
       balance: utils.libToWei(50),
       stake: BigInt(0),
       remove_stake_request: null,
-      toll: AccountsStorage.cachedNetworkAccount ? AccountsStorage.cachedNetworkAccount.current.defaultToll : INITIAL_PARAMETERS.defaultToll,
+      toll: AccountsStorage.cachedNetworkAccount ? utils.getDefaultTollWei(AccountsStorage.cachedNetworkAccount) : INITIAL_PARAMETERS.defaultToll,
       tollUnit: TollUnit.lib,
       chats: {},
       chatTimestamp: 0,

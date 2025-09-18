@@ -3,7 +3,7 @@ import * as crypto from '../../crypto'
 import { LiberdusFlags } from '../../config'
 import { TXTypes, NodeInitTxData, Tx, NodeAccount, WrappedStates, TransactionKeys, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
-import { _sleep, generateTxId } from '../../utils'
+import { _sleep, generateTxId, getNodeRewardRateWei } from '../../utils'
 import { dapp } from '../..'
 
 export async function injectInitRewardTx(shardus: Shardus, eventData: ShardusTypes.ShardusEvent): Promise<unknown> {
@@ -160,7 +160,7 @@ export const apply = (
   nodeAccount.rewardStartTime = tx.nodeActivatedTime
   nodeAccount.rewardEndTime = 0
   nodeAccount.timestamp = txTimestamp
-  nodeAccount.rewardRate = network ? network.current.nodeRewardAmountUsd : BigInt(0)
+  nodeAccount.rewardRate = network ? getNodeRewardRateWei(AccountsStorage.cachedNetworkAccount) : BigInt(0)
 
   const appReceiptData: AppReceiptData = {
     txId,

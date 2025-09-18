@@ -5,6 +5,7 @@ import create from '../accounts'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
+import * as AccountsStorage from '../storage/accountStorage'
 
 export const validate_fields = (tx: Tx.Distribute, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -46,7 +47,7 @@ export const validate = (tx: Tx.Distribute, wrappedStates: WrappedStates, respon
       return response
     }
   }
-  if (from.data.balance < BigInt(recipients.length) * tx.amount + network.current.transactionFee) {
+  if (from.data.balance < BigInt(recipients.length) * tx.amount + utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)) {
     response.reason = "from account doesn't have sufficient balance to cover the transaction"
     return response
   }
@@ -67,7 +68,7 @@ export const apply = (
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const recipients: UserAccount[] = tx.recipients.map((id: string) => wrappedStates[id].data)
-  const transactionFee = network.current.transactionFee
+  const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
   // from.data.transactions.push({ ...tx, txId })
   for (const user of recipients) {

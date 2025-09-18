@@ -5,6 +5,7 @@ import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, Pro
 import create from '../accounts'
 import * as config from '../config'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
+import * as AccountsStorage from '../storage/accountStorage'
 
 export const validate_fields = (tx: Tx.Vote, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -65,7 +66,7 @@ export const validate = (tx: Tx.Vote, wrappedStates: WrappedStates, response: Sh
     response.reason = 'Must send tokens to vote'
     return response
   }
-  if (from.data.balance < tx.amount + network.current.transactionFee) {
+  if (from.data.balance < tx.amount + utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)) {
     response.reason = 'From account has insufficient balance to cover the amount sent in the transaction'
     return response
   }
@@ -90,7 +91,7 @@ export const apply = (
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const proposal: ProposalAccount = wrappedStates[tx.proposal].data
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, tx.amount)
-  const transactionFee = network.current.transactionFee
+  const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)

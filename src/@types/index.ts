@@ -741,10 +741,10 @@ export interface NetworkParameters {
     nodeRefutedPenaltyPercent: number
   }
   stakeLockTime: number
-  nodeRewardAmountUsdStr: string,
-  nodePenaltyUsdStr: string,
-  stakeRequiredUsdStr: string,
-  transactionFeeUsdStr: string,
+  nodeRewardAmountUsdStr: string
+  nodePenaltyUsdStr: string
+  stakeRequiredUsdStr: string
+  transactionFeeUsdStr: string
   stabilityFactorStr: string
   minTollUsdStr: string
   defaultTollUsdStr: string

@@ -1016,8 +1016,7 @@ const shardusSetup = (): void => {
             if (LiberdusFlags.VerboseLogs) console.log(`signAppData cert expired ${type} ${Utils.safeStringify(stakeCert)} `)
             return fail
           }
-          const minStakeRequiredUsd = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
-          const minStakeRequired = utils.scaleByStabilityFactor(minStakeRequiredUsd, AccountsStorage.cachedNetworkAccount)
+          const minStakeRequired = utils.getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)
           const stakeAmount = stakeCert.stake
           if (stakeAmount < minStakeRequired) {
             /* prettier-ignore */
@@ -1344,8 +1343,7 @@ const shardusSetup = (): void => {
           }
         }
 
-        const minStakeRequiredUsd = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
-        const minStakeRequired = utils.scaleByStabilityFactor(minStakeRequiredUsd, AccountsStorage.cachedNetworkAccount)
+        const minStakeRequired = utils.getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)
 
         const stakedAmount = stake_cert.stake
 

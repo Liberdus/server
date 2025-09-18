@@ -18,6 +18,7 @@ import { LiberdusFlags } from '../config'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import { shardusPostToNode } from './request'
 import { Utils } from '@shardus/types'
+import { ethers } from 'ethers'
 
 export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): bigint => {
   let amount: bigint
@@ -663,6 +664,61 @@ export function getRandom<T>(arr: T[], n: number): T[] {
   }
   /* eslint-enable security/detect-object-injection */
   return result
+}
+
+export function getNodeRewardRateWei(networkAccount: NetworkAccount): bigint {
+  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
+    return usdStrToWei(networkAccount.current.nodeRewardAmountUsdStr, networkAccount)
+  } else {
+    return networkAccount.current.nodeRewardAmountUsd
+  }
+}
+
+export function getStakeRequiredWei(networkAccount: NetworkAccount): bigint {
+  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
+    return usdStrToWei(networkAccount.current.stakeRequiredUsdStr, networkAccount)
+  } else {
+    return networkAccount.current.stakeRequiredUsd
+  }
+}
+
+export function getPenaltyWei(networkAccount: NetworkAccount): bigint {
+  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
+    return usdStrToWei(networkAccount.current.nodePenaltyUsdStr, networkAccount)
+  } else {
+    return networkAccount.current.nodePenaltyUsd
+  }
+}
+
+export function getTransactionFeeWei(networkAccount: NetworkAccount): bigint {
+  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
+    return usdStrToWei(networkAccount.current.transactionFeeUsdStr, networkAccount)
+  } else {
+    return networkAccount.current.transactionFee
+  }
+}
+
+export function getMinTollWei(networkAccount: NetworkAccount): bigint {
+  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
+    return usdStrToWei(networkAccount.current.minTollUsdStr, networkAccount)
+  } else {
+    return networkAccount.current.minToll
+  }
+}
+
+export function getDefaultTollWei(networkAccount: NetworkAccount): bigint {
+  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
+    return usdStrToWei(networkAccount.current.defaultTollUsdStr, networkAccount)
+  } else {
+    return networkAccount.current.defaultToll
+  }
+}
+
+export function usdStrToWei(usdStr: string, networkAccount: NetworkAccount): bigint {
+  // Parse the stability factor as a decimal and convert to wei precision
+  const stabilityFactor = ethers.parseEther(networkAccount.current.stabilityFactorStr)
+  const usdBigInt = ethers.parseEther(usdStr)
+  return (usdBigInt / stabilityFactor) * BigInt(10 ** 18)
 }
 
 export function libToWei(lib: number): bigint {

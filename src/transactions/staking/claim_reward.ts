@@ -4,7 +4,7 @@ import { LiberdusFlags } from '../../config'
 import { logFlags } from '@shardeum-foundation/core/dist/logger'
 import { NodeAccount, TXTypes, UserAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
-import { scaleByStabilityFactor, _sleep, generateTxId, isEqualOrNewerVersion, usdToWei } from '../../utils'
+import { scaleByStabilityFactor, _sleep, generateTxId, isEqualOrNewerVersion, usdToWei, getNodeRewardRateWei } from '../../utils'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 
 export async function injectClaimRewardTx(
@@ -221,7 +221,7 @@ export const apply = (
   const operatorAccount = wrappedStates[tx.nominator].data as UserAccount
   const network = AccountsStorage.cachedNetworkAccount
 
-  const currentRateUsd: bigint = network.current.nodeRewardAmountUsd
+  const currentRateUsd: bigint = getNodeRewardRateWei(AccountsStorage.cachedNetworkAccount)
   let nodeRewardRateUsd: bigint
   let nodeRewardRateWei: bigint
 

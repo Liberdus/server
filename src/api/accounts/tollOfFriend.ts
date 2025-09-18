@@ -1,4 +1,6 @@
 import * as configs from '../../config'
+import * as utils from '../../utils'
+import * as AccountsStorage from '../../storage/accountStorage'
 
 export const tollOfFriend = dapp => async (req, res): Promise<void> => {
   try {
@@ -21,7 +23,7 @@ export const tollOfFriend = dapp => async (req, res): Promise<void> => {
       } else {
         if (account.data.data.toll === null) {
           const network = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-          res.json({ toll: network.data.current.defaultToll })
+          res.json({ toll: utils.getDefaultTollWei(AccountsStorage.cachedNetworkAccount) })
         } else {
           res.json({ toll: account.data.data.toll })
         }
