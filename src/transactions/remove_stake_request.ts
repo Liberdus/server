@@ -3,6 +3,8 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import create from '../accounts'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import * as AccountsStorage from '../storage/accountStorage'
+import { getStakeRequiredWei } from '../utils'
 
 export const validate_fields = (tx: Tx.RemoveStakeRequest, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -32,12 +34,12 @@ export const validate = (tx: Tx.RemoveStakeRequest, wrappedStates: WrappedStates
     response.reason = 'incorrect signing'
     return response
   }
-  if (from.data.stake < network.current.stakeRequiredUsd) {
-    response.reason = `From account has insufficient stake ${network.current.stakeRequiredUsd}`
+  if (from.data.stake < getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)) {
+    response.reason = `From account has insufficient stake ${getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)}`
     return response
   }
-  if (tx.stake > network.current.stakeRequiredUsd) {
-    response.reason = `Stake amount sent: ${tx.stake} is more than the cost required to operate a node: ${network.current.stakeRequiredUsd}`
+  if (tx.stake > getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)) {
+    response.reason = `Stake amount sent: ${tx.stake} is more than the cost required to operate a node: ${getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)}`
     return response
   }
   response.success = true

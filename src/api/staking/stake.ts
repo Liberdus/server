@@ -1,14 +1,13 @@
 import { LiberdusFlags } from '../../config'
 import * as AccountsStorage from '../../storage/accountStorage'
-import { scaleByStabilityFactor } from '../../utils'
+import { scaleByStabilityFactor, getStakeRequiredWei } from '../../utils'
 import { nestedCountersInstance } from '@shardeum-foundation/core'
 
 export const stake =
   () =>
   async (req, res): Promise<void> => {
     try {
-      const stakeRequiredUsd = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
-      const stakeRequired = scaleByStabilityFactor(stakeRequiredUsd, AccountsStorage.cachedNetworkAccount)
+      const stakeRequired = getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)
 
       const response = {
         stakeRequired: {
@@ -17,7 +16,7 @@ export const stake =
         },
         stakeRequiredUsd: {
           dataType: 'bi',
-          value: stakeRequiredUsd.toString(16).padStart(16, '0'),
+          value: stakeRequired.toString(16).padStart(16, '0'),
         },
       }
       res.json(response)

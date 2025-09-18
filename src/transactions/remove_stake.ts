@@ -4,6 +4,8 @@ import create from '../accounts'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
+import * as AccountsStorage from '../storage/accountStorage'
+import { getStakeRequiredWei } from '../utils'
 
 export const validate_fields = (tx: Tx.RemoveStake, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -33,16 +35,16 @@ export const validate = (tx: Tx.RemoveStake, wrappedStates: WrappedStates, respo
     response.reason = 'incorrect signing'
     return response
   }
-  if (from.data.stake < network.current.stakeRequiredUsd) {
-    response.reason = `From account has insufficient stake ${network.current.stakeRequiredUsd}`
+  if (from.data.stake < getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)) {
+    response.reason = `From account has insufficient stake ${getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)}`
     return response
   }
   if (!from.data.remove_stake_request) {
     response.reason = `Request is not active to remove stake.`
     return response
   }
-  if (tx.stake > network.current.stakeRequiredUsd) {
-    response.reason = `Stake amount sent: ${tx.stake} is more than the cost required to operate a node: ${network.current.stakeRequiredUsd}`
+  if (tx.stake > getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)) {
+    response.reason = `Stake amount sent: ${tx.stake} is more than the cost required to operate a node: ${getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)}`
     return response
   }
   response.success = true
@@ -65,7 +67,7 @@ export const apply = (
     ? 'Applied remove_stake tx'
     : 'Cancelled remove_stake tx because `remove_stake_request` is null or earlier than 2 * nodeRewardInterval'
   if (shouldRemoveState) {
-    from.data.balance = SafeBigIntMath.add(from.data.balance, network.current.stakeRequiredUsd)
+    from.data.balance = SafeBigIntMath.add(from.data.balance, getStakeRequiredWei(AccountsStorage.cachedNetworkAccount))
     from.data.stake = BigInt(0)
     from.timestamp = txTimestamp
     from.data.remove_stake_request = null

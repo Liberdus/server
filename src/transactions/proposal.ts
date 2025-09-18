@@ -16,6 +16,7 @@ import {
   AppReceiptData,
 } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
+import * as AccountsStorage from '../storage/accountStorage'
 
 export const validate_fields = (tx: Tx.Proposal, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string') {
@@ -46,20 +47,20 @@ export const validate_fields = (tx: Tx.Proposal, response: ShardusTypes.Incoming
     response.reason = 'tx "parameter nodeRewardInterval" field must be a number.'
     return response
   }
-  if (typeof tx.parameters.nodeRewardAmountUsd !== 'bigint') {
-    response.reason = 'tx "parameter nodeRewardAmount" field must be a bigint.'
+  if (typeof tx.parameters.nodeRewardAmountUsdStr !== 'string') {
+    response.reason = 'tx "parameter nodeRewardAmountUsdStr" field must be a string.'
     return response
   }
-  if (typeof tx.parameters.nodePenaltyUsd !== 'bigint') {
-    response.reason = 'tx "parameter nodePenalty" field must be a bigint.'
+  if (typeof tx.parameters.nodePenaltyUsdStr !== 'string') {
+    response.reason = 'tx "parameter nodePenaltyUsdStr" field must be a string.'
     return response
   }
-  if (typeof tx.parameters.transactionFee !== 'bigint') {
-    response.reason = 'tx "parameter transactionFee" field must be a bigint.'
+  if (typeof tx.parameters.transactionFeeUsdStr !== 'string') {
+    response.reason = 'tx "parameter transactionFeeUsdStr" field must be a string.'
     return response
   }
-  if (typeof tx.parameters.stakeRequiredUsd !== 'bigint') {
-    response.reason = 'tx "parameter stakeRequired" field must be a bigint.'
+  if (typeof tx.parameters.stakeRequiredUsdStr !== 'string') {
+    response.reason = 'tx "parameter stakeRequiredUsdStr" field must be a string.'
     return response
   }
   if (typeof tx.parameters.maintenanceInterval !== 'number') {
@@ -82,8 +83,8 @@ export const validate_fields = (tx: Tx.Proposal, response: ShardusTypes.Incoming
     response.reason = 'tx "parameter faucetAmount" field must be a bigint.'
     return response
   }
-  if (typeof tx.parameters.transactionFee !== 'bigint') {
-    response.reason = 'tx "parameter defaultToll" field must be a bigint.'
+  if (typeof tx.parameters.transactionFeeUsdStr !== 'string') {
+    response.reason = 'tx "parameter transactionFeeUsdStr" field must be a string.'
     return response
   }
   response.success = true
@@ -119,7 +120,7 @@ export const validate = (tx: Tx.Proposal, wrappedStates: WrappedStates, response
     response.reason = 'Must give the next issue proposalCount hash'
     return response
   }
-  if (from.data.balance < network.current.proposalFee + network.current.transactionFee) {
+  if (from.data.balance < network.current.proposalFee + utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)) {
     response.reason = 'From account has insufficient balance to submit a proposal'
     return response
   }
@@ -155,11 +156,11 @@ export const validate = (tx: Tx.Proposal, wrappedStates: WrappedStates, response
     response.reason = 'Max nodeRewardInterval fee permitted is 900000000000'
     return response
   }
-  if (parameters.nodeRewardAmountUsd < 0) {
+  if (parseFloat(parameters.nodeRewardAmountUsdStr) < 0) {
     response.reason = 'Min nodeRewardAmount permitted is 0 tokens'
     return response
   }
-  if (parameters.nodeRewardAmountUsd > 1000000000) {
+  if (parseFloat(parameters.nodeRewardAmountUsdStr) > 1000000000) {
     response.reason = 'Max nodeRewardAmount permitted is 1000000000'
     return response
   }
@@ -202,7 +203,7 @@ export const apply = (
   const issue: IssueAccount = wrappedStates[tx.issue].data
 
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, network.current.proposalFee)
-  from.data.balance = SafeBigIntMath.subtract(from.data.balance, network.current.transactionFee)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount))
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, utils.maintenanceAmount(txTimestamp, from, network))
 
   proposal.parameters = tx.parameters

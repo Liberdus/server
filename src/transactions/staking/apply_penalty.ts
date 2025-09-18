@@ -15,7 +15,7 @@ import {
   TXTypes,
 } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
-import { _sleep, generateTxId, scaleByStabilityFactor } from '../../utils'
+import { _sleep, generateTxId, scaleByStabilityFactor, getStakeRequiredWei } from '../../utils'
 import * as crypto from '../../crypto'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 
@@ -378,9 +378,9 @@ export function isLowStake(nodeAccount: NodeAccount): boolean {
    * USD value rather than SHM.
    */
 
-  const stakeRequiredUSD = AccountsStorage.cachedNetworkAccount.current.stakeRequiredUsd
+  const stakeRequiredUSD = getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)
   const lowStakeThresholdUSD = (stakeRequiredUSD * BigInt(LiberdusFlags.lowStakePercent * 100)) / BigInt(100)
-  const lowStakeThreshold = scaleByStabilityFactor(lowStakeThresholdUSD, AccountsStorage.cachedNetworkAccount)
+  const lowStakeThreshold = lowStakeThresholdUSD
 
   return nodeAccount.stakeLock < lowStakeThreshold
 }

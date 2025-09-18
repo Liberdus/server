@@ -28,20 +28,20 @@ export const validate_fields = (tx: Tx.ApplyTally, response: ShardusTypes.Incomi
     response.reason = 'tx "next parameter nodeRewardInterval" field must be a number.'
     return response
   }
-  if (typeof tx.next.nodeRewardAmountUsd !== 'bigint') {
-    response.reason = 'tx "next parameter nodeRewardAmount" field must be a bigint.'
+  if (typeof tx.next.nodeRewardAmountUsdStr !== 'string') {
+    response.reason = 'tx "next parameter nodeRewardAmountUsdStr" field must be a string.'
     return response
   }
-  if (typeof tx.next.nodePenaltyUsd !== 'bigint') {
-    response.reason = 'tx "next parameter nodePenalty" field must be a bigint.'
+  if (typeof tx.next.nodePenaltyUsdStr !== 'string') {
+    response.reason = 'tx "next parameter nodePenaltyUsdStr" field must be a string.'
     return response
   }
-  if (typeof tx.next.transactionFee !== 'bigint') {
-    response.reason = 'tx "next parameter transactionFee" field must be a number.'
+  if (typeof tx.next.transactionFeeUsdStr !== 'string') {
+    response.reason = 'tx "next parameter transactionFeeUsdStr" field must be a string.'
     return response
   }
-  if (typeof tx.next.stakeRequiredUsd !== 'bigint') {
-    response.reason = 'tx "next parameter stakeRequired" field must be a bigint.'
+  if (typeof tx.next.stakeRequiredUsdStr !== 'string') {
+    response.reason = 'tx "next parameter stakeRequiredUsdStr" field must be a string.'
     return response
   }
   if (typeof tx.next.maintenanceInterval !== 'number') {
@@ -64,8 +64,8 @@ export const validate_fields = (tx: Tx.ApplyTally, response: ShardusTypes.Incomi
     response.reason = 'tx "next parameter faucetAmount" field must be a bigint.'
     return response
   }
-  if (typeof tx.next.transactionFee !== 'bigint') {
-    response.reason = 'tx "next parameter defaultToll" field must be a bigint.'
+  if (typeof tx.next.transactionFeeUsdStr !== 'string') {
+    response.reason = 'tx "next parameter transactionFeeUsdStr" field must be a string.'
     return response
   }
   response.success = true

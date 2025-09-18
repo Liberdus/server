@@ -24,8 +24,8 @@ export const validate_fields = (tx: Tx.Toll, response: ShardusTypes.IncomingTran
   if (tx.tollUnit === TollUnit.usd) {
     tollInLib = utils.usdToWei(tx.toll, AccountsStorage.cachedNetworkAccount)
   }
-  if (tollInLib > 0 && tollInLib < AccountsStorage.cachedNetworkAccount.current.minToll) {
-    const minTollInLib = utils.weiToLib(AccountsStorage.cachedNetworkAccount.current.minToll)
+  if (tollInLib > 0 && tollInLib < utils.getMinTollWei(AccountsStorage.cachedNetworkAccount)) {
+    const minTollInLib = utils.weiToLib(utils.getMinTollWei(AccountsStorage.cachedNetworkAccount))
     response.reason = `Minimum "toll" allowed is ${minTollInLib} LIB`
     return response
   }
@@ -52,7 +52,7 @@ export const validate = (tx: Tx.Toll, wrappedStates: WrappedStates, response: Sh
     response.reason = 'from account does not exist'
     return response
   }
-  if (from.data.balance < network.current.transactionFee) {
+  if (from.data.balance < utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)) {
     response.reason = 'from account does not have sufficient funds to complete toll transaction'
     return response
   }
@@ -69,8 +69,8 @@ export const validate = (tx: Tx.Toll, wrappedStates: WrappedStates, response: Sh
     if (tx.tollUnit === TollUnit.usd) {
       tollInWei = utils.usdToWei(tx.toll, network)
     }
-    if (tollInWei < network.current.minToll) {
-      response.reason = `Minimum "toll" allowed is ${utils.weiToLib(network.current.minToll)} LIB`
+    if (tollInWei < utils.getMinTollWei(AccountsStorage.cachedNetworkAccount)) {
+      response.reason = `Minimum "toll" allowed is ${utils.weiToLib(utils.getMinTollWei(AccountsStorage.cachedNetworkAccount))} LIB`
       return response
     }
     if (tollInWei > utils.libToWei(1000000)) {
@@ -81,8 +81,8 @@ export const validate = (tx: Tx.Toll, wrappedStates: WrappedStates, response: Sh
     if (tx.tollUnit === TollUnit.usd) {
       tollInWei = utils.usdToWei(tx.toll, network)
     }
-    if (tollInWei < network.current.minToll) {
-      response.reason = `Minimum "toll" allowed is ${utils.weiToLib(network.current.minToll)} LIB`
+    if (tollInWei < utils.getMinTollWei(AccountsStorage.cachedNetworkAccount)) {
+      response.reason = `Minimum "toll" allowed is ${utils.weiToLib(utils.getMinTollWei(AccountsStorage.cachedNetworkAccount))} LIB`
       return response
     }
     if (tollInWei > utils.libToWei(1000000)) {
@@ -91,9 +91,9 @@ export const validate = (tx: Tx.Toll, wrappedStates: WrappedStates, response: Sh
     }
   }
   if (network) {
-    if (network.current.transactionFee > tx.fee) {
+    if (utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount) > tx.fee) {
       response.success = false
-      response.reason = `The network transaction fee (${network.current.transactionFee}) is greater than the transaction fee provided (${tx.fee}).`
+      response.reason = `The network transaction fee (${utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)}) is greater than the transaction fee provided (${tx.fee}).`
       return response
     }
   }
@@ -112,7 +112,7 @@ export const apply = (
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
-  const transactionFee = network.current.transactionFee
+  const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)
