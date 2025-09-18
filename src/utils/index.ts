@@ -718,7 +718,8 @@ export function usdStrToWei(usdStr: string, networkAccount: NetworkAccount): big
   // Parse the stability factor as a decimal and convert to wei precision
   const stabilityFactor = ethers.parseEther(networkAccount.current.stabilityFactorStr)
   const usdBigInt = ethers.parseEther(usdStr)
-  return (usdBigInt / stabilityFactor) * BigInt(10 ** 18)
+  // Multiply by 10^18 first to maintain precision, then divide
+  return (usdBigInt * BigInt(10 ** 18)) / stabilityFactor
 }
 
 export function libToWei(lib: number): bigint {
