@@ -66,9 +66,9 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   minToll: utils.libToWei(1),
   tollNetworkTaxPercent: 1, // 1%
   tollTimeout: 7 * ONE_DAY,
-  minVersion: '2.3.9',
-  activeVersion: '2.3.9',
-  latestVersion: '2.4.0',
+  minVersion: '2.4.1',
+  activeVersion: '2.4.1',
+  latestVersion: '2.4.1',
   archiver: {
     minVersion: '3.5.6',
     activeVersion: '3.5.6',
@@ -95,6 +95,8 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   stakeRequiredUsdStr: '10.0',
   transactionFeeUsdStr: '0.01',
   stabilityFactorStr: '0.013',
+  minTollUsdStr: '0.2',
+  defaultTollUsdStr: '0.2',
 }
 
 function replaceAll(str, find, replace) {
