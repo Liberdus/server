@@ -746,6 +746,8 @@ export interface NetworkParameters {
   stakeRequiredUsdStr: string,
   transactionFeeUsdStr: string,
   stabilityFactorStr: string
+  minTollUsdStr: string
+  defaultTollUsdStr: string
 }
 
 export interface Windows {

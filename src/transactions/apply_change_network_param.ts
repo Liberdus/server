@@ -34,6 +34,12 @@ export const apply = (
       network.current.transactionFeeUsdStr = '0.01'
       network.current.stabilityFactorStr = '0.013'
     }
+    if (network.current.minTollUsdStr === undefined || network.current.minTollUsdStr === null) {
+      network.current.minTollUsdStr = '0.2'
+    }
+    if (network.current.defaultTollUsdStr === undefined || network.current.defaultTollUsdStr === null) {
+      network.current.defaultTollUsdStr = '0.2'
+    }
   }
 
   const appReceiptData: AppReceiptData = {
