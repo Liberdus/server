@@ -1202,14 +1202,14 @@ const shardusSetup = (): void => {
           }
           const adminCert: AdminCert = appJoinData.adminCert
           /* prettier-ignore */
-          nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest: adminCert exists')
+          nestedCountersInstance.countEvent('liberdus-node', 'validateJoinRequest: adminCert exists')
 
           if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest: adminCert ${Utils.safeStringify(adminCert)}`)
 
           const currentTimestamp = dapp.shardusGetTime()
           if (!adminCert.certExp || adminCert.certExp < currentTimestamp) {
             /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: !adminCert.certExp || adminCert.certExp < currentTimestamp')
+            nestedCountersInstance.countEvent('liberdus-node', 'validateJoinRequest fail: !adminCert.certExp || adminCert.certExp < currentTimestamp')
             return {
               success: false,
               reason: 'No admin certificate or certificate has expired',
@@ -1219,7 +1219,7 @@ const shardusSetup = (): void => {
 
           if (!adminCert.nominee) {
             /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: !adminCert.nominee')
+            nestedCountersInstance.countEvent('liberdus-node', 'validateJoinRequest fail: !adminCert.nominee')
             return {
               success: false,
               reason: 'No nominee in admin certificate',
@@ -1229,7 +1229,7 @@ const shardusSetup = (): void => {
 
           if (!adminCert.sign || !adminCert.sign.owner || !adminCert.sign.sig) {
             /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: !adminCert.sign')
+            nestedCountersInstance.countEvent('liberdus-node', 'validateJoinRequest fail: !adminCert.sign')
             return {
               success: false,
               reason: 'No signature in admin certificate',
@@ -1237,9 +1237,9 @@ const shardusSetup = (): void => {
             }
           }
 
-          if (typeof adminCert.goldenTicket === 'boolean') {
+          if (typeof adminCert.goldenTicket !== 'boolean') {
             /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: typeof adminCert.goldenTicket === boolean')
+            nestedCountersInstance.countEvent('liberdus-node', 'validateJoinRequest fail: typeof adminCert.goldenTicket !== boolean')
             return {
               success: false,
               reason: 'No goldenTicket in admin certificate',
@@ -1250,7 +1250,7 @@ const shardusSetup = (): void => {
           // check for adminCert nominee
           if (nodeAcc !== adminCert.nominee) {
             /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: nodeAcc !== adminCert.nominee')
+            nestedCountersInstance.countEvent('liberdus-node', 'validateJoinRequest fail: nodeAcc !== adminCert.nominee')
             return {
               success: false,
               reason: 'Nominator mismatch',
@@ -1268,7 +1268,7 @@ const shardusSetup = (): void => {
           }
           if (pkClearance && (!dapp.crypto.verify(adminCert, pkClearance) || dapp.ensureKeySecurity(pkClearance, DevSecurityLevel.High) === false)) {
             /* prettier-ignore */
-            nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest fail: !shardus.crypto.verify(adminCert, shardus.getDevPublicKeyMaxLevel())')
+            nestedCountersInstance.countEvent('liberdus-node', 'validateJoinRequest fail: !shardus.crypto.verify(adminCert, shardus.getDevPublicKeyMaxLevel())')
             return {
               success: false,
               reason: 'Invalid signature for AdminCert',
@@ -1276,7 +1276,7 @@ const shardusSetup = (): void => {
             }
           }
           /* prettier-ignore */
-          nestedCountersInstance.countEvent('liberdus-mode', 'validateJoinRequest success: adminCert')
+          nestedCountersInstance.countEvent('liberdus-node', 'validateJoinRequest success: adminCert')
           /* prettier-ignore */
           if (LiberdusFlags.VerboseLogs) console.log('validateJoinRequest success: adminCert')
           return {
