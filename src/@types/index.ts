@@ -116,7 +116,6 @@ export enum TXTypes {
   deposit_stake = 'deposit_stake',
   withdraw_stake = 'withdraw_stake',
   set_cert_time = 'set_cert_time',
-  query_certificate = 'query_certificate',
   init_reward = 'init_reward',
   claim_reward = 'claim_reward',
   apply_penalty = 'apply_penalty',

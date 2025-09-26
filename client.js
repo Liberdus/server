@@ -725,6 +725,7 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
       cycle: answers.cycle,
       config: answers.config,
       timestamp: Date.now(),
+      networkId: networkId,
     }
     let signedTx = crypto.signObj(tx, devKey.secretKey, devKey.publicKey)
     signedTx.signs = [Object.assign({}, signedTx.sign)]

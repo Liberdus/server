@@ -276,9 +276,9 @@ export const LiberdusFlags: LiberdusFlags = {
     enforceTxTimestamp: true, // turn on by 2.3.7
     stakingAppReceiptUpdate: true, // turn on by 2.3.7
     updateChatSenderTimestamp: true, // turn on by 2.3.8
-    tollTaxFeeinAppReceipt: false, // turn on by 2.4.1
-    createAppReceiptUpdate: false, // turn on by 2.4.1
-    addNewNetworkParameters: false, // turn on by 2.4.1
+    createAppReceiptUpdate: true, // turn on by 2.4.1
+    addNewNetworkParameters: true, // turn on by 2.4.1
+    tollTaxFeeinAppReceipt: false, // turn on by 2.4.3
   },
 }
 

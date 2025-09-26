@@ -824,7 +824,6 @@ const shardusSetup = (): void => {
         TXTypes.apply_developer_payment,
         TXTypes.node_reward,
         TXTypes.set_cert_time,
-        TXTypes.query_certificate,
         TXTypes.init_reward,
         TXTypes.claim_reward,
         TXTypes.apply_penalty,
