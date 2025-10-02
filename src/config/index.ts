@@ -66,9 +66,9 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   minToll: utils.libToWei(1),
   tollNetworkTaxPercent: 1, // 1%
   tollTimeout: 7 * ONE_DAY,
-  minVersion: '2.4.1',
-  activeVersion: '2.4.1',
-  latestVersion: '2.4.1',
+  minVersion: '2.4.2',
+  activeVersion: '2.4.2',
+  latestVersion: '2.4.3',
   archiver: {
     minVersion: '3.5.6',
     activeVersion: '3.5.6',
@@ -97,6 +97,9 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   stabilityFactorStr: '0.013',
   minTollUsdStr: '0.2',
   defaultTollUsdStr: '0.2',
+  goldenTicketServerUrl: 'http://localhost:3456/golden/ticket',
+  messageRetentionDays: 7,
+  messageMaxLength: 500,
 }
 
 function replaceAll(str, find, replace) {

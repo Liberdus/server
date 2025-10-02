@@ -1,9 +1,10 @@
 import { Shardus, ShardusTypes, nestedCountersInstance } from '@shardeum-foundation/core'
-import { LiberdusFlags } from '../config'
+import config, { LiberdusFlags } from '../config'
 import * as crypto from '../crypto'
 import { Request } from 'express'
 import { DevSecurityLevel } from '@shardeum-foundation/core'
-import { ValidatorError } from '../@types'
+import { GoldenTicketRequest, NetworkAccount } from '../@types'
+import { shardusPost } from '../utils/request'
 
 export interface AdminCert {
   nominee: string
@@ -11,6 +12,13 @@ export interface AdminCert {
   certExp: number
   sign: ShardusTypes.Sign
   goldenTicket: boolean
+}
+
+export interface AdminCertResponse {
+  success: boolean
+  ticket?: AdminCert
+  error?: string
+  cached?: boolean
 }
 
 export type PutAdminCertRequest = AdminCert
@@ -21,6 +29,7 @@ export interface PutAdminCertResult {
 }
 
 export let adminCert: AdminCert = null
+export let isRequestedAdminCert: boolean = false
 
 function validatePutAdminCertRequest(req: PutAdminCertRequest, shardus: Shardus): PutAdminCertResult {
   const publicKey = shardus.crypto.getPublicKey()
@@ -67,4 +76,37 @@ export async function putAdminCertificateHandler(req: Request, shardus: Shardus)
   }
   adminCert = certReq
   return { success: true }
+}
+
+export async function tryAndFetchGoldenTicket(publicKey: string, network: NetworkAccount, dapp: Shardus): Promise<AdminCert> {
+  try {
+    if (LiberdusFlags.VerboseLogs) console.log('Fetching golden ticket from', network.current.goldenTicketServerUrl, 'for publicKey', publicKey, 'node')
+    const goldenTicketRequest: any = {
+      publicKey,
+      ip: config.server.ip.externalIp,
+      port: config.server.ip.externalPort,
+      timestamp: dapp.shardusGetTime(),
+      nonce: Math.floor(Math.random() * 1e6),
+    }
+    const signedGoldenTicketRequest: GoldenTicketRequest = dapp.signAsNode(goldenTicketRequest)
+    if (LiberdusFlags.VerboseLogs) console.log('Golden Ticket request', signedGoldenTicketRequest)
+    const response = await shardusPost<AdminCertResponse>(network.current.goldenTicketServerUrl, signedGoldenTicketRequest, { timeout: 5000 })
+    if (LiberdusFlags.VerboseLogs) console.log('Golden Ticket response', response.data)
+    if (response.data && response.data.success) {
+      return response.data.ticket
+    } else {
+      console.error('No golden ticket received')
+      return null
+    }
+  } catch (error) {
+    console.error(`Error fetching golden ticket from - ${(error as Error).message}`)
+    return null
+  }
+}
+export function setAdminCertificate(cert: AdminCert): void {
+  adminCert = cert
+}
+
+export function markRequestedAdminCert(): void {
+  isRequestedAdminCert = true
 }

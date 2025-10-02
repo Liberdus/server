@@ -100,7 +100,9 @@ export const apply = (
   }
   const penalty = nodeAccount.penalty
   let txFee
-  if (utils.isEqualOrNewerVersion('2.4.0', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
+  if (utils.isEqualOrNewerVersion('2.4.3', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
+    txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+  } else if (utils.isEqualOrNewerVersion('2.4.0', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
     txFee = AccountsStorage.cachedNetworkAccount.current.transactionFee
   } else {
     const txFeeUsd = AccountsStorage.cachedNetworkAccount.current.transactionFee
@@ -178,7 +180,12 @@ export const createFailedAppReceiptData = (
   let transactionFee = BigInt(0)
   if (from !== undefined && from !== null) {
     const txFeeUsd = AccountsStorage.cachedNetworkAccount.current.transactionFee
-    const txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
+    let txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
+
+    if (utils.isEqualOrNewerVersion('2.4.0', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
+      txFee = AccountsStorage.cachedNetworkAccount.current.transactionFee
+    }
+
     if (from.data.balance >= txFee) {
       transactionFee = txFee
       from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)

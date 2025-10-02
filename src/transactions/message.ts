@@ -1,5 +1,5 @@
 import * as crypto from '../crypto'
-import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
+import { Shardus, ShardusTypes, nestedCountersInstance } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 import create from '../accounts'
 import * as config from '../config'
@@ -99,13 +99,17 @@ export const validate = (tx: Tx.Message, wrappedStates: WrappedStates, response:
   if (network) {
     if (utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount) > tx.fee) {
       response.success = false
-      response.reason = `The network transaction fee (${utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)}) is greater than the transaction fee provided (${tx.fee}).`
+      response.reason = `The network transaction fee (${utils.getTransactionFeeWei(
+        AccountsStorage.cachedNetworkAccount,
+      )}) is greater than the transaction fee provided (${tx.fee}).`
       return response
     }
   }
   // Validate balance covers toll + transaction fee
   if (from.data.balance < requiredTollInWei + utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)) {
-    response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the toll (${requiredTollInWei}) + transaction fee (${utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)}).`
+    response.reason = `from account does not have sufficient funds ${
+      from.data.balance
+    } to cover the toll (${requiredTollInWei}) + transaction fee (${utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)}).`
     return response
   }
 
@@ -230,6 +234,29 @@ export const apply = (
     chatId: tx.chatId,
   }
   to.data.chatTimestamp = txTimestamp
+
+  // delete old messages based on retention policy
+  if (utils.isEqualOrNewerVersion('2.4.3', network.current.activeVersion) && network.current.messageRetentionDays > 0) {
+    // Remove messages older than network.current.messageRetentionDays
+    const retentionMs = network.current.messageRetentionDays * 24 * 60 * 60 * 1000
+    const cutoffTimestamp = txTimestamp - retentionMs
+    const originalMessageCount = Array.isArray(chat.messages) ? chat.messages.length : 0
+    if (Array.isArray(chat.messages)) {
+      chat.messages = chat.messages.filter((msg) => msg.timestamp >= cutoffTimestamp)
+    }
+    if (config.LiberdusFlags.VerboseLogs && originalMessageCount !== chat.messages.length) {
+      dapp.log(`Messages after retention cleanup, kept ${chat.messages.length} of ${originalMessageCount}`)
+      nestedCountersInstance.countEvent('liberdus-message-retention', `cleaned-up due to messages older than ${network.current.messageRetentionDays} days`)
+    }
+  }
+
+  // delete old messages if there are more than messageMaxLength
+  if (utils.isEqualOrNewerVersion('2.4.3', network.current.activeVersion) && chat.messages.length > network.current.messageMaxLength) {
+    // Keep only the latest 800 messages
+    chat.messages = chat.messages.slice(-network.current.messageMaxLength)
+    if (config.LiberdusFlags.VerboseLogs) dapp.log(`Messages after max length cleanup: ${chat.messages.length}`)
+    nestedCountersInstance.countEvent('liberdus-message-retention', `cleaned-up due to messages more than ${network.current.messageMaxLength}`)
+  }
 
   // Add message to chat
   const messageRecord: Tx.MessageRecord = {

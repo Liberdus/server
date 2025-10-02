@@ -4,7 +4,7 @@ import { LiberdusFlags } from '../../config'
 import { logFlags } from '@shardeum-foundation/core/dist/logger'
 import { NodeAccount, TXTypes, UserAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
-import { scaleByStabilityFactor, _sleep, generateTxId, isEqualOrNewerVersion, usdToWei, getNodeRewardRateWei } from '../../utils'
+import { _sleep, generateTxId, isEqualOrNewerVersion, usdToWei, getNodeRewardRateWei } from '../../utils'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 
 export async function injectClaimRewardTx(
@@ -221,39 +221,38 @@ export const apply = (
   const operatorAccount = wrappedStates[tx.nominator].data as UserAccount
   const network = AccountsStorage.cachedNetworkAccount
 
-  const currentRateUsd: bigint = getNodeRewardRateWei(AccountsStorage.cachedNetworkAccount)
+  const currentRewardRateWei: bigint = getNodeRewardRateWei(AccountsStorage.cachedNetworkAccount)
   let nodeRewardRateUsd: bigint
   let nodeRewardRateWei: bigint
 
-  if (isEqualOrNewerVersion('2.3.9', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
-    nodeRewardRateUsd = nodeAccount.rewardRate > currentRateUsd ? nodeAccount.rewardRate : currentRateUsd
+  if (isEqualOrNewerVersion('2.4.3', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
+    nodeRewardRateWei = currentRewardRateWei
+  } else if (isEqualOrNewerVersion('2.3.9', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
+    nodeRewardRateUsd = nodeAccount.rewardRate > currentRewardRateWei ? nodeAccount.rewardRate : currentRewardRateWei
     nodeRewardRateWei = usdToWei(nodeRewardRateUsd, AccountsStorage.cachedNetworkAccount)
   } else {
-    nodeRewardRateUsd = nodeAccount.rewardRate > currentRateUsd ? nodeAccount.rewardRate : currentRateUsd
-    nodeRewardRateWei = scaleByStabilityFactor(nodeRewardRateUsd, AccountsStorage.cachedNetworkAccount)
+    // fallback for safety
+    nodeRewardRateWei = currentRewardRateWei
   }
 
-  if (LiberdusFlags.VerboseLogs)
-    console.log(`applyClaimRewardTx: nodeRewardRateUsd: ${nodeRewardRateUsd}, nodeRewardRateWei: ${nodeRewardRateWei}, currentRateUsd: ${currentRateUsd}`)
+  if (LiberdusFlags.VerboseLogs) console.log(`applyClaimRewardTx: nodeRewardRateWei: ${nodeRewardRateWei}`)
 
   const nodeRewardInterval = BigInt(network.current.nodeRewardInterval)
   let durationInNetwork = tx.nodeDeactivatedTime - nodeAccount.rewardStartTime
 
-  if (isEqualOrNewerVersion('2.3.9', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
-    if (durationInNetwork < 0) {
-      nestedCountersInstance.countEvent('liberdus-staking', `applyClaimRewardTx fail durationInNetwork < 0`)
-      throw new Error('applyClaimReward failed because durationInNetwork is less than 0')
-    }
+  if (durationInNetwork < 0) {
+    nestedCountersInstance.countEvent('liberdus-staking', `applyClaimRewardTx fail durationInNetwork < 0`)
+    throw new Error('applyClaimReward failed because durationInNetwork is less than 0')
+  }
 
-    // Apply maximum reward duration cap to prevent exploitation
-    const MAX_REWARD_DURATION_DAYS = 365 // 1 year maximum
-    const MAX_REWARD_DURATION_MS = MAX_REWARD_DURATION_DAYS * 24 * 60 * 60 * 1000
-    if (durationInNetwork > MAX_REWARD_DURATION_MS) {
-      /* prettier-ignore */
-      if (LiberdusFlags.VerboseLogs) console.log(`Capping reward duration from ${durationInNetwork}ms to ${MAX_REWARD_DURATION_MS}ms for nominee ${tx.nominee}`)
-      nestedCountersInstance.countEvent('liberdus-staking', `applyClaimRewardTx duration capped`)
-      durationInNetwork = MAX_REWARD_DURATION_MS
-    }
+  // Apply maximum reward duration cap to prevent exploitation
+  const MAX_REWARD_DURATION_DAYS = 365 // 1 year maximum
+  const MAX_REWARD_DURATION_MS = MAX_REWARD_DURATION_DAYS * 24 * 60 * 60 * 1000
+  if (durationInNetwork > MAX_REWARD_DURATION_MS) {
+    /* prettier-ignore */
+    if (LiberdusFlags.VerboseLogs) console.log(`Capping reward duration from ${durationInNetwork}ms to ${MAX_REWARD_DURATION_MS}ms for nominee ${tx.nominee}`)
+    nestedCountersInstance.countEvent('liberdus-staking', `applyClaimRewardTx duration capped`)
+    durationInNetwork = MAX_REWARD_DURATION_MS
   }
 
   // special case for seed nodes:
@@ -286,6 +285,16 @@ export const apply = (
     b: nodeAccount.rewardStartTime,
     e: nodeAccount.rewardEndTime,
   })
+  if (isEqualOrNewerVersion('2.4.3', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
+    // prune history to last newest 100 entries
+    if (nodeAccount.nodeAccountStats.history.length > 100) {
+      nodeAccount.nodeAccountStats.history.splice(0, nodeAccount.nodeAccountStats.history.length - 100)
+    }
+    // prune history to last 100 entries
+    if (operatorAccount.operatorAccountInfo.operatorStats.history.length > 100) {
+      operatorAccount.operatorAccountInfo.operatorStats.history.splice(0, operatorAccount.operatorAccountInfo.operatorStats.history.length - 100)
+    }
+  }
   operatorAccount.operatorAccountInfo.operatorStats.totalNodeReward = SafeBigIntMath.add(
     operatorAccount.operatorAccountInfo.operatorStats.totalNodeReward,
     rewardAmountWei,

@@ -11,14 +11,18 @@ import {
   UserAccount,
   ValidatorError,
   WrappedStates,
+  GoldenTicketRequest,
 } from '../@types'
+import { AdminCert } from '../transactions/admin_certificate'
 import * as crypto from '../crypto'
 import * as configs from '../config'
 import { LiberdusFlags } from '../config'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
-import { shardusPostToNode } from './request'
+import { shardusPostToNode, shardusPost } from './request'
 import { Utils } from '@shardus/types'
 import { ethers } from 'ethers'
+
+const WEI = 10n ** 18n
 
 export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): bigint => {
   let amount: bigint
@@ -719,6 +723,9 @@ export function usdStrToWei(usdStr: string, networkAccount: NetworkAccount): big
   const stabilityFactor = ethers.parseEther(networkAccount.current.stabilityFactorStr)
   const usdBigInt = ethers.parseEther(usdStr)
   // Multiply by 10^18 first to maintain precision, then divide
+  if (isEqualOrNewerVersion('2.4.3', networkAccount.current.activeVersion)) {
+    return (usdBigInt * WEI) / stabilityFactor
+  }
   return (usdBigInt * BigInt(10 ** 18)) / stabilityFactor
 }
 
@@ -736,24 +743,29 @@ so only the Mul and Div parameters need to be changed when the price of LIB chan
 If 100 LIB = 1 USD then Mul = 100 and Div = 1. In this case the price of LIB is $0.01 and the SF = 100
  */
 export function usdToWei(usd: bigint, networkAccount: NetworkAccount): bigint {
-  const scaleMul = BigInt(networkAccount.current.stabilityScaleMul)
-  const scaleDiv = BigInt(networkAccount.current.stabilityScaleDiv)
-  if (isEqualOrNewerVersion('2.3.9', networkAccount.current.activeVersion)) {
+  if (isEqualOrNewerVersion('2.4.3', networkAccount.current.activeVersion)) {
+    // Parse the stability factor as a decimal and convert to wei precision
+    const stabilityFactor = ethers.parseEther(networkAccount.current.stabilityFactorStr)
+    // Multiply by 10^18 first to maintain precision, then divide
+    return (usd * WEI) / stabilityFactor
+  } else {
+    const scaleMul = BigInt(networkAccount.current.stabilityScaleMul)
+    const scaleDiv = BigInt(networkAccount.current.stabilityScaleDiv)
     return (usd * scaleMul) / scaleDiv
   }
-  const libPerUsd = (usd * scaleDiv) / scaleMul
-  return libPerUsd
 }
 
 export function weiToUsd(lib: bigint, networkAccount: NetworkAccount): bigint {
-  const scaleMul = BigInt(networkAccount.current.stabilityScaleMul)
-  const scaleDiv = BigInt(networkAccount.current.stabilityScaleDiv)
-  if (isEqualOrNewerVersion('2.3.9', networkAccount.current.activeVersion)) {
-    // mul is usd, div is lib
+  if (isEqualOrNewerVersion('2.4.3', networkAccount.current.activeVersion)) {
+    // Parse the stability factor as a decimal and convert to wei precision
+    const stabilityFactor = ethers.parseEther(networkAccount.current.stabilityFactorStr)
+    // Multiply by stability factor first to maintain precision, then divide
+    return (lib * stabilityFactor) / WEI
+  } else {
+    const scaleMul = BigInt(networkAccount.current.stabilityScaleMul)
+    const scaleDiv = BigInt(networkAccount.current.stabilityScaleDiv)
     return (lib * scaleDiv) / scaleMul
   }
-  const usdPerLib = (lib * scaleMul) / scaleDiv
-  return usdPerLib
 }
 
 export function calculateRequiredTollInWei(account: UserAccount, network: NetworkAccount): bigint {

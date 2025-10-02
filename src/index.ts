@@ -15,7 +15,14 @@ import transactions from './transactions'
 import registerAPI from './api'
 import * as AccountsStorage from './storage/accountStorage'
 import { logFlags } from '@shardeum-foundation/core/dist/logger'
-import { adminCert, AdminCert } from './transactions/admin_certificate'
+import {
+  adminCert,
+  setAdminCertificate,
+  AdminCert,
+  isRequestedAdminCert,
+  markRequestedAdminCert,
+  tryAndFetchGoldenTicket,
+} from './transactions/admin_certificate'
 import * as QueryCertificate from './transactions/staking/query_certificate'
 import { RemoveNodeCert, StakeCert } from './transactions/staking/query_certificate'
 import * as SetCertTime from './transactions/staking/set_cert_time'
@@ -1463,6 +1470,29 @@ const shardusSetup = (): void => {
       isReadyToJoinLatestValue = false
       mustUseAdminCert = false
 
+      // query admin cert from the golden ticket server
+      if (!isRequestedAdminCert && networkAccount && utils.isEqualOrNewerVersion('2.4.3', networkAccount.current.activeVersion)) {
+        try {
+          markRequestedAdminCert() // one-time request only
+
+          const goldenTicket = await tryAndFetchGoldenTicket(publicKey, networkAccount, dapp)
+          if (goldenTicket) {
+            setAdminCertificate(goldenTicket)
+            /* prettier-ignore */
+            if (LiberdusFlags.VerboseLogs) console.log(`fetched golden ticket: ${Utils.safeStringify(goldenTicket)}`)
+            nestedCountersInstance.countEvent('liberdus-staking', 'fetched golden ticket from server')
+            console.log(`Admin certificate is set to `, adminCert)
+          } else {
+            /* prettier-ignore */
+            if (LiberdusFlags.VerboseLogs) console.log(`no golden ticket available from server`)
+            nestedCountersInstance.countEvent('liberdus-staking', 'no golden ticket available from server')
+          }
+        } catch (e) {
+          /* prettier-ignore */
+          if (logFlags.error) console.log(`Error fetching golden ticket: ${e.message}`) // non fatal
+        }
+      }
+      console.log('is AdminCert set to ', adminCert)
       //process golden ticket first
       if (adminCert && adminCert.certExp > dapp.shardusGetTime() && adminCert?.goldenTicket === true) {
         /* prettier-ignore */
