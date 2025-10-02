@@ -40,6 +40,15 @@ export const apply = (
     if (network.current.defaultTollUsdStr === undefined || network.current.defaultTollUsdStr === null) {
       network.current.defaultTollUsdStr = '0.2'
     }
+    if (network.current.goldenTicketServerUrl === undefined || network.current.goldenTicketServerUrl === null) {
+      network.current.goldenTicketServerUrl = 'http://localhost:3456/golden/ticket'
+    }
+    if (network.current.messageRetentionDays === undefined || network.current.messageRetentionDays === null) {
+      network.current.messageRetentionDays = 7
+    }
+    if (network.current.messageMaxLength === undefined || network.current.messageMaxLength === null) {
+      network.current.messageMaxLength = 500
+    }
   }
 
   const appReceiptData: AppReceiptData = {

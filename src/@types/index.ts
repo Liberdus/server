@@ -120,12 +120,14 @@ export enum TXTypes {
   claim_reward = 'claim_reward',
   apply_penalty = 'apply_penalty',
 }
+
 export interface BaseLiberdusTx {
   timestamp: number
   type: TXTypes
   sign: Signature
   networkId: string
 }
+
 export namespace Tx {
   export interface ApplyParameters extends BaseLiberdusTx {
     from: string
@@ -731,6 +733,8 @@ export interface NetworkParameters {
   minToll: bigint
   tollNetworkTaxPercent: number
   tollTimeout: number
+  messageMaxLength: number // Maximum length of chat message
+  messageRetentionDays: number // Number of days to retain chat messages
   slashing: {
     enableLeftNetworkEarlySlashing: boolean
     enableSyncTimeoutSlashing: boolean
@@ -747,6 +751,7 @@ export interface NetworkParameters {
   stabilityFactorStr: string
   minTollUsdStr: string
   defaultTollUsdStr: string
+  goldenTicketServerUrl: string
 }
 
 export interface Windows {
@@ -922,4 +927,13 @@ export interface AppReceiptData {
   type: string
   transactionFee: bigint
   additionalInfo?: object // Can add any additional info related to the transaction that are not in the original transaction data
+}
+
+export interface GoldenTicketRequest {
+  publicKey: string
+  nonce: number
+  timestamp: number
+  ip: string
+  port: number
+  sign: Signature
 }

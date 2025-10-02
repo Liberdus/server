@@ -724,6 +724,7 @@ vorpal.command('change config', 'Send a stringified JSON config object to be upd
       from: devKey.publicKey,
       cycle: answers.cycle,
       config: answers.config,
+      networkId,
       timestamp: Date.now(),
       networkId: networkId,
     }
@@ -1809,6 +1810,7 @@ vorpal.command('init', 'sets the user wallet if it exists, else creates it').act
       let res = await axios.get(`${PROTOCOL}://${HOST}/sync-newest-cycle`)
       if (res.data == null || res.data.newestCycle == null) {
         this.log('Error syncing with the network:')
+        networkId = 'fd1b56b08fd1e5035aa19eb631f7f1ad0395175c5d3dfc49411dfa528e6af7c3'
       } else {
         networkId = res.data.newestCycle.networkId
         this.log('Network ID: ', networkId)
@@ -1878,6 +1880,180 @@ vorpal
     callback()
   })
 
+vorpal.command('check staked balances', 'check balances of staked accounts and show which ones need funding').action(async function (args, callback) {
+  const answers = await this.prompt([
+    {
+      type: 'number',
+      name: 'minimumBalance',
+      message: 'Enter minimum balance threshold (LIB): ',
+      default: 100,
+      filter: (value) => parseFloat(value),
+    },
+  ])
+
+  try {
+    const stakedNodeLists = await loadStakedNodeLists()
+    const nodeIds = Object.keys(stakedNodeLists)
+
+    if (nodeIds.length === 0) {
+      this.log('No staked accounts found in stakedNodeLists.json')
+      callback()
+      return
+    }
+
+    this.log(`Checking ${nodeIds.length} staked accounts (minimum balance: ${answers.minimumBalance} LIB)...\n`)
+
+    const lowBalanceAccounts = []
+    const healthyAccounts = []
+
+    for (let i = 0; i < nodeIds.length; i++) {
+      const nodeId = nodeIds[i]
+      const account = stakedNodeLists[nodeId]
+
+      // Convert to Shardus address
+      const address = toShardusAddress(new ethers.Wallet(account.secretKey).address)
+
+      try {
+        const accountData = await getAccountData(address)
+        let balance = 0
+
+        if (accountData && accountData.account && accountData.account.data) {
+          balance = weiToLib(accountData.account.data.balance || 0)
+        }
+
+        const status = balance >= answers.minimumBalance ? '✅' : '⚠️'
+        this.log(`${status} ${address.slice(0, 12)}... - ${balance.toFixed(2)} LIB`)
+
+        if (balance < answers.minimumBalance) {
+          lowBalanceAccounts.push({
+            nodeId,
+            address,
+            balance,
+            needed: answers.minimumBalance - balance,
+          })
+        } else {
+          healthyAccounts.push({ nodeId, address, balance })
+        }
+      } catch (error) {
+        this.log(`❌ ${address.slice(0, 12)}... - Error checking balance`)
+        lowBalanceAccounts.push({
+          nodeId,
+          address,
+          balance: 0,
+          needed: answers.minimumBalance,
+          error: true,
+        })
+      }
+    }
+
+    this.log(`\n📊 Summary:`)
+    this.log(`✅ Healthy accounts: ${healthyAccounts.length}`)
+    this.log(`⚠️  Need funding: ${lowBalanceAccounts.length}`)
+
+    if (lowBalanceAccounts.length > 0) {
+      this.log(`\n💰 Accounts that need funding:`)
+      for (const account of lowBalanceAccounts) {
+        this.log(`   ${account.address.slice(0, 12)}... needs ${account.needed.toFixed(2)} LIB`)
+      }
+    }
+  } catch (error) {
+    this.log(`Error: ${error.message}`)
+  }
+
+  callback()
+})
+
+vorpal.command('show staked accounts', 'display information about staked accounts from stakedNodeLists.json').action(async function (args, callback) {
+  try {
+    const stakedNodeLists = await loadStakedNodeLists()
+    const nodeIds = Object.keys(stakedNodeLists)
+
+    if (nodeIds.length === 0) {
+      this.log('No staked accounts found in stakedNodeLists.json')
+      callback()
+      return
+    }
+
+    this.log(`Found ${nodeIds.length} staked nodes:\n`)
+
+    for (let i = 0; i < nodeIds.length; i++) {
+      const nodeId = nodeIds[i]
+      const account = stakedNodeLists[nodeId]
+
+      // Convert to Shardus address
+      const address = toShardusAddress(new ethers.Wallet(account.secretKey).address)
+
+      this.log(`${i + 1}. Node: ${nodeId.slice(0, 12)}...`)
+      this.log(`   Staking Account: ${address.slice(0, 12)}...`)
+
+      // Try to get account balance
+      try {
+        const accountData = await getAccountData(address)
+        if (accountData && accountData.account && accountData.account.data) {
+          const balance = weiToLib(accountData.account.data.balance || 0)
+          this.log(`   Balance: ${balance} LIB`)
+        } else {
+          this.log(`   Balance: Account not found or no balance`)
+        }
+      } catch (error) {
+        this.log(`   Balance: Error retrieving balance`)
+      }
+
+      this.log('') // Empty line for readability
+    }
+  } catch (error) {
+    this.log(`Error: ${error.message}`)
+  }
+
+  callback()
+})
+
+vorpal.command('fund staked accounts', 'load and fund accounts from stakedNodeLists.json').action(async function (args, callback) {
+  const answers = await this.prompt([
+    {
+      type: 'number',
+      name: 'amount',
+      message: 'Enter number of tokens to fund each staked account: ',
+      default: 1000,
+      filter: (value) => parseFloat(value),
+    },
+    {
+      type: 'confirm',
+      name: 'confirm',
+      message: 'This will fund all accounts from stakedNodeLists.json. Continue?',
+      default: false,
+    },
+  ])
+
+  if (!answers.confirm) {
+    this.log('Operation cancelled')
+    callback()
+    return
+  }
+
+  this.log(`Loading and funding staked accounts with ${answers.amount} tokens each...`)
+
+  try {
+    const result = await loadAndFundStakedAccounts(answers.amount)
+
+    if (result.success) {
+      this.log(`✅ Successfully funded ${result.funded}/${result.total} staked accounts`)
+
+      // Show detailed results
+      for (const accountResult of result.results) {
+        const status = accountResult.success ? '✅' : '❌'
+        this.log(`${status} ${accountResult.address.slice(0, 12)}... - ${accountResult.success ? 'Funded' : 'Failed'}`)
+      }
+    } else {
+      this.log(`❌ Failed to fund staked accounts: ${result.message || result.error}`)
+    }
+  } catch (error) {
+    this.log(`❌ Error: ${error.message}`)
+  }
+
+  callback()
+})
+
 vorpal.command('deposit stake all', 'deposit the stake amount to the joining/active nodes in the network').action(async function (args, callback) {
   const answers = await this.prompt([
     // ask the node type "joining" or "active"
@@ -1902,79 +2078,156 @@ vorpal.command('deposit stake all', 'deposit the stake amount to the joining/act
     return
   }
 
-  // Filter out the unstaked joining nodes by checking the stakeAmount
-  for (const publicKey of [...nodeList]) {
+  // Filter out nodes that already have sufficient stake
+  const nodesToStake = []
+  for (const publicKey of nodeList) {
     const nodeAccount = await getAccountData(publicKey)
-    if (nodeAccount && nodeAccount.account !== null && nodeAccount.account.stakeLock !== BigInt(0)) {
-      nodeList.splice(nodeList.indexOf(publicKey), 1)
+    console.log(`Checking node: ${publicKey} with stakeLock: ${nodeAccount?.account?.stakeLock || 0}, required: ${libToWei(Number(answers.amount))}`)
+
+    // Only include nodes that don't have sufficient stake
+    if (!nodeAccount || !nodeAccount.account || nodeAccount.account.stakeLock < libToWei(Number(answers.amount))) {
+      nodesToStake.push(publicKey)
     }
   }
 
-  // Load the staked nodeLists from the json file ( by a function in this file )
-  const stakedNodeLists = await loadStakedNodeLists()
-  // Check if there are any joining nodes that are not staked list
-  const unstakedJoiningNodes = nodeList.filter((node) => !Object.keys(stakedNodeLists).includes(node))
-  if (unstakedJoiningNodes.length === 0) {
-    this.log('All nodes are staked')
+  if (nodesToStake.length === 0) {
+    this.log('All nodes already have sufficient stake')
     callback()
     return
   }
 
-  const accounts = createAccounts(unstakedJoiningNodes.length)
-  // send create tx to create fund accounts for staking
-  for (let i = 0; i < accounts.length; i++) {
-    const createTx = {
-      type: 'create',
-      from: accounts[i].address,
-      to: accounts[i].address,
-      amount: libToWei(2000), // extra 2000 tokens
-      timestamp: Date.now(),
-    }
-    signTransaction(createTx, accounts[i].keys)
-    let res = await injectTx(createTx)
-    this.log(res)
-    // let success = false
-    // while (success === false) {
-    //   await _sleep(ONE_SECOND * 10)
-    //   const createdAccount = await getAccountData(accounts[i].address)
-    //   console.log(`createdAccount`, createdAccount)
-    //   if (createdAccount && createdAccount.account !== null) {
-    //     success = true
-    //   }
-    // }
+  // Load the staked nodeLists from the json file
+  const stakedNodeLists = await loadStakedNodeLists()
 
-    await _sleep(ONE_SECOND * 1)
+  // Separate nodes into those with existing accounts and those needing new accounts
+  const nodesWithExistingAccounts = nodesToStake.filter((node) => Object.keys(stakedNodeLists).includes(node))
+  const nodesNeedingNewAccounts = nodesToStake.filter((node) => !Object.keys(stakedNodeLists).includes(node))
+
+  this.log(`Found ${nodesToStake.length} nodes to stake:`)
+  this.log(`- ${nodesWithExistingAccounts.length} nodes with existing accounts`)
+  this.log(`- ${nodesNeedingNewAccounts.length} nodes needing new accounts`)
+
+  // Create new accounts only for nodes that don't have existing accounts
+  let newAccounts = []
+  if (nodesNeedingNewAccounts.length > 0) {
+    newAccounts = createAccounts(nodesNeedingNewAccounts.length)
+
+    // Fund the new accounts
+    this.log('Creating and funding new accounts...')
+    for (let i = 0; i < newAccounts.length; i++) {
+      const createTx = {
+        type: 'create',
+        from: newAccounts[i].address,
+        to: newAccounts[i].address,
+        amount: libToWei(2000), // 2000 tokens
+        timestamp: Date.now(),
+      }
+      signTransaction(createTx, newAccounts[i].keys)
+      let res = await injectTx(createTx)
+      this.log(`New account ${i + 1}/${newAccounts.length}: ${res?.result?.success ? 'SUCCESS' : 'FAILED'}`)
+      await _sleep(ONE_SECOND * 1)
+    }
+
+    await _sleep(5 * ONE_SECOND) // Wait for account creation to propagate
   }
 
-  await _sleep(10 * ONE_SECOND)
+  // Fund all existing accounts with 2000 tokens
+  if (nodesWithExistingAccounts.length > 0) {
+    this.log('Funding existing accounts...')
+    for (let i = 0; i < nodesWithExistingAccounts.length; i++) {
+      const nodeId = nodesWithExistingAccounts[i]
+      const existingAccount = stakedNodeLists[nodeId]
 
-  // send deposit_stake to each unstaked joining node using the fund accounts
-  for (let i = 0; i < unstakedJoiningNodes.length; i++) {
-    const depositStateTx = {
-      type: 'deposit_stake',
-      nominator: accounts[i].address,
-      nominee: unstakedJoiningNodes[i],
-      stake: libToWei(parseFloat(answers.amount)),
-      timestamp: Date.now(),
+      // Convert existing account to proper format
+      const accountInfo = {
+        address: toShardusAddress(new ethers.Wallet(existingAccount.secretKey).address),
+        keys: existingAccount,
+      }
+
+      const createTx = {
+        type: 'create',
+        from: accountInfo.address,
+        to: accountInfo.address,
+        amount: libToWei(2000), // 2000 tokens
+        timestamp: Date.now(),
+      }
+
+      signTransaction(createTx, accountInfo.keys)
+      const res = await injectTx(createTx)
+      this.log(`Existing account ${i + 1}/${nodesWithExistingAccounts.length}: ${res?.result?.success ? 'SUCCESS' : 'FAILED'}`)
+      await _sleep(ONE_SECOND * 1)
     }
-    signTransaction(depositStateTx, accounts[i].keys)
-    const res = await injectTx(depositStateTx)
-    this.log(res)
-    if (res.result.success) {
-      stakedNodeLists[unstakedJoiningNodes[i]] = accounts[i].keys
-    }
-    await _sleep(ONE_SECOND * 1)
+
+    await _sleep(5 * ONE_SECOND) // Wait for funding to propagate
   }
 
-  // Save the staked nodeLists to the json file
-  fs.writeFile('./stakedNodeLists.json', JSON.stringify(stakedNodeLists), 'utf8', (err) => {
-    if (err) {
-      console.error(err)
-      return
+  // Process nodes with existing accounts first
+  if (nodesWithExistingAccounts.length > 0) {
+    this.log('Staking nodes with existing accounts...')
+    for (let i = 0; i < nodesWithExistingAccounts.length; i++) {
+      const nodeId = nodesWithExistingAccounts[i]
+      const existingAccount = stakedNodeLists[nodeId]
+
+      // Convert existing account to proper format
+      const accountInfo = {
+        address: toShardusAddress(new ethers.Wallet(existingAccount.secretKey).address),
+        keys: existingAccount,
+      }
+
+      const depositStateTx = {
+        type: 'deposit_stake',
+        nominator: accountInfo.address,
+        nominee: nodeId,
+        stake: libToWei(parseFloat(answers.amount)),
+        timestamp: Date.now(),
+      }
+
+      signTransaction(depositStateTx, accountInfo.keys)
+      const res = await injectTx(depositStateTx)
+      this.log(`Existing account ${i + 1}/${nodesWithExistingAccounts.length} (${nodeId.slice(0, 12)}...): ${res?.result?.success ? 'SUCCESS' : 'FAILED'}`)
+      await _sleep(ONE_SECOND * 1)
     }
-    console.log('stakedNodeLists saved')
-    callback()
-  })
+  }
+
+  // Process nodes needing new accounts
+  if (nodesNeedingNewAccounts.length > 0) {
+    this.log('Staking nodes with new accounts...')
+    for (let i = 0; i < nodesNeedingNewAccounts.length; i++) {
+      const nodeId = nodesNeedingNewAccounts[i]
+      const account = newAccounts[i]
+
+      const depositStateTx = {
+        type: 'deposit_stake',
+        nominator: account.address,
+        nominee: nodeId,
+        stake: libToWei(parseFloat(answers.amount)),
+        timestamp: Date.now(),
+      }
+
+      signTransaction(depositStateTx, account.keys)
+      const res = await injectTx(depositStateTx)
+      console.log('Stake response:', res)
+      this.log(`New account ${i + 1}/${nodesNeedingNewAccounts.length} (${nodeId.slice(0, 12)}...): ${res?.result?.success ? 'SUCCESS' : 'FAILED'}`)
+
+      // Add successful new stakes to the staked node lists
+      if (res?.result?.success) {
+        stakedNodeLists[nodeId] = account.keys
+      }
+      await _sleep(ONE_SECOND * 1)
+    }
+
+    // Save the updated staked nodeLists to the json file
+    fs.writeFile('./stakedNodeLists.json', JSON.stringify(stakedNodeLists), 'utf8', (err) => {
+      if (err) {
+        console.error(err)
+        return
+      }
+      console.log('stakedNodeLists updated and saved')
+    })
+  }
+
+  this.log('\n✅ Staking process completed!')
+  callback()
 })
 
 vorpal.command('admin certificate', 'put admin certificate').action(async function (args, callback) {
@@ -2077,6 +2330,71 @@ const loadStakedNodeLists = async () => {
     saveEntries({}, stakedNodeListsFile)
     console.log(`Created stakedNodeLists file '${stakedNodeListsFile}'.`)
     return {}
+  }
+}
+
+// Function to load and fund accounts from staked node lists
+const loadAndFundStakedAccounts = async (fundAmount) => {
+  try {
+    const stakedNodeLists = await loadStakedNodeLists()
+    const stakedAccounts = Object.values(stakedNodeLists)
+
+    if (stakedAccounts.length === 0) {
+      console.log('No staked accounts found in stakedNodeLists.json')
+      return { success: false, message: 'No staked accounts found' }
+    }
+
+    console.log(`Found ${stakedAccounts.length} staked accounts. Funding each with ${fundAmount} tokens...`)
+
+    const results = []
+    for (let i = 0; i < stakedAccounts.length; i++) {
+      const account = stakedAccounts[i]
+
+      // Convert the account keys to the expected format
+      const accountInfo = {
+        address: toShardusAddress(new ethers.Wallet(account.secretKey).address),
+        keys: account,
+      }
+
+      console.log(`Funding account ${i + 1}/${stakedAccounts.length}: ${accountInfo.address}`)
+
+      // Create funding transaction
+      const createTx = {
+        type: 'create',
+        from: accountInfo.address,
+        to: accountInfo.address,
+        amount: libToWei(fundAmount),
+        timestamp: Date.now(),
+      }
+
+      // Sign and send transaction
+      signTransaction(createTx, accountInfo.keys)
+      const res = await injectTx(createTx)
+
+      results.push({
+        address: accountInfo.address,
+        result: res,
+        success: res && res.result && res.result.success,
+      })
+
+      console.log(`Account ${accountInfo.address}: ${res && res.result && res.result.success ? 'SUCCESS' : 'FAILED'}`)
+
+      // Small delay between transactions
+      await _sleep(ONE_SECOND * 1)
+    }
+
+    const successCount = results.filter((r) => r.success).length
+    console.log(`\nFunding complete: ${successCount}/${stakedAccounts.length} accounts funded successfully`)
+
+    return {
+      success: true,
+      total: stakedAccounts.length,
+      funded: successCount,
+      results: results,
+    }
+  } catch (error) {
+    console.error('Error loading and funding staked accounts:', error)
+    return { success: false, error: error.message }
   }
 }
 // Custom JSON stringify replacer for BigInt

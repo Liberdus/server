@@ -120,7 +120,7 @@ export const validate = (
     if (shouldSendMinToll) {
       let tollInWei = to.data.toll
       if (to.data.tollUnit === TollUnit.usd) {
-        tollInWei = utils.usdToWei(to.data.toll, network)
+        tollInWei = utils.usdToWei(to.data.toll, network) // legit use cos' we don't store toll in string format
       }
       if (tx.amount < tollInWei) {
         response.reason = `You must send at least ${utils.weiToLib(tollInWei)} LIB to this user.`
@@ -131,7 +131,9 @@ export const validate = (
   if (network) {
     if (utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount) > tx.fee) {
       response.success = false
-      response.reason = `The network transaction fee (${utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)}) is greater than the transaction fee provided (${tx.fee}).`
+      response.reason = `The network transaction fee (${utils.getTransactionFeeWei(
+        AccountsStorage.cachedNetworkAccount,
+      )}) is greater than the transaction fee provided (${tx.fee}).`
       return response
     }
   }

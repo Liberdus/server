@@ -15,7 +15,7 @@ import {
   TXTypes,
 } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
-import { _sleep, generateTxId, scaleByStabilityFactor, getStakeRequiredWei } from '../../utils'
+import { isEqualOrNewerVersion, _sleep, generateTxId, scaleByStabilityFactor, getStakeRequiredWei } from '../../utils'
 import * as crypto from '../../crypto'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 
@@ -268,6 +268,12 @@ export const apply = (
       b: nodeAccount.rewardStartTime,
       e: nodeAccount.rewardEndTime,
     })
+  }
+  if (isEqualOrNewerVersion('2.4.3', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
+    // prune history to last newest 100 entries
+    if (nodeAccount.nodeAccountStats.penaltyHistory.length > 100) {
+      nodeAccount.nodeAccountStats.penaltyHistory.splice(0, nodeAccount.nodeAccountStats.penaltyHistory.length - 100)
+    }
   }
   nodeAccount.timestamp = txTimestamp
   nodeAccount.nodeAccountStats.lastPenaltyTime = eventTime
