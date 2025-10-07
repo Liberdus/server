@@ -66,8 +66,8 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   minToll: utils.libToWei(1),
   tollNetworkTaxPercent: 1, // 1%
   tollTimeout: 7 * ONE_DAY,
-  minVersion: '2.4.2',
-  activeVersion: '2.4.2',
+  minVersion: '2.4.3',
+  activeVersion: '2.4.3',
   latestVersion: '2.4.3',
   archiver: {
     minVersion: '3.5.6',
