@@ -1,8 +1,7 @@
 import { DevSecurityLevel, nestedCountersInstance, Shardus, shardusFactory, ShardusTypes } from '@shardeum-foundation/core'
 import account, { deserializeAccounts, serializeAccounts } from './accounts'
 import { P2P, Utils } from '@shardeum-foundation/lib-types'
-import { getFinalArchiverList, setupArchiverDiscovery } from '@shardus/archiver-discovery'
-import { Archiver } from '@shardus/archiver-discovery/dist/src/types'
+import { getFinalArchiverList, setupArchiverDiscovery } from '@shardeum-foundation/lib-archiver-discovery'
 import axios from 'axios'
 import * as crypto from './crypto'
 import * as configs from './config'
@@ -38,7 +37,7 @@ import genesis from './config/genesis.json'
 import rfdc = require('rfdc')
 import { safeStringify } from '@shardeum-foundation/lib-types/build/src/utils/functions/stringify'
 import create from './accounts'
-import { OpaqueTransaction } from '@shardeum-foundation/core/dist/shardus/shardus-types'
+import { Archiver, OpaqueTransaction } from '@shardeum-foundation/core/dist/shardus/shardus-types'
 
 const { version } = require('./../package.json')
 
@@ -2156,7 +2155,7 @@ async function fetchNetworkAccountFromArchiver(): Promise<LiberdusTypes.NetworkA
   archiverList = utils.getRandom(archiverList, archiverList.length >= 3 ? 3 : archiverList.length)
   const values: {
     hash: string
-    archiver: Archiver
+    archiver: Omit<P2P.ArchiversTypes.JoinedArchiver, 'curvePk'>
   }[] = []
   for (const archiver of archiverList) {
     const archiverUrl = `http://${archiver.ip}:${archiver.port}/get-network-account?hash=true`
