@@ -103,14 +103,14 @@ export const apply = (
   const when = txTimestamp + config.ONE_SECOND * 10
   const value = {
     type: TXTypes.apply_change_network_param,
-    networkId: config.networkAccount,
+    networkId: AccountsStorage.cachedNetworkAccount.networkId,
     timestamp: when,
     from: tx.from,
     change: { cycle: changeOnCycle, change: {}, appData: Utils.safeJsonParse(tx.config) },
   } as Tx.ApplyChangeNetworkParam
 
   const addressHash = wrappedStates[config.networkAccount].stateId
-  
+
   // Calculate the hash of the network account after the change has been applied, so we can pass afterStateHash to global message
   const network = wrappedStates[config.networkAccount].data
   // Create a deep copy of the network account
