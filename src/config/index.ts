@@ -439,9 +439,11 @@ config = merge(config, {
       uniqueRemovedIds: true, //1.3.1 migration. enabled by default in 1.4.0
       useLruCacheForSocketMgmt: true,
       lruCacheSizeForSocketMgmt: 500,
+      payloadSizeLimitInBytes: 2 * 1024 * 1024, // 2 MB is the default limit for the shardus net payload size
+      headerSizeLimitInBytes: 2 * 1024, // 2 KB is the default limit for the shardus net header size
       uniqueRemovedIdsUpdate: true, // To enable on 1.4.1
       instantForwardReceipts: true, // To enable on 1.5.3
-      validateArchiverAppData: false, // To enable this on new reset network
+      validateArchiverAppData: true, // To enable this on new reset network
 
       // 1.5.5 migration
       //Notes:
@@ -482,6 +484,15 @@ config = merge(config, {
       //1.11.0
       rotationEdgeToAvoid: 0, //we are moving away from this feature in current testing.  There seem to be errors related to it
       allowActivePerCycle: 1,
+
+      syncFloorEnabled: true, //ITN initially false for rotation safety
+      syncingDesiredMinCount: 5, //ITN = 40
+
+      activeRecoveryEnabled: true, //ITN initially false for rotation safety
+      allowActivePerCycleRecover: 4,
+
+      flexibleRotationEnabled: true, //ITN 1.16.1
+      flexibleRotationDelta: 1,
 
       maxStandbyCount: 30000, //max allowed standby nodes count
       enableMaxStandbyCount: true,
@@ -527,7 +538,7 @@ config = merge(config, {
       // Example: if you a have a limit of 160 and we expect TXs to take 4 sec in consensus after a 6 second wait
       // then we look at 160 / 10 to see that 10tps sustained or more will give us a 1.0 load.
       // note that executeQueueLength value of 0.6 means we start rejecting TXs at 60% of the limit
-      desiredTxTime: 120, // this is the average age of a TX in the queue.  we will only detect this if there are at least 20 txes in the queue
+      desiredTxTime: 10000000, // this is the average age of a TX in the queue.  we will only detect this if there are at least 20 txes in the queue
       highThreshold: 0.5, // This is mainly used to detect if any of our three parameters above are getting too high
       // if any of the three external load factors are above highload we will raise a high load
       // event and vote to the network if we are in the voter set for that cycle
@@ -556,7 +567,7 @@ config = merge(config, {
       removeStuckTxsFromQueue: true,
       removeStuckTxsFromQueue3: true,
 
-      removeStuckChallengedTXs: true,
+      removeStuckChallengedTXs: false,
 
       stuckTxMoveTime: 3600000,
 
@@ -592,6 +603,7 @@ config = merge(
       debug: {
         startInFatalsLogMode: false, // true setting good for big aws test with nodes joining under stress.
         startInErrorLogMode: false,
+        verboseNestedCounters: false,
         robustQueryDebug: false,
         fakeNetworkDelay: 0,
         disableSnapshots: true, // do not check in if set to false
@@ -626,6 +638,8 @@ config = merge(
         enableScopedProfiling: false,
         minMultiSigRequiredForEndpoints: 1,
         minMultiSigRequiredForGlobalTxs: 1,
+        minSigRequiredForArchiverWhitelist: 1,
+        enableDebugFlags: false,
       },
     },
   },
