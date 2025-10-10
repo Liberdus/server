@@ -66,9 +66,9 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   minToll: utils.libToWei(1),
   tollNetworkTaxPercent: 1, // 1%
   tollTimeout: 7 * ONE_DAY,
-  minVersion: '2.4.3',
-  activeVersion: '2.4.3',
-  latestVersion: '2.4.3',
+  minVersion: '2.4.4',
+  activeVersion: '2.4.4',
+  latestVersion: '2.4.4',
   archiver: {
     minVersion: '3.7.8',
     activeVersion: '3.7.8',
@@ -287,7 +287,7 @@ export const LiberdusFlags: LiberdusFlags = {
     updateChatSenderTimestamp: true, // turn on by 2.3.8
     createAppReceiptUpdate: true, // turn on by 2.4.1
     addNewNetworkParameters: true, // turn on by 2.4.1
-    tollTaxFeeinAppReceipt: false, // turn on by 2.4.3
+    tollTaxFeeinAppReceipt: true, // turn on by 2.4.4
   },
 }
 
@@ -439,7 +439,7 @@ config = merge(config, {
       uniqueRemovedIds: true, //1.3.1 migration. enabled by default in 1.4.0
       useLruCacheForSocketMgmt: true,
       lruCacheSizeForSocketMgmt: 500,
-      payloadSizeLimitInBytes: 2 * 1024 * 1024, // 2 MB is the default limit for the shardus net payload size
+      payloadSizeLimitInBytes: 10 * 1024 * 1024, // 2 MB is the default limit for the shardus net payload size
       headerSizeLimitInBytes: 2 * 1024, // 2 KB is the default limit for the shardus net header size
       uniqueRemovedIdsUpdate: true, // To enable on 1.4.1
       instantForwardReceipts: true, // To enable on 1.5.3
@@ -558,7 +558,7 @@ config = merge(config, {
       executeInOneShard: true,
     },
     stateManager: {
-      accountBucketSize: 200, // todo: we need to re-test with higher numbers after some recent improvements
+      accountBucketSize: 50, // todo: we need to re-test with higher numbers after some recent improvements
       includeBeforeStatesInReceipts: true, // 1.5.3 migration
       useNewPOQ: false, // 1.10.0 enabled required by archive server updates
 
