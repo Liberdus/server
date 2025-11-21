@@ -303,6 +303,10 @@ export const apply = (
       operatorAccount.operatorAccountInfo.operatorStats.history.splice(0, operatorAccount.operatorAccountInfo.operatorStats.history.length - 100)
     }
   }
+  // completely remove history from existing accounts when flag is enabled
+  if (LiberdusFlags.versionFlags.removeOperatorStatsHistory) {
+    delete operatorAccount.operatorAccountInfo.operatorStats.history
+  }
   operatorAccount.operatorAccountInfo.operatorStats.totalNodeReward = SafeBigIntMath.add(
     operatorAccount.operatorAccountInfo.operatorStats.totalNodeReward,
     rewardAmountWei,
