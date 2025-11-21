@@ -246,8 +246,9 @@ interface LiberdusFlags {
     stakingAppReceiptUpdate: boolean
     updateChatSenderTimestamp: boolean
     tollTaxFeeinAppReceipt: boolean
-    createAppReceiptUpdate: boolean
+    createTxAppReceiptUpdate: boolean
     addNewNetworkParameters: boolean
+    removeOperatorStatsHistory: boolean
   }
 }
 
@@ -285,8 +286,9 @@ export const LiberdusFlags: LiberdusFlags = {
     enforceTxTimestamp: true, // turn on by 2.3.7
     stakingAppReceiptUpdate: true, // turn on by 2.3.7
     updateChatSenderTimestamp: true, // turn on by 2.3.8
-    createAppReceiptUpdate: true, // turn on by 2.4.1
+    createTxAppReceiptUpdate: true, // turn on by 2.4.1
     addNewNetworkParameters: true, // turn on by 2.4.1
+    removeOperatorStatsHistory: false, // turn on by 2.4.5
     tollTaxFeeinAppReceipt: true, // turn on by 2.4.4
   },
 }

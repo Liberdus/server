@@ -261,8 +261,8 @@ export const apply = (
     timestamp: eventTime,
   })
   if (isEqualOrNewerVersion('2.4.3', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
-    // prune history to last newest 100 entries
-    if (nodeAccount.nodeAccountStats.penaltyHistory.length > 100) {
+    // prune history to last newest 10 entries
+    if (nodeAccount.nodeAccountStats.penaltyHistory.length > 10) {
       nodeAccount.nodeAccountStats.penaltyHistory.splice(0, nodeAccount.nodeAccountStats.penaltyHistory.length - 100)
     }
   }
