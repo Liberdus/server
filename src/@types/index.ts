@@ -531,8 +531,8 @@ export interface OperatorStats {
   totalNodeReward: bigint
   totalNodePenalty: bigint
   totalNodeTime: number
-  //push begin and end times when rewarded
-  history: { b: number; e: number }[]
+  //push begin and end times when rewarded (deprecated - removed in 2.4.5)
+  history?: { b: number; e: number }[]
 
   //update then unstaked
   totalUnstakeReward: bigint

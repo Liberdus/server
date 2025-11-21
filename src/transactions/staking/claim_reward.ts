@@ -287,17 +287,19 @@ export const apply = (
   })
 
   // update the operator historical stats
-  operatorAccount.operatorAccountInfo.operatorStats.history.push({
-    b: nodeAccount.rewardStartTime,
-    e: nodeAccount.rewardEndTime,
-  })
+  if (!LiberdusFlags.versionFlags.removeOperatorStatsHistory) {
+    operatorAccount.operatorAccountInfo.operatorStats.history.push({
+      b: nodeAccount.rewardStartTime,
+      e: nodeAccount.rewardEndTime,
+    })
+  }
   if (isEqualOrNewerVersion('2.4.3', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
-    // prune history to last newest 100 entries
-    if (nodeAccount.nodeAccountStats.history.length > 100) {
-      nodeAccount.nodeAccountStats.history.splice(0, nodeAccount.nodeAccountStats.history.length - 100)
+    // prune history to last newest 10 entries
+    if (nodeAccount.nodeAccountStats.history.length > 10) {
+      nodeAccount.nodeAccountStats.history.splice(0, nodeAccount.nodeAccountStats.history.length - 10)
     }
-    // prune history to last 100 entries
-    if (operatorAccount.operatorAccountInfo.operatorStats.history.length > 100) {
+    // prune history to last 10 entries
+    if (!LiberdusFlags.versionFlags.removeOperatorStatsHistory && operatorAccount.operatorAccountInfo.operatorStats.history.length > 100) {
       operatorAccount.operatorAccountInfo.operatorStats.history.splice(0, operatorAccount.operatorAccountInfo.operatorStats.history.length - 100)
     }
   }
