@@ -289,7 +289,7 @@ export const LiberdusFlags: LiberdusFlags = {
     tollTaxFeeinAppReceipt: true, // turn on by 2.4.4
     createTxAppReceiptUpdate: true, // turn on by 2.4.1
     addNewNetworkParameters: true, // turn on by 2.4.1
-    removeOperatorStatsHistory: false, // turn on by 2.4.5
+    removeOperatorStatsHistory: true, // turn on by 2.4.5
   },
 }
 
