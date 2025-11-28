@@ -848,19 +848,22 @@ const shardusSetup = (): void => {
       const preCrackableTxTypes = [
         TXTypes.transfer,
         TXTypes.message,
-        TXTypes.deposit_stake,
-        TXTypes.withdraw_stake,
         TXTypes.read,
         TXTypes.toll,
         TXTypes.update_toll_required,
         TXTypes.reclaim_toll,
         TXTypes.update_chat_toll,
+        TXTypes.deposit_stake,
+        TXTypes.withdraw_stake,
+        TXTypes.set_cert_time,
+        TXTypes.init_reward,
+        TXTypes.claim_reward,
+        TXTypes.apply_penalty,
       ]
       if (preCrackableTxTypes.includes(tx.type) === false) {
         return { status: true, reason: 'Tx PreCrack Skipped' }
       }
       try {
-        const txTimestamp = utils.getInjectedOrGeneratedTimestamp({ tx: tx }, dapp)
         const wrappedStates: LiberdusTypes.WrappedStates = {}
         const promises = []
         let sourceKeyShardusAddr = null
@@ -869,9 +872,16 @@ const shardusSetup = (): void => {
         let from = tx.from
         let to = tx.to
 
-        if (tx.type === TXTypes.deposit_stake || tx.type === TXTypes.withdraw_stake) {
+        if (
+          tx.type === TXTypes.deposit_stake ||
+          tx.type === TXTypes.withdraw_stake ||
+          tx.type === TXTypes.set_cert_time ||
+          tx.type === TXTypes.init_reward ||
+          tx.type === TXTypes.claim_reward ||
+          tx.type === TXTypes.apply_penalty
+        ) {
           from = tx.nominator
-          to = tx.nominee
+          to = tx.type === TXTypes.apply_penalty ? (tx as LiberdusTypes.Tx.PenaltyTX).reportedNodePublickKey : tx.nominee
         }
 
         if (from) {
@@ -882,7 +892,7 @@ const shardusSetup = (): void => {
                 accountId: queuedWrappedState.accountId,
                 stateId: queuedWrappedState.stateId,
                 data: queuedWrappedState.data as LiberdusTypes.Accounts,
-                timestamp: txTimestamp,
+                timestamp: queuedWrappedState.timestamp,
               }
             }),
           )
@@ -895,7 +905,7 @@ const shardusSetup = (): void => {
                 accountId: queuedWrappedState.accountId,
                 stateId: queuedWrappedState.stateId,
                 data: queuedWrappedState.data as LiberdusTypes.Accounts,
-                timestamp: txTimestamp,
+                timestamp: queuedWrappedState.timestamp,
               }
             }),
           )
@@ -915,24 +925,21 @@ const shardusSetup = (): void => {
                 accountId: queuedWrappedState.accountId,
                 stateId: queuedWrappedState.stateId,
                 data: queuedWrappedState.data as LiberdusTypes.Accounts,
-                timestamp: txTimestamp,
+                timestamp: queuedWrappedState.timestamp,
               }
             }),
           )
         }
 
-        promises.push(
-          dapp.getLocalOrRemoteAccount(networkAccount).then((queuedWrappedState) => {
-            wrappedStates[networkAccount] = {
-              accountId: queuedWrappedState.accountId,
-              stateId: queuedWrappedState.stateId,
-              data: queuedWrappedState.data as LiberdusTypes.Accounts,
-              timestamp: txTimestamp,
-            }
-          }),
-        )
-
         await Promise.allSettled(promises)
+
+        // For the txs that may require the network account from the wrappedStates
+        wrappedStates[networkAccount] = {
+          accountId: networkAccount,
+          stateId: AccountsStorage?.cachedNetworkAccount?.hash,
+          data: AccountsStorage?.cachedNetworkAccount as LiberdusTypes.Accounts,
+          timestamp: AccountsStorage?.cachedNetworkAccount?.timestamp,
+        }
 
         if (
           AccountsStorage?.cachedNetworkAccount &&

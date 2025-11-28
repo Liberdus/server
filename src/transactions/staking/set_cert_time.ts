@@ -4,8 +4,6 @@ import { getAccountWithRetry } from './query_certificate'
 import { AccountQueryResponse, TXTypes, WrappedStates, InjectTxResponse, NodeAccount, UserAccount, Tx, TransactionKeys, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { getRandom, scaleByStabilityFactor, InjectTxToConsensor, getStakeRequiredWei } from '../../utils'
-import { Utils } from '@shardeum-foundation/lib-types'
-import { logFlags } from '@shardeum-foundation/core/dist/logger'
 import { verifyObj } from '@shardeum-foundation/lib-crypto-utils'
 import * as crypto from '../../crypto'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
@@ -30,7 +28,26 @@ export async function injectSetCertTimeTx(shardus: Shardus, publicKey: string, a
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`Nominator for this node account ${publicKey} is not found!`)
     return { success: false, reason: `Nominator for this node account ${publicKey} is not found!` }
   }
-  // TODO: I think we can add another validation here that checks that nominator stakeAmount has enough for minStakeRequired in the network
+
+  // Query the nominator account and see if it has enough committed stake
+  const nominatorAccountQueryResponse = (await getAccountWithRetry(nominator, activeNodes)) as AccountQueryResponse
+  if (!nominatorAccountQueryResponse.success) return nominatorAccountQueryResponse
+
+  const userAccountQueryResponse = nominatorAccountQueryResponse.account as UserAccount
+  if (!userAccountQueryResponse.operatorAccountInfo) {
+    /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`Operator account info is not found in the nominator account ${nominator}!`)
+    return { success: false, reason: `Operator account info is not found in the nominator account ${nominator}!` }
+  }
+
+  const committedStake = userAccountQueryResponse.operatorAccountInfo.stake
+  const minStakeRequired = getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)
+
+  if (LiberdusFlags.VerboseLogs)
+    console.log('operatorStake vs minStakeRequired', committedStake, minStakeRequired, 'isStakeEnough', committedStake < minStakeRequired)
+  if (committedStake < minStakeRequired) {
+    /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log(`Nominator ${nominator} has not enough committed stake`)
+    return { success: false, reason: `Nominator ${nominator} has not enough committed stake` }
+  }
 
   // Inject the setCertTime Tx
   const randomConsensusNode: ShardusTypes.ValidatorNodeDetails = getRandom(activeNodes, 1)[0]
@@ -82,8 +99,6 @@ export const validate_fields = (tx: Tx.SetCertTime, response: ShardusTypes.Incom
 }
 
 export const validate = (tx: Tx.SetCertTime, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
-  let committedStake = BigInt(0)
-
   const operatorAccount = wrappedStates[tx.nominator].data as UserAccount
   const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
   /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateSetCertTime', tx, operatorAccount)
@@ -91,13 +106,13 @@ export const validate = (tx: Tx.SetCertTime, wrappedStates: WrappedStates, respo
     response.reason = `Found no wrapped state for operator account ${tx.nominator}`
     return response
   }
-  if (operatorAccount.operatorAccountInfo == null) {
-    /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'validateSetCertTime' + ' Operator account info is null')
-    response.reason = `Operator account info is null: ${Utils.safeStringify(operatorAccount)}`
+  if (operatorAccount.type !== 'UserAccount') {
+    response.reason = `Nominator account ${tx.nominator} is not UserAccount!`
     return response
   }
-  if (operatorAccount.type !== 'UserAccount') {
-    response.reason = `Operator account type is not UserAccount: ${Utils.safeStringify(operatorAccount)}`
+  if (operatorAccount.operatorAccountInfo == null) {
+    /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', 'validateSetCertTime' + ' Operator account info is null')
+    response.reason = `Operator account info is null for operator account ${tx.nominator}`
     return response
   }
 
@@ -106,7 +121,7 @@ export const validate = (tx: Tx.SetCertTime, wrappedStates: WrappedStates, respo
     return response
   }
   if (nodeAccount.type !== 'NodeAccount') {
-    response.reason = `Node account type is not NodeAccount: ${Utils.safeStringify(nodeAccount)}`
+    response.reason = `Nominee account ${tx.nominee} is not NodeAccount!`
     return response
   }
 
@@ -119,13 +134,13 @@ export const validate = (tx: Tx.SetCertTime, wrappedStates: WrappedStates, respo
     return response
   }
 
-  committedStake = operatorAccount.operatorAccountInfo.stake
+  const committedStake = operatorAccount.operatorAccountInfo.stake
   const minStakeRequired = getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)
 
   if (LiberdusFlags.VerboseLogs)
     console.log('validate operator stake', committedStake, minStakeRequired, ' committedStake < minStakeRequired : ', committedStake < minStakeRequired)
   if (committedStake < minStakeRequired) {
-    response.reason = `Operator account stake is too low: ${Utils.safeStringify(operatorAccount)}`
+    response.reason = `Operator account stake is too low: ${committedStake} < ${minStakeRequired}`
     return response
   }
   response.success = true
