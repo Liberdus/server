@@ -1,13 +1,14 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import create from '../accounts'
+import * as utils from '../utils'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.Verify, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.from !== 'string') {
-    response.reason = 'tx "from" field must be a string.'
+  if (utils.isValidAddress(tx.from) === false) {
+    response.reason = 'tx "from" is not a valid address.'
     return response
   }
   if (typeof tx.code !== 'string') {

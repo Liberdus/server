@@ -7,8 +7,8 @@ import * as crypto from '../crypto'
 import * as AccountsStorage from '../storage/accountStorage'
 
 export const validate_fields = (tx: Tx.ChangeConfig, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
-  if (typeof tx.from !== 'string') {
-    response.reason = 'tx "from" field must be a string'
+  if (utils.isValidAddress(tx.from) === false) {
+    response.reason = 'tx "from" is not a valid address.'
     return response
   }
   if (typeof tx.cycle !== 'number') {

@@ -3,7 +3,7 @@ import config, { ONE_SECOND, LiberdusFlags } from '../../config'
 import { getAccountWithRetry } from './query_certificate'
 import { AccountQueryResponse, TXTypes, WrappedStates, InjectTxResponse, NodeAccount, UserAccount, Tx, TransactionKeys, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
-import { getRandom, scaleByStabilityFactor, InjectTxToConsensor, getStakeRequiredWei } from '../../utils'
+import { getRandom, scaleByStabilityFactor, InjectTxToConsensor, getStakeRequiredWei, isValidAddress } from '../../utils'
 import { verifyObj } from '@shardeum-foundation/lib-crypto-utils'
 import * as crypto from '../../crypto'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
@@ -66,11 +66,11 @@ export async function injectSetCertTimeTx(shardus: Shardus, publicKey: string, a
 }
 
 export const validate_fields = (tx: Tx.SetCertTime, response: ShardusTypes.IncomingTransactionResult) => {
-  if (!tx.nominee || tx.nominee.length !== 64) {
+  if (isValidAddress(tx.nominee) === false) {
     response.reason = 'Invalid nominee address'
     return response
   }
-  if (!tx.nominator || tx.nominator.length !== 64) {
+  if (isValidAddress(tx.nominator) === false) {
     response.reason = 'Invalid nominator address'
     return response
   }

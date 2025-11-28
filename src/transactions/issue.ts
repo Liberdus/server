@@ -3,16 +3,17 @@ import _ from 'lodash'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import create from '../accounts'
 import * as config from '../config'
+import * as utils from '../utils'
 import { NodeAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
 import { Utils } from '@shardeum-foundation/lib-types'
 
 export const validate_fields = (tx: Tx.Issue, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.nodeId !== 'string') {
-    response.reason = 'tx "nodeId" field must be a string.'
+  if (utils.isValidAddress(tx.nodeId) === false) {
+    response.reason = 'tx "nodeId" is not a valid address.'
     return response
   }
-  if (typeof tx.from !== 'string') {
-    response.reason = 'tx "from field must be a string.'
+  if (utils.isValidAddress(tx.from) === false) {
+    response.reason = 'tx "from" is not a valid address.'
     return response
   }
   if (typeof tx.issue !== 'string') {

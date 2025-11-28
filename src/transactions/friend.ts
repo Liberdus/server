@@ -8,12 +8,12 @@ import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 
 export const validate_fields = (tx: Tx.Friend, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.from !== 'string') {
-    response.reason = 'tx "from" field must be a string.'
+  if (utils.isValidAddress(tx.from) === false) {
+    response.reason = 'tx "from" is not a valid address.'
     return response
   }
-  if (typeof tx.to !== 'string') {
-    response.reason = 'tx "to" field must be a string.'
+  if (utils.isValidAddress(tx.to) === false) {
+    response.reason = 'tx "to" is not a valid address.'
     return response
   }
   if (typeof tx.alias !== 'string') {

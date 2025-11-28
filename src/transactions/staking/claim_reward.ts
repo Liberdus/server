@@ -4,7 +4,7 @@ import { LiberdusFlags } from '../../config'
 import { logFlags } from '@shardeum-foundation/core/dist/logger'
 import { NodeAccount, TXTypes, UserAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
-import { _sleep, generateTxId, isEqualOrNewerVersion, usdToWei, getNodeRewardRateWei } from '../../utils'
+import { _sleep, generateTxId, isEqualOrNewerVersion, usdToWei, getNodeRewardRateWei, isValidAddress } from '../../utils'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 
 export async function injectClaimRewardTx(
@@ -84,19 +84,19 @@ export const validate_fields = (
   response: ShardusTypes.IncomingTransactionResult,
   shardus: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
-  if (!tx.nominee || tx.nominee === '' || tx.nominee.length !== 64) {
+  if (isValidAddress(tx.nominee) === false) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail tx.nominee address invalid`)
     if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail tx.nominee address invalid', tx)
     response.reason = 'Invalid nominee address'
     return response
   }
-  if (!tx.deactivatedNodeId || tx.deactivatedNodeId === '' || tx.deactivatedNodeId.length !== 64) {
+  if (isValidAddress(tx.deactivatedNodeId) === false) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail tx.deactivatedNodeId address invalid`)
     if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail tx.deactivatedNodeId address invalid', tx)
     response.reason = 'Invalid deactivatedNodeId'
     return response
   }
-  if (!tx.nominator || tx.nominator === '' || tx.nominator.length !== 64) {
+  if (isValidAddress(tx.nominator) === false) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardTx fail tx.nominator address invalid`)
     if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardTx fail tx.nominator address invalid', tx)
     response.reason = 'Invalid nominator address'

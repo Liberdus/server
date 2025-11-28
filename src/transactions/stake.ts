@@ -8,8 +8,8 @@ import * as AccountsStorage from '../storage/accountStorage'
 import { getStakeRequiredWei } from '../utils'
 
 export const validate_fields = (tx: Tx.Stake, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.from !== 'string') {
-    response.reason = 'tx "from" field must be a string.'
+  if (utils.isValidAddress(tx.from) === false) {
+    response.reason = 'tx "from" is not a valid address.'
     return response
   }
   if (typeof tx.stake !== 'bigint') {
@@ -36,11 +36,15 @@ export const validate = (tx: Tx.Stake, wrappedStates: WrappedStates, response: S
     return response
   }
   if (from.data.balance < getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)) {
-    response.reason = `From account has insufficient balance, the cost required to receive node rewards is ${getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)}`
+    response.reason = `From account has insufficient balance, the cost required to receive node rewards is ${getStakeRequiredWei(
+      AccountsStorage.cachedNetworkAccount,
+    )}`
     return response
   }
   if (tx.stake < getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)) {
-    response.reason = `Stake amount sent: ${tx.stake} is less than the cost required to operate a node: ${getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)}`
+    response.reason = `Stake amount sent: ${tx.stake} is less than the cost required to operate a node: ${getStakeRequiredWei(
+      AccountsStorage.cachedNetworkAccount,
+    )}`
     return response
   }
   response.success = true

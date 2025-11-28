@@ -8,11 +8,11 @@ import { UserAccount, WrappedStates, Tx, TransactionKeys, NodeAccount, Accounts,
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.DepositStake, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.nominator !== 'string' || utils.isValidAddress(tx.nominator) === false) {
+  if (utils.isValidAddress(tx.nominator) === false) {
     response.reason = 'tx "nominator" field must be a string or valid address.'
     return response
   }
-  if (typeof tx.nominee !== 'string' || utils.isValidAddress(tx.nominee) === false) {
+  if (utils.isValidAddress(tx.nominee) === false) {
     response.reason = 'tx "nominee" field must be a string or valid address.'
     return response
   }
