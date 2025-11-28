@@ -3,11 +3,12 @@ import create from '../accounts'
 import * as config from '../config'
 import { Accounts, UserAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../@types'
 import * as crypto from '../crypto'
+import * as utils from '../utils'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
 export const validate_fields = (tx: Tx.Create, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
-  if (typeof tx.from !== 'string') {
-    response.reason = '"From" must be a string.'
+  if (utils.isValidAddress(tx.from) === false) {
+    response.reason = 'tx "from" is not a valid address.'
     return response
   }
   if (typeof tx.amount !== 'bigint' || tx.amount <= BigInt(0)) {

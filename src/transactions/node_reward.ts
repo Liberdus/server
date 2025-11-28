@@ -1,6 +1,7 @@
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import create from '../accounts'
 import * as config from '../config'
+import * as utils from '../utils'
 import { Accounts, UserAccount, NetworkAccount, NodeAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
 import * as crypto from '../crypto'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
@@ -8,16 +9,16 @@ import * as AccountsStorage from '../storage/accountStorage'
 import { getNodeRewardRateWei, getStakeRequiredWei } from '../utils'
 
 export const validate_fields = (tx: Tx.NodeReward, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
-  if (typeof tx.from !== 'string') {
-    response.reason = 'tx "from" field must be a string'
+  if (utils.isValidAddress(tx.from) === false) {
+    response.reason = 'tx "from" is not a valid address.'
     return response
   }
-  if (typeof tx.nodeId !== 'string') {
-    response.reason = 'tx "nodeId" field must be a string'
+  if (utils.isValidAddress(tx.nodeId) === false) {
+    response.reason = 'tx "nodeId" is not a valid address.'
     return response
   }
-  if (typeof tx.to !== 'string') {
-    response.reason = 'tx "to" field must be a string'
+  if (utils.isValidAddress(tx.to) === false) {
+    response.reason = 'tx "to" is not a valid address.'
     return response
   }
   response.success = true

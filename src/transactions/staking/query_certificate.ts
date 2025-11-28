@@ -3,7 +3,7 @@ import * as crypto from '../../crypto'
 import { Request } from 'express'
 import { LiberdusFlags } from '../../config'
 import { AccountAxiosResponse, AccountQueryResponse, InjectTxResponse, UserAccount, ValidatorError } from '../../@types'
-import { fixBigIntLiteralsToBigInt, getRandom } from '../../utils'
+import { fixBigIntLiteralsToBigInt, getRandom, isValidAddress } from '../../utils'
 import { shardusGetFromNode, shardusPostToNode, shardusPutToNode } from '../../utils/request'
 import { logFlags } from '@shardeum-foundation/core/dist/logger'
 
@@ -58,13 +58,13 @@ export const validate_fields = (tx: QueryCertRequest) => {
     success: false,
     reason: '',
   }
-  if (!tx.nominator || tx.nominator === '' || tx.nominator.length !== 64) {
+  if (isValidAddress(tx.nominator) === false) {
     response.reason = 'Invalid nominator address'
     nestedCountersInstance.countEvent('liberdus-staking', `validate_fields fail tx.nominator address invalid`)
     if (LiberdusFlags.VerboseLogs) console.log('validate_fields fail tx.nominator address invalid', tx)
     return response
   }
-  if (!tx.nominee || tx.nominee === '' || tx.nominee.length !== 64) {
+  if (isValidAddress(tx.nominee) === false) {
     response.reason = 'Invalid nominee address'
     nestedCountersInstance.countEvent('liberdus-staking', ` fail tx.nominee address invalid`)
     if (LiberdusFlags.VerboseLogs) console.log(' fail tx.nominee address invalid', tx)

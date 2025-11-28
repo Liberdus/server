@@ -15,7 +15,7 @@ import {
   TXTypes,
 } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
-import { isEqualOrNewerVersion, _sleep, generateTxId, scaleByStabilityFactor, getStakeRequiredWei } from '../../utils'
+import { isEqualOrNewerVersion, _sleep, generateTxId, isValidAddress, getStakeRequiredWei } from '../../utils'
 import * as crypto from '../../crypto'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import { RemoveNodeCert } from './query_certificate'
@@ -101,19 +101,19 @@ export async function injectPenaltyTX(
 }
 
 export const validate_fields = (tx: Tx.PenaltyTX, response: ShardusTypes.IncomingTransactionResult) => {
-  if (!tx.reportedNodeId || tx.reportedNodeId === '' || tx.reportedNodeId.length !== 64) {
-    nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail tx.reportedNode address invalid`)
-    if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail tx.reportedNode address invalid`, tx)
+  if (isValidAddress(tx.reportedNodeId) === false) {
+    nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail tx.reportedNodeId address invalid`)
+    if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail tx.reportedNodeId address invalid`, tx)
     response.reason = 'Invalid reportedNode ID'
     return response
   }
-  if (!tx.reportedNodePublickKey || tx.reportedNodePublickKey === '' || tx.reportedNodePublickKey.length !== 64) {
+  if (isValidAddress(tx.reportedNodePublickKey) === false) {
     nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail tx.reportedNode publicKey invalid`)
     if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail tx.reportedNode publicKey invalid`, tx)
     response.reason = 'Invalid reportedNode public key'
     return response
   }
-  if (!tx.nominator || tx.nominator === '' || tx.nominator.length !== 64) {
+  if (isValidAddress(tx.nominator) === false) {
     nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail tx.nominator address invalid`)
     if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail tx.nominator address invalid`, tx)
     response.reason = 'Invalid nominator address'

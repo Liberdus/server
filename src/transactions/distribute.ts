@@ -8,8 +8,8 @@ import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 
 export const validate_fields = (tx: Tx.Distribute, response: ShardusTypes.IncomingTransactionResult) => {
-  if (typeof tx.from !== 'string') {
-    response.reason = 'tx "from" field must be a string.'
+  if (utils.isValidAddress(tx.from) === false) {
+    response.reason = 'tx "from" is not a valid address.'
     return response
   }
   if (Array.isArray(tx.recipients) !== true) {

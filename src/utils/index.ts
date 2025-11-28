@@ -673,7 +673,7 @@ export const isObject = (val): boolean => {
 }
 
 export const isValidAddress = (address: string): boolean => {
-  return address.length === 64
+  return typeof address !== 'string' || address.length === 64
 }
 
 export const sortAddresses = (from: string, to: string): string[] => {

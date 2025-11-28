@@ -3,7 +3,7 @@ import * as crypto from '../../crypto'
 import { LiberdusFlags } from '../../config'
 import { TXTypes, NodeInitTxData, Tx, NodeAccount, WrappedStates, TransactionKeys, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
-import { _sleep, generateTxId, getNodeRewardRateWei } from '../../utils'
+import { _sleep, generateTxId, getNodeRewardRateWei, isValidAddress } from '../../utils'
 import { dapp } from '../..'
 
 export async function injectInitRewardTx(shardus: Shardus, eventData: ShardusTypes.ShardusEvent): Promise<unknown> {
@@ -68,7 +68,7 @@ export const validate_fields = (
   shardus: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
   if (LiberdusFlags.VerboseLogs) console.log('Validating InitRewardTX fields', tx)
-  if (!tx.nominee || tx.nominee === '' || tx.nominee.length !== 64) {
+  if (isValidAddress(tx.nominee) === false) {
     if (LiberdusFlags.VerboseLogs) console.log('validateFields InitRewardTX fail invalid nominee field', tx)
     nestedCountersInstance.countEvent('liberdus-staking', `validateFields InitRewardTX fail invalid nominee field`)
     response.reason = 'invalid nominee field in setRewardTimes Tx'

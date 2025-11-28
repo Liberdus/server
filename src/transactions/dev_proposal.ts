@@ -69,12 +69,8 @@ export const validate_fields = (tx: Tx.DevProposal, response: ShardusTypes.Incom
     response.reason = 'Maximum "tx description" field character count is 1000'
     return response
   }
-  if (typeof tx.payAddress !== 'string') {
-    response.reason = 'tx "payAddress" field must be a string.'
-    return response
-  }
-  if (tx.payAddress.length !== 64) {
-    response.reason = 'tx "payAddress" field length must be 64 characters (A valid public hex address)'
+  if (utils.isValidAddress(tx.payAddress) === false) {
+    response.reason = 'tx "payAddress" is not a valid address.'
     return response
   }
   response.success = true
