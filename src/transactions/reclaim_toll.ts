@@ -13,11 +13,11 @@ export const validate_fields = (tx: Tx.ReclaimToll, response: ShardusTypes.Incom
     response.reason = 'tx "from" field must be a string.'
     return response
   }
-  if (typeof tx.to !== 'string' && utils.isValidAddress(tx.to) === false) {
+  if (typeof tx.to !== 'string' || utils.isValidAddress(tx.to) === false) {
     response.reason = 'tx "to" field must be a string.'
     return response
   }
-  if (typeof tx.chatId !== 'string' && utils.isValidAddress(tx.chatId) === false) {
+  if (typeof tx.chatId !== 'string' || utils.isValidAddress(tx.chatId) === false) {
     response.reason = 'tx "chatId" field must be a valid address string.'
     return response
   }
@@ -65,7 +65,9 @@ export const validate = (tx: Tx.ReclaimToll, wrappedStates: WrappedStates, respo
 
   // Validate balance covers transaction fee
   if (from.data.balance < utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)) {
-    response.reason = `from account does not have sufficient funds ${from.data.balance} to cover transaction fee (${utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)}).`
+    response.reason = `from account does not have sufficient funds ${from.data.balance} to cover transaction fee (${utils.getTransactionFeeWei(
+      AccountsStorage.cachedNetworkAccount,
+    )}).`
     return response
   }
 

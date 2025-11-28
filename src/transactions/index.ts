@@ -43,7 +43,6 @@ import * as apply_change_network_param from './apply_change_network_param'
 import * as deposit_stake from './staking/deposit_stake'
 import * as withdraw_stake from './staking/withdraw_stake'
 import * as set_cert_time from './staking/set_cert_time'
-import * as query_certificate from './staking/query_certificate'
 import * as init_reward from './staking/init_reward'
 import * as claim_reward from './staking/claim_reward'
 import * as apply_penalty from './staking/apply_penalty'
@@ -95,7 +94,6 @@ export default {
   deposit_stake,
   withdraw_stake,
   set_cert_time,
-  query_certificate,
   init_reward,
   claim_reward,
   apply_penalty,

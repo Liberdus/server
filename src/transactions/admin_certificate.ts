@@ -5,6 +5,7 @@ import { Request } from 'express'
 import { DevSecurityLevel } from '@shardeum-foundation/core'
 import { GoldenTicketRequest, NetworkAccount } from '../@types'
 import { shardusPost } from '../utils/request'
+import * as utils from '../utils'
 
 export interface AdminCert {
   nominee: string
@@ -34,7 +35,7 @@ export let isRequestedAdminCert: boolean = false
 function validatePutAdminCertRequest(req: PutAdminCertRequest, shardus: Shardus): PutAdminCertResult {
   const publicKey = shardus.crypto.getPublicKey()
 
-  if (!req.nominee || req.nominee === '' || req.nominee.length !== 64) {
+  if (typeof req.nominee !== 'string' || utils.isValidAddress(req.nominee) === false) {
     /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-admin-certificate', `validatePutAdminCertRequest fail req.nominee address invalid`)
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validatePutAdminCertRequest fail req.nominee address invalid', req)
     return { success: false, reason: 'Invalid nominee address' }
