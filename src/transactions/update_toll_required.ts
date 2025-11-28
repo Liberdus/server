@@ -13,11 +13,11 @@ export const validate_fields = (tx: Tx.UpdateTollRequired, response: ShardusType
     response.reason = 'tx "from" field must be a string.'
     return response
   }
-  if (typeof tx.to !== 'string' && utils.isValidAddress(tx.to) === false) {
-    response.reason = 'tx "from" field must be a string.'
+  if (typeof tx.to !== 'string' || utils.isValidAddress(tx.to) === false) {
+    response.reason = 'tx "to" field must be a string.'
     return response
   }
-  if (typeof tx.chatId !== 'string' && utils.isValidAddress(tx.chatId) === false) {
+  if (typeof tx.chatId !== 'string' || utils.isValidAddress(tx.chatId) === false) {
     response.reason = 'tx "chatId" field must be a valid address string.'
     return response
   }
@@ -95,7 +95,9 @@ export const validate = (
   if (network) {
     if (utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount) > tx.fee) {
       response.success = false
-      response.reason = `The network transaction fee (${utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)}) is greater than the transaction fee provided (${tx.fee}).`
+      response.reason = `The network transaction fee (${utils.getTransactionFeeWei(
+        AccountsStorage.cachedNetworkAccount,
+      )}) is greater than the transaction fee provided (${tx.fee}).`
       return response
     }
   }

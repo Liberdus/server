@@ -223,19 +223,7 @@ const shardusSetup = (): void => {
       }
       try {
         const { tx } = timestampedTx
-        const txnTimestamp: number = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
-
-        // Validate tx fields here
-        if (!txnTimestamp) {
-          validationResult.reason = 'Invalid transaction timestamp'
-          return validationResult
-        }
-
-        if (typeof txnTimestamp !== 'number' || !Number.isFinite(txnTimestamp) || txnTimestamp < 1) {
-          validationResult.reason = 'Tx "timestamp" field must be a valid number.'
-          return validationResult
-        }
-
+        // 1. Validate the tx type
         if (typeof tx.type !== 'string') {
           validationResult.reason = 'Tx "type" field must be a string.'
           return validationResult
@@ -245,10 +233,22 @@ const shardusSetup = (): void => {
           return validationResult
         }
 
-        if (Object.values(LiberdusTypes.TXTypes).includes(tx.type) === false) {
-          validationResult.reason = 'Tx type is not recognized'
+        // 2. Validate the tx network id
+        if (utils.isValidNetworkId(tx, dapp) === false) {
+          validationResult.reason = `Invalid network id for tx ${tx.type} with id ${tx.id}`
           return validationResult
         }
+
+        // 3. Validate the tx timestamp
+        const txnTimestamp: number = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
+
+        const txnValidationResult = utils.validateTxTimestamp(txnTimestamp)
+        if (txnValidationResult.success == false) {
+          validationResult.reason = txnValidationResult.reason
+          return validationResult
+        }
+
+        // 4. Validate the tx fields
         if (LiberdusFlags.enableAJVValidation) {
           const errors = verifyPayload(tx.type, tx)
           if (errors != null) {
@@ -258,6 +258,8 @@ const shardusSetup = (): void => {
             return validationResult
           }
         }
+
+        // 5. Validate the tx data
         const res = transactions[tx.type].validate_fields(tx, validationResult, dapp)
         if (res.success) {
           validationResult.reason = 'This transaction is valid!'
@@ -329,10 +331,6 @@ const shardusSetup = (): void => {
         reason: 'Transaction is not valid.',
       }
 
-      if (utils.isValidNetworkId(tx, dapp) === false) {
-        preApplyStatus.reason = `Invalid network id for tx ${tx.type} with id ${tx.id}`
-        throw new Error(preApplyStatus.reason)
-      }
       try {
         transactions[tx.type].validate(tx, wrappedStates, preApplyStatus, dapp)
       } catch (e) {
@@ -838,13 +836,6 @@ const shardusSetup = (): void => {
       return false
     },
     async txPreCrackData(tx: any, appData: any): Promise<{ status: boolean; reason: string }> {
-      console.log('is Valid Network ID?', utils.isValidNetworkId(tx, dapp))
-      if (utils.isValidNetworkId(tx, dapp) === false) {
-        return {
-          status: false,
-          reason: `Invalid network id for tx ${tx.type} with id ${tx.id}. Expected network id: ${AccountsStorage?.cachedNetworkAccount?.networkId}`,
-        }
-      }
       const preCrackableTxTypes = [
         TXTypes.transfer,
         TXTypes.message,
@@ -863,6 +854,12 @@ const shardusSetup = (): void => {
       if (preCrackableTxTypes.includes(tx.type) === false) {
         return { status: true, reason: 'Tx PreCrack Skipped' }
       }
+      // Validate the tx before proceeding
+      const result: { success: boolean; reason: string } = this.validate({ tx: tx }, appData)
+      if (result.success === false) {
+        return { status: false, reason: result.reason }
+      }
+
       try {
         const wrappedStates: LiberdusTypes.WrappedStates = {}
         const promises = []

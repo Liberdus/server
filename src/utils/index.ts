@@ -624,6 +624,26 @@ export function calculateChatId(from: string, to: string): string {
   return crypto.hash([from, to].sort((a, b) => a.localeCompare(b)).join(''))
 }
 
+export function validateTxTimestamp(txnTimestamp: number): { success: boolean; reason: string } {
+  const validationResult = { success: false, reason: '' }
+  try {
+    // Validate tx timestamp
+    if (!txnTimestamp) {
+      validationResult.reason = 'Invalid transaction timestamp'
+      return validationResult
+    }
+
+    if (typeof txnTimestamp !== 'number' || !Number.isFinite(txnTimestamp) || txnTimestamp < 1) {
+      validationResult.reason = 'Tx "timestamp" field must be a valid number.'
+      return validationResult
+    }
+    return { success: true, reason: '' }
+  } catch (e) {
+    validationResult.reason = `Error: validateTxTimestamp: ${e}`
+    return validationResult
+  }
+}
+
 export function getInjectedOrGeneratedTimestamp(timestampedTx: any, dapp: Shardus): number {
   const { tx, timestampReceipt } = timestampedTx
   let txnTimestamp: number
