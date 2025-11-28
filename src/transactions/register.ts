@@ -3,6 +3,7 @@ import { Shardus, ShardusTypes, nestedCountersInstance } from '@shardeum-foundat
 import create from '../accounts'
 import { isValidUncompressedPublicKey, validatePQPublicKey, getAddressFromPublicKey } from '../utils/address'
 import * as config from '../config'
+import * as utils from '../utils'
 import {
   AliasAccount,
   UserAccount,
@@ -22,8 +23,8 @@ export const validate_fields = (tx: Tx.Register, response: ShardusTypes.Incoming
     response.reason = 'tx "aliasHash" field must be a string.'
     return response
   }
-  if (typeof tx.from !== 'string') {
-    response.reason = 'tx "from" field must be a string.'
+  if (utils.isValidAddress(tx.from) === false) {
+    response.reason = 'tx "from" is not a valid address.'
     return response
   }
   if (typeof tx.alias !== 'string') {

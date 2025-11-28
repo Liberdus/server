@@ -3,6 +3,7 @@ import * as crypto from '../../crypto'
 import { Utils, P2P } from '@shardeum-foundation/lib-types'
 import { LiberdusFlags } from '../../config'
 import { NodeAccount, NodeInitTxData, NodeRewardTxData, SignedNodeInitTxData, SignedNodeRewardTxData } from '../../@types'
+import * as utils from '../../utils'
 
 export const configShardusNetworkTransactions = (dapp: Shardus): void => {
   dapp.serviceQueue.registerBeforeAddVerifier('nodeReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeRewardTxData>) => {
@@ -16,12 +17,12 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerifier - nodeReward: fail Invalid subQueueKey', Utils.safeStringify(tx))
       return false
     }
-    if (!tx.publicKey || tx.publicKey === '' || tx.publicKey.length !== 64) {
+    if (utils.isValidAddress(tx.publicKey) === false) {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail invalid publicKey field', Utils.safeStringify(tx))
       /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerBeforeAddVerify nodeReward fail invalid publicKey field`)
       return false
     }
-    if (!tx.nodeId || tx.nodeId === '' || tx.nodeId.length !== 64) {
+    if (utils.isValidAddress(tx.nodeId) === false) {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeReward fail invalid nodeId field', Utils.safeStringify(tx))
       /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerBeforeAddVerify nodeReward fail invalid nodeId field`)
       return false
@@ -135,12 +136,12 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerifier - nodeInitReward: fail Invalid subQueueKey', Utils.safeStringify(tx))
       return false
     }
-    if (!tx.publicKey || tx.publicKey === '' || tx.publicKey.length !== 64) {
+    if (utils.isValidAddress(tx.publicKey) === false) {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeInitReward fail invalid publicKey field', Utils.safeStringify(tx))
       /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerBeforeAddVerify nodeInitReward fail invalid publicKey field`)
       return false
     }
-    if (!tx.nodeId || tx.nodeId === '' || tx.nodeId.length !== 64) {
+    if (utils.isValidAddress(tx.nodeId) === false) {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerBeforeAddVerify nodeInitReward fail invalid nodeId field', Utils.safeStringify(tx))
       /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerBeforeAddVerify nodeInitReward fail invalid nodeId field`)
       return false
@@ -190,7 +191,7 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
   dapp.serviceQueue.registerApplyVerifier('nodeInitReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeInitTxData>) => {
     const tx = txEntry.txData
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Validating nodeInitReward applied', Utils.safeStringify(tx))
-    if (!tx.publicKey || tx.publicKey === '' || tx.publicKey.length !== 64) {
+    if (utils.isValidAddress(tx.publicKey) === false) {
       /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeInitReward fail invalid publicKey field', Utils.safeStringify(tx))
       /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerApplyVerify nodeInitReward fail invalid publicKey field`)
       return true
