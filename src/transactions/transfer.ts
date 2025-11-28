@@ -27,7 +27,7 @@ export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.Incoming
     response.reason = 'tx "from" field must be a string.'
     return response
   }
-  if (typeof tx.to !== 'string' && utils.isValidAddress(tx.to) === false) {
+  if (typeof tx.to !== 'string' || utils.isValidAddress(tx.to) === false) {
     response.reason = 'tx "to" field must be a string.'
     return response
   }
@@ -35,7 +35,7 @@ export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.Incoming
     response.reason = 'tx "amount" field must be a bigint and greater than 0.'
     return response
   }
-  if (typeof tx.chatId !== 'string' && utils.isValidAddress(tx.chatId) === false) {
+  if (typeof tx.chatId !== 'string' || utils.isValidAddress(tx.chatId) === false) {
     response.reason = 'tx "chatId" field must be a valid address string.'
     return response
   }

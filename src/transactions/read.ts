@@ -9,15 +9,15 @@ import * as AccountsStorage from '../storage/accountStorage'
 
 export const validate_fields = (tx: Tx.Read, response: ShardusTypes.IncomingTransactionResult) => {
   if (typeof tx.from !== 'string' || utils.isValidAddress(tx.from) === false) {
-    response.reason = 'tx "from" field must be a string.'
+    response.reason = 'tx "from" is not a valid address.'
     return response
   }
-  if (typeof tx.to !== 'string' && utils.isValidAddress(tx.to) === false) {
-    response.reason = 'tx "from" field must be a string.'
+  if (typeof tx.to !== 'string' || utils.isValidAddress(tx.to) === false) {
+    response.reason = 'tx "to" is not a valid address.'
     return response
   }
-  if (typeof tx.chatId !== 'string' && utils.isValidAddress(tx.chatId) === false) {
-    response.reason = 'tx "chatId" field must be a valid address string.'
+  if (typeof tx.chatId !== 'string' || utils.isValidAddress(tx.chatId) === false) {
+    response.reason = 'tx "chatId" is not a valid address.'
     return response
   }
   if (tx.chatId !== utils.calculateChatId(tx.from, tx.to)) {
@@ -76,7 +76,9 @@ export const validate = (tx: Tx.Read, wrappedStates: WrappedStates, response: Sh
   if (network) {
     if (utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount) > tx.fee) {
       response.success = false
-      response.reason = `The network transaction fee (${utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)}) is greater than the transaction fee provided (${tx.fee}).`
+      response.reason = `The network transaction fee (${utils.getTransactionFeeWei(
+        AccountsStorage.cachedNetworkAccount,
+      )}) is greater than the transaction fee provided (${tx.fee}).`
       return response
     }
   }
