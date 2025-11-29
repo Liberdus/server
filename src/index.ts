@@ -223,28 +223,29 @@ const shardusSetup = (): void => {
       }
       try {
         const { tx } = timestampedTx
-        // 1. Validate the tx type
+
+        // 1. Validate the tx network id
+        if (utils.isValidNetworkId(tx, dapp) === false) {
+          validationResult.reason = `Invalid network id for tx ${tx.type} with id ${tx.id}`
+          return validationResult
+        }
+
+        // 2. Validate the tx timestamp
+        const txnTimestamp: number = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
+
+        const txnValidationResult = utils.validateTxTimestamp(txnTimestamp)
+        if (txnValidationResult.success == false) {
+          validationResult.reason = txnValidationResult.reason
+          return validationResult
+        }
+
+        // 3. Validate the tx type
         if (typeof tx.type !== 'string') {
           validationResult.reason = 'Tx "type" field must be a string.'
           return validationResult
         }
         if (transactions[tx.type] == undefined) {
           validationResult.reason = `The tx type ${tx.type} does not exist in the network.`
-          return validationResult
-        }
-
-        // 2. Validate the tx network id
-        if (utils.isValidNetworkId(tx, dapp) === false) {
-          validationResult.reason = `Invalid network id for tx ${tx.type} with id ${tx.id}`
-          return validationResult
-        }
-
-        // 3. Validate the tx timestamp
-        const txnTimestamp: number = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
-
-        const txnValidationResult = utils.validateTxTimestamp(txnTimestamp)
-        if (txnValidationResult.success == false) {
-          validationResult.reason = txnValidationResult.reason
           return validationResult
         }
 
