@@ -3,7 +3,9 @@ import { VectorBufferStream } from '@shardeum-foundation/core'
 import { SerdeTypeIdent } from '.'
 import { IssueAccount } from '../@types'
 
-export const issueAccount = (accountId: string) => {
+export const issueAccount = (accountId: string): IssueAccount => {
+  // Ensure lowercase accountId
+  accountId = accountId.toLowerCase()
   const issue: IssueAccount = {
     id: accountId,
     type: 'IssueAccount',

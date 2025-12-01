@@ -7,6 +7,8 @@ import * as utils from '../utils'
 import { LiberdusFlags } from '../config'
 
 export const chatAccount = (accountId: string, tx: Tx.Message | Tx.Transfer | Tx.ReclaimToll): ChatAccount => {
+  // Ensure lowercase accountId
+  accountId = accountId.toLowerCase()
   const chat: ChatAccount = {
     id: accountId,
     type: 'ChatAccount',

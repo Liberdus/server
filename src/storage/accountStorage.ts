@@ -29,6 +29,8 @@ export async function lazyInit(): Promise<void> {
 }
 
 export async function getAccount(address: string): Promise<Accounts | null> {
+  // Enforce lowercase address
+  address = address.toLowerCase()
   if (LiberdusFlags.UseDBForAccounts === true) {
     const account = await storage.getAccountsEntry(address)
     if (!account) return null
@@ -46,6 +48,8 @@ export async function getAccount(address: string): Promise<Accounts | null> {
 }
 
 export async function getAccountTimestamp(address: string): Promise<number> {
+  // Enforce lowercase address
+  address = address.toLowerCase()
   if (LiberdusFlags.UseDBForAccounts === true) {
     //todo replace with specific sql query
     const account = await storage.getAccountsEntry(address)
@@ -57,6 +61,8 @@ export async function getAccountTimestamp(address: string): Promise<number> {
 }
 
 export async function accountExists(address: string): Promise<boolean> {
+  // Enforce lowercase address
+  address = address.toLowerCase()
   if (LiberdusFlags.UseDBForAccounts === true) {
     //todo replace with specific sql query, or even a shardus cache check
     const account = await storage.getAccountsEntry(address)
@@ -75,6 +81,8 @@ export async function getCachedNetworkAccount(): Promise<NetworkAccount> {
 
 export async function setAccount(address: string, account: Accounts): Promise<void> {
   try {
+    // Enforce lowercase address
+    address = address.toLowerCase()
     if (LiberdusFlags.UseDBForAccounts === true) {
       const accountEntry = {
         accountId: address,

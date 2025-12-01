@@ -3,7 +3,9 @@ import { VectorBufferStream } from '@shardeum-foundation/core'
 import { deserializeNetworkParameters, SerdeTypeIdent, serializeNetworkParameters } from '.'
 import { ProposalAccount, NetworkParameters } from '../@types'
 
-export const proposalAccount = (accountId: string, parameters?: NetworkParameters) => {
+export const proposalAccount = (accountId: string, parameters?: NetworkParameters): ProposalAccount => {
+  // Ensure lowercase accountId
+  accountId = accountId.toLowerCase()
   const proposal: ProposalAccount = {
     id: accountId,
     type: 'ProposalAccount',
