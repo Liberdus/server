@@ -19,8 +19,8 @@ import {
 import * as ajvHelper from '../@types/ajvHelper'
 
 export const validate_fields = (tx: Tx.Register, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
-  if (typeof tx.aliasHash !== 'string') {
-    response.reason = 'tx "aliasHash" field must be a string.'
+  if (utils.isValidAddress(tx.aliasHash) === false) {
+    response.reason = 'tx "aliasHash" is not a valid address.'
     return response
   }
   if (utils.isValidAddress(tx.from) === false) {
