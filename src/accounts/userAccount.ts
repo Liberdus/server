@@ -7,6 +7,8 @@ import * as AccountsStorage from '../storage/accountStorage'
 import { INITIAL_PARAMETERS } from '../config'
 
 export const userAccount = (accountId: string, timestamp: number): UserAccount => {
+  // Ensure lowercase accountId
+  accountId = accountId.toLowerCase()
   const account: UserAccount = {
     id: accountId,
     type: 'UserAccount',

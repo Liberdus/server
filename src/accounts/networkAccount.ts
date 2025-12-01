@@ -7,6 +7,8 @@ import { Utils } from '@shardeum-foundation/lib-types'
 import { Shardus, nestedCountersInstance } from '@shardeum-foundation/core'
 
 export const networkAccount = (accountId: string, timestamp: number, dapp: Shardus): NetworkAccount => {
+  // Ensure lowercase accountId
+  accountId = accountId.toLowerCase()
   // const proposalWindow = [timestamp, timestamp + config.TIME_FOR_PROPOSALS]
   // const votingWindow = [proposalWindow[1], proposalWindow[1] + config.TIME_FOR_VOTING]
   // const graceWindow = [votingWindow[1], votingWindow[1] + config.TIME_FOR_GRACE]

@@ -5,6 +5,8 @@ import { NodeAccount } from '../@types'
 import { Utils } from '@shardeum-foundation/lib-types'
 
 export const nodeAccount = (accountId: string): NodeAccount => {
+  // Ensure lowercase accountId
+  accountId = accountId.toLowerCase()
   const account: NodeAccount = {
     id: accountId,
     type: 'NodeAccount',
