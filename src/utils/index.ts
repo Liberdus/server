@@ -673,7 +673,7 @@ export const isObject = (val): boolean => {
 }
 
 export const isValidAddress = (address: string): boolean => {
-  // Address must be a string, exactly 64 characters, and fully lowercase
+  // Address must be a string, fully lowercase and exactly 64 characters
   return typeof address === 'string' && address === address.toLowerCase() && address.length === 64
 }
 

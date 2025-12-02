@@ -3,7 +3,6 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../@types'
-import { toShardusAddress } from '../utils/address'
 import create from '../accounts'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
@@ -47,12 +46,7 @@ export const validate = (
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
-  const clonedTx = { ...tx }
-  if (config.LiberdusFlags.useEthereumAddress) {
-    clonedTx.from = toShardusAddress(tx.from)
-  }
-
-  const from: Accounts = wrappedStates[clonedTx.from] && wrappedStates[clonedTx.from].data
+  const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const chat: ChatAccount = wrappedStates[tx.chatId] && wrappedStates[tx.chatId].data
 

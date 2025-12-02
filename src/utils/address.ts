@@ -18,15 +18,20 @@ export function toShardusAddress(addressStr: string): string {
 
   let byte64Str = addressStr
 
-  if (addressStr.startsWith('0x')) {
-    byte64Str = addressStr.slice(2)
-  }
-
   if (byte64Str.length === 64) {
     return byte64Str.toLowerCase()
   }
 
-  return byte64Str.toLowerCase() + '0'.repeat(64 - byte64Str.length)
+  if (addressStr.length === 42 && addressStr.startsWith('0x')) {
+    byte64Str = addressStr.slice(2)
+  }
+
+  // Ensure exactly 40 characters
+  if (byte64Str.length !== 40) {
+    throw new Error('Invalid ethereum address: ' + addressStr)
+  }
+
+  return byte64Str.toLowerCase() + '0'.repeat(24)
 }
 
 export function isValidUncompressedPublicKey(publicKey: string): boolean {
@@ -68,61 +73,4 @@ export function getAddressFromPublicKey(publicKey: string): string {
     console.log(`getAddressFromPublicKey error: ${e.message}`, e)
     return null
   }
-}
-
-export function toShardusAddressWithKey(addressStr: string, secondaryAddressStr: string): string {
-  // Both addressStr and secondaryAddressStr are hex strings each character representing 4 bits(nibble).
-  if (LiberdusFlags.siloAddress) {
-    //we need to take a hash, to prevent collisions
-    const hashedSuffixKey = crypto.hash(secondaryAddressStr + addressStr)
-
-    // Special case for 3-bit prefix. We combine the first nibble of the address with the last nibble of the key.
-    // Please refer to the default case for more details. For the special case we use shorthands for optimization.
-    if (LiberdusFlags.siloAddressBitLength === 3) {
-      const combinedNibble = (
-        (parseInt(addressStr[2], 16) & 14) |
-        // eslint-disable-next-line security/detect-object-injection
-        (parseInt(hashedSuffixKey[0], 16) & 1)
-      ).toString(16)
-
-      return (combinedNibble + hashedSuffixKey.slice(1)).toLowerCase()
-    }
-
-    const fullHexChars = Math.floor(LiberdusFlags.siloAddressBitLength / 4)
-    const remainingBits = LiberdusFlags.siloAddressBitLength % 4
-
-    let prefix = addressStr.slice(2, 2 + fullHexChars)
-    let suffix = hashedSuffixKey.slice(fullHexChars)
-
-    // Handle the overlapping byte if there are remaining bits
-    if (remainingBits > 0) {
-      const prefixLastNibble = parseInt(addressStr[2 + fullHexChars], 16)
-      // eslint-disable-next-line security/detect-object-injection
-      const suffixFirstNibble = parseInt(hashedSuffixKey[fullHexChars], 16)
-
-      // Shift the prefix byte to the left and mask the suffix nibble, then combine them
-      const suffixMask = (1 << (4 - remainingBits)) - 1
-      const shiftedSuffixNibble = suffixFirstNibble & suffixMask
-      const prefixMask = (1 << 4) - 1 - suffixMask
-      const shiftedPrefixNibble = prefixLastNibble & prefixMask
-      const combinedNibble = shiftedPrefixNibble | shiftedSuffixNibble
-      const combinedHex = combinedNibble.toString(16)
-
-      prefix += combinedHex
-      // Adjust the suffix to remove the processed nibble
-      suffix = hashedSuffixKey.slice(fullHexChars + 1)
-    }
-
-    let shardusAddress = prefix + suffix
-    shardusAddress = shardusAddress.toLowerCase()
-    return shardusAddress
-  }
-
-  // receipt or contract bytes remain down past here
-  if (addressStr.length === 64) {
-    //unexpected case but lets allow it
-    return addressStr.toLowerCase()
-  }
-
-  return addressStr.slice(2).toLowerCase()
 }
