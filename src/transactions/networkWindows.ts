@@ -1,16 +1,20 @@
-import stringify from 'fast-stable-stringify'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as config from '../config'
 import create from '../accounts'
-import { NodeAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, OurAppDefinedData, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { NodeAccount, NetworkAccount, WrappedStates, OurAppDefinedData, Tx, AppReceiptData } from '../@types'
 import * as crypto from '../crypto'
 
-export const validate_fields = (tx: Tx.NetworkWindows, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.NetworkWindows, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   response.success = true
   return response
 }
 
-export const validate = (tx: Tx.NetworkWindows, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.NetworkWindows,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
 
   if (network.id !== config.networkAccount) {
@@ -94,14 +98,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.NetworkWindows, result: TransactionKeys) => {
+export const keys = (tx: Tx.NetworkWindows, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.NetworkWindows, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.NetworkWindows, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from],
     wo: [],

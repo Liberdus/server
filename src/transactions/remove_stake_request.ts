@@ -1,13 +1,12 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
-import create from '../accounts'
 import * as config from '../config'
 import * as utils from '../utils'
-import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import * as AccountsStorage from '../storage/accountStorage'
 import { getStakeRequiredWei } from '../utils'
 
-export const validate_fields = (tx: Tx.RemoveStakeRequest, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.RemoveStakeRequest, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address.'
     return response
@@ -20,7 +19,12 @@ export const validate_fields = (tx: Tx.RemoveStakeRequest, response: ShardusType
   return response
 }
 
-export const validate = (tx: Tx.RemoveStakeRequest, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.RemoveStakeRequest,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   if (typeof from === 'undefined' || from === null) {
@@ -40,7 +44,9 @@ export const validate = (tx: Tx.RemoveStakeRequest, wrappedStates: WrappedStates
     return response
   }
   if (tx.stake > getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)) {
-    response.reason = `Stake amount sent: ${tx.stake} is more than the cost required to operate a node: ${getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)}`
+    response.reason = `Stake amount sent: ${tx.stake} is more than the cost required to operate a node: ${getStakeRequiredWei(
+      AccountsStorage.cachedNetworkAccount,
+    )}`
     return response
   }
   response.success = true
@@ -97,14 +103,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.RemoveStakeRequest, result: TransactionKeys) => {
+export const keys = (tx: Tx.RemoveStakeRequest, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.RemoveStakeRequest, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.RemoveStakeRequest, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from],
     wo: [],
@@ -114,7 +120,13 @@ export const memoryPattern = (tx: Tx.RemoveStakeRequest, result: TransactionKeys
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.RemoveStakeRequest, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount,
+  accountId: string,
+  tx: Tx.RemoveStakeRequest,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     throw new Error('Account must already exist for the remove_stake_request transaction')
   }

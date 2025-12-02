@@ -3,10 +3,10 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from './../../utils'
 import { LiberdusFlags } from './../../config'
 import * as AccountsStorage from '../../storage/accountStorage'
-import { UserAccount, WrappedStates, Tx, TransactionKeys, NodeAccount, AppReceiptData } from './../../@types'
+import { UserAccount, WrappedStates, Tx, NodeAccount, AppReceiptData } from './../../@types'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 
-export const validate_fields = (tx: Tx.WithdrawStake, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.WithdrawStake, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.nominator) === false) {
     response.reason = 'tx "nominator" field must be a string and valid address.'
     return response
@@ -31,7 +31,12 @@ export const validate_fields = (tx: Tx.WithdrawStake, response: ShardusTypes.Inc
   return response
 }
 
-export const validate = (tx: Tx.WithdrawStake, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.WithdrawStake,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const nominatorAccount: UserAccount = wrappedStates[tx.nominator] && wrappedStates[tx.nominator].data
   const nodeAccount: NodeAccount = wrappedStates[tx.nominee] && wrappedStates[tx.nominee].data
   if (typeof nominatorAccount === 'undefined' || nominatorAccount === null) {
@@ -210,14 +215,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.WithdrawStake, result: TransactionKeys) => {
+export const keys = (tx: Tx.WithdrawStake, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.nominator]
   result.targetKeys = [tx.nominee]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.WithdrawStake, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.WithdrawStake, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.nominee, tx.nominator],
     wo: [],
@@ -226,7 +231,13 @@ export const memoryPattern = (tx: Tx.WithdrawStake, result: TransactionKeys): Sh
     ro: [],
   }
 }
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.WithdrawStake, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount,
+  accountId: string,
+  tx: Tx.WithdrawStake,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     throw new Error('Account must already exist in order to perform the withdraw_stake transaction')
   }

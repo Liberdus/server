@@ -1,12 +1,16 @@
 import { DevSecurityLevel, Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as config from '../config'
-import { AppReceiptData, NetworkAccount, OurAppDefinedData, Signature, TXTypes, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
+import { AppReceiptData, NetworkAccount, OurAppDefinedData, Signature, TXTypes, Tx, UserAccount, WrappedStates } from '../@types'
 import { Utils } from '@shardeum-foundation/lib-types'
 import * as utils from '../utils'
 import * as crypto from '../crypto'
 import * as AccountsStorage from '../storage/accountStorage'
 
-export const validate_fields = (tx: Tx.ChangeNetworkParam, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate_fields = (
+  tx: Tx.ChangeNetworkParam,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address.'
     return response
@@ -49,7 +53,12 @@ export const validate_fields = (tx: Tx.ChangeNetworkParam, response: ShardusType
   return response
 }
 
-export const validate = (tx: Tx.ChangeNetworkParam, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.ChangeNetworkParam,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const parsedNetworkParam = JSON.parse(tx.config)
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   dapp.log('Tx.ChangeNetworkParam: ', parsedNetworkParam)
@@ -173,14 +182,14 @@ export const transactionReceiptPass = (
   dapp.log(`PostApplied change_network_param tx transactionReceiptPass: ${Utils.safeStringify({ address, addressHash, value, when, source })}`)
 }
 
-export const keys = (tx: Tx.ChangeNetworkParam, result: TransactionKeys) => {
+export const keys = (tx: Tx.ChangeNetworkParam, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.ChangeNetworkParam, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.ChangeNetworkParam, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from],
     wo: [],
@@ -190,7 +199,13 @@ export const memoryPattern = (tx: Tx.ChangeNetworkParam, result: TransactionKeys
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.ChangeNetworkParam, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount,
+  accountId: string,
+  tx: Tx.ChangeNetworkParam,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     throw Error('Account must exist in order to perform a change_network_param transaction')
   }

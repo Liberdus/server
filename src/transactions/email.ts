@@ -2,10 +2,9 @@ import * as crypto from '../crypto'
 import axios from 'axios'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import create from '../accounts'
-import * as config from '../config'
-import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { UserAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 
-export const validate_fields = (tx: Tx.Email, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.Email, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.signedTx !== 'object') {
     response.reason = 'tx "signedTx" field must be an object.'
     return response
@@ -43,7 +42,12 @@ export const validate_fields = (tx: Tx.Email, response: ShardusTypes.IncomingTra
   return response
 }
 
-export const validate = (tx: Tx.Email, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.Email,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const source: UserAccount = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data
   if (!source) {
     response.reason = 'no account associated with address in signed tx'
@@ -139,13 +143,13 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.Email, result: TransactionKeys) => {
+export const keys = (tx: Tx.Email, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.signedTx.from]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.Email, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.Email, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.signedTx.from],
     wo: [],
@@ -154,7 +158,13 @@ export const memoryPattern = (tx: Tx.Email, result: TransactionKeys): ShardusTyp
     ro: [],
   }
 }
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.Email, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount,
+  accountId: string,
+  tx: Tx.Email,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     account = create.userAccount(accountId, tx.timestamp)
     accountCreated = true

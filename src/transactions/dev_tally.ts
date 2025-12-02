@@ -14,11 +14,10 @@ import {
   NetworkAccount,
   WrappedStates,
   Tx,
-  TransactionKeys,
   AppReceiptData,
 } from '../@types'
 
-export const validate_fields = (tx: Tx.DevTally, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.DevTally, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.nodeId) === false) {
     response.reason = 'tx "nodeId" is not a valid address.'
     return response
@@ -39,7 +38,12 @@ export const validate_fields = (tx: Tx.DevTally, response: ShardusTypes.Incoming
   return response
 }
 
-export const validate = (tx: Tx.DevTally, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.DevTally,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
   const devProposals: DevProposalAccount[] = tx.devProposals.map((id: string) => wrappedStates[id].data)
@@ -211,14 +215,14 @@ export const transactionReceiptPass = (
   dapp.log('PostApplied dev_tally tx', address, value, when, source)
 }
 
-export const keys = (tx: Tx.DevTally, result: TransactionKeys) => {
+export const keys = (tx: Tx.DevTally, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [...tx.devProposals, tx.devIssue, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.DevTally, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.DevTally, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from, ...tx.devProposals, tx.devIssue],
     wo: [],
@@ -228,7 +232,13 @@ export const memoryPattern = (tx: Tx.DevTally, result: TransactionKeys): Shardus
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: NodeAccount, accountId: string, tx: Tx.DevTally, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: NodeAccount,
+  accountId: string,
+  tx: Tx.DevTally,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     account = create.nodeAccount(accountId)
     accountCreated = true

@@ -291,7 +291,7 @@ const shardusSetup = (): void => {
         targetKeys: [],
         allKeys: [],
         timestamp: txnTimestamp,
-      } as LiberdusTypes.TransactionKeys
+      } as ShardusTypes.TransactionKeys
       const keys = transactions[tx.type].keys(tx, result)
 
       // TODO: this can be removed after we passed version 2.3.4
@@ -321,7 +321,7 @@ const shardusSetup = (): void => {
         shardusMemoryPatterns: memoryPattern,
       }
     },
-    async apply(timestampedTx: ShardusTypes.OpaqueTransaction, wrappedStates: WrappedStates): Promise<ShardusTypes.ApplyResponse> {
+    async apply(timestampedTx: ShardusTypes.OpaqueTransaction, wrappedStates: WrappedStates, appData: any): Promise<ShardusTypes.ApplyResponse> {
       //@ts-ignore
       const { tx } = timestampedTx
       const txTimestamp = utils.getInjectedOrGeneratedTimestamp(timestampedTx, dapp)
@@ -562,8 +562,8 @@ const shardusSetup = (): void => {
 
       return finalResults
     },
-    async getAccountData(accountStart, accountEnd, maxRecords): Promise<LiberdusTypes.WrappedAccount[]> {
-      const results: LiberdusTypes.WrappedAccount[] = []
+    async getAccountData(accountStart, accountEnd, maxRecords): Promise<ShardusTypes.WrappedData[]> {
+      const results: ShardusTypes.WrappedData[] = []
       const start = parseInt(accountStart, 16)
       const end = parseInt(accountEnd, 16)
 
@@ -608,8 +608,8 @@ const shardusSetup = (): void => {
       results.sort((a, b) => a.timestamp - b.timestamp)
       return results
     },
-    async getAccountDataByList(addressList: string[]): Promise<LiberdusTypes.WrappedAccount[]> {
-      const results: LiberdusTypes.WrappedAccount[] = []
+    async getAccountDataByList(addressList: string[]): Promise<ShardusTypes.WrappedData[]> {
+      const results: ShardusTypes.WrappedData[] = []
       for (const address of addressList) {
         const account = await AccountsStorage.getAccount(address)
         if (account) {
@@ -803,7 +803,7 @@ const shardusSetup = (): void => {
         targetKeys: [],
         allKeys: [],
         timestamp: tx.timestamp,
-      } as LiberdusTypes.TransactionKeys
+      } as ShardusTypes.TransactionKeys
       const keys = transactions[tx.type].keys(tx, result)
       return keys.allKeys[0]
     },
@@ -861,7 +861,7 @@ const shardusSetup = (): void => {
       }
 
       try {
-        const wrappedStates: LiberdusTypes.WrappedStates = {}
+        const wrappedStates: WrappedStates = {}
         const promises = []
         let from = tx.from
         let to = tx.to
@@ -886,6 +886,8 @@ const shardusSetup = (): void => {
                 stateId: queuedWrappedState.stateId,
                 data: queuedWrappedState.data as LiberdusTypes.Accounts,
                 timestamp: queuedWrappedState.timestamp,
+                accountCreated: false,
+                isPartial: false,
               }
             }),
           )
@@ -898,6 +900,8 @@ const shardusSetup = (): void => {
                 stateId: queuedWrappedState.stateId,
                 data: queuedWrappedState.data as LiberdusTypes.Accounts,
                 timestamp: queuedWrappedState.timestamp,
+                accountCreated: false,
+                isPartial: false,
               }
             }),
           )
@@ -918,6 +922,8 @@ const shardusSetup = (): void => {
                 stateId: queuedWrappedState.stateId,
                 data: queuedWrappedState.data as LiberdusTypes.Accounts,
                 timestamp: queuedWrappedState.timestamp,
+                accountCreated: false,
+                isPartial: false,
               }
             }),
           )
@@ -931,6 +937,8 @@ const shardusSetup = (): void => {
           stateId: AccountsStorage?.cachedNetworkAccount?.hash,
           data: AccountsStorage?.cachedNetworkAccount as LiberdusTypes.Accounts,
           timestamp: AccountsStorage?.cachedNetworkAccount?.timestamp,
+          accountCreated: false,
+          isPartial: false,
         }
 
         if (
@@ -962,6 +970,8 @@ const shardusSetup = (): void => {
             stateId: tempChatAccount.hash,
             data: tempChatAccount as LiberdusTypes.Accounts,
             timestamp: tempChatAccount.timestamp,
+            accountCreated: true,
+            isPartial: false,
           }
         }
 

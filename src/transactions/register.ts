@@ -1,21 +1,10 @@
 import * as crypto from '../crypto'
-import { Shardus, ShardusTypes, nestedCountersInstance } from '@shardeum-foundation/core'
+import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import create from '../accounts'
-import { isValidUncompressedPublicKey, validatePQPublicKey, getAddressFromPublicKey } from '../utils/address'
+import { isValidUncompressedPublicKey, validatePQPublicKey } from '../utils/address'
 import * as config from '../config'
 import * as utils from '../utils'
-import {
-  AliasAccount,
-  UserAccount,
-  NetworkAccount,
-  IssueAccount,
-  AJVSchemaEnum,
-  WrappedStates,
-  ProposalAccount,
-  Tx,
-  TransactionKeys,
-  AppReceiptData,
-} from '../@types'
+import { AliasAccount, UserAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import * as ajvHelper from '../@types/ajvHelper'
 
 export const validate_fields = (tx: Tx.Register, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
@@ -64,7 +53,12 @@ export const validate_fields = (tx: Tx.Register, response: ShardusTypes.Incoming
   return response
 }
 
-export const validate = (tx: Tx.Register, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.Register,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const alias: AliasAccount = wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
   if (tx.sign.owner !== tx.from) {
@@ -168,14 +162,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.Register, result: TransactionKeys) => {
+export const keys = (tx: Tx.Register, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [tx.aliasHash]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.Register, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.Register, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from, tx.aliasHash],
     wo: [],
@@ -185,7 +179,13 @@ export const memoryPattern = (tx: Tx.Register, result: TransactionKeys): Shardus
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount | AliasAccount, accountId: string, tx: Tx.Register, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount | AliasAccount,
+  accountId: string,
+  tx: Tx.Register,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     if (accountId === tx.aliasHash) {
       account = create.aliasAccount(accountId)

@@ -1,8 +1,7 @@
 import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as crypto from '../../crypto'
 import { LiberdusFlags } from '../../config'
-import { logFlags } from '@shardeum-foundation/core/dist/logger'
-import { NodeAccount, TXTypes, UserAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../../@types'
+import { NodeAccount, TXTypes, UserAccount, WrappedStates, Tx, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { _sleep, generateTxId, isEqualOrNewerVersion, usdToWei, getNodeRewardRateWei, isValidAddress } from '../../utils'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
@@ -366,14 +365,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.ClaimRewardTX, result: TransactionKeys): TransactionKeys => {
+export const keys = (tx: Tx.ClaimRewardTX, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.nominee]
   result.targetKeys = [tx.nominator]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.ClaimRewardTX, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.ClaimRewardTX, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.nominee, tx.nominator],
     wo: [],
@@ -383,7 +382,13 @@ export const memoryPattern = (tx: Tx.ClaimRewardTX, result: TransactionKeys): Sh
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount | NodeAccount, accountId: string, tx: Tx.ClaimRewardTX, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount | NodeAccount,
+  accountId: string,
+  tx: Tx.ClaimRewardTX,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     throw new Error('Account must already exist in order to perform the claim_reward transaction')
   }

@@ -1,7 +1,7 @@
 import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as crypto from '../../crypto'
 import { LiberdusFlags } from '../../config'
-import { TXTypes, NodeInitTxData, Tx, NodeAccount, WrappedStates, TransactionKeys, AppReceiptData } from '../../@types'
+import { TXTypes, Tx, NodeAccount, WrappedStates, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { _sleep, generateTxId, getNodeRewardRateWei, isValidAddress } from '../../utils'
 import { dapp } from '../..'
@@ -25,7 +25,7 @@ export async function injectInitRewardTx(shardus: Shardus, eventData: ShardusTyp
     if (wrappedData == null || wrappedData.data == null) {
       if (LiberdusFlags.VerboseLogs) console.log(`injectInitRewardTx failed cant find : ${eventData.publicKey}`)
       nestedCountersInstance.countEvent('liberdus-staking', `injectInitRewardTx failed cant find node`)
-      return
+      return { success: false, reason: 'cant find node account' }
     }
   }
   const nodeAccount = wrappedData.data as NodeAccount
@@ -33,13 +33,13 @@ export async function injectInitRewardTx(shardus: Shardus, eventData: ShardusTyp
   if (nodeAccount.nominator == null || nodeAccount.nominator === '') {
     if (LiberdusFlags.VerboseLogs) console.log(`injectInitRewardTx failed cant find nomimator : ${eventData.publicKey}`, nodeAccount)
     nestedCountersInstance.countEvent('liberdus-staking', `injectInitRewardTx failed cant find nomimator`)
-    return
+    return { success: false, reason: 'cant find nomimator' }
   }
   // check if nodeAccount.rewardStartTime is already set to eventData.time
   if (nodeAccount.rewardStartTime >= tx.nodeActivatedTime) {
     if (LiberdusFlags.VerboseLogs) console.log(`injectInitRewardTx failed rewardStartTime already set : ${eventData.publicKey}`, nodeAccount)
     nestedCountersInstance.countEvent('liberdus-staking', `injectInitRewardTx failed rewardStartTime already set`)
-    return
+    return { success: false, reason: 'rewardStartTime is already set' }
   }
 
   // to make sure that different nodes all submit an equivalent tx that is counted as the same tx,
@@ -202,14 +202,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.InitRewardTX, result: TransactionKeys): TransactionKeys => {
+export const keys = (tx: Tx.InitRewardTX, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.nominee]
   result.targetKeys = []
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.InitRewardTX, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.InitRewardTX, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.nominee],
     wo: [],
@@ -219,7 +219,13 @@ export const memoryPattern = (tx: Tx.InitRewardTX, result: TransactionKeys): Sha
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: NodeAccount, accountId: string, tx: Tx.InitRewardTX, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: NodeAccount,
+  accountId: string,
+  tx: Tx.InitRewardTX,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     throw new Error('Account must already exist in order to perform the init_reward transaction')
   }
