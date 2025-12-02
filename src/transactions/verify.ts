@@ -23,6 +23,14 @@ export const validate_fields = (tx: Tx.Verify, response: ShardusTypes.IncomingTr
     response.reason = 'tx "code" field must be parseable to an integer.'
     return response
   }
+  if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
+    response.reason = 'not signed by from account'
+    return response
+  }
+  if (crypto.verifyObj(tx) === false) {
+    response.reason = 'incorrect signing'
+    return response
+  }
   response.success = true
   return response
 }
@@ -34,14 +42,6 @@ export const validate = (
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
-  if (tx.sign.owner !== tx.from) {
-    response.reason = 'not signed by from account'
-    return response
-  }
-  if (crypto.verifyObj(tx) === false) {
-    response.reason = 'incorrect signing'
-    return response
-  }
   if (typeof from.verified !== 'string') {
     response.reason = 'From account has not been sent a verification email'
     return response

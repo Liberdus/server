@@ -86,13 +86,6 @@ export const validate_fields = (
     response.reason = 'nodeActivatedTime field is not correct in setRewardTimes Tx'
     return response
   }
-  const isValid = crypto.verifyObj(tx, true)
-  if (!isValid) {
-    if (LiberdusFlags.VerboseLogs) console.log('validateFields InitRewardTX fail invalid signature', tx)
-    nestedCountersInstance.countEvent('liberdus-staking', `validateFields InitRewardTX fail invalid signature`)
-    response.reason = 'invalid signature in setRewardTimes Tx'
-    return response
-  }
   // only allow init reward txs for tx data that is in the serviceQueue
   if (!shardus.serviceQueue.containsTxData(tx.txData)) {
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateFields InitRewardTimes fail node not in serviceQueue', tx)
@@ -113,6 +106,13 @@ export const validate_fields = (
     /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validateFields InitRewardTimes fail txData.publicKey does not match tx.nominee`)
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateFields InitRewardTimes fail txData.publicKey does not match tx.nominee', tx)
     response.reason = 'txData.publicKey does not match tx.nominee'
+    return response
+  }
+  const isValid = crypto.verifyObj(tx, true)
+  if (!isValid) {
+    if (LiberdusFlags.VerboseLogs) console.log('validateFields InitRewardTX fail invalid signature', tx)
+    nestedCountersInstance.countEvent('liberdus-staking', `validateFields InitRewardTX fail invalid signature`)
+    response.reason = 'invalid signature in setRewardTimes Tx'
     return response
   }
   response.success = true

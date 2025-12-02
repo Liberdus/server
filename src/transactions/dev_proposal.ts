@@ -5,7 +5,7 @@ import * as utils from '../utils'
 import create from '../accounts'
 import _ from 'lodash'
 import * as config from '../config'
-import { Accounts, UserAccount, NetworkAccount, DevIssueAccount, WrappedStates, DeveloperPayment, DevProposalAccount, Tx, AppReceiptData } from '../@types'
+import { UserAccount, NetworkAccount, DevIssueAccount, WrappedStates, DeveloperPayment, DevProposalAccount, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 
@@ -62,6 +62,14 @@ export const validate_fields = (tx: Tx.DevProposal, response: ShardusTypes.Incom
     response.reason = 'tx "payAddress" is not a valid address.'
     return response
   }
+  if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
+    response.reason = 'not signed by from account'
+    return response
+  }
+  if (crypto.verifyObj(tx, true) === false) {
+    response.reason = 'incorrect signing'
+    return response
+  }
   response.success = true
   return response
 }
@@ -72,18 +80,9 @@ export const validate = (
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
-  const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
+  const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
-
-  if (tx.sign.owner !== tx.from) {
-    response.reason = 'not signed by from account'
-    return response
-  }
-  if (crypto.verifyObj(tx) === false) {
-    response.reason = 'incorrect signing'
-    return response
-  }
   if (!devIssue) {
     response.reason = "devIssue doesn't exist"
     return response

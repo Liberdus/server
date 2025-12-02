@@ -44,6 +44,14 @@ export const validate_fields = (tx: Tx.DevPayment, response: ShardusTypes.Incomi
     response.reason = 'tx "payment.timestamp" must be a number.'
     return response
   }
+  if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
+    response.reason = 'not signed by from account'
+    return response
+  }
+  if (crypto.verifyObj(tx, true) === false) {
+    response.reason = 'signature is invalid'
+    return response
+  }
   response.success = true
   return response
 }

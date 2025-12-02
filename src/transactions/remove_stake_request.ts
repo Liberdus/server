@@ -15,6 +15,14 @@ export const validate_fields = (tx: Tx.RemoveStakeRequest, response: ShardusType
     response.reason = 'tx "stake" field must be a bigint.'
     return response
   }
+  if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
+    response.reason = 'not signed by from account'
+    return response
+  }
+  if (crypto.verifyObj(tx) === false) {
+    response.reason = 'incorrect signing'
+    return response
+  }
   response.success = true
   return response
 }
@@ -29,14 +37,6 @@ export const validate = (
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   if (typeof from === 'undefined' || from === null) {
     response.reason = 'from account does not exist'
-    return response
-  }
-  if (tx.sign.owner !== tx.from) {
-    response.reason = 'not signed by from account'
-    return response
-  }
-  if (crypto.verifyObj(tx) === false) {
-    response.reason = 'incorrect signing'
     return response
   }
   if (from.data.stake < getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)) {

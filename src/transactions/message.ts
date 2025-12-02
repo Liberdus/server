@@ -33,6 +33,14 @@ export const validate_fields = (tx: Tx.Message, response: ShardusTypes.IncomingT
     response.reason = `tx "message" size must be less than ${config.LiberdusFlags.messageSizeLimit} kB.`
     return response
   }
+  if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
+    response.reason = 'not signed by from account'
+    return response
+  }
+  if (crypto.verifyObj(tx) === false) {
+    response.reason = 'incorrect signing'
+    return response
+  }
   response.success = true
   return response
 }
@@ -48,19 +56,6 @@ export const validate = (
   const to: UserAccount = wrappedStates[tx.to] && wrappedStates[tx.to].data
   const chat: ChatAccount = wrappedStates[tx.chatId] && wrappedStates[tx.chatId].data
 
-  if (!from || !to) {
-    response.reason = 'from or to account does not exist.'
-    return response
-  }
-
-  if (tx.sign.owner !== tx.from) {
-    response.reason = 'not signed by from account'
-    return response
-  }
-  if (crypto.verifyObj(tx) === false) {
-    response.reason = 'incorrect signing'
-    return response
-  }
   if (typeof from === 'undefined' || from === null) {
     response.reason = '"from" account does not exist.'
     return response

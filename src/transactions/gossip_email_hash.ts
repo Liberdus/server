@@ -26,6 +26,7 @@ export const validate_fields = (tx: Tx.GossipEmailHash, response: ShardusTypes.I
     response.reason = 'tx "verified" field must be a string.'
     return response
   }
+  // [TODO] - Add tx sign validation
   response.success = true
   return response
 }

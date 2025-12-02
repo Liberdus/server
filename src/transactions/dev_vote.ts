@@ -31,6 +31,14 @@ export const validate_fields = (tx: Tx.DevVote, response: ShardusTypes.IncomingT
     response.reason = 'tx "devIssue" field must be a string.'
     return response
   }
+  if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
+    response.reason = 'not signed by from account'
+    return response
+  }
+  if (crypto.verifyObj(tx, true) === false) {
+    response.reason = 'incorrect signing'
+    return response
+  }
   response.success = true
   return response
 }
@@ -45,15 +53,6 @@ export const validate = (
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devProposal: DevProposalAccount = wrappedStates[tx.devProposal] && wrappedStates[tx.devProposal].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
-
-  if (tx.sign.owner !== tx.from) {
-    response.reason = 'not signed by from account'
-    return response
-  }
-  if (crypto.verifyObj(tx) === false) {
-    response.reason = 'incorrect signing'
-    return response
-  }
   if (!devProposal) {
     response.reason = "devProposal doesn't exist"
     return response

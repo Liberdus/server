@@ -34,6 +34,14 @@ export const validate_fields = (tx: Tx.DevTally, response: ShardusTypes.Incoming
     response.reason = 'tx "devProposals" field must be an array.'
     return response
   }
+  if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
+    response.reason = 'not signed by from account'
+    return response
+  }
+  if (crypto.verifyObj(tx, true) === false) {
+    response.reason = 'incorrect signing'
+    return response
+  }
   response.success = true
   return response
 }

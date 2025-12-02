@@ -38,6 +38,18 @@ export const validate_fields = (tx: Tx.Email, response: ShardusTypes.IncomingTra
     response.reason = '"Email" length must be less than 31 characters (30 max)'
     return response
   }
+  if (tx.signedTx.emailHash !== crypto.hash(tx.email)) {
+    response.reason = 'Hash of the email does not match the signed email hash'
+    return response
+  }
+  if (!tx.signedTx.sign || !tx.signedTx.sign.owner || !tx.signedTx.sign.sig || tx.signedTx.sign.owner !== tx.signedTx.from) {
+    response.reason = 'not signed by from account'
+    return response
+  }
+  if (crypto.verifyObj(tx.signedTx) === false) {
+    response.reason = 'incorrect signing'
+    return response
+  }
   response.success = true
   return response
 }
@@ -51,14 +63,6 @@ export const validate = (
   const source: UserAccount = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data
   if (!source) {
     response.reason = 'no account associated with address in signed tx'
-    return response
-  }
-  if (tx.signedTx.sign.owner !== tx.signedTx.from) {
-    response.reason = 'not signed by from account'
-    return response
-  }
-  if (crypto.verifyObj(tx.signedTx) === false) {
-    response.reason = 'incorrect signing'
     return response
   }
   if (tx.signedTx.emailHash !== crypto.hash(tx.email)) {

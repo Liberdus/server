@@ -13,6 +13,14 @@ export const validate_fields = (tx: Tx.Snapshot, response: ShardusTypes.Incoming
     response.reason = 'tx "snapshot" field must be an object.'
     return response
   }
+  if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
+    response.reason = 'not signed by from account'
+    return response
+  }
+  if (crypto.verifyObj(tx) === false) {
+    response.reason = 'incorrect signing'
+    return response
+  }
   response.success = true
   return response
 }
@@ -23,14 +31,6 @@ export const validate = (
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
-  if (tx.sign.owner !== tx.from) {
-    response.reason = 'not signed by from account'
-    return response
-  }
-  if (crypto.verifyObj(tx) === false) {
-    response.reason = 'incorrect signing'
-    return response
-  }
   response.success = true
   response.reason = 'This transaction is valid!'
   return response

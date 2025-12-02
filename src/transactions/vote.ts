@@ -1,7 +1,7 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
-import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, AppReceiptData } from '../@types'
+import { UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, AppReceiptData } from '../@types'
 import * as config from '../config'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
@@ -27,6 +27,14 @@ export const validate_fields = (tx: Tx.Vote, response: ShardusTypes.IncomingTran
     response.reason = 'tx "proposal" field must be a string.'
     return response
   }
+  if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
+    response.reason = 'not signed by from account'
+    return response
+  }
+  if (crypto.verifyObj(tx) === false) {
+    response.reason = 'incorrect signing'
+    return response
+  }
   response.success = true
   return response
 }
@@ -37,19 +45,11 @@ export const validate = (
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
-  const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
+  const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const proposal: ProposalAccount = wrappedStates[tx.proposal] && wrappedStates[tx.proposal].data
   const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
 
-  if (tx.sign.owner !== tx.from) {
-    response.reason = 'not signed by from account'
-    return response
-  }
-  if (crypto.verifyObj(tx) === false) {
-    response.reason = 'incorrect signing'
-    return response
-  }
   if (!issue) {
     response.reason = "issue doesn't exist"
     return response
