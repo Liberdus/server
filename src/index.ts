@@ -31,7 +31,6 @@ import * as Penalty from './transactions/staking/apply_penalty'
 import { configShardusNetworkTransactions } from './transactions/networkTransaction/networkTransaction'
 import { initAjvSchemas, verifyPayload } from './@types/ajvHelper'
 import { operatorCLIVersion, operatorGUIVersion, readOperatorVersions } from './utils/versions'
-import { toShardusAddress } from './utils/address'
 import { onActiveVersionChange } from './versioning/index'
 import genesis from './config/genesis.json'
 import rfdc = require('rfdc')
@@ -137,7 +136,7 @@ const shardusSetup = (): void => {
         const currentCycle = dapp.getLatestCycles(1)[0]
 
         for (const address in genesisLoaded) {
-          const accountId = toShardusAddress(address)
+          const accountId = address
 
           if (await dapp.getLocalOrRemoteAccount(accountId)) {
             continue
@@ -864,9 +863,6 @@ const shardusSetup = (): void => {
       try {
         const wrappedStates: LiberdusTypes.WrappedStates = {}
         const promises = []
-        let sourceKeyShardusAddr = null
-        let targetKeyShardusAddr = null
-
         let from = tx.from
         let to = tx.to
 
@@ -883,9 +879,8 @@ const shardusSetup = (): void => {
         }
 
         if (from) {
-          sourceKeyShardusAddr = toShardusAddress(from)
           promises.push(
-            dapp.getLocalOrRemoteAccount(sourceKeyShardusAddr).then((queuedWrappedState) => {
+            dapp.getLocalOrRemoteAccount(from).then((queuedWrappedState) => {
               wrappedStates[from] = {
                 accountId: queuedWrappedState.accountId,
                 stateId: queuedWrappedState.stateId,
@@ -896,9 +891,8 @@ const shardusSetup = (): void => {
           )
         }
         if (to) {
-          targetKeyShardusAddr = toShardusAddress(to)
           promises.push(
-            dapp.getLocalOrRemoteAccount(targetKeyShardusAddr).then((queuedWrappedState) => {
+            dapp.getLocalOrRemoteAccount(to).then((queuedWrappedState) => {
               wrappedStates[to] = {
                 accountId: queuedWrappedState.accountId,
                 stateId: queuedWrappedState.stateId,

@@ -18,7 +18,6 @@ import {
   AJVSchemaEnum,
   TollUnit,
 } from '../@types'
-import { toShardusAddress, toShardusAddressWithKey } from '../utils/address'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 
@@ -61,13 +60,8 @@ export const validate = (
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
-  const clonedTx = { ...tx }
-  if (config.LiberdusFlags.useEthereumAddress) {
-    clonedTx.from = toShardusAddress(tx.from)
-    clonedTx.to = toShardusAddress(tx.to)
-  }
-  const from: UserAccount = wrappedStates[clonedTx.from] && wrappedStates[clonedTx.from].data
-  const to: UserAccount = wrappedStates[clonedTx.to] && wrappedStates[clonedTx.to].data
+  const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
+  const to: UserAccount = wrappedStates[tx.to] && wrappedStates[tx.to].data
   const chatAccount: ChatAccount = wrappedStates[tx.chatId] && wrappedStates[tx.chatId].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   if (tx.sign.owner !== tx.from) {
@@ -150,10 +144,10 @@ export const apply = (
   dapp: Shardus,
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
-  const from = wrappedStates[tx.from].data
+  const from: UserAccount = wrappedStates[tx.from].data
   const to: UserAccount = wrappedStates[tx.to].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
-  const chat = wrappedStates[tx.chatId].data
+  const chat: ChatAccount = wrappedStates[tx.chatId].data
 
   // update balances
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
