@@ -22,7 +22,7 @@ export const issueAccount = (accountId: string): IssueAccount => {
   return issue
 }
 
-export const serializeIssueAccount = (stream: VectorBufferStream, inp: IssueAccount, root = false) => {
+export const serializeIssueAccount = (stream: VectorBufferStream, inp: IssueAccount, root = false): void => {
   if (root) {
     stream.writeUInt16(SerdeTypeIdent.IssueAccount)
   }
@@ -67,13 +67,13 @@ export const deserializeIssueAccount = (stream: VectorBufferStream, root = false
     throw new Error('Unexpected bufferstream for IssueAccount type')
   }
 
-  let id = stream.readString()
-  let type = stream.readString()
-  let proposals = []
+  const id = stream.readString()
+  const type = stream.readString()
+  const proposals = []
   for (let i = 0; i < stream.readUInt32(); i++) {
     proposals.push(stream.readString())
   }
-  let proposalCount = stream.readUInt32()
+  const proposalCount = stream.readUInt32()
   let active = null
   if (stream.readUInt8() === 1) {
     active = stream.readUInt8() === 1 ? true : false
@@ -86,9 +86,9 @@ export const deserializeIssueAccount = (stream: VectorBufferStream, root = false
   if (stream.readUInt8() === 1) {
     winnerId = stream.readString()
   }
-  let hash = stream.readString()
-  let timestamp = Number(stream.readBigUInt64())
-  let tallied = stream.readUInt8() === 1 ? true : false
+  const hash = stream.readString()
+  const timestamp = Number(stream.readBigUInt64())
+  const tallied = stream.readUInt8() === 1 ? true : false
   return {
     id,
     type,

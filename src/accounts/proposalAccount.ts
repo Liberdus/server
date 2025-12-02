@@ -21,7 +21,7 @@ export const proposalAccount = (accountId: string, parameters?: NetworkParameter
   return proposal
 }
 
-export const serializeProposalAccount = (stream: VectorBufferStream, inp: ProposalAccount, root = false) => {
+export const serializeProposalAccount = (stream: VectorBufferStream, inp: ProposalAccount, root = false): void => {
   if (root) {
     stream.writeUInt16(SerdeTypeIdent.ProposalAccount)
   }

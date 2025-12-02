@@ -78,7 +78,7 @@ export const validate = (
     response.reason = 'This alias is already taken'
     return response
   }
-  if (alias.address !== null) {
+  if (alias.address !== '') {
     response.reason = 'This alias is already taken by another user'
     return response
   }
