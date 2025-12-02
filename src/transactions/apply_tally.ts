@@ -1,13 +1,12 @@
 import { Utils } from '@shardeum-foundation/lib-types'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
-import create from '../accounts'
-import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { NetworkAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import * as crypto from '../crypto'
 
 import _ from 'lodash'
 import * as config from '../config'
 
-export const validate_fields = (tx: Tx.ApplyTally, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.ApplyTally, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (_.isEmpty(tx.next) || typeof tx.next !== 'object') {
     response.reason = 'tx "next" field must be a non empty object'
     return response
@@ -72,7 +71,12 @@ export const validate_fields = (tx: Tx.ApplyTally, response: ShardusTypes.Incomi
   return response
 }
 
-export const validate = (tx: Tx.ApplyTally, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.ApplyTally,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
@@ -127,13 +131,13 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.ApplyTally, result: TransactionKeys) => {
+export const keys = (tx: Tx.ApplyTally, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.ApplyTally, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.ApplyTally, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [config.networkAccount],
     wo: [],
@@ -143,7 +147,13 @@ export const memoryPattern = (tx: Tx.ApplyTally, result: TransactionKeys): Shard
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: NetworkAccount, accountId: string, tx: Tx.ApplyTally, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: NetworkAccount,
+  accountId: string,
+  tx: Tx.ApplyTally,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     throw new Error('Network Account must already exist for the apply_tally transaction')
   }

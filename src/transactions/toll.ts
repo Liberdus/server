@@ -3,11 +3,11 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 import * as config from '../config'
 import { LiberdusFlags } from '../config'
-import { Accounts, AppReceiptData, NetworkAccount, TollUnit, TransactionKeys, Tx, UserAccount, WrappedStates } from '../@types'
+import { Accounts, AppReceiptData, NetworkAccount, TollUnit, Tx, UserAccount, WrappedStates } from '../@types'
 import * as AccountsStorage from '../storage/accountStorage'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
-export const validate_fields = (tx: Tx.Toll, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.Toll, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address.'
     return response
@@ -37,7 +37,12 @@ export const validate_fields = (tx: Tx.Toll, response: ShardusTypes.IncomingTran
   return response
 }
 
-export const validate = (tx: Tx.Toll, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.Toll,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   if (tx.sign.owner !== tx.from) {
@@ -93,7 +98,9 @@ export const validate = (tx: Tx.Toll, wrappedStates: WrappedStates, response: Sh
   if (network) {
     if (utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount) > tx.fee) {
       response.success = false
-      response.reason = `The network transaction fee (${utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)}) is greater than the transaction fee provided (${tx.fee}).`
+      response.reason = `The network transaction fee (${utils.getTransactionFeeWei(
+        AccountsStorage.cachedNetworkAccount,
+      )}) is greater than the transaction fee provided (${tx.fee}).`
       return response
     }
   }
@@ -160,14 +167,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.Toll, result: TransactionKeys) => {
+export const keys = (tx: Tx.Toll, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.Toll, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.Toll, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from],
     wo: [],
@@ -177,7 +184,13 @@ export const memoryPattern = (tx: Tx.Toll, result: TransactionKeys): ShardusType
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.Toll, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount,
+  accountId: string,
+  tx: Tx.Toll,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     throw new Error('Account must already exist for the toll transaction')
   }

@@ -784,34 +784,14 @@ export interface DeveloperPayment {
  * ---------------------- SDK DATA export interfaceS ----------------------
  */
 
-export interface TransactionKeys {
-  sourceKeys: string[]
-  targetKeys: string[]
-  allKeys: string[]
-  timestamp: number
-}
-
-export interface WrappedResponse {
-  accountId: string
-  accountCreated: boolean
-  isPartial: boolean
-  stateId: string
-  timestamp: number
-  data: never
-}
-
 export interface ValidationResponse {
   result: string
   reason: string
   txnTimestamp?: number
 }
 
-export interface WrappedAccount {
-  accountId: string
-  stateId: string
+export interface WrappedAccount extends ShardusTypes.WrappedResponse {
   data: Accounts
-  timestamp: number
-  accountCreated?: boolean
 }
 
 export interface WrappedStates {
@@ -821,7 +801,7 @@ export interface WrappedStates {
 export type KeyResult = {
   timestamp: number
   id: string
-  keys: TransactionKeys
+  keys: ShardusTypes.TransactionKeys
   shardusMemoryPatterns: ShardusTypes.ShardusMemoryPatternsInput
 }
 

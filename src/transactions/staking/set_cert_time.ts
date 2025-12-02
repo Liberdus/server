@@ -1,7 +1,7 @@
 import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import config, { ONE_SECOND, LiberdusFlags } from '../../config'
 import { getAccountWithRetry } from './query_certificate'
-import { AccountQueryResponse, TXTypes, WrappedStates, InjectTxResponse, NodeAccount, UserAccount, Tx, TransactionKeys, AppReceiptData } from '../../@types'
+import { AccountQueryResponse, TXTypes, WrappedStates, InjectTxResponse, NodeAccount, UserAccount, Tx, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { getRandom, scaleByStabilityFactor, InjectTxToConsensor, getStakeRequiredWei, isValidAddress } from '../../utils'
 import { verifyObj } from '@shardeum-foundation/lib-crypto-utils'
@@ -65,7 +65,7 @@ export async function injectSetCertTimeTx(shardus: Shardus, publicKey: string, a
   return result
 }
 
-export const validate_fields = (tx: Tx.SetCertTime, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.SetCertTime, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (isValidAddress(tx.nominee) === false) {
     response.reason = 'Invalid nominee address'
     return response
@@ -98,7 +98,12 @@ export const validate_fields = (tx: Tx.SetCertTime, response: ShardusTypes.Incom
   return response
 }
 
-export const validate = (tx: Tx.SetCertTime, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.SetCertTime,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const operatorAccount = wrappedStates[tx.nominator].data as UserAccount
   const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
   /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('validateSetCertTime', tx, operatorAccount)
@@ -252,14 +257,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.SetCertTime, result: TransactionKeys) => {
+export const keys = (tx: Tx.SetCertTime, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.nominee]
   result.targetKeys = [tx.nominator]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.SetCertTime, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.SetCertTime, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.nominee, tx.nominator],
     wo: [],
@@ -268,7 +273,13 @@ export const memoryPattern = (tx: Tx.SetCertTime, result: TransactionKeys): Shar
     ro: [],
   }
 }
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount | NodeAccount, accountId: string, tx: Tx.SetCertTime, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount | NodeAccount,
+  accountId: string,
+  tx: Tx.SetCertTime,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     throw new Error('Account must already exist in order to perform the set_cert_time transaction')
   }

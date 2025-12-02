@@ -3,14 +3,19 @@ import _ from 'lodash'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as crypto from '../crypto'
 import * as config from '../config'
-import { NetworkAccount, NodeAccount, WrappedStates, Tx, TransactionKeys, UserAccount, AppReceiptData } from '../@types'
+import { NetworkAccount, WrappedStates, Tx, UserAccount, AppReceiptData } from '../@types'
 
-export const validate_fields = (tx: Tx.ApplyChangeConfig, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.ApplyChangeConfig, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   response.success = true
   return response
 }
 
-export const validate = (tx: Tx.ApplyChangeConfig, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.ApplyChangeConfig,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   response.success = true
   response.reason = 'This transaction is valid!'
   return response
@@ -70,12 +75,12 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.ApplyChangeConfig, result: TransactionKeys) => {
+export const keys = (tx: Tx.ApplyChangeConfig, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
-export const memoryPattern = (tx: Tx.ApplyChangeConfig, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.ApplyChangeConfig, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [config.networkAccount],
     wo: [],
@@ -85,7 +90,13 @@ export const memoryPattern = (tx: Tx.ApplyChangeConfig, result: TransactionKeys)
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.ApplyChangeConfig, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount,
+  accountId: string,
+  tx: Tx.ApplyChangeConfig,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     throw Error('Account must exist in order to perform a apply_change_config transaction')
   }

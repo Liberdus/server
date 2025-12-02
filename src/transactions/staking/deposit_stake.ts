@@ -4,10 +4,10 @@ import * as utils from './../../utils'
 import * as config from './../../config'
 import * as AccountsStorage from '../../storage/accountStorage'
 import create from './../../accounts'
-import { UserAccount, WrappedStates, Tx, TransactionKeys, NodeAccount, Accounts, AppReceiptData, NetworkAccount } from './../../@types'
+import { UserAccount, WrappedStates, Tx, NodeAccount, AppReceiptData } from './../../@types'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 
-export const validate_fields = (tx: Tx.DepositStake, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.DepositStake, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.nominator) === false) {
     response.reason = 'tx "nominator" field must be a string or valid address.'
     return response
@@ -32,7 +32,12 @@ export const validate_fields = (tx: Tx.DepositStake, response: ShardusTypes.Inco
   return response
 }
 
-export const validate = (tx: Tx.DepositStake, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.DepositStake,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const nominatorAccount: UserAccount = wrappedStates[tx.nominator] && wrappedStates[tx.nominator].data
   const nodeAccount: NodeAccount = wrappedStates[tx.nominee] && wrappedStates[tx.nominee].data
   if (typeof nominatorAccount === 'undefined' || nominatorAccount === null) {
@@ -176,7 +181,7 @@ export const createFailedAppReceiptData = (
   const from: UserAccount = wrappedStates[tx.nominator].data
   let transactionFee = BigInt(0)
   if (from !== undefined && from !== null) {
-    let txFeeUsd = AccountsStorage.cachedNetworkAccount.current.transactionFee
+    const txFeeUsd = AccountsStorage.cachedNetworkAccount.current.transactionFee
     let txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
     if (utils.isEqualOrNewerVersion('2.4.3', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
       txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
@@ -207,14 +212,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.DepositStake, result: TransactionKeys) => {
+export const keys = (tx: Tx.DepositStake, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.nominator]
   result.targetKeys = [tx.nominee]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.DepositStake, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.DepositStake, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.nominator, tx.nominee],
     wo: [],
@@ -224,7 +229,13 @@ export const memoryPattern = (tx: Tx.DepositStake, result: TransactionKeys): Sha
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount | NodeAccount, accountId: string, tx: Tx.DepositStake, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount | NodeAccount,
+  accountId: string,
+  tx: Tx.DepositStake,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     if (accountId === tx.nominee) {
       account = create.nodeAccount(accountId)

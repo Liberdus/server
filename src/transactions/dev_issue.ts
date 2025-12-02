@@ -3,9 +3,9 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import create from '../accounts'
 import * as config from '../config'
 import * as utils from '../utils'
-import { DevIssueAccount, NodeAccount, NetworkAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { DevIssueAccount, NodeAccount, NetworkAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 
-export const validate_fields = (tx: Tx.DevIssue, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.DevIssue, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.nodeId) === false) {
     response.reason = 'tx "nodeId" is not a valid address.'
     return response
@@ -22,7 +22,12 @@ export const validate_fields = (tx: Tx.DevIssue, response: ShardusTypes.Incoming
   return response
 }
 
-export const validate = (tx: Tx.DevIssue, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.DevIssue,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
   // let nodeInfo
@@ -108,14 +113,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.DevIssue, result: TransactionKeys) => {
+export const keys = (tx: Tx.DevIssue, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [tx.devIssue, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.DevIssue, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.DevIssue, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from, tx.devIssue],
     wo: [],
@@ -125,7 +130,13 @@ export const memoryPattern = (tx: Tx.DevIssue, result: TransactionKeys): Shardus
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: NodeAccount | DevIssueAccount, accountId: string, tx: Tx.DevIssue, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: NodeAccount | DevIssueAccount,
+  accountId: string,
+  tx: Tx.DevIssue,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     if (accountId === tx.devIssue) {
       account = create.devIssueAccount(accountId)

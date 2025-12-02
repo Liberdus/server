@@ -5,22 +5,11 @@ import * as utils from '../utils'
 import create from '../accounts'
 import _ from 'lodash'
 import * as config from '../config'
-import {
-  Accounts,
-  UserAccount,
-  NetworkAccount,
-  DevIssueAccount,
-  WrappedStates,
-  DeveloperPayment,
-  DevProposalAccount,
-  Tx,
-  TransactionKeys,
-  AppReceiptData,
-} from '../@types'
+import { Accounts, UserAccount, NetworkAccount, DevIssueAccount, WrappedStates, DeveloperPayment, DevProposalAccount, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 
-export const validate_fields = (tx: Tx.DevProposal, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.DevProposal, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.devIssue !== 'string') {
     response.reason = 'tx "devIssue" field must be a string.'
     return response
@@ -77,7 +66,12 @@ export const validate_fields = (tx: Tx.DevProposal, response: ShardusTypes.Incom
   return response
 }
 
-export const validate = (tx: Tx.DevProposal, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.DevProposal,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
@@ -193,14 +187,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.DevProposal, result: TransactionKeys) => {
+export const keys = (tx: Tx.DevProposal, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [tx.devIssue, tx.devProposal, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.DevProposal, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.DevProposal, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from, tx.devProposal, tx.devIssue],
     wo: [],
@@ -216,7 +210,7 @@ export const createRelevantAccount = (
   accountId: string,
   tx: Tx.DevProposal,
   accountCreated = false,
-) => {
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     if (accountId === tx.devProposal) {
       account = create.devProposalAccount(accountId)

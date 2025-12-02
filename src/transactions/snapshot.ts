@@ -2,10 +2,9 @@ import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as config from '../config'
 import * as utils from '../utils'
-import create from '../accounts'
-import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { UserAccount, NetworkAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 
-export const validate_fields = (tx: Tx.Snapshot, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.Snapshot, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address.'
     return response
@@ -18,7 +17,12 @@ export const validate_fields = (tx: Tx.Snapshot, response: ShardusTypes.Incoming
   return response
 }
 
-export const validate = (tx: Tx.Snapshot, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.Snapshot,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   if (tx.sign.owner !== tx.from) {
     response.reason = 'not signed by from account'
     return response
@@ -82,14 +86,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.Snapshot, result: TransactionKeys) => {
+export const keys = (tx: Tx.Snapshot, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.Snapshot, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.Snapshot, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [config.networkAccount],
     wo: [],
@@ -99,7 +103,13 @@ export const memoryPattern = (tx: Tx.Snapshot, result: TransactionKeys): Shardus
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.Snapshot, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount,
+  accountId: string,
+  tx: Tx.Snapshot,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     throw new Error('Account must already exist for the snapshot transaction')
   }

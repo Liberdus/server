@@ -2,7 +2,7 @@ import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 import * as config from '../config'
-import { Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, ChatAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import create from '../accounts'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
@@ -195,14 +195,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.Read, result: TransactionKeys): ShardusTypes.TransactionKeys => {
+export const keys = (tx: Tx.Read, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.chatId, tx.from, tx.to]
   result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.Read, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.Read, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from, tx.to, tx.chatId], // to account is somewhat needed
     wo: [],
@@ -212,7 +212,13 @@ export const memoryPattern = (tx: Tx.Read, result: TransactionKeys): ShardusType
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount | ChatAccount, accountId: string, tx: Tx.Read, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount | ChatAccount,
+  accountId: string,
+  tx: Tx.Read,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     if (accountId === tx.chatId) {
       account = create.chatAccount(accountId, tx)
