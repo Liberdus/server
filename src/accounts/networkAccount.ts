@@ -4,7 +4,7 @@ import { NetworkAccount } from '../@types'
 import { VectorBufferStream } from '@shardeum-foundation/core'
 import { SerdeTypeIdent } from '.'
 import { Utils } from '@shardeum-foundation/lib-types'
-import { Shardus, nestedCountersInstance } from '@shardeum-foundation/core'
+import { Shardus } from '@shardeum-foundation/core'
 
 export const networkAccount = (accountId: string, timestamp: number, dapp: Shardus): NetworkAccount => {
   // Ensure lowercase accountId
@@ -46,7 +46,7 @@ export const networkAccount = (accountId: string, timestamp: number, dapp: Shard
 }
 
 // todo: we will have to do task to do detailed serialisation and deserialisation later with type reinforcements
-export const serializeNetworkAccount = (stream: VectorBufferStream, inp: NetworkAccount, root = false) => {
+export const serializeNetworkAccount = (stream: VectorBufferStream, inp: NetworkAccount, root = false): void => {
   if (root) {
     stream.writeUInt16(SerdeTypeIdent.NetworkAccount)
   }

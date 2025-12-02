@@ -43,7 +43,7 @@ export const devProposalAccount = (accountId: string): DevProposalAccount => {
 //   timestamp: number
 // }
 
-export const serializeDevProposalAccount = (stream: VectorBufferStream, inp: DevProposalAccount, root = false) => {
+export const serializeDevProposalAccount = (stream: VectorBufferStream, inp: DevProposalAccount, root = false): void => {
   if (root) {
     stream.writeUInt16(SerdeTypeIdent.DevProposalAccount)
   }
