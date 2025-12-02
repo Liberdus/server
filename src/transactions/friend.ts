@@ -3,11 +3,11 @@ import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 import create from '../accounts'
 import * as config from '../config'
-import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 
-export const validate_fields = (tx: Tx.Friend, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.Friend, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address.'
     return response
@@ -24,7 +24,12 @@ export const validate_fields = (tx: Tx.Friend, response: ShardusTypes.IncomingTr
   return response
 }
 
-export const validate = (tx: Tx.Friend, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.Friend,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   if (typeof from === 'undefined' || from === null) {
@@ -106,13 +111,13 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.Friend, result: TransactionKeys) => {
+export const keys = (tx: Tx.Friend, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
-export const memoryPattern = (tx: Tx.Friend, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.Friend, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from],
     wo: [],
@@ -122,7 +127,13 @@ export const memoryPattern = (tx: Tx.Friend, result: TransactionKeys): ShardusTy
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.Friend, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount,
+  accountId: string,
+  tx: Tx.Friend,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     throw Error('Account must exist in order to send a friend transaction')
   }

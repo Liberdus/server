@@ -2,11 +2,11 @@ import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 import * as config from '../config'
-import { UserAccount, NetworkAccount, ChatAccount, WrappedStates, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { UserAccount, NetworkAccount, ChatAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 
-export const validate_fields = (tx: Tx.Read, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.Read, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address.'
     return response
@@ -31,7 +31,12 @@ export const validate_fields = (tx: Tx.Read, response: ShardusTypes.IncomingTran
   return response
 }
 
-export const validate = (tx: Tx.Read, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.Read,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const chat: ChatAccount = wrappedStates[tx.chatId] && wrappedStates[tx.chatId].data
@@ -187,14 +192,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.Read, result: TransactionKeys) => {
+export const keys = (tx: Tx.Read, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.chatId, tx.from]
   result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.Read, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.Read, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from, tx.chatId], // to account is not really needed
     wo: [],
@@ -204,7 +209,13 @@ export const memoryPattern = (tx: Tx.Read, result: TransactionKeys): ShardusType
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount | ChatAccount, accountId: string, tx: Tx.Read, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount | ChatAccount,
+  accountId: string,
+  tx: Tx.Read,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     throw Error('Both chat and user accounts must exist for read transactions')
   }

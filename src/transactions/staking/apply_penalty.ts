@@ -10,7 +10,6 @@ import {
   LeftNetworkEarlyViolationData,
   NodeRefutedViolationData,
   SyncingTimeoutViolationData,
-  TransactionKeys,
   AppReceiptData,
   TXTypes,
 } from '../../@types'
@@ -100,7 +99,7 @@ export async function injectPenaltyTX(
   return result
 }
 
-export const validate_fields = (tx: Tx.PenaltyTX, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.PenaltyTX, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (isValidAddress(tx.reportedNodeId) === false) {
     nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail tx.reportedNodeId address invalid`)
     if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail tx.reportedNodeId address invalid`, tx)
@@ -156,7 +155,8 @@ export const validate_fields = (tx: Tx.PenaltyTX, response: ShardusTypes.Incomin
   // check if we have this penalty tx stored in the Map
   const preRecordedfPenaltyTX = penaltyTxsMap.get(txId)
   if (preRecordedfPenaltyTX == null) {
-    return { isValid: false, reason: 'Penalty TX not found in penaltyTxsMap of exe node' }
+    response.reason = 'Penalty TX not found in penaltyTxsMap of exe node'
+    return response
   }
   const isValid = crypto.verifyObj(tx, true)
   if (!isValid) {
@@ -171,7 +171,12 @@ export const validate_fields = (tx: Tx.PenaltyTX, response: ShardusTypes.Incomin
   return response
 }
 
-export const validate = (tx: Tx.PenaltyTX, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.PenaltyTX,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX`, tx)
   const nodeAccount = wrappedStates[tx.reportedNodePublickKey].data as NodeAccount
   // TODO: make sure this is a valid node account
@@ -365,14 +370,14 @@ export const transactionReceiptPass = async (
   }
 }
 
-export const keys = (tx: Tx.PenaltyTX, result: TransactionKeys) => {
+export const keys = (tx: Tx.PenaltyTX, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.reportedNodePublickKey]
   result.targetKeys = [tx.nominator]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.PenaltyTX, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.PenaltyTX, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.reportedNodePublickKey, tx.nominator],
     wo: [],
@@ -382,7 +387,13 @@ export const memoryPattern = (tx: Tx.PenaltyTX, result: TransactionKeys): Shardu
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount | NodeAccount, accountId: string, tx: Tx.PenaltyTX, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount | NodeAccount,
+  accountId: string,
+  tx: Tx.PenaltyTX,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     throw new Error('Account must already exist in order to perform the apply_penalty transaction')
   }

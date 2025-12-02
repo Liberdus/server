@@ -1,11 +1,10 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
-import create from '../accounts'
 import * as config from '../config'
 import * as utils from '../utils'
-import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, TransactionKeys, AppReceiptData } from '../@types'
+import { Accounts, UserAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 
-export const validate_fields = (tx: Tx.RemoveFriend, response: ShardusTypes.IncomingTransactionResult) => {
+export const validate_fields = (tx: Tx.RemoveFriend, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address.'
     return response
@@ -18,7 +17,12 @@ export const validate_fields = (tx: Tx.RemoveFriend, response: ShardusTypes.Inco
   return response
 }
 
-export const validate = (tx: Tx.RemoveFriend, wrappedStates: WrappedStates, response: ShardusTypes.IncomingTransactionResult, dapp: Shardus) => {
+export const validate = (
+  tx: Tx.RemoveFriend,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const to: Accounts = wrappedStates[tx.to] && wrappedStates[tx.to].data
   if (typeof from === 'undefined' || from === null) {
@@ -91,14 +95,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.RemoveFriend, result: TransactionKeys) => {
+export const keys = (tx: Tx.RemoveFriend, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.RemoveFriend, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.RemoveFriend, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from],
     wo: [],
@@ -108,7 +112,13 @@ export const memoryPattern = (tx: Tx.RemoveFriend, result: TransactionKeys): Sha
   }
 }
 
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount, accountId: string, tx: Tx.RemoveFriend, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount,
+  accountId: string,
+  tx: Tx.RemoveFriend,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     throw Error('Account must exist in order to send a remove_friend transaction')
   }

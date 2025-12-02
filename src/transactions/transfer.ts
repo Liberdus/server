@@ -1,23 +1,9 @@
 import * as crypto from '../crypto'
-import { Shardus, ShardusTypes, nestedCountersInstance } from '@shardeum-foundation/core'
+import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 import * as config from '../config'
 import create from '../accounts'
-import * as ajvHelper from '../@types/ajvHelper'
-import {
-  Accounts,
-  UserAccount,
-  ChatAccount,
-  NetworkAccount,
-  IssueAccount,
-  WrappedStates,
-  ProposalAccount,
-  Tx,
-  TransactionKeys,
-  AppReceiptData,
-  AJVSchemaEnum,
-  TollUnit,
-} from '../@types'
+import { UserAccount, ChatAccount, NetworkAccount, WrappedStates, Tx, AppReceiptData, TollUnit } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 
@@ -235,14 +221,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.Transfer, result: TransactionKeys) => {
+export const keys = (tx: Tx.Transfer, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.chatId, tx.from]
   result.targetKeys = [tx.to, config.networkAccount]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.Transfer, result: TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.Transfer, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   const memoryPattern: ShardusTypes.ShardusMemoryPatternsInput = {
     rw: [tx.from, tx.to, tx.chatId],
     wo: [],
@@ -252,7 +238,13 @@ export const memoryPattern = (tx: Tx.Transfer, result: TransactionKeys): Shardus
   }
   return memoryPattern
 }
-export const createRelevantAccount = (dapp: Shardus, account: UserAccount | ChatAccount, accountId: string, tx: Tx.Transfer, accountCreated = false) => {
+export const createRelevantAccount = (
+  dapp: Shardus,
+  account: UserAccount | ChatAccount,
+  accountId: string,
+  tx: Tx.Transfer,
+  accountCreated = false,
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     if (accountId === tx.chatId) {
       account = create.chatAccount(accountId, tx)
