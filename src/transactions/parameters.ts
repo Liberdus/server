@@ -18,6 +18,14 @@ export const validate_fields = (tx: Tx.Parameters, response: ShardusTypes.Incomi
     response.reason = 'tx "issue" field must be a string'
     return response
   }
+  if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
+    response.reason = 'not signed by from account'
+    return response
+  }
+  if (crypto.verifyObj(tx, true) === false) {
+    response.reason = 'incorrect signing'
+    return response
+  }
   response.success = true
   return response
 }

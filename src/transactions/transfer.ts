@@ -36,6 +36,14 @@ export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.Incoming
     response.reason = `tx "memo" size must be less than ${config.LiberdusFlags.transferMemoLimit} characters.`
     return response
   }
+  if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
+    response.reason = 'not signed by from account'
+    return response
+  }
+  if (crypto.verifyObj(tx) === false) {
+    response.reason = 'incorrect signing'
+    return response
+  }
   response.success = true
   return response
 }
@@ -50,14 +58,6 @@ export const validate = (
   const to: UserAccount = wrappedStates[tx.to] && wrappedStates[tx.to].data
   const chatAccount: ChatAccount = wrappedStates[tx.chatId] && wrappedStates[tx.chatId].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
-  if (tx.sign.owner !== tx.from) {
-    response.reason = 'not signed by from account'
-    return response
-  }
-  if (crypto.verifyObj(tx) === false) {
-    response.reason = 'incorrect signing'
-    return response
-  }
   if (from === undefined || from === null) {
     response.reason = "from account doesn't exist"
     return response

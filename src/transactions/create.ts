@@ -15,6 +15,14 @@ export const validate_fields = (tx: Tx.Create, response: ShardusTypes.IncomingTr
     response.reason = 'tx "amount" field must be a bigint and greater than 0.'
     return response
   }
+  if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
+    response.reason = 'not signed by from account'
+    return response
+  }
+  if (crypto.verifyObj(tx) === false) {
+    response.reason = 'incorrect signing'
+    return response
+  }
   response.success = true
   return response
 }

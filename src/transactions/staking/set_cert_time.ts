@@ -4,7 +4,6 @@ import { getAccountWithRetry } from './query_certificate'
 import { AccountQueryResponse, TXTypes, WrappedStates, InjectTxResponse, NodeAccount, UserAccount, Tx, AppReceiptData } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { getRandom, scaleByStabilityFactor, InjectTxToConsensor, getStakeRequiredWei, isValidAddress } from '../../utils'
-import { verifyObj } from '@shardeum-foundation/lib-crypto-utils'
 import * as crypto from '../../crypto'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 
@@ -90,7 +89,7 @@ export const validate_fields = (tx: Tx.SetCertTime, response: ShardusTypes.Incom
     response.reason = 'not signed by nominee account'
     return response
   }
-  if (!verifyObj(tx)) {
+  if (!crypto.verifyObj(tx, true)) {
     response.reason = 'Invalid signature for SetCertTime tx'
     return response
   }

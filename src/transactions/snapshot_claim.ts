@@ -10,6 +10,14 @@ export const validate_fields = (tx: Tx.SnapshotClaim, response: ShardusTypes.Inc
     response.reason = 'tx "from" is not a valid address.'
     return response
   }
+  if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
+    response.reason = 'not signed by from account'
+    return response
+  }
+  if (crypto.verifyObj(tx) === false) {
+    response.reason = 'incorrect signing'
+    return response
+  }
   response.success = true
   return response
 }
@@ -24,14 +32,6 @@ export const validate = (
   const network: NetworkAccount = wrappedStates[config.networkAccount] && wrappedStates[config.networkAccount].data
   if (from === undefined || from === null) {
     response.reason = "from account doesn't exist"
-    return response
-  }
-  if (tx.sign.owner !== tx.from) {
-    response.reason = 'not signed by from account'
-    return response
-  }
-  if (crypto.verifyObj(tx) === false) {
-    response.reason = 'incorrect signing'
     return response
   }
   if (from.claimedSnapshot) {

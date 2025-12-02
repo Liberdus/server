@@ -2,7 +2,7 @@ import { Utils } from '@shardeum-foundation/lib-types'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as config from '../config'
 import create from '../accounts'
-import { NodeAccount, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, AppReceiptData } from '../@types'
+import { NodeAccount, NetworkAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import * as crypto from '../crypto'
 
 export const validate_fields = (tx: Tx.InitNetwork, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
@@ -17,6 +17,11 @@ export const validate = (
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
+
+  if (typeof network === 'undefined' || network === null) {
+    response.reason = "Network account doesn't exist"
+    return response
+  }
 
   if (network.id !== config.networkAccount) {
     response.reason = "Network account Id doesn't match the configuration"

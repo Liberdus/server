@@ -5,6 +5,7 @@ import { NodeAccount, NetworkAccount, WrappedStates, OurAppDefinedData, Tx, AppR
 import * as crypto from '../crypto'
 
 export const validate_fields = (tx: Tx.NetworkWindows, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
+  // [TODO] - Add tx sign validation
   response.success = true
   return response
 }
@@ -133,7 +134,7 @@ export const createRelevantAccount = (
   accountId: string,
   tx: Tx.NetworkWindows,
   accountCreated = false,
-) => {
+): ShardusTypes.WrappedResponse => {
   if (!account) {
     if (accountId === config.networkAccount) {
       account = create.networkAccount(accountId, tx.timestamp, dapp)
