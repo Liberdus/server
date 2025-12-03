@@ -55,7 +55,6 @@ export const validate = (
 ): ShardusTypes.IncomingTransactionResult => {
   const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const to: UserAccount = wrappedStates[tx.to] && wrappedStates[tx.to].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const chat: ChatAccount = wrappedStates[tx.chatId] && wrappedStates[tx.chatId].data
   if (typeof from === 'undefined' || from === null) {
     response.reason = '"from" account does not exist.'
@@ -109,11 +108,11 @@ export const apply = (
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
   const to: UserAccount = wrappedStates[tx.to].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const chat: ChatAccount = wrappedStates[tx.chatId].data
+  const network = AccountsStorage.cachedNetworkAccount
 
   // Deduct transaction fee
-  const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+  const transactionFee = utils.getTransactionFeeWei(network)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
 
   // Get user index
@@ -166,7 +165,6 @@ export const createFailedAppReceiptData = (
   reason: string,
 ): void => {
   // Deduct transaction fee from the sender's balance
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const from: UserAccount = wrappedStates[tx.from].data
   let transactionFee = BigInt(0)
   if (from !== undefined && from !== null) {
@@ -195,7 +193,7 @@ export const createFailedAppReceiptData = (
 
 export const keys = (tx: Tx.Read, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.chatId, tx.from, tx.to]
-  result.targetKeys = [config.networkAccount]
+  result.targetKeys = []
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
@@ -206,7 +204,7 @@ export const memoryPattern = (tx: Tx.Read, result: ShardusTypes.TransactionKeys)
     wo: [],
     on: [],
     ri: [],
-    ro: [config.networkAccount],
+    ro: [],
   }
 }
 

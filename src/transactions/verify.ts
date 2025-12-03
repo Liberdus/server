@@ -2,9 +2,9 @@ import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import create from '../accounts'
 import * as utils from '../utils'
-import * as config from '../config'
-import { Accounts, UserAccount, NetworkAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
+import { Accounts, UserAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
+import * as AccountsStorage from '../storage/accountStorage'
 
 export const validate_fields = (tx: Tx.Verify, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -68,7 +68,7 @@ export const apply = (
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
+  const network = AccountsStorage.cachedNetworkAccount
   from.verified = true
   from.data.balance = SafeBigIntMath.add(from.data.balance, network.current.faucetAmount)
   from.timestamp = txTimestamp
@@ -115,7 +115,7 @@ export const createFailedAppReceiptData = (
 
 export const keys = (tx: Tx.Verify, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [config.networkAccount]
+  result.targetKeys = []
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
@@ -126,7 +126,7 @@ export const memoryPattern = (tx: Tx.Verify, result: ShardusTypes.TransactionKey
     wo: [],
     on: [],
     ri: [],
-    ro: [config.networkAccount],
+    ro: [],
   }
   return memoryPattern
 }

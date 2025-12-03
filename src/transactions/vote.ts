@@ -1,8 +1,7 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
-import { UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, AppReceiptData } from '../@types'
-import * as config from '../config'
+import { UserAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 
@@ -46,9 +45,9 @@ export const validate = (
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
   const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const proposal: ProposalAccount = wrappedStates[tx.proposal] && wrappedStates[tx.proposal].data
   const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
+  const network = AccountsStorage.cachedNetworkAccount
 
   if (!issue) {
     response.reason = "issue doesn't exist"
@@ -92,8 +91,8 @@ export const apply = (
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const proposal: ProposalAccount = wrappedStates[tx.proposal].data
+  const network = AccountsStorage.cachedNetworkAccount
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, tx.amount)
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
@@ -148,7 +147,7 @@ export const createFailedAppReceiptData = (
 
 export const keys = (tx: Tx.Vote, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.issue, tx.proposal, config.networkAccount]
+  result.targetKeys = [tx.issue, tx.proposal]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
@@ -159,7 +158,7 @@ export const memoryPattern = (tx: Tx.Vote, result: ShardusTypes.TransactionKeys)
     wo: [],
     on: [],
     ri: [],
-    ro: [config.networkAccount],
+    ro: [],
   }
   return memoryPattern
 }
