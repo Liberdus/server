@@ -1,9 +1,8 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
-import * as config from '../config'
 import { LiberdusFlags } from '../config'
-import { Accounts, AppReceiptData, NetworkAccount, TollUnit, Tx, UserAccount, WrappedStates } from '../@types'
+import { Accounts, AppReceiptData, TollUnit, Tx, UserAccount, WrappedStates } from '../@types'
 import * as AccountsStorage from '../storage/accountStorage'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 
@@ -52,7 +51,7 @@ export const validate = (
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
+  const network = AccountsStorage.cachedNetworkAccount
   if (!from) {
     response.reason = 'from account does not exist'
     return response
@@ -118,8 +117,8 @@ export const apply = (
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
-  const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+  const network = AccountsStorage.cachedNetworkAccount
+  const transactionFee = utils.getTransactionFeeWei(network)
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)
@@ -169,7 +168,7 @@ export const createFailedAppReceiptData = (
 
 export const keys = (tx: Tx.Toll, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [config.networkAccount]
+  result.targetKeys = []
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
@@ -180,7 +179,7 @@ export const memoryPattern = (tx: Tx.Toll, result: ShardusTypes.TransactionKeys)
     wo: [],
     on: [],
     ri: [],
-    ro: [config.networkAccount],
+    ro: [],
   }
 }
 

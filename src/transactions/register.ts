@@ -82,19 +82,6 @@ export const validate = (
     response.reason = 'This alias is already taken by another user'
     return response
   }
-  if (/[^A-Za-z0-9]+/g.test(tx.alias)) {
-    response.reason = 'Alias may only contain alphanumeric characters'
-    return response
-  }
-  if (isValidUncompressedPublicKey(tx.publicKey) === false) {
-    response.reason = 'Invalid public key'
-    return response
-  }
-
-  if (tx.pqPublicKey && validatePQPublicKey(tx.pqPublicKey) === false) {
-    response.reason = 'Invalid post-quantum public key'
-    return response
-  }
 
   response.success = true
   response.reason = 'This transaction is valid!'
@@ -176,7 +163,7 @@ export const memoryPattern = (tx: Tx.Register, result: ShardusTypes.TransactionK
     wo: [],
     on: [],
     ri: [],
-    ro: [config.networkAccount],
+    ro: [],
   }
 }
 

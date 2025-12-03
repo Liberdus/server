@@ -44,9 +44,9 @@ export const validate = (
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
   const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const to: UserAccount = wrappedStates[tx.to] && wrappedStates[tx.to].data
   const chat: ChatAccount = wrappedStates[tx.chatId] && wrappedStates[tx.chatId].data
+  const network = AccountsStorage.cachedNetworkAccount
   if (typeof from === 'undefined' || from === null) {
     response.reason = '"from" account does not exist.'
     return response
@@ -85,8 +85,8 @@ export const apply = (
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
   const to: UserAccount = wrappedStates[tx.to].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const chat: ChatAccount = wrappedStates[tx.chatId].data
+  const network = AccountsStorage.cachedNetworkAccount
 
   if (config.LiberdusFlags.VerboseLogs) {
     dapp.log(`Applying message tx: ${txId}`, tx, from, to, chat)
@@ -175,7 +175,6 @@ export const createFailedAppReceiptData = (
   reason: string,
 ): void => {
   // Deduct transaction fee from the sender's balance
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const from: UserAccount = wrappedStates[tx.from].data
   let transactionFee = BigInt(0)
   if (from !== undefined && from !== null) {
@@ -204,7 +203,7 @@ export const createFailedAppReceiptData = (
 
 export const keys = (tx: Tx.ReclaimToll, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.chatId, tx.from]
-  result.targetKeys = [tx.to, config.networkAccount]
+  result.targetKeys = [tx.to]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
@@ -215,7 +214,7 @@ export const memoryPattern = (tx: Tx.ReclaimToll, result: ShardusTypes.Transacti
     wo: [],
     on: [],
     ri: [],
-    ro: [config.networkAccount],
+    ro: [],
   }
 }
 

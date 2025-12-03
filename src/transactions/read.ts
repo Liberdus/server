@@ -2,7 +2,7 @@ import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
 import * as utils from '../utils'
 import * as config from '../config'
-import { UserAccount, NetworkAccount, ChatAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
+import { UserAccount, ChatAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 
@@ -46,8 +46,8 @@ export const validate = (
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
   const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const chat: ChatAccount = wrappedStates[tx.chatId] && wrappedStates[tx.chatId].data
+  const network = AccountsStorage.cachedNetworkAccount
   if (typeof from === 'undefined' || from === null) {
     response.reason = '"from" account does not exist.'
     return response
@@ -95,8 +95,8 @@ export const apply = (
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const chat: ChatAccount = wrappedStates[tx.chatId].data
+  const network = AccountsStorage.cachedNetworkAccount
 
   // Deduct transaction fee
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
@@ -164,7 +164,6 @@ export const createFailedAppReceiptData = (
   reason: string,
 ): void => {
   // Deduct transaction fee from the sender's balance
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const from: UserAccount = wrappedStates[tx.from].data
   let transactionFee = BigInt(0)
   if (from !== undefined && from !== null) {
@@ -193,7 +192,7 @@ export const createFailedAppReceiptData = (
 
 export const keys = (tx: Tx.Read, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.chatId, tx.from]
-  result.targetKeys = [config.networkAccount]
+  result.targetKeys = []
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
@@ -204,7 +203,7 @@ export const memoryPattern = (tx: Tx.Read, result: ShardusTypes.TransactionKeys)
     wo: [],
     on: [],
     ri: [],
-    ro: [config.networkAccount],
+    ro: [],
   }
 }
 
