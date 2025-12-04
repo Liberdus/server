@@ -29,6 +29,7 @@ let HOST = process.argv[2] || 'localhost:9001'
 const HOST_IP = HOST.split(':')[0]
 const ARCHIVESERVER = process.argv[3] || 'localhost:4000'
 const MONITORSERVER = process.argv[4] || 'localhost:3000'
+const FAUCETSERVER = process.argv[5] || 'localhost:3344'
 console.log(`Using ${HOST} as node for queries and transactions.`)
 
 const network = '0'.repeat(64)
@@ -863,6 +864,21 @@ vorpal.command('register', 'registers a unique alias for your account').action(a
   console.log(tx)
   injectTx(tx).then((res) => {
     this.log(res)
+    // Store the alias in the USER object and wallet entries if registration was successful
+    if (res && res.result && res.result.success) {
+      USER.alias = answer.alias
+      // Update the wallet entry with the alias
+      for (const [name, entry] of Object.entries(walletEntries)) {
+        if (entry.address === USER.address) {
+          entry.alias = answer.alias
+          saveEntries(walletEntries, walletFile)
+          this.log(`Alias '${answer.alias}' saved to wallet`)
+          break
+        }
+      }
+    } else {
+      console.log('Alias registration failed')
+    }
     callback()
     // verifyEthereumTx(tx)
   })
@@ -1844,6 +1860,11 @@ vorpal.command('wallet list [name]', 'lists wallet for [name]. Otherwise, lists 
 vorpal.command('use <name>', 'uses <name> wallet for transactions').action(function (args, callback) {
   USER = vorpal.execSync('wallet create ' + args.name)
   this.log('Now using wallet: ' + args.name)
+  if (USER.alias) {
+    this.log(`Alias: ${USER.alias}`)
+  } else {
+    this.log('No alias registered. Use "register" command to register an alias.')
+  }
   callback()
 })
 
@@ -2414,6 +2435,66 @@ function libToWei(lib) {
 function weiToLib(wei) {
   return Number(wei) / 10 ** 18
 }
+
+// COMMAND TO REQUEST TOKENS FROM THE FAUCET
+vorpal.command('faucet', 'requests tokens from the faucet server').action(async function (_, callback) {
+  // Check if user has registered an alias
+  if (!USER.alias) {
+    this.log('You need to register an alias first using the "register" command')
+    callback()
+    return
+  }
+
+  const answer = await this.prompt({
+    type: 'input',
+    name: 'nodeAddress',
+    message: 'Enter the node address (optional, press enter to skip): ',
+  })
+
+  try {
+    // Prepare the faucet request data
+    const faucetData = {
+      username: USER.alias, // Using registered alias as username
+      userAddress: USER.address,
+      networkId: networkId,
+    }
+
+    // Add nodeAddress if provided
+    if (answer.nodeAddress && answer.nodeAddress.trim() !== '') {
+      faucetData.nodeAddress = answer.nodeAddress.trim()
+    }
+
+    // Sign the faucet request using Ethereum signature
+    signTransaction(faucetData)
+
+    this.log('Sending faucet request...')
+    this.log('Request data:', faucetData)
+
+    // Send POST request to faucet server
+    const response = await axios.post(`${PROTOCOL}://${FAUCETSERVER}/faucet`, faucetData)
+
+    // Display the response
+    this.log('\n--- Faucet Response ---')
+    this.log(`Success: ${response.data.success}`)
+    this.log(`Request ID: ${response.data.requestId}`)
+    if (response.data.txHash) {
+      this.log(`Transaction Hash: ${response.data.txHash}`)
+    }
+    this.log(`Message: ${response.data.message}`)
+    this.log('----------------------\n')
+
+    callback()
+  } catch (error) {
+    this.log('Error requesting tokens from faucet:')
+    if (error.response) {
+      this.log(`Status: ${error.response.status}`)
+      this.log(`Message: ${error.response.data?.message || error.response.statusText}`)
+    } else {
+      this.log(error.message)
+    }
+    callback()
+  }
+})
 
 vorpal.delimiter('>').show()
 vorpal.exec('init').then((res) => (USER = res))
