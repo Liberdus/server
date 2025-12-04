@@ -1,5 +1,5 @@
 import * as crypto from '../crypto'
-import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
+import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import { isValidUncompressedPublicKey, validatePQPublicKey } from '../utils/address'
 import * as config from '../config'

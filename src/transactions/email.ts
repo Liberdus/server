@@ -1,6 +1,6 @@
 import * as crypto from '../crypto'
 import axios from 'axios'
-import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
+import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import { UserAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 

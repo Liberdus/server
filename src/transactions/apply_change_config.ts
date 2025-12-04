@@ -1,6 +1,6 @@
-import { Utils } from '@shardeum-foundation/lib-types'
+import { Utils } from '@shardus/lib-types'
 import _ from 'lodash'
-import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
+import { Shardus, ShardusTypes } from '@shardus/core'
 import * as crypto from '../crypto'
 import * as config from '../config'
 import { NetworkAccount, WrappedStates, Tx, UserAccount, AppReceiptData } from '../@types'

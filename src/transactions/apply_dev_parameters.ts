@@ -1,8 +1,8 @@
 import _ from 'lodash'
-import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
+import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import * as crypto from '../crypto'
-import { Utils } from '@shardeum-foundation/lib-types'
+import { Utils } from '@shardus/lib-types'
 import { NetworkAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 
 export const validate_fields = (tx: Tx.ApplyDevParameters, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {

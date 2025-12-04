@@ -1,7 +1,7 @@
 import { NodeAccount, UserAccount } from '../../@types'
 import { LiberdusFlags } from '../../config'
 import { isStakeUnlocked } from '../../transactions/staking/withdraw_stake'
-import { nestedCountersInstance, Shardus } from '@shardeum-foundation/core'
+import { nestedCountersInstance, Shardus } from '@shardus/core'
 
 export const canUnstake =
   (dapp: Shardus) =>

@@ -1,5 +1,5 @@
 import * as crypto from '../crypto'
-import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
+import { Shardus, ShardusTypes } from '@shardus/core'
 import Decimal from 'decimal.js'
 import * as utils from '../utils'
 import create from '../accounts'

@@ -1,4 +1,4 @@
-import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
+import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import create from '../accounts'
 import { NodeAccount, NetworkAccount, WrappedStates, OurAppDefinedData, Tx, AppReceiptData } from '../@types'
