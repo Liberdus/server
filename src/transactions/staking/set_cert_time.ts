@@ -1,4 +1,4 @@
-import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardeum-foundation/core'
+import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardus/core'
 import config, { ONE_SECOND, LiberdusFlags } from '../../config'
 import { getAccountWithRetry } from './query_certificate'
 import { AccountQueryResponse, TXTypes, WrappedStates, InjectTxResponse, NodeAccount, UserAccount, Tx, AppReceiptData } from '../../@types'

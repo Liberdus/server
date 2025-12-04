@@ -1,5 +1,5 @@
-import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardeum-foundation/core'
-import { logFlags } from '@shardeum-foundation/core/dist/logger'
+import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardus/core'
+import { logFlags } from '@shardus/core/dist/logger'
 import { LiberdusFlags, ONE_SECOND } from '../../config'
 import {
   NodeAccount,

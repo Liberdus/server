@@ -10,7 +10,7 @@ import { SQLDataTypes } from './utils/schemaDefintions'
 //const sqlite3 = require('sqlite3').verbose()
 import { Database } from 'sqlite3'
 import config from '../config'
-import { Utils } from '@shardeum-foundation/lib-types'
+import { Utils } from '@shardus/lib-types'
 
 interface Sqlite3Storage {
   baseDir: string

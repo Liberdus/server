@@ -1,4 +1,4 @@
-import { Shardus } from '@shardeum-foundation/core'
+import { Shardus } from '@shardus/core'
 import { ChatAccount } from '../../@types'
 
 export const toll =

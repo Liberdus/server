@@ -4,8 +4,8 @@ import Prop from 'dot-prop'
 import merge from 'deepmerge'
 import minimist from 'minimist'
 import { NetworkParameters } from '../@types'
-import { Utils } from '@shardeum-foundation/lib-types'
-import { DevSecurityLevel, ShardusTypes } from '@shardeum-foundation/core'
+import { Utils } from '@shardus/lib-types'
+import { DevSecurityLevel, ShardusTypes } from '@shardus/core'
 import * as utils from '../utils'
 
 export const networkAccount = '0'.repeat(64)
@@ -262,8 +262,8 @@ export const LiberdusFlags: LiberdusFlags = {
   ModeEnabled: true,
   MinStakeCertSig: 5,
   ExtraNodesToSignStakeCert: 2,
-  MinRemoveNodeCertSig: 5, // [TODO] This has to be shardus config, but it's hard-coded right now. https://github.com/shardeum/core/blob/1d6b52a2ebdb364315db5b9ae8f35ccbb6f7d783/src/p2p/Lost.ts#L1445
-  ExtraNodesToSignRemoveNodeCert: 2, // [TODO] This has to be shardus config, but it's hard-coded right now. https://github.com/shardeum/core/blob/1d6b52a2ebdb364315db5b9ae8f35ccbb6f7d783/src/p2p/Lost.ts#L1445
+  MinRemoveNodeCertSig: 5, // [TODO] This has to be shardus config, but it's hard-coded right now. https://github.com/shardus/core/blob/1d6b52a2ebdb364315db5b9ae8f35ccbb6f7d783/src/p2p/Lost.ts#L1445
+  ExtraNodesToSignRemoveNodeCert: 2, // [TODO] This has to be shardus config, but it's hard-coded right now. https://github.com/shardus/core/blob/1d6b52a2ebdb364315db5b9ae8f35ccbb6f7d783/src/p2p/Lost.ts#L1445
   certCycleDuration: 30,
   lowStakePercent: 0.2,
   allowForceUnstake: true,

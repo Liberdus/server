@@ -1,7 +1,7 @@
 import { NodeAccount } from '../../@types'
 import { LiberdusFlags } from '../../config'
 import { isRestakingAllowed } from '../../transactions/staking/deposit_stake'
-import { nestedCountersInstance, Shardus } from '@shardeum-foundation/core'
+import { nestedCountersInstance, Shardus } from '@shardus/core'
 
 export const canStake =
   (dapp: Shardus) =>

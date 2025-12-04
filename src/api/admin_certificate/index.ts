@@ -1,7 +1,7 @@
-import { nestedCountersInstance, Shardus } from '@shardeum-foundation/core'
+import { nestedCountersInstance, Shardus } from '@shardus/core'
 import { putAdminCertificateHandler } from '../../transactions/admin_certificate'
 import { LiberdusFlags } from '../../config'
-import { logFlags } from '@shardeum-foundation/core/dist/logger'
+import { logFlags } from '@shardus/core/dist/logger'
 
 export const handlePutAdminCertificate =
   (dapp: Shardus) =>

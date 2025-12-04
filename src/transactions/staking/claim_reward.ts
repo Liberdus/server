@@ -1,4 +1,4 @@
-import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardeum-foundation/core'
+import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardus/core'
 import * as crypto from '../../crypto'
 import { LiberdusFlags } from '../../config'
 import { NodeAccount, TXTypes, UserAccount, WrappedStates, Tx, AppReceiptData } from '../../@types'

@@ -1,10 +1,10 @@
 import * as crypto from '../crypto'
 import * as config from '../config'
 import { NetworkAccount } from '../@types'
-import { VectorBufferStream } from '@shardeum-foundation/core'
+import { VectorBufferStream } from '@shardus/core'
 import { SerdeTypeIdent } from '.'
-import { Utils } from '@shardeum-foundation/lib-types'
-import { Shardus } from '@shardeum-foundation/core'
+import { Utils } from '@shardus/lib-types'
+import { Shardus } from '@shardus/core'
 
 export const networkAccount = (accountId: string, timestamp: number, dapp: Shardus): NetworkAccount => {
   // Ensure lowercase accountId

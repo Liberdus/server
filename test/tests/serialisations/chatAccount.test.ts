@@ -1,5 +1,5 @@
-import { VectorBufferStream } from '@shardeum-foundation/core'
-import { Utils } from '@shardeum-foundation/lib-types'
+import { VectorBufferStream } from '@shardus/core'
+import { Utils } from '@shardus/lib-types'
 import { chatAccount, serializeChatAccount, deserializeChatAccount } from '../../../src/accounts/chatAccount'
 import { SerdeTypeIdent } from '../../../src/accounts/index'
 

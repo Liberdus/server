@@ -1,4 +1,4 @@
-import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
+import { Shardus, ShardusTypes } from '@shardus/core'
 import * as crypto from '../crypto'
 import * as config from '../config'
 import * as utils from '../utils'

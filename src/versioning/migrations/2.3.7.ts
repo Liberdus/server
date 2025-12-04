@@ -1,4 +1,4 @@
-import { nestedCountersInstance } from '@shardeum-foundation/core'
+import { nestedCountersInstance } from '@shardus/core'
 import { Migration } from '../types'
 import { LiberdusFlags } from '../../config'
 import { shardusConfig } from '../..'

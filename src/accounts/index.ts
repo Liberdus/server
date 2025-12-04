@@ -8,7 +8,7 @@ import { deserializeIssueAccount, issueAccount, serializeIssueAccount } from './
 import { deserializeNetworkAccount, networkAccount, serializeNetworkAccount } from './networkAccount'
 import { deserializeNodeAccount, nodeAccount, serializeNodeAccount } from './nodeAccount'
 import { deserializeProposalAccount, proposalAccount, serializeProposalAccount } from './proposalAccount'
-import { VectorBufferStream } from '@shardeum-foundation/core'
+import { VectorBufferStream } from '@shardus/core'
 import {
   DeveloperPayment,
   AccountVariant,
@@ -23,7 +23,7 @@ import {
   UserAccount,
   DevAccount,
 } from '../@types'
-import { Utils } from '@shardeum-foundation/lib-types'
+import { Utils } from '@shardus/lib-types'
 
 export enum SerdeTypeIdent {
   AliasAccount = 1,

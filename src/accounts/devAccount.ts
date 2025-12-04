@@ -1,6 +1,6 @@
 import * as crypto from '../crypto'
 import { DevAccount } from '../@types'
-import { VectorBufferStream } from '@shardeum-foundation/core'
+import { VectorBufferStream } from '@shardus/core'
 import { SerdeTypeIdent } from '.'
 
 export const devAccount = (accountId: string): DevAccount => {

@@ -18,9 +18,9 @@ import { AdminCert } from '../transactions/admin_certificate'
 import * as crypto from '../crypto'
 import * as configs from '../config'
 import { LiberdusFlags } from '../config'
-import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
+import { Shardus, ShardusTypes } from '@shardus/core'
 import { shardusPostToNode } from './request'
-import { Utils } from '@shardeum-foundation/lib-types'
+import { Utils } from '@shardus/lib-types'
 import { ethers } from 'ethers'
 
 const WEI = 10n ** 18n

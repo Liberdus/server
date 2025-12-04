@@ -9,7 +9,7 @@ import staking from './staking'
 import node from './node'
 import { handlePutAdminCertificate } from './admin_certificate'
 import { debug_liberdus_flags, set_liberdus_flag } from './liberdus_flags'
-import { Shardus } from '@shardeum-foundation/core'
+import { Shardus } from '@shardus/core'
 export default (dapp: Shardus): void => {
   dapp.registerExternalPost('inject', inject(dapp))
 

@@ -1,5 +1,5 @@
 import * as crypto from '../crypto'
-import { VectorBufferStream } from '@shardeum-foundation/core'
+import { VectorBufferStream } from '@shardus/core'
 import { deserializeNetworkParameters, SerdeTypeIdent, serializeNetworkParameters } from '.'
 import { ProposalAccount, NetworkParameters } from '../@types'
 

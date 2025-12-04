@@ -1,5 +1,5 @@
-import { Utils } from '@shardeum-foundation/lib-types'
-import { Shardus, ShardusTypes } from '@shardeum-foundation/core'
+import { Utils } from '@shardus/lib-types'
+import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import create from '../accounts'
 import { NodeAccount, NetworkAccount, WrappedStates, Tx, AppReceiptData } from '../@types'

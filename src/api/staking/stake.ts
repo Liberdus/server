@@ -1,7 +1,7 @@
 import { LiberdusFlags } from '../../config'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { scaleByStabilityFactor, getStakeRequiredWei } from '../../utils'
-import { nestedCountersInstance } from '@shardeum-foundation/core'
+import { nestedCountersInstance } from '@shardus/core'
 
 export const stake =
   () =>

@@ -1,8 +1,8 @@
-import { nestedCountersInstance, Shardus } from '@shardeum-foundation/core'
+import { nestedCountersInstance, Shardus } from '@shardus/core'
 import { addStakeCert, CertSignaturesResult, queryCertificateHandler } from '../../transactions/staking/query_certificate'
 import { LiberdusFlags } from '../../config'
-import { Utils } from '@shardeum-foundation/lib-types'
-import { logFlags } from '@shardeum-foundation/core/dist/logger'
+import { Utils } from '@shardus/lib-types'
+import { logFlags } from '@shardus/core/dist/logger'
 import { ValidatorError } from '../../@types'
 
 export const queryCertificate =

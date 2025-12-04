@@ -1,7 +1,7 @@
-import { DevSecurityLevel, nestedCountersInstance, Shardus, shardusFactory, ShardusTypes } from '@shardeum-foundation/core'
+import { DevSecurityLevel, nestedCountersInstance, Shardus, shardusFactory, ShardusTypes } from '@shardus/core'
 import account, { deserializeAccounts, serializeAccounts } from './accounts'
-import { P2P, Utils } from '@shardeum-foundation/lib-types'
-import { getFinalArchiverList, setupArchiverDiscovery } from '@shardeum-foundation/lib-archiver-discovery'
+import { P2P, Utils } from '@shardus/lib-types'
+import { getFinalArchiverList, setupArchiverDiscovery } from '@shardus/lib-archiver-discovery'
 import axios from 'axios'
 import * as crypto from './crypto'
 import * as configs from './config'
@@ -13,7 +13,7 @@ import dotenv from 'dotenv'
 import transactions from './transactions'
 import registerAPI from './api'
 import * as AccountsStorage from './storage/accountStorage'
-import { logFlags } from '@shardeum-foundation/core/dist/logger'
+import { logFlags } from '@shardus/core/dist/logger'
 import {
   adminCert,
   setAdminCertificate,
@@ -34,9 +34,9 @@ import { operatorCLIVersion, operatorGUIVersion, readOperatorVersions } from './
 import { onActiveVersionChange } from './versioning/index'
 import genesis from './config/genesis.json'
 import rfdc = require('rfdc')
-import { safeStringify } from '@shardeum-foundation/lib-types/build/src/utils/functions/stringify'
+import { safeStringify } from '@shardus/lib-types/build/src/utils/functions/stringify'
 import create from './accounts'
-import { Archiver, OpaqueTransaction } from '@shardeum-foundation/core/dist/shardus/shardus-types'
+import { Archiver, OpaqueTransaction } from '@shardus/core/dist/shardus/shardus-types'
 
 const { version } = require('./../package.json')
 
@@ -75,7 +75,7 @@ const shardusSetup = (): void => {
     async sync(): Promise<void> {
       dapp.useAccountWrites()
       // In the restore network, the current getLocalOrRemoteAccount would return null and the network account exist check will not work
-      // https://github.com/shardeum/shardus-core/blob/39600e933622cda25ac629f3372b875f301b481a/src/shardus/index.ts#L2238
+      // https://github.com/shardus/shardus-core/blob/39600e933622cda25ac629f3372b875f301b481a/src/shardus/index.ts#L2238
       // [TODO] - Might be goo to change in shardus core to fetch account data during restore mode, to ensure that required network account is present.
       if (dapp.getNetworkMode() === 'restore') {
         return
@@ -366,7 +366,7 @@ const shardusSetup = (): void => {
         if (wrappedStates[accountId].data?.['timestamp'] === txTimestamp) {
           // Update the stateId by calculating the hash for the update accounts for the global txs
           // TODO: This is a hack, we might want to add the change of calling calculateAccountHash() on shardus core for global txs
-          // For normal txs, shardus core takes care of account stateId updates, see: https://github.com/shardeum/shardus-core/blob/8dd4807e952ff5424dfd2e322284e0d55f84b3a8/src/state-manager/TransactionConsensus.ts#L3574
+          // For normal txs, shardus core takes care of account stateId updates, see: https://github.com/shardus/shardus-core/blob/8dd4807e952ff5424dfd2e322284e0d55f84b3a8/src/state-manager/TransactionConsensus.ts#L3574
           const wrappedChangedAccount = wrappedStates[accountId] as ShardusTypes.WrappedResponse
           if (
             tx.type === TXTypes.init_network ||

@@ -1,5 +1,5 @@
 import * as crypto from '../crypto'
-import { Shardus, ShardusTypes, nestedCountersInstance } from '@shardeum-foundation/core'
+import { Shardus, ShardusTypes, nestedCountersInstance } from '@shardus/core'
 import * as utils from '../utils'
 import create from '../accounts'
 import * as config from '../config'
