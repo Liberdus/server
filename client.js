@@ -843,17 +843,26 @@ vorpal.command('verify', 'verifies your email address').action(async function (_
 
 // COMMAND TO REGISTER AN ALIAS FOR A USER ACCOUNT
 vorpal.command('register', 'registers a unique alias for your account').action(async function (args, callback) {
-  const answer = await this.prompt({
-    type: 'input',
-    name: 'alias',
-    message: 'Enter the alias you want: ',
-  })
+  const answers = await this.prompt([
+    {
+      type: 'input',
+      name: 'alias',
+      message: 'Enter the alias you want: ',
+    },
+    {
+      type: 'confirm',
+      name: 'private',
+      message: 'Do you want this account to be private? ',
+      default: false,
+    },
+  ])
   const tx = {
     type: 'register',
-    aliasHash: crypto.hash(answer.alias),
+    aliasHash: crypto.hash(answers.alias),
     from: USER.address,
-    alias: answer.alias,
+    alias: answers.alias,
     publicKey: USER.keys.publicKey,
+    private: answers.private,
     timestamp: Date.now(),
   }
   if (useEthereumSigning) {
@@ -866,13 +875,13 @@ vorpal.command('register', 'registers a unique alias for your account').action(a
     this.log(res)
     // Store the alias in the USER object and wallet entries if registration was successful
     if (res && res.result && res.result.success) {
-      USER.alias = answer.alias
+      USER.alias = answers.alias
       // Update the wallet entry with the alias
       for (const [name, entry] of Object.entries(walletEntries)) {
         if (entry.address === USER.address) {
-          entry.alias = answer.alias
+          entry.alias = answers.alias
           saveEntries(walletEntries, walletFile)
-          this.log(`Alias '${answer.alias}' saved to wallet`)
+          this.log(`Alias '${answers.alias}' saved to wallet`)
           break
         }
       }

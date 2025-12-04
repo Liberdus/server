@@ -67,6 +67,14 @@ export const validate = (
     return response
   }
 
+  const fromPrivate = from.private || false
+  const toPrivate = to.private || false
+
+  if (fromPrivate !== toPrivate) {
+    response.reason = 'Both accounts must have the same private value.'
+    return response
+  }
+
   if (from.data.balance < tx.amount + utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)) {
     response.reason = "from account doesn't have sufficient balance to cover the transaction"
     return response

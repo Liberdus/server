@@ -44,6 +44,11 @@ export const validate_fields = (tx: Tx.Register, response: ShardusTypes.Incoming
     return response
   }
 
+  if (tx.private !== undefined && typeof tx.private !== 'boolean') {
+    response.reason = 'tx "private" field must be a boolean or undefined.'
+    return response
+  }
+
   if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
     response.reason = 'not signed by from account'
     return response
@@ -108,6 +113,8 @@ export const apply = (
   if (tx.pqPublicKey) {
     from.pqPublicKey = tx.pqPublicKey
   }
+
+  from.private = tx.private || false
 
   // from.data.transactions.push({ ...tx, txId })
   alias.timestamp = txTimestamp

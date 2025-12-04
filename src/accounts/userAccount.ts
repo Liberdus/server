@@ -31,6 +31,7 @@ export const userAccount = (accountId: string, timestamp: number): UserAccount =
     lastMaintenance: timestamp,
     timestamp: 0,
     publicKey: '',
+    private: false,
   }
   account.hash = crypto.hashObj(account)
   return account
@@ -102,6 +103,7 @@ export const serializeUserAccount = (stream: VectorBufferStream, inp: UserAccoun
   stream.writeUInt32(inp.timestamp)
   stream.writeString(inp.hash)
   stream.writeString(inp.publicKey)
+  stream.writeUInt8(inp.private ? 1 : 0)
 }
 
 export const deserializeUserAccount = (stream: VectorBufferStream, root = false): UserAccount => {
@@ -194,8 +196,16 @@ export const deserializeUserAccount = (stream: VectorBufferStream, root = false)
 
   // Deserialize hash
   const hash = stream.readString()
-
   const publicKey = stream.readString()
+
+  let isPrivate = false
+  try {
+    if (stream.position < stream.getBufferLength()) {
+      isPrivate = stream.readUInt8() === 1
+    }
+  } catch (e) {
+    // ignore
+  }
 
   return {
     id,
@@ -219,5 +229,6 @@ export const deserializeUserAccount = (stream: VectorBufferStream, root = false)
     lastMaintenance,
     timestamp,
     publicKey,
+    private: isPrivate,
   }
 }
