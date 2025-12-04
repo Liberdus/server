@@ -1,6 +1,6 @@
 // ---------------------- TRANSACTION export interfaceS ------------------
 
-import { shardusFactory, ShardusTypes } from '@shardus/core'
+import { ShardusTypes } from '@shardus/core'
 import { P2P } from '@shardus/lib-types'
 import { StakeCert } from '../transactions/staking/query_certificate'
 import { AdminCert } from '../transactions/admin_certificate'
