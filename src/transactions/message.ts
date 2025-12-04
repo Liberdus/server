@@ -65,6 +65,14 @@ export const validate = (
     return response
   }
 
+  const fromPrivate = from.private || false
+  const toPrivate = to.private || false
+
+  if (fromPrivate !== toPrivate) {
+    response.reason = 'Both accounts must have the same private value.'
+    return response
+  }
+
   // Calculate required toll based on chat account state
   let requiredTollInWei = BigInt(0)
   if (chat) {
