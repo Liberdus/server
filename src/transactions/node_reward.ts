@@ -7,6 +7,7 @@ import * as crypto from '../crypto'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 import { getNodeRewardRateWei, getStakeRequiredWei } from '../utils'
+import { isNodeAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.NodeReward, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -54,6 +55,10 @@ export const validate = (
   }
   if (tx.timestamp - nodeInfo.activeTimestamp < network.current.nodeRewardInterval) {
     response.reason = 'Too early for this node to get a reward'
+    return response
+  }
+  if (from && !isNodeAccount(from)) {
+    response.reason = 'from account is not a NodeAccount'
     return response
   }
   if (!from) {

@@ -5,6 +5,7 @@ import { NodeAccount, TXTypes, UserAccount, WrappedStates, Tx, AppReceiptData } 
 import * as AccountsStorage from '../../storage/accountStorage'
 import { _sleep, generateTxId, isEqualOrNewerVersion, usdToWei, getNodeRewardRateWei, isValidAddress } from '../../utils'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
+import { isNodeAccount, isUserAccount } from '../../@types/accountTypeGuards'
 
 export async function injectClaimRewardTx(
   shardus: Shardus,
@@ -172,6 +173,19 @@ export const validate = (
 ): ShardusTypes.IncomingTransactionResult => {
   if (LiberdusFlags.VerboseLogs) console.log('validating claimRewardTX', tx)
   const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
+  const operatorAccount = wrappedStates[tx.nominator].data as UserAccount
+  if (!isNodeAccount(nodeAccount)) {
+    nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardState fail nominee is not a NodeAccount`)
+    if (LiberdusFlags.VerboseLogs) console.log('validateClaimRewardState fail nominee is not a NodeAccount', tx)
+    response.reason = 'nominee account is not a NodeAccount'
+    return response
+  }
+  if (!isUserAccount(operatorAccount)) {
+    nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail operatorAccount is not a UserAccount`)
+    if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail operatorAccount is not a UserAccount`, tx)
+    response.reason = 'nominator account is not a UserAccount'
+    return response
+  }
   // check if the rewardStartTime is negative
   if (nodeAccount.rewardStartTime < 0) {
     nestedCountersInstance.countEvent('liberdus-staking', `validateClaimRewardState fail rewardStartTime < 0`)

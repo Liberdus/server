@@ -4,6 +4,7 @@ import * as config from '../config'
 import * as utils from '../utils'
 import { UserAccount, NetworkAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
+import { isUserAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.SnapshotClaim, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -32,6 +33,10 @@ export const validate = (
   const network: NetworkAccount = wrappedStates[config.networkAccount] && wrappedStates[config.networkAccount].data
   if (from === undefined || from === null) {
     response.reason = "from account doesn't exist"
+    return response
+  }
+  if (!isUserAccount(from)) {
+    response.reason = 'from account is not a UserAccount'
     return response
   }
   if (from.claimedSnapshot) {

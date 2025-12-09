@@ -6,6 +6,7 @@ import { Utils } from '@shardus/lib-types'
 import create from '../accounts'
 import { UserAccount, NetworkAccount, DeveloperPayment, NodeAccount, OurAppDefinedData, WrappedStates, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
+import { isUserAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.DevPayment, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.nodeId) === false) {
@@ -89,6 +90,10 @@ export const validate = (
   }
   if (!developer || !developer.data) {
     response.reason = `No account exists for the passed in tx.developer ${tx.developer}`
+    return response
+  }
+  if (!isUserAccount(developer)) {
+    response.reason = 'developer account is not a UserAccount'
     return response
   }
   if (tx.developer !== tx.payment.address) {

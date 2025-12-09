@@ -16,6 +16,7 @@ import {
   Tx,
   AppReceiptData,
 } from '../@types'
+import { isDevIssueAccount, isDevProposalAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.DevTally, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.nodeId) === false) {
@@ -69,6 +70,16 @@ export const validate = (
   if (!devIssue) {
     response.reason = "devIssue doesn't exist"
     return response
+  }
+  if (!isDevIssueAccount(devIssue)) {
+    response.reason = 'devIssue account is not a DevIssueAccount'
+    return response
+  }
+  for (const devProposal of devProposals) {
+    if (devProposal && !isDevProposalAccount(devProposal)) {
+      response.reason = 'one or more devProposal accounts are not DevProposalAccounts'
+      return response
+    }
   }
   if (devIssue.number !== network.devIssue) {
     response.reason = `This devIssue number ${devIssue.number} does not match the current network issue ${network.devIssue}`

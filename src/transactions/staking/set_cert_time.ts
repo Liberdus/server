@@ -6,6 +6,7 @@ import * as AccountsStorage from '../../storage/accountStorage'
 import { getRandom, scaleByStabilityFactor, InjectTxToConsensor, getStakeRequiredWei, isValidAddress } from '../../utils'
 import * as crypto from '../../crypto'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
+import { isUserAccount, isNodeAccount } from '../../@types/accountTypeGuards'
 
 export function getCertCycleDuration(): number {
   if (AccountsStorage.cachedNetworkAccount && AccountsStorage.cachedNetworkAccount.current.certCycleDuration !== null) {
@@ -110,8 +111,8 @@ export const validate = (
     response.reason = `Found no wrapped state for operator account ${tx.nominator}`
     return response
   }
-  if (operatorAccount.type !== 'UserAccount') {
-    response.reason = `Nominator account ${tx.nominator} is not UserAccount!`
+  if (!isUserAccount(operatorAccount)) {
+    response.reason = 'nominator account is not a UserAccount'
     return response
   }
   if (operatorAccount.operatorAccountInfo == null) {
@@ -124,8 +125,8 @@ export const validate = (
     response.reason = `Found no wrapped state for node account ${tx.nominee}`
     return response
   }
-  if (nodeAccount.type !== 'NodeAccount') {
-    response.reason = `Nominee account ${tx.nominee} is not NodeAccount!`
+  if (!isNodeAccount(nodeAccount)) {
+    response.reason = 'nominee account is not a NodeAccount'
     return response
   }
 

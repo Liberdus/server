@@ -4,6 +4,7 @@ import create from '../accounts'
 import * as utils from '../utils'
 import { NodeAccount, OurAppDefinedData, NetworkAccount, IssueAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import * as crypto from '../crypto'
+import { isIssueAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.Parameters, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.nodeId) === false) {
@@ -45,6 +46,10 @@ export const validate = (
   }
   if (!issue) {
     response.reason = "Issue doesn't exist"
+    return response
+  }
+  if (!isIssueAccount(issue)) {
+    response.reason = 'issue account is not an IssueAccount'
     return response
   }
   if (issue.active === false) {

@@ -5,6 +5,7 @@ import { TXTypes, Tx, NodeAccount, WrappedStates, AppReceiptData } from '../../@
 import * as AccountsStorage from '../../storage/accountStorage'
 import { _sleep, generateTxId, getNodeRewardRateWei, isValidAddress } from '../../utils'
 import { dapp } from '../..'
+import { isNodeAccount } from '../../@types/accountTypeGuards'
 
 export async function injectInitRewardTx(shardus: Shardus, eventData: ShardusTypes.ShardusEvent): Promise<unknown> {
   const startTime = eventData.additionalData.txData.startTime
@@ -127,7 +128,12 @@ export const validate = (
 ): ShardusTypes.IncomingTransactionResult => {
   if (LiberdusFlags.VerboseLogs) console.log('Validating InitRewardTX', tx)
   const nodeAccount = wrappedStates[tx.nominee].data as NodeAccount
-
+  if (nodeAccount && !isNodeAccount(nodeAccount)) {
+    nestedCountersInstance.countEvent('liberdus-staking', `validateInitRewardTX fail nodeAccount is not a NodeAccount`)
+    if (LiberdusFlags.VerboseLogs) console.log('validateInitRewardTX fail nodeAccount is not a NodeAccount', tx)
+    response.reason = 'nominee account is not a NodeAccount'
+    return response
+  }
   // check if nodeAccount.rewardStartTime is already set to tx.nodeActivatedTime
   if (nodeAccount.rewardStartTime >= tx.nodeActivatedTime) {
     if (LiberdusFlags.VerboseLogs) console.log('validateInitRewardTX fail rewardStartTime already set', tx)
