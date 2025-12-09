@@ -5,6 +5,7 @@ import { LiberdusFlags } from '../config'
 import { Accounts, AppReceiptData, TollUnit, Tx, UserAccount, WrappedStates } from '../@types'
 import * as AccountsStorage from '../storage/accountStorage'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
+import { isUserAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.Toll, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -54,6 +55,10 @@ export const validate = (
   const network = AccountsStorage.cachedNetworkAccount
   if (!from) {
     response.reason = 'from account does not exist'
+    return response
+  }
+  if (!isUserAccount(from)) {
+    response.reason = 'from account is not a UserAccount'
     return response
   }
   if (from.data.balance < utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)) {

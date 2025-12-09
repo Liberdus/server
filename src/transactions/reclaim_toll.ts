@@ -6,6 +6,7 @@ import * as config from '../config'
 import { AppReceiptData, ChatAccount, NetworkAccount, Tx, UserAccount, WrappedStates } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
+import { isUserAccount, isChatAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.ReclaimToll, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -51,8 +52,20 @@ export const validate = (
     response.reason = '"from" account does not exist.'
     return response
   }
+  if (!isUserAccount(from)) {
+    response.reason = 'from account is not a UserAccount'
+    return response
+  }
   if (typeof to === 'undefined' || to === null) {
     response.reason = '"target" account does not exist.'
+    return response
+  }
+  if (!isUserAccount(to)) {
+    response.reason = 'to account is not a UserAccount'
+    return response
+  }
+  if (chat && !isChatAccount(chat)) {
+    response.reason = 'chatId account is not a ChatAccount'
     return response
   }
 

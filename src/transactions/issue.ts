@@ -6,6 +6,7 @@ import * as config from '../config'
 import * as utils from '../utils'
 import { NodeAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, AppReceiptData } from '../@types'
 import { Utils } from '@shardus/lib-types'
+import { isIssueAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.Issue, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.nodeId) === false) {
@@ -44,6 +45,10 @@ export const validate = (
 ): ShardusTypes.IncomingTransactionResult => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
+  if (issue && !isIssueAccount(issue)) {
+    response.reason = 'issue account is not an IssueAccount'
+    return response
+  }
   // let nodeInfo
   // try {
   //   nodeInfo = dapp.getNode(tx.nodeId)

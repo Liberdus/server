@@ -5,6 +5,7 @@ import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, DevProposalAccount, DevIssueAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
+import { isUserAccount, isDevProposalAccount, isDevIssueAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.DevVote, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -53,12 +54,24 @@ export const validate = (
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devProposal: DevProposalAccount = wrappedStates[tx.devProposal] && wrappedStates[tx.devProposal].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
+  if (from && !isUserAccount(from)) {
+    response.reason = 'from account is not a UserAccount'
+    return response
+  }
   if (!devProposal) {
     response.reason = "devProposal doesn't exist"
     return response
   }
+  if (!isDevProposalAccount(devProposal)) {
+    response.reason = 'devProposal account is not a DevProposalAccount'
+    return response
+  }
   if (!devIssue) {
     response.reason = "devIssue doesn't exist"
+    return response
+  }
+  if (!isDevIssueAccount(devIssue)) {
+    response.reason = 'devIssue account is not a DevIssueAccount'
     return response
   }
   if (devIssue.number !== network.devIssue) {

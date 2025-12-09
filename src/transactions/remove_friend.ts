@@ -3,6 +3,7 @@ import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import * as utils from '../utils'
 import { Accounts, UserAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
+import { isUserAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.RemoveFriend, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -37,8 +38,16 @@ export const validate = (
     response.reason = 'from account does not exist'
     return response
   }
+  if (!isUserAccount(from)) {
+    response.reason = 'from account is not a UserAccount'
+    return response
+  }
   if (typeof to === 'undefined' || to === null) {
     response.reason = 'To account does not exist'
+    return response
+  }
+  if (!isUserAccount(to)) {
+    response.reason = 'to account is not a UserAccount'
     return response
   }
   if (tx.sign.owner !== tx.from) {

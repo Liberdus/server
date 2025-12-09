@@ -5,6 +5,7 @@ import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
+import { isUserAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.Distribute, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -44,9 +45,17 @@ export const validate = (
     response.reason = "from account doesn't exist"
     return response
   }
+  if (!isUserAccount(from)) {
+    response.reason = 'from account is not a UserAccount'
+    return response
+  }
   for (const user of recipients) {
     if (!user) {
       response.reason = 'no account for one of the recipients'
+      return response
+    }
+    if (!isUserAccount(user)) {
+      response.reason = 'recipient account is not a UserAccount'
       return response
     }
   }

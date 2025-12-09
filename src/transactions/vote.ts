@@ -4,6 +4,7 @@ import * as utils from '../utils'
 import { UserAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
+import { isUserAccount, isIssueAccount, isProposalAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.Vote, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -49,8 +50,16 @@ export const validate = (
   const issue: IssueAccount = wrappedStates[tx.issue] && wrappedStates[tx.issue].data
   const network = AccountsStorage.cachedNetworkAccount
 
+  if (from && !isUserAccount(from)) {
+    response.reason = 'from account is not a UserAccount'
+    return response
+  }
   if (!issue) {
     response.reason = "issue doesn't exist"
+    return response
+  }
+  if (!isIssueAccount(issue)) {
+    response.reason = 'issue account is not an IssueAccount'
     return response
   }
   if (issue.number !== network.issue) {
@@ -63,6 +72,10 @@ export const validate = (
   }
   if (!proposal) {
     response.reason = "Proposal doesn't exist"
+    return response
+  }
+  if (!isProposalAccount(proposal)) {
+    response.reason = 'proposal account is not a ProposalAccount'
     return response
   }
   if (tx.amount <= 0) {

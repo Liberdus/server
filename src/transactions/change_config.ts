@@ -1,10 +1,11 @@
 import { DevSecurityLevel, Shardus, ShardusTypes } from '@shardus/core'
 import config, { networkAccount, ONE_SECOND } from '../config'
-import { TXTypes, OurAppDefinedData, Signature, Tx, UserAccount, WrappedStates, AppReceiptData } from '../@types'
+import { TXTypes, OurAppDefinedData, Signature, Tx, DevAccount, WrappedStates, AppReceiptData, NetworkAccount } from '../@types'
 import { Utils } from '@shardus/lib-types'
 import * as utils from '../utils'
 import * as crypto from '../crypto'
 import * as AccountsStorage from '../storage/accountStorage'
+import { isDevAccount, isNetworkAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (
   tx: Tx.ChangeConfig,
@@ -59,7 +60,19 @@ export const validate = (
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
   const parsedConfig = JSON.parse(tx.config)
+  const from: DevAccount = wrappedStates[tx.from].data
+  const network: NetworkAccount = wrappedStates[networkAccount].data
   dapp.log('Tx.ChangeConfig: ', parsedConfig)
+
+  if (!isDevAccount(from)) {
+    response.reason = 'from account is not a DevAccount'
+    return response
+  }
+
+  if (!isNetworkAccount(network)) {
+    response.reason = 'network account is not a NetworkAccount'
+    return response
+  }
 
   // Validate parsed config
   const givenConfig = Utils.safeJsonParse(tx.config)
@@ -100,7 +113,7 @@ export const apply = (
   dapp: Shardus,
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
-  const from: UserAccount = wrappedStates[tx.from].data
+  const from: DevAccount = wrappedStates[tx.from].data
   let changeOnCycle
   let cycleData: ShardusTypes.Cycle
 
@@ -203,7 +216,7 @@ export const memoryPattern = (tx: Tx.ChangeConfig, result: ShardusTypes.Transact
 
 export const createRelevantAccount = (
   dapp: Shardus,
-  account: UserAccount,
+  account: DevAccount,
   accountId: string,
   tx: Tx.ChangeConfig,
   accountCreated = false,

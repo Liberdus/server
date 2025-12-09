@@ -3,6 +3,7 @@ import axios from 'axios'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import create from '../accounts'
 import { UserAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
+import { isUserAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.Email, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.signedTx !== 'object') {
@@ -63,6 +64,10 @@ export const validate = (
   const source: UserAccount = wrappedStates[tx.signedTx.from] && wrappedStates[tx.signedTx.from].data
   if (!source) {
     response.reason = 'no account associated with address in signed tx'
+    return response
+  }
+  if (!isUserAccount(source)) {
+    response.reason = 'source account is not a UserAccount'
     return response
   }
   if (tx.signedTx.emailHash !== crypto.hash(tx.email)) {

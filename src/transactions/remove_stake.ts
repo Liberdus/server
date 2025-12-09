@@ -6,6 +6,7 @@ import { Accounts, UserAccount, NetworkAccount, WrappedStates, Tx, AppReceiptDat
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 import { getStakeRequiredWei } from '../utils'
+import { isUserAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.RemoveStake, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -35,9 +36,12 @@ export const validate = (
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   if (typeof from === 'undefined' || from === null) {
     response.reason = 'from account does not exist'
+    return response
+  }
+  if (!isUserAccount(from)) {
+    response.reason = 'from account is not a UserAccount'
     return response
   }
   if (from.data.stake < getStakeRequiredWei(AccountsStorage.cachedNetworkAccount)) {
