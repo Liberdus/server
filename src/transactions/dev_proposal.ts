@@ -8,6 +8,7 @@ import * as config from '../config'
 import { UserAccount, NetworkAccount, DevIssueAccount, WrappedStates, DeveloperPayment, DevProposalAccount, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
+import { isUserAccount, isDevIssueAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.DevProposal, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (typeof tx.devIssue !== 'string') {
@@ -83,8 +84,16 @@ export const validate = (
   const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const devIssue: DevIssueAccount = wrappedStates[tx.devIssue] && wrappedStates[tx.devIssue].data
+  if (from && !isUserAccount(from)) {
+    response.reason = 'from account is not a UserAccount'
+    return response
+  }
   if (!devIssue) {
     response.reason = "devIssue doesn't exist"
+    return response
+  }
+  if (!isDevIssueAccount(devIssue)) {
+    response.reason = 'devIssue account is not a DevIssueAccount'
     return response
   }
   if (devIssue.number !== network.devIssue) {

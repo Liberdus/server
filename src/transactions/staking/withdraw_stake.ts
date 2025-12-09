@@ -5,6 +5,7 @@ import { LiberdusFlags } from './../../config'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { UserAccount, WrappedStates, Tx, NodeAccount, AppReceiptData } from './../../@types'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
+import { isUserAccount, isNodeAccount } from '../../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.WithdrawStake, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.nominator) === false) {
@@ -43,8 +44,16 @@ export const validate = (
     response.reason = 'nominator account does not exist'
     return response
   }
+  if (!isUserAccount(nominatorAccount)) {
+    response.reason = 'nominator account is not a UserAccount'
+    return response
+  }
   if (typeof nodeAccount === 'undefined' || nodeAccount === null) {
     response.reason = 'nominee account does not exist'
+    return response
+  }
+  if (!isNodeAccount(nodeAccount)) {
+    response.reason = 'nominee account is not a NodeAccount'
     return response
   }
   if (nominatorAccount.operatorAccountInfo === undefined || nominatorAccount.operatorAccountInfo === null) {

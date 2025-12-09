@@ -6,6 +6,7 @@ import * as AccountsStorage from '../../storage/accountStorage'
 import create from './../../accounts'
 import { UserAccount, WrappedStates, Tx, NodeAccount, AppReceiptData } from './../../@types'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
+import { isUserAccount, isNodeAccount } from '../../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.DepositStake, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.nominator) === false) {
@@ -42,6 +43,14 @@ export const validate = (
   const nodeAccount: NodeAccount = wrappedStates[tx.nominee] && wrappedStates[tx.nominee].data
   if (typeof nominatorAccount === 'undefined' || nominatorAccount === null) {
     response.reason = 'nominator account does not exist'
+    return response
+  }
+  if (!isUserAccount(nominatorAccount)) {
+    response.reason = 'nominator account is not a UserAccount'
+    return response
+  }
+  if (nodeAccount && !isNodeAccount(nodeAccount)) {
+    response.reason = 'nominee account is not a NodeAccount'
     return response
   }
   let existingStake = BigInt(0)

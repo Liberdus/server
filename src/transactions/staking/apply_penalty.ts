@@ -18,6 +18,7 @@ import { isEqualOrNewerVersion, _sleep, generateTxId, isValidAddress, getStakeRe
 import * as crypto from '../../crypto'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import { RemoveNodeCert } from './query_certificate'
+import { isNodeAccount, isUserAccount } from '../../@types/accountTypeGuards'
 
 const penaltyTxsMap: Map<string, Tx.PenaltyTX> = new Map()
 
@@ -179,9 +180,19 @@ export const validate = (
 ): ShardusTypes.IncomingTransactionResult => {
   if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX`, tx)
   const nodeAccount = wrappedStates[tx.reportedNodePublickKey].data as NodeAccount
-  // TODO: make sure this is a valid node account
   const operatorAccount = wrappedStates[tx.nominator].data as UserAccount
-  // TODO: make sure this is a valid user account
+  if (!isNodeAccount(nodeAccount)) {
+    nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail reported node address is not a NodeAccount`)
+    if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail reported node address is not a NodeAccount`, tx)
+    response.reason = 'reported node address is not a NodeAccount'
+    return response
+  }
+  if (!isUserAccount(operatorAccount)) {
+    nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail operatorAccount is not a UserAccount`)
+    if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail operatorAccount is not a UserAccount`, tx)
+    response.reason = 'nominator account is not a UserAccount'
+    return response
+  }
   if (nodeAccount.nominator !== tx.nominator) {
     nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail tx.nominator does not match`)
     if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail tx.nominator does not match`, tx)

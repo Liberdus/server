@@ -2,18 +2,18 @@ import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardus/core'
 import * as crypto from '../../crypto'
 import { Request } from 'express'
 import { LiberdusFlags } from '../../config'
-import { AccountAxiosResponse, AccountQueryResponse, InjectTxResponse, UserAccount, ValidatorError } from '../../@types'
+import { AccountAxiosResponse, AccountQueryResponse, UserAccount, ValidatorError } from '../../@types'
 import { fixBigIntLiteralsToBigInt, getRandom, isValidAddress } from '../../utils'
-import { shardusGetFromNode, shardusPostToNode, shardusPutToNode } from '../../utils/request'
-import { logFlags } from '@shardus/core/dist/logger'
+import { shardusGetFromNode, shardusPutToNode } from '../../utils/request'
+import { isUserAccount, isNodeAccount } from '../../@types/accountTypeGuards'
 
 export let stakeCert: StakeCert = null
 
-export const addStakeCert = (cert: StakeCert) => {
+export const addStakeCert = (cert: StakeCert): void => {
   stakeCert = cert
 }
 
-export const removeStakeCert = () => {
+export const removeStakeCert = (): void => {
   stakeCert = null
 }
 
@@ -53,7 +53,7 @@ export interface RemoveNodeCert {
   sign?: ShardusTypes.Sign //this is use when we need to sign and unsigned cert. signs and sign will not exist yet when sign() is called
 }
 
-export const validate_fields = (tx: QueryCertRequest) => {
+export const validate_fields = (tx: QueryCertRequest): ShardusTypes.IncomingTransactionResult => {
   const response = {
     success: false,
     reason: '',
@@ -215,18 +215,27 @@ export async function queryCertificateHandler(req: Request, shardus: Shardus): P
   }
 
   const operatorAccount = await shardus.getLocalOrRemoteAccount(queryCertReq.nominator)
-  if (!operatorAccount) {
+  if (!operatorAccount || !operatorAccount.data) {
     nestedCountersInstance.countEvent('liberdus-staking', 'queryCertificateHandler: failed to fetch operator account' + ' state')
     return { success: false, reason: 'Failed to fetch operator account state' }
+  }
+  // is the norminator a user account?
+  if (!isUserAccount(operatorAccount.data)) {
+    nestedCountersInstance.countEvent('liberdus-staking', 'queryCertificateHandler: nominator is not a user account')
+    return { success: false, reason: 'nominator is not a user account' }
   }
   const nodeAccount = await shardus.getLocalOrRemoteAccount(queryCertReq.nominee)
   if (!nodeAccount) {
     nestedCountersInstance.countEvent('liberdus-staking', 'queryCertificateHandler: failed to fetch node account state')
     return { success: false, reason: 'Failed to fetch node account state' }
   }
+  // Is the nominee a node account?
+  if (!isNodeAccount(nodeAccount.data)) {
+    nestedCountersInstance.countEvent('liberdus-staking', 'queryCertificateHandler: Nominee is not a node account')
+    return { success: false, reason: 'Nominee is not a node account' }
+  }
 
   const operatorAccountData = operatorAccount.data as UserAccount
-  // [TODO]: check if this is operator account is a valid user account
 
   const currentTimestampInMillis = shardus.shardusGetTime()
 
