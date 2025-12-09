@@ -6,6 +6,7 @@ import * as config from '../config'
 import { Accounts, UserAccount, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
+import { isUserAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.Friend, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -42,6 +43,10 @@ export const validate = (
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   if (typeof from === 'undefined' || from === null) {
     response.reason = 'from account does not exist'
+    return response
+  }
+  if (!isUserAccount(from)) {
+    response.reason = 'from account is not a UserAccount'
     return response
   }
   if (from.data.balance < utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)) {

@@ -6,6 +6,7 @@ import create from '../accounts'
 import { UserAccount, ChatAccount, NetworkAccount, WrappedStates, Tx, AppReceiptData, TollUnit } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
+import { isUserAccount, isChatAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -57,13 +58,26 @@ export const validate = (
   const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const to: UserAccount = wrappedStates[tx.to] && wrappedStates[tx.to].data
   const chatAccount: ChatAccount = wrappedStates[tx.chatId] && wrappedStates[tx.chatId].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
+  const network = AccountsStorage.cachedNetworkAccount
+
   if (from === undefined || from === null) {
     response.reason = "from account doesn't exist"
     return response
   }
+  if (!isUserAccount(from)) {
+    response.reason = 'from account is not a UserAccount'
+    return response
+  }
   if (to === undefined || to === null) {
     response.reason = "To account doesn't exist"
+    return response
+  }
+  if (!isUserAccount(to)) {
+    response.reason = 'to account is not a UserAccount'
+    return response
+  }
+  if (chatAccount && !isChatAccount(chatAccount)) {
+    response.reason = 'chatId account is not a ChatAccount'
     return response
   }
 
@@ -140,8 +154,8 @@ export const apply = (
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
   const to: UserAccount = wrappedStates[tx.to].data
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const chat: ChatAccount = wrappedStates[tx.chatId].data
+  const network = AccountsStorage.cachedNetworkAccount
 
   // update balances
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
@@ -198,7 +212,6 @@ export const createFailedAppReceiptData = (
   reason: string,
 ): void => {
   // Deduct transaction fee from the sender's balance
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data
   const from: UserAccount = wrappedStates[tx.from].data
   let transactionFee = BigInt(0)
   if (from !== undefined && from !== null) {
@@ -231,7 +244,7 @@ export const createFailedAppReceiptData = (
 
 export const keys = (tx: Tx.Transfer, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.chatId, tx.from]
-  result.targetKeys = [tx.to, config.networkAccount]
+  result.targetKeys = [tx.to]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
@@ -242,7 +255,7 @@ export const memoryPattern = (tx: Tx.Transfer, result: ShardusTypes.TransactionK
     wo: [],
     on: [],
     ri: [],
-    ro: [config.networkAccount],
+    ro: [],
   }
   return memoryPattern
 }

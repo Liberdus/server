@@ -4,6 +4,7 @@ import * as config from '../config'
 import * as utils from '../utils'
 import create from '../accounts'
 import { NodeAccount, Windows, OurAppDefinedData, NetworkAccount, IssueAccount, WrappedStates, ProposalAccount, Tx, AppReceiptData } from '../@types'
+import { isIssueAccount, isProposalAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.Tally, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.nodeId) === false) {
@@ -61,6 +62,16 @@ export const validate = (
   if (!issue) {
     response.reason = "Issue doesn't exist"
     return response
+  }
+  if (!isIssueAccount(issue)) {
+    response.reason = 'issue account is not an IssueAccount'
+    return response
+  }
+  for (const proposal of proposals) {
+    if (proposal && !isProposalAccount(proposal)) {
+      response.reason = 'proposal account is not a ProposalAccount'
+      return response
+    }
   }
   if (issue.number !== network.issue) {
     response.reason = `This issue number ${issue.number} does not match the current network issue ${network.issue}`

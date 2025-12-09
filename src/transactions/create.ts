@@ -5,6 +5,7 @@ import { Accounts, UserAccount, WrappedStates, Tx, AppReceiptData } from '../@ty
 import * as crypto from '../crypto'
 import * as utils from '../utils'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
+import { isUserAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.Create, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -36,6 +37,10 @@ export const validate = (
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
   if (from === undefined || from === null) {
     response.reason = "target account doesn't exist"
+    return response
+  }
+  if (!isUserAccount(from)) {
+    response.reason = 'from account is not a UserAccount'
     return response
   }
   response.success = true

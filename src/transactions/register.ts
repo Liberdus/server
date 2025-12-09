@@ -6,6 +6,7 @@ import * as config from '../config'
 import * as utils from '../utils'
 import { AliasAccount, UserAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import * as ajvHelper from '../@types/ajvHelper'
+import { isUserAccount, isAliasAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.Register, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.aliasHash) === false) {
@@ -71,8 +72,16 @@ export const validate = (
 ): ShardusTypes.IncomingTransactionResult => {
   const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const alias: AliasAccount = wrappedStates[tx.aliasHash] && wrappedStates[tx.aliasHash].data
+  if (from && !isUserAccount(from)) {
+    response.reason = 'from account is not a UserAccount'
+    return response
+  }
   if (!alias) {
     response.reason = 'Alias account was not found for some reason'
+    return response
+  }
+  if (!isAliasAccount(alias)) {
+    response.reason = 'aliasHash account is not an AliasAccount'
     return response
   }
   if (from.alias !== null) {

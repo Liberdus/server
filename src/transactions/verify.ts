@@ -5,6 +5,7 @@ import * as utils from '../utils'
 import { Accounts, UserAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
+import { isUserAccount } from '../@types/accountTypeGuards'
 
 export const validate_fields = (tx: Tx.Verify, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -42,6 +43,10 @@ export const validate = (
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
   const from: Accounts = wrappedStates[tx.from] && wrappedStates[tx.from].data
+  if (from && !isUserAccount(from)) {
+    response.reason = 'from account is not a UserAccount'
+    return response
+  }
   if (typeof from.verified !== 'string') {
     response.reason = 'From account has not been sent a verification email'
     return response
