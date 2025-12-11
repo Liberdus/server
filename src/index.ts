@@ -1982,13 +1982,14 @@ const shardusSetup = (): void => {
 
       const networkAccount: LiberdusTypes.NetworkAccount = account.data
       await patchAndUpdate(networkAccount.current, appData)
-      // TODO: look into updating the timestamp also
-      // Increase the timestamp by 1 second
-      const nodeId = dapp.getNodeId()
-      const node = dapp.getNode(nodeId)
-      if (node.status === 'active') {
-        networkAccount.timestamp += configs.ONE_SECOND // ( this has issue when a newly joined node updates its config )
-      }
+      // Disable timestamp increment in the network account due to OOS issue
+      // // TODO: look into updating the timestamp also
+      // // Increase the timestamp by 1 second
+      // const nodeId = dapp.getNodeId()
+      // const node = dapp.getNode(nodeId)
+      // if (node.status === 'active') {
+      //   networkAccount.timestamp += configs.ONE_SECOND // ( this has issue when a newly joined node updates its config )
+      // }
       networkAccount.hash = this.calculateAccountHash(networkAccount)
       account.stateId = networkAccount.hash
       account.timestamp = networkAccount.timestamp
@@ -2051,13 +2052,14 @@ const shardusSetup = (): void => {
           listOfChanges.splice(i, 1)
         }
       }
-      // TODO: look into updating the timestamp also
-      // Increase the timestamp by 1 second
-      const nodeId = dapp.getNodeId()
-      const node = dapp.getNode(nodeId)
-      if (node.status === 'active') {
-        networkAccount.timestamp += configs.ONE_SECOND // ( this has issue when a newly joined node updates its config )
-      }
+      // Disable timestamp increment in the network account due to OOS issue
+      // // TODO: look into updating the timestamp also
+      // // Increase the timestamp by 1 second
+      // const nodeId = dapp.getNodeId()
+      // const node = dapp.getNode(nodeId)
+      // if (node.status === 'active') {
+      //   networkAccount.timestamp += configs.ONE_SECOND // ( this has issue when a newly joined node updates its config )
+      // }
 
       networkAccount.hash = this.calculateAccountHash(networkAccount)
       account.stateId = networkAccount.hash
