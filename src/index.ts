@@ -34,10 +34,8 @@ import { operatorCLIVersion, operatorGUIVersion, readOperatorVersions } from './
 import { onActiveVersionChange } from './versioning/index'
 import genesis from './config/genesis.json'
 import rfdc = require('rfdc')
-import { safeStringify } from '@shardus/lib-types/build/src/utils/functions/stringify'
+import { getHeapStatistics } from 'v8'
 import create from './accounts'
-import { Archiver, OpaqueTransaction } from '@shardus/core/dist/shardus/shardus-types'
-
 const { version } = require('./../package.json')
 
 dotenv.config()
@@ -2153,6 +2151,26 @@ const shardusSetup = (): void => {
     isDestLimitTx(appData: any): boolean {
       return false
     },
+    getUniqueAppTags: (tx: ShardusTypes.OpaqueTransaction): { [key: string]: string } | null | undefined => {
+      return null
+    },
+    async getNetworkAccountFromArchiver(): Promise<LiberdusTypes.WrappedAccount> {
+      try {
+        const networkAccount = await fetchNetworkAccountFromArchiver()
+        return {
+          accountId: networkAccount.id,
+          data: networkAccount as LiberdusTypes.Accounts,
+          stateId: networkAccount.hash,
+          timestamp: networkAccount.timestamp,
+          accountCreated: false,
+          isPartial: false,
+        }
+      } catch (e) {
+        /* prettier-ignore */ if (logFlags.error) console.log('getNetworkAccountFromArchiver error:', e)
+        nestedCountersInstance.countEvent('getNetworkAccountFromArchiver', 'error')
+      }
+      return null
+    },
   })
 
   dapp.registerExceptionHandler()
@@ -2330,21 +2348,19 @@ async function updateConfigFromNetworkAccount(
   try {
     // Attempt to get and patch config. Error if unable to get config.
     networkAccount = await fetchNetworkAccountFromArchiver()
-    /* prettier-ignore */
-    if (LiberdusFlags.VerboseLogs) console.log(`[index] networkAccount: ${Utils.safeStringify(networkAccount)}`)
+    console.log(`networkAccount: ${Utils.safeStringify(networkAccount)}`)
     AccountsStorage.setCachedNetworkAccount(networkAccount)
     configToLoad = await updateConfigFromNetworkAccount(config, networkAccount)
-    if (LiberdusFlags.VerboseLogs) console.log(`[index] configToLoad: ${Utils.safeStringify(configToLoad)}`)
+    console.log(`configToLoad: ${Utils.safeStringify(configToLoad)}`)
   } catch (error) {
     configToLoad = config
-    /* prettier-ignore */
     nestedCountersInstance.countEvent('network-config-operation', 'Error: Use default configs.')
-    /* prettier-ignore */
-    if (LiberdusFlags.VerboseLogs) console.log(`Error: ${utils.formatErrorMessage(error)} \nUsing default configs`)
+    console.log(`Error: ${utils.formatErrorMessage(error)} \nUsing default configs`)
   }
 
   dapp = shardusFactory(configToLoad)
   shardusConfig = dapp.config
+  console.log(`Heap Size Limit: ${getHeapStatistics().heap_size_limit / 1024 / 1024} MB`)
 
   registerAPI(dapp)
   configShardusNetworkTransactions(dapp)
