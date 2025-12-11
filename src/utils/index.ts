@@ -38,13 +38,6 @@ export const maintenanceAmount = (timestamp: number, account: UserAccount, netwo
   else return BigInt(0)
 }
 
-// convert obj with __BigInt__ to BigInt
-export function fixBigIntLiteralsToBigInt(obj): any {
-  const jsonString = Utils.safeStringify(obj)
-  const parsedStruct = Utils.safeJsonParse(jsonString)
-  return parsedStruct
-}
-
 export function generateTxId(tx: any): string {
   let txId: string
   if (!tx.sign) {

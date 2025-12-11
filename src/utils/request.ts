@@ -1,18 +1,24 @@
 import { ShardusTypes } from '@shardus/core'
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
+import { Utils as StringUtils } from '@shardus/lib-types'
 
-export const shardusGet = async <ResponseType>(url: string, config: AxiosRequestConfig): Promise<AxiosResponse<ResponseType>> => {
-  const response = axios.get<ResponseType>(url, config)
+export const shardusGet = async <ResponseType>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<ResponseType>> => {
+  const response = await axios.get<ResponseType>(url, {
+    ...config,
+    transformResponse: (res) => {
+      return StringUtils.safeJsonParse(res)
+    },
+  })
   return response
 }
 
 export const shardusPost = async <ResponseType>(url: string, data: unknown, config: AxiosRequestConfig): Promise<AxiosResponse<ResponseType>> => {
-  const response = axios.post<ResponseType>(url, data, config)
+  const response = await axios.post<ResponseType>(url, data, config)
   return response
 }
 
 export const shardusPut = async <ResponseType>(url: string, data: unknown, config: AxiosRequestConfig): Promise<AxiosResponse<ResponseType>> => {
-  const response = axios.put<ResponseType>(url, data, config)
+  const response = await axios.put<ResponseType>(url, data, config)
   return response
 }
 
