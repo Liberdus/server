@@ -3,7 +3,7 @@ import * as crypto from '../../crypto'
 import { Request } from 'express'
 import { LiberdusFlags } from '../../config'
 import { AccountAxiosResponse, AccountQueryResponse, UserAccount, ValidatorError } from '../../@types'
-import { fixBigIntLiteralsToBigInt, getRandom, isValidAddress } from '../../utils'
+import { getRandom, isValidAddress } from '../../utils'
 import { shardusGetFromNode, shardusPutToNode } from '../../utils/request'
 import { isUserAccount, isNodeAccount } from '../../@types/accountTypeGuards'
 
@@ -101,7 +101,7 @@ async function getAccount(randomConsensusNode: ShardusTypes.ValidatorNodeDetails
     if (res.data.error == errNodeBusy) {
       return { success: false, reason: errNodeBusy }
     }
-    const account = fixBigIntLiteralsToBigInt(res.data.account)
+    const account = res.data.account
     return { success: true, account } as AccountQueryResponse
   } catch (error) {
     return { success: false, reason: (error as Error).message }
