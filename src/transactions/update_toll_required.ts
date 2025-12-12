@@ -55,6 +55,7 @@ export const validate = (
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
   const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
+  const to: UserAccount = wrappedStates[tx.to] && wrappedStates[tx.to].data
   const chat: ChatAccount = wrappedStates[tx.chatId] && wrappedStates[tx.chatId].data
   const network = AccountsStorage.cachedNetworkAccount
 
@@ -75,6 +76,14 @@ export const validate = (
   const [addr1, addr2] = utils.sortAddresses(tx.from, tx.to)
   if (tx.from !== addr1 && tx.from !== addr2) {
     response.reason = 'user is not a participant in this chat.'
+    return response
+  }
+
+  const fromPrivate = from.private || false
+  const toPrivate = to.private || false
+
+  if (utils.isEqualOrNewerVersion('2.4.7', network.current.activeVersion) && fromPrivate !== toPrivate) {
+    response.reason = 'Both accounts must have the same private value.'
     return response
   }
 
