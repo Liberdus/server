@@ -58,6 +58,14 @@ export const validate = (
     response.reason = 'from account is not a UserAccount'
     return response
   }
+  if (typeof to === 'undefined' || to === null) {
+    response.reason = '"target" account does not exist.'
+    return response
+  }
+  if (!isUserAccount(to)) {
+    response.reason = 'to account is not a UserAccount'
+    return response
+  }
   if (typeof chat === 'undefined' || chat === null) {
     response.reason = 'chat account does not exist.'
     return response
@@ -73,7 +81,7 @@ export const validate = (
     response.reason = 'user is not a participant in this chat.'
     return response
   }
-  
+
   const fromPrivate = from.private || false
   const toPrivate = to.private || false
 
