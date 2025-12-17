@@ -93,6 +93,10 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
       return false
     }
 
+    // Skip account exists check if the current network mode is not "processing"
+    if (dapp.getNetworkMode() !== 'processing') {
+      return true // Approved
+    }
     const nodeAddress = tx.publicKey
     const account = await dapp.getLocalOrRemoteAccount(nodeAddress)
     if (!account) {
@@ -109,6 +113,10 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
     return true
   })
   dapp.serviceQueue.registerApplyVerifier('nodeReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeRewardTxData>) => {
+    // Skip if the network mode is not "processing"
+    if (dapp.getNetworkMode() !== 'processing') {
+      return false // Not applied
+    }
     const tx = txEntry.txData
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Validating nodeReward applied', Utils.safeStringify(tx))
     const shardusAddress = tx.publicKey
@@ -173,6 +181,11 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
       return false
     }
 
+    // Skip account exists check if the current network mode is not "processing"
+    if (dapp.getNetworkMode() !== 'processing') {
+      return true // Approved
+    }
+
     const nodeAddress = tx.publicKey
     const account = await dapp.getLocalOrRemoteAccount(nodeAddress)
     if (!account) {
@@ -189,6 +202,10 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
     return true
   })
   dapp.serviceQueue.registerApplyVerifier('nodeInitReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeInitTxData>) => {
+    // Skip if the network mode is not "processing"
+    if (dapp.getNetworkMode() !== 'processing') {
+      return false // Not applied
+    }
     const tx = txEntry.txData
     /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('Validating nodeInitReward applied', Utils.safeStringify(tx))
     if (utils.isValidAddress(tx.publicKey) === false) {
