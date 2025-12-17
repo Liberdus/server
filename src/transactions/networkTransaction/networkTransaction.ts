@@ -132,9 +132,23 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
       /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerApplyVerify nodeReward fail rewardEndTime not found`)
       return true
     }
-    const appliedEntry = nodeAccount.rewardEndTime >= tx.endTime
-    /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeReward appliedEntry', appliedEntry)
-    return appliedEntry
+
+    // Check if rewardEndTime is already set to tx.endTime
+    if (nodeAccount.rewardEndTime >= tx.endTime) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeReward success rewardEndTime >= tx.endTime', Utils.safeStringify(tx))
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `registerApplyVerify nodeReward success rewardEndTime >= tx.endTime`)
+      return true
+    }
+
+    // Check if nodeAccount.rewarded is already set to true
+    if (LiberdusFlags.versionFlags.nodeRewardedStatusCheck && nodeAccount.rewarded === true) {
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeReward rewarded already set')
+      /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validateInitRewardState success rewarded already set`)
+      return true
+    }
+
+    /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeReward node.rewardEndTime not applied yet')
+    return false
   })
   dapp.serviceQueue.registerBeforeAddVerifier('nodeInitReward', async (txEntry: P2P.ServiceQueueTypes.AddNetworkTx<SignedNodeInitTxData>) => {
     const tx = txEntry.txData
@@ -231,7 +245,7 @@ export const configShardusNetworkTransactions = (dapp: Shardus): void => {
     // check if nodeAccount.rewardStartTime is already set to tx.nodeActivatedTime
     if (nodeAccount.rewardStartTime >= tx.startTime) {
       /* prettier-ignore */ nestedCountersInstance.countEvent('liberdus-staking', `validateInitRewardState success rewardStartTime already set`)
-      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeInitReward data.rewardStartTime >= tx.startTime')
+      /* prettier-ignore */ if (LiberdusFlags.VerboseLogs) console.log('registerApplyVerify nodeInitReward rewardStartTime >= tx.startTime')
       return true
     }
 

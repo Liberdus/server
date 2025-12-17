@@ -249,6 +249,7 @@ interface LiberdusFlags {
     createTxAppReceiptUpdate: boolean
     addNewNetworkParameters: boolean
     removeOperatorStatsHistory: boolean
+    nodeRewardedStatusCheck: boolean
   }
 }
 
@@ -290,6 +291,7 @@ export const LiberdusFlags: LiberdusFlags = {
     createTxAppReceiptUpdate: true, // turn on by 2.4.1
     addNewNetworkParameters: true, // turn on by 2.4.1
     removeOperatorStatsHistory: true, // turn on by 2.4.5
+    nodeRewardedStatusCheck: false, // turn on by 2.4.8
   },
 }
 
