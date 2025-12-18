@@ -250,6 +250,7 @@ interface LiberdusFlags {
     addNewNetworkParameters: boolean
     removeOperatorStatsHistory: boolean
     nodeRewardedStatusCheck: boolean
+    weiToLibStringFormat: boolean
   }
 }
 
@@ -292,6 +293,7 @@ export const LiberdusFlags: LiberdusFlags = {
     addNewNetworkParameters: true, // turn on by 2.4.1
     removeOperatorStatsHistory: true, // turn on by 2.4.5
     nodeRewardedStatusCheck: false, // turn on by 2.4.8
+    weiToLibStringFormat: false, // turn on by 2.4.8
   },
 }
 
