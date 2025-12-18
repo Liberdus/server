@@ -755,8 +755,12 @@ export function libToWei(lib: number): bigint {
   return BigInt(lib * 10 ** 18)
 }
 
-export function weiToLib(wei: bigint): number {
-  return Number(wei) / 10 ** 18
+export function weiToLib(wei: bigint): string {
+  if (!LiberdusFlags.versionFlags.weiToLibStringFormat) {
+    return (Number(wei) / 10 ** 18).toString()
+  }
+  // Use ethers formatting for precise conversion to LIB string representation
+  return ethers.formatEther(wei)
 }
 
 /*
