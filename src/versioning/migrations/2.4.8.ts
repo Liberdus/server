@@ -8,4 +8,5 @@ export const migrate: Migration = async () => {
 
   LiberdusFlags.versionFlags.weiToLibStringFormat = true
   LiberdusFlags.versionFlags.nodeRewardedStatusCheck = true
+  LiberdusFlags.versionFlags.includeTxToKeyInReadTx = true
 }

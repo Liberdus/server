@@ -218,7 +218,10 @@ export const createFailedAppReceiptData = (
 
 export const keys = (tx: Tx.Read, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.chatId, tx.from]
-  result.targetKeys = []
+  result.targetKeys = [tx.to]
+  if (!config.LiberdusFlags.versionFlags.includeTxToKeyInReadTx) {
+    result.targetKeys = []
+  }
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
@@ -229,7 +232,7 @@ export const memoryPattern = (tx: Tx.Read, result: ShardusTypes.TransactionKeys)
     wo: [],
     on: [],
     ri: [],
-    ro: [],
+    ro: !config.LiberdusFlags.versionFlags.includeTxToKeyInReadTx ? [] : [tx.to],
   }
 }
 

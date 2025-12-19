@@ -251,6 +251,7 @@ interface LiberdusFlags {
     removeOperatorStatsHistory: boolean
     nodeRewardedStatusCheck: boolean
     weiToLibStringFormat: boolean
+    includeTxToKeyInReadTx: boolean
   }
 }
 
@@ -294,6 +295,7 @@ export const LiberdusFlags: LiberdusFlags = {
     removeOperatorStatsHistory: true, // turn on by 2.4.5
     nodeRewardedStatusCheck: false, // turn on by 2.4.8
     weiToLibStringFormat: false, // turn on by 2.4.8
+    includeTxToKeyInReadTx: false, // turn on by 2.4.8
   },
 }
 
