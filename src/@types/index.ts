@@ -802,7 +802,6 @@ export interface WrappedStates {
 
 export type KeyResult = {
   timestamp: number
-  id: string
   keys: ShardusTypes.TransactionKeys
   shardusMemoryPatterns: ShardusTypes.ShardusMemoryPatternsInput
 }

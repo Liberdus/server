@@ -311,9 +311,7 @@ const shardusSetup = (): void => {
       }
 
       const memoryPattern = transactions[tx.type].memoryPattern ? transactions[tx.type].memoryPattern(tx, result) : null
-      const txId = utils.generateTxId(tx)
       return {
-        id: txId,
         timestamp: txnTimestamp,
         keys,
         shardusMemoryPatterns: memoryPattern,
