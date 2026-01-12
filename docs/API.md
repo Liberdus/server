@@ -165,17 +165,25 @@ Returns address information for the given name.
 - `name`: Account name
 
 ### GET /account/:id/:friendId/toll
+⚠️ **DEPRECATED** - Deprecated in version 2.5.0. This endpoint will be removed in a future version.
+
 Returns toll information between two accounts.
 
 **Parameters:**
 - `id`: Account identifier
 - `friendId`: Friend's account identifier
 
+**Note:** This endpoint is deprecated because the friend functionality has been removed. Use `/account/:id/toll` instead.
+
 ### GET /account/:id/friends
+⚠️ **DEPRECATED** - Deprecated in version 2.5.0. This endpoint will be removed in a future version.
+
 Returns friends list for the given account ID.
 
 **Parameters:**
 - `id`: Account identifier
+
+**Note:** This endpoint is deprecated because the friend functionality has been removed.
 
 ### GET /account/:id/recentMessages
 Returns recent messages for the given account ID.
