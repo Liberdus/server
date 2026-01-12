@@ -23,8 +23,11 @@ export enum AJVSchemaEnum {
   init_network = 'init_network',
   network_windows = 'network_windows',
   snapshot = 'snapshot',
+  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
   email = 'email',
+  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
   gossip_email_hash = 'gossip_email_hash',
+  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
   verify = 'verify',
   register = 'register',
   create = 'create',
@@ -36,7 +39,9 @@ export enum AJVSchemaEnum {
   update_chat_toll = 'update_chat_toll',
   update_toll_required = 'update_toll_required',
   toll = 'toll',
+  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
   friend = 'friend',
+  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
   remove_friend = 'remove_friend',
   stake = 'stake',
   remove_stake = 'remove_stake',
@@ -76,8 +81,11 @@ export enum TXTypes {
   init_network = 'init_network',
   network_windows = 'network_windows',
   snapshot = 'snapshot',
+  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
   email = 'email',
+  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
   gossip_email_hash = 'gossip_email_hash',
+  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
   verify = 'verify',
   register = 'register',
   create = 'create',
@@ -89,7 +97,9 @@ export enum TXTypes {
   update_chat_toll = 'update_chat_toll',
   update_toll_required = 'update_toll_required',
   toll = 'toll',
+  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
   friend = 'friend',
+  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
   remove_friend = 'remove_friend',
   stake = 'stake',
   remove_stake = 'remove_stake',
