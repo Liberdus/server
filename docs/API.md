@@ -509,7 +509,9 @@ The transaction will:
 2. Add amount to target account
 3. Update timestamps for both accounts
 
-#### `email`
+#### `email` ⚠️ DEPRECATED
+**Deprecated in version 2.5.0** - This transaction type is deprecated and will be removed in a future version. New transactions of this type will be rejected when network version >= 2.5.0.
+
 Initiates the email verification process for an account.
 
 **Transaction Parameters:**
@@ -541,7 +543,9 @@ The transaction will:
 3. Store email hash and verification code hash
 4. Trigger gossip_email_hash transaction
 
-#### `gossip_email_hash`
+#### `gossip_email_hash` ⚠️ DEPRECATED
+**Deprecated in version 2.5.0** - This transaction type is deprecated and will be removed in a future version. New transactions of this type will be rejected when network version >= 2.5.0.
+
 Internal transaction to propagate email verification data across nodes.
 
 **Transaction Parameters:**
@@ -559,7 +563,9 @@ Internal transaction to propagate email verification data across nodes.
 
 This transaction is automatically triggered by the system after an email transaction and should not be manually created.
 
-#### `verify`
+#### `verify` ⚠️ DEPRECATED
+**Deprecated in version 2.5.0** - This transaction type is deprecated and will be removed in a future version. New transactions of this type will be rejected when network version >= 2.5.0.
+
 Completes the email verification process using the code received via email.
 
 **Transaction Parameters:**
@@ -663,7 +669,9 @@ The transaction will:
 4. Update chat references for both users
 5. Update timestamps for all affected accounts
 
-#### `friend`
+#### `friend` ⚠️ DEPRECATED
+**Deprecated in version 2.5.0** - This transaction type is deprecated and will be removed in a future version. New transactions of this type will be rejected when network version >= 2.5.0.
+
 Adds another user as a friend to avoid toll payments for messaging.
 
 **Transaction Parameters:**
@@ -722,7 +730,9 @@ The transaction will:
 
 Note: If a user has not set a toll amount, the system's default toll will be used for messages from non-friends.
 
-#### `remove_friend`
+#### `remove_friend` ⚠️ DEPRECATED
+**Deprecated in version 2.5.0** - This transaction type is deprecated and will be removed in a future version. New transactions of this type will be rejected when network version >= 2.5.0.
+
 Removes a friend from the user's friend list, requiring toll payments for future messages.
 
 **Transaction Parameters:**
