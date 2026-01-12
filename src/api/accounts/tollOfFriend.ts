@@ -4,6 +4,20 @@ import * as AccountsStorage from '../../storage/accountStorage'
 
 export const tollOfFriend = dapp => async (req, res): Promise<void> => {
   try {
+    // Deprecation check - reject when network version >= 2.5.0
+    // This check is disabled until network version is flipped to 2.5.0 or higher
+    if (
+      AccountsStorage?.cachedNetworkAccount &&
+      utils.isEqualOrNewerVersion('2.5.0', AccountsStorage.cachedNetworkAccount.current.activeVersion)
+    ) {
+      res.status(410).json({
+        error: 'This endpoint is deprecated and no longer available',
+        deprecated: true,
+        deprecatedVersion: '2.5.0',
+      })
+      return
+    }
+
     const id = req.params['id']
     const friendId = req.params['friendId']
     if (!id) {
