@@ -151,6 +151,7 @@ export const schemaDistributeTX = {
   additionalProperties: false,
 }
 
+// @deprecated Deprecated in version 2.5.0 - will be removed in a future version
 export const schemaEmailTX = {
   type: 'object',
   properties: {
@@ -171,6 +172,7 @@ export const schemaEmailTX = {
   additionalProperties: false,
 }
 
+// @deprecated Deprecated in version 2.5.0 - will be removed in a future version
 export const schemaFriendTX = {
   type: 'object',
   properties: {
@@ -183,6 +185,7 @@ export const schemaFriendTX = {
   additionalProperties: false,
 }
 
+// @deprecated Deprecated in version 2.5.0 - will be removed in a future version
 export const schemaGossipEmailHashTX = {
   type: 'object',
   properties: {
@@ -428,6 +431,7 @@ export const schemaRegisterTX = {
   additionalProperties: false,
 }
 
+// @deprecated Deprecated in version 2.5.0 - will be removed in a future version
 export const schemaRemoveFriendTX = {
   type: 'object',
   properties: {
@@ -536,6 +540,7 @@ export const schemaTollTX = {
   additionalProperties: false,
 }
 
+// @deprecated Deprecated in version 2.5.0 - will be removed in a future version
 export const schemaVerifyTX = {
   type: 'object',
   properties: {
