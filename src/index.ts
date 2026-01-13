@@ -246,6 +246,15 @@ const shardusSetup = (): void => {
           return validationResult
         }
 
+        // 3.5. Check for deprecated transaction types (version-based deprecation >= 2.5.0)
+        if (AccountsStorage?.cachedNetworkAccount && utils.isEqualOrNewerVersion('2.5.0', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
+          const deprecatedTxTypes = [TXTypes.email, TXTypes.gossip_email_hash, TXTypes.verify, TXTypes.friend, TXTypes.remove_friend]
+          if (deprecatedTxTypes.includes(tx.type)) {
+            validationResult.reason = `Transaction type "${tx.type}" is deprecated from version 2.5.0 onwards and no longer accepted`
+            return validationResult
+          }
+        }
+
         // 4. Validate the tx fields
         if (LiberdusFlags.enableAJVValidation) {
           const errors = verifyPayload(tx.type, tx)
