@@ -533,7 +533,7 @@ function calculateChatId(to, from) {
 
 async function queryMessages(to, from) {
   try {
-    const res = await axios.get(`${PROTOCOL}://${HOST}/messages/${calculateChatId(USER.address, to)}`)
+    const res = await axios.get(`${PROTOCOL}://${HOST}/messages/${calculateChatId(USER.address, to)}/0`)
     const { messages } = res.data
     return messages
   } catch (error) {
@@ -807,6 +807,7 @@ vorpal.command('email', 'registers your email address to the network').action(as
     signedTx,
     email: answer.email,
     timestamp: Date.now(),
+    networkId,
   }
   injectTx(tx).then((res) => {
     this.log(res)
