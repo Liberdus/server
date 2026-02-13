@@ -1,6 +1,71 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
+/**
+ * =============================================================================
+ * Liberdus/Shardus client – interact with a node via the command line
+ * =============================================================================
+ *
+ * USAGE
+ *   node client.js [host:port] [archiveServer] [monitorServer] [faucetServer]
+ *   Example: node client.js localhost:9002
+ *
+ * TESTING SETUP (dev keys)
+ *   Create a key pair (see README "Creating a key pair for testing"), add the
+ *   public key to src/config/index.ts in devPublicKeys (and multisigKeys),
+ *   then set DEV_PUBLIC_KEY and DEV_PRIVATE_KEY in your environment or .env.
+ *
+ * -----------------------------------------------------------------------------
+ * HOW TO USE THE CLIENT – step by step
+ * -----------------------------------------------------------------------------
+ *
+ * 1. CREATE AN ACCOUNT (first terminal)
+ *    - Run: node client.js localhost:9002
+ *    - On "Enter wallet name:", type a name (e.g. alice) and press Enter.
+ *    - Run: register
+ *    - When prompted "Enter the alias you want:", use the SAME name as the
+ *      wallet (e.g. alice). This keeps wallet name and account alias in sync.
+ *    - After registration, the account is eligible for faucet funding (e.g. 50 LIB).
+ *    - Run: faucet
+ *    - Follow the prompts; your account will be funded.
+ *
+ * 2. SECOND ACCOUNT (for transfers and messages)
+ *    - Open a second terminal in the same project directory.
+ *    - Run: node client.js localhost:9002  (or another node, e.g. localhost:9004)
+ *    - Enter a different wallet name (e.g. bob), then run: register
+ *    - Use the same alias as the wallet name (e.g. bob).
+ *    - Run: faucet to fund the second account.
+ *
+ * 3. USE THE CURRENT WALLET
+ *    - use <name>   – switch to wallet <name> (e.g. use alice, use bob).
+ *
+ * 4. TRANSFER LIB BETWEEN ACCOUNTS
+ *    - transfer
+ *    - Enter target: alias or address (e.g. bob or the full public key).
+ *    - Enter amount and memo as prompted.
+ *
+ * 5. SEND MESSAGES BETWEEN ACCOUNTS
+ *    - message
+ *    - Enter the alias or publicKey of the recipient (e.g. bob).
+ *    - Enter your message when prompted.
+ *    - read – read messages from another user (you may send a "read" tx).
+ *
+ * 6. QUERY VIA NODE HTTP API (e.g. from browser or curl)
+ *    - Account:  GET http://localhost:9002/account/<accountId>
+ *      Example:  http://localhost:9002/account/7e79d53c067e9d0a095c9675db38330ec72ffd5b000000000000000000000000
+ *    - Transactions for an account:
+ *      GET http://localhost:9002/account/<accountId>/transactions
+ *      Example:  http://localhost:9004/account/f43eb22eb9ca0afe5f0fc620ba1ac932711eefe000000000000000000000000/transactions
+ *    - Messages (chat) – the chatId is the first path segment after /messages/:
+ *      GET http://localhost:9002/messages/<chatId>/0
+ *      Example:  http://localhost:9002/messages/7569adbc2fd289d0e613eb488c7968988c41a5d8c2a1e1c4c038038d7c957955/0
+ *      The response JSON includes a "messages" array; each message has chatId, from, message, etc.
+ *      To derive chatId for two accounts: it is the hash of the sorted concatenation of the two
+ *      account addresses (the client uses this for the "message poll" and "read" flows).
+ *
+ * Other useful commands: query, get, transactions, wallet list, use host <host>.
+ * =============================================================================
+ */
 const fs = require('fs')
 const { resolve } = require('path')
 const path = require('path')
