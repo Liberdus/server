@@ -1,6 +1,7 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as utils from '../utils'
+import * as config from '../config'
 import { UserAccount, ChatAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import create from '../accounts'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
@@ -167,6 +168,10 @@ export const apply = (
   chat.timestamp = txTimestamp
   from.timestamp = txTimestamp
 
+  if (config.LiberdusFlags.versionFlags.updateTollRequiredTxInChatHistory) {
+    chat.messages.push(tx)
+  }
+
   const appReceiptData: AppReceiptData = {
     txId,
     timestamp: txTimestamp,
@@ -218,14 +223,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.Read, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
+export const keys = (tx: Tx.UpdateTollRequired, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.chatId, tx.from]
   result.targetKeys = [tx.to]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.Read, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.UpdateTollRequired, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from, tx.to, tx.chatId], // to account is somewhat needed
     wo: [],
@@ -239,7 +244,7 @@ export const createRelevantAccount = (
   dapp: Shardus,
   account: UserAccount | ChatAccount,
   accountId: string,
-  tx: Tx.Read,
+  tx: Tx.UpdateTollRequired,
   accountCreated = false,
 ): ShardusTypes.WrappedResponse => {
   if (!account) {
