@@ -252,6 +252,7 @@ interface LiberdusFlags {
     nodeRewardedStatusCheck: boolean
     weiToLibStringFormat: boolean
     includeTxToKeyInReadTx: boolean
+    updateTollRequiredTxInChatHistory: boolean
   }
 }
 
@@ -296,6 +297,7 @@ export const LiberdusFlags: LiberdusFlags = {
     nodeRewardedStatusCheck: true, // turn on by 2.4.8
     weiToLibStringFormat: true, // turn on by 2.4.8
     includeTxToKeyInReadTx: true, // turn on by 2.4.8
+    updateTollRequiredTxInChatHistory: false, // turn on by 2.4.9
   },
 }
 

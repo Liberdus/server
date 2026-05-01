@@ -54,7 +54,7 @@ export function calculateAccountHash(account: Accounts): string {
   return account.hash
 }
 
-export function isMessageRecord(message: Tx.MessageRecord | Tx.Transfer | Tx.Read): message is Tx.MessageRecord {
+export function isMessageRecord(message: Tx.ChatMessageRecord): message is Tx.MessageRecord {
   return message.type === TXTypes.message
 }
 

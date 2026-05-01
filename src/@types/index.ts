@@ -272,9 +272,12 @@ export namespace Tx {
     to: string
     chatId: string
     required: number // 1 if toll required, 0 if not nd 2 to block other party
+    previousRequired?: number
     timestamp: number // timestamp up to which messages are considered read
     fee?: bigint // Optional fee for the update toll transaction
   }
+
+  export type ChatMessageRecord = MessageRecord | Transfer | Read | UpdateTollRequired
 
   export interface ReclaimToll extends BaseLiberdusTx {
     from: string
@@ -587,7 +590,7 @@ export interface ChatAccount {
   hash: string
   type: string
   timestamp: number
-  messages: (Tx.MessageRecord | Tx.Transfer | Tx.Read)[]
+  messages: Tx.ChatMessageRecord[]
   toll: {
     required: [number, number] // 1 if toll required, 0 if not
     payOnRead: [bigint, bigint] // amount to be paid when reading
