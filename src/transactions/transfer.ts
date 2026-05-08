@@ -37,6 +37,12 @@ export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.Incoming
     response.reason = `tx "memo" size must be less than ${config.LiberdusFlags.transferMemoLimit} characters.`
     return response
   }
+  if (config.LiberdusFlags.versionFlags.supportRecipientPaysTxFee === true) {
+    if (tx.recipientPaysTxFee !== undefined && typeof tx.recipientPaysTxFee !== 'boolean') {
+      response.reason = 'tx "recipientPaysTxFee" field must be a boolean.'
+      return response
+    }
+  }
   if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
     response.reason = 'not signed by from account'
     return response
@@ -89,9 +95,24 @@ export const validate = (
     return response
   }
 
-  if (from.data.balance < tx.amount + utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)) {
+  const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+  const recipientPaysTxFee =
+    config.LiberdusFlags.versionFlags.supportRecipientPaysTxFee === true &&
+    tx.recipientPaysTxFee === true
+
+  if (recipientPaysTxFee === false && from.data.balance < tx.amount + transactionFee) {
     response.reason = "from account doesn't have sufficient balance to cover the transaction"
     return response
+  }
+  if (recipientPaysTxFee === true) {
+    if (from.data.balance < tx.amount) {
+      response.reason = "from account doesn't have sufficient balance to cover the transfer amount"
+      return response
+    }
+    if (to.data.balance + tx.amount < transactionFee) {
+      response.reason = "to account doesn't have sufficient balance to cover the transaction fee"
+      return response
+    }
   }
   // if there is a memo, check if the amount is larger than the Toll required for the chat
   if (config.LiberdusFlags.versionFlags.minTransferAmountCheck) {
@@ -160,10 +181,18 @@ export const apply = (
   // update balances
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
-  from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
+  const recipientPaysTxFee =
+    config.LiberdusFlags.versionFlags.supportRecipientPaysTxFee === true &&
+    tx.recipientPaysTxFee === true
+  if (recipientPaysTxFee === false) {
+    from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
+  }
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, tx.amount)
   to.data.balance = SafeBigIntMath.add(to.data.balance, tx.amount)
+  if (recipientPaysTxFee === true) {
+    to.data.balance = SafeBigIntMath.subtract(to.data.balance, transactionFee)
+  }
 
   // store transfer data in chat
   if (!from.data.chats[tx.to]) {

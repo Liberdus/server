@@ -487,6 +487,7 @@ Transfers tokens between accounts.
   "from": string,    // Source account ID
   "to": string,      // Target account ID
   "amount": bigint,  // Amount to transfer (must be > 0)
+  "recipientPaysTxFee": boolean, // Optional, defaults to false. Supported from version 2.4.9.
   "timestamp": number,
   "sign": {
     "owner": string  // Must match 'from' field
@@ -499,15 +500,17 @@ Requirements:
 - Amount must be greater than 0
 - Source account must have sufficient balance to cover:
   - Transfer amount
-  - Transaction fee
+  - Transaction fee, unless `recipientPaysTxFee` is `true`
   - Maintenance amount
+- If `recipientPaysTxFee` is `true`, the recipient balance plus transfer amount must cover the transaction fee
 - Must be signed by the source account
 - Signature must be cryptographically valid
 
 The transaction will:
-1. Deduct amount + fees from source account
+1. Deduct amount and maintenance fee from source account
 2. Add amount to target account
-3. Update timestamps for both accounts
+3. Deduct transaction fee from source account, or from target account when `recipientPaysTxFee` is `true`
+4. Update timestamps for both accounts
 
 #### `email` ⚠️ DEPRECATED
 **Deprecated in version 2.5.0** - This transaction type is deprecated and will be removed in a future version. New transactions of this type will be rejected when network version >= 2.5.0.

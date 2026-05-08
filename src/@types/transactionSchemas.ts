@@ -98,6 +98,8 @@ export const schemaTransferTX = {
     amount: { isBigInt: true },
     memo: { type: ['string', 'null'] },
     chatId: { type: 'string' },
+    fee: { isBigInt: true },
+    recipientPaysTxFee: { type: 'boolean' },
   },
   required: [...baseTxRequired, 'from', 'to', 'amount', 'chatId'],
   additionalProperties: false,
