@@ -7,5 +7,5 @@ export const migrate: Migration = async () => {
   nestedCountersInstance.countEvent('migrate', 'calling migrate 2.4.9')
 
   LiberdusFlags.versionFlags.updateTollRequiredTxInChatHistory = true
-  LiberdusFlags.versionFlags.supportRecipientPaysTxFee = true
+  LiberdusFlags.versionFlags.supportDeductTxFeeFromAmount = true
 }

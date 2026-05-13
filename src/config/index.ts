@@ -253,7 +253,7 @@ interface LiberdusFlags {
     weiToLibStringFormat: boolean
     includeTxToKeyInReadTx: boolean
     updateTollRequiredTxInChatHistory: boolean
-    supportRecipientPaysTxFee: boolean
+    supportDeductTxFeeFromAmount: boolean
   }
 }
 
@@ -299,7 +299,7 @@ export const LiberdusFlags: LiberdusFlags = {
     weiToLibStringFormat: true, // turn on by 2.4.8
     includeTxToKeyInReadTx: true, // turn on by 2.4.8
     updateTollRequiredTxInChatHistory: false, // turn on by 2.4.9
-    supportRecipientPaysTxFee: false, // turn on by 2.4.9
+    supportDeductTxFeeFromAmount: false, // turn on by 2.4.9
   },
 }
 
