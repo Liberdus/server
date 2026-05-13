@@ -1027,6 +1027,7 @@ vorpal.command('transfer', 'transfers tokens to another account').action(async f
     chatId: calculateChatId(to, USER.address),
     memo: answers.memo ? answers.memo : null,
     timestamp: Date.now(),
+    // deductTxFeeFromAmount: true,
     //test: false
   }
   signTransaction(tx)

@@ -99,7 +99,7 @@ export const schemaTransferTX = {
     memo: { type: ['string', 'null'] },
     chatId: { type: 'string' },
     fee: { isBigInt: true },
-    recipientPaysTxFee: { type: 'boolean' },
+    deductTxFeeFromAmount: { type: 'boolean' },
   },
   required: [...baseTxRequired, 'from', 'to', 'amount', 'chatId'],
   additionalProperties: false,

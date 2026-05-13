@@ -415,7 +415,7 @@ export namespace Tx {
     }
     chatId: string
     fee?: bigint // Optional fee for the transfer
-    recipientPaysTxFee?: boolean // Optional, defaults to false. If true, recipient pays the tx fee.
+    deductTxFeeFromAmount?: boolean // Optional, defaults to false. If true, tx fee is deducted from the transfer amount.
   }
 
   export interface Verify extends BaseLiberdusTx {

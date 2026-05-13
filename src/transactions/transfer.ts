@@ -37,10 +37,17 @@ export const validate_fields = (tx: Tx.Transfer, response: ShardusTypes.Incoming
     response.reason = `tx "memo" size must be less than ${config.LiberdusFlags.transferMemoLimit} characters.`
     return response
   }
-  if (config.LiberdusFlags.versionFlags.supportRecipientPaysTxFee === true) {
-    if (tx.recipientPaysTxFee !== undefined && typeof tx.recipientPaysTxFee !== 'boolean') {
-      response.reason = 'tx "recipientPaysTxFee" field must be a boolean.'
+  if (config.LiberdusFlags.versionFlags.supportDeductTxFeeFromAmount === true) {
+    if (tx.deductTxFeeFromAmount !== undefined && typeof tx.deductTxFeeFromAmount !== 'boolean') {
+      response.reason = 'tx "deductTxFeeFromAmount" field must be a boolean.'
       return response
+    }
+    if (tx.deductTxFeeFromAmount === true) {
+      const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+      if (tx.amount <= transactionFee) {
+        response.reason = 'transfer amount must be greater than the transaction fee when deductTxFeeFromAmount is true'
+        return response
+      }
     }
   }
   if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
@@ -96,21 +103,21 @@ export const validate = (
   }
 
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
-  const recipientPaysTxFee =
-    config.LiberdusFlags.versionFlags.supportRecipientPaysTxFee === true &&
-    tx.recipientPaysTxFee === true
+  const deductTxFeeFromAmount =
+    config.LiberdusFlags.versionFlags.supportDeductTxFeeFromAmount === true &&
+    tx.deductTxFeeFromAmount === true
 
-  if (recipientPaysTxFee === false && from.data.balance < tx.amount + transactionFee) {
+  if (deductTxFeeFromAmount === false && from.data.balance < tx.amount + transactionFee) {
     response.reason = "from account doesn't have sufficient balance to cover the transaction"
     return response
   }
-  if (recipientPaysTxFee === true) {
+  if (deductTxFeeFromAmount === true) {
     if (from.data.balance < tx.amount) {
       response.reason = "from account doesn't have sufficient balance to cover the transfer amount"
       return response
     }
-    if (to.data.balance + tx.amount < transactionFee) {
-      response.reason = "to account doesn't have sufficient balance to cover the transaction fee"
+    if (tx.amount <= transactionFee) {
+      response.reason = 'transfer amount must be greater than the transaction fee when deductTxFeeFromAmount is true'
       return response
     }
   }
@@ -181,18 +188,19 @@ export const apply = (
   // update balances
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, from, network)
-  const recipientPaysTxFee =
-    config.LiberdusFlags.versionFlags.supportRecipientPaysTxFee === true &&
-    tx.recipientPaysTxFee === true
-  if (recipientPaysTxFee === false) {
+  const deductTxFeeFromAmount =
+    config.LiberdusFlags.versionFlags.supportDeductTxFeeFromAmount === true &&
+    tx.deductTxFeeFromAmount === true
+  if (deductTxFeeFromAmount === false) {
     from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
   }
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, maintenanceFee)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, tx.amount)
-  to.data.balance = SafeBigIntMath.add(to.data.balance, tx.amount)
-  if (recipientPaysTxFee === true) {
-    to.data.balance = SafeBigIntMath.subtract(to.data.balance, transactionFee)
+  let amountReceived = tx.amount
+  if (deductTxFeeFromAmount === true) {
+    amountReceived = SafeBigIntMath.subtract(tx.amount, transactionFee)
   }
+  to.data.balance = SafeBigIntMath.add(to.data.balance, amountReceived)
 
   // store transfer data in chat
   if (!from.data.chats[tx.to]) {
@@ -213,6 +221,15 @@ export const apply = (
   to.timestamp = txTimestamp
   chat.timestamp = txTimestamp
 
+  const additionalInfo: { amount: bigint; maintenanceFee: bigint } = {
+    amount: tx.amount,
+    maintenanceFee,
+  }
+  if (deductTxFeeFromAmount === true) {
+    // amount reflects the net amount received by the recipient.
+    additionalInfo.amount = amountReceived
+  }
+
   const appReceiptData: AppReceiptData = {
     txId,
     timestamp: txTimestamp,
@@ -221,10 +238,7 @@ export const apply = (
     to: tx.to,
     type: tx.type,
     transactionFee,
-    additionalInfo: {
-      amount: tx.amount,
-      maintenanceFee,
-    },
+    additionalInfo,
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
