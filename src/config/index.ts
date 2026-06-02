@@ -66,9 +66,9 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   minToll: utils.libToWei(1),
   tollNetworkTaxPercent: 1, // 1%
   tollTimeout: 7 * ONE_DAY,
-  minVersion: '2.4.8',
-  activeVersion: '2.4.8',
-  latestVersion: '2.4.8',
+  minVersion: '2.4.9',
+  activeVersion: '2.4.9',
+  latestVersion: '2.4.9',
   archiver: {
     minVersion: '3.7.9',
     activeVersion: '3.7.9',
@@ -298,8 +298,8 @@ export const LiberdusFlags: LiberdusFlags = {
     nodeRewardedStatusCheck: true, // turn on by 2.4.8
     weiToLibStringFormat: true, // turn on by 2.4.8
     includeTxToKeyInReadTx: true, // turn on by 2.4.8
-    updateTollRequiredTxInChatHistory: false, // turn on by 2.4.9
-    supportDeductTxFeeFromAmount: false, // turn on by 2.4.9
+    updateTollRequiredTxInChatHistory: true, // turn on by 2.4.9
+    supportDeductTxFeeFromAmount: true, // turn on by 2.4.9
   },
 }
 
