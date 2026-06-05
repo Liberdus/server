@@ -9,6 +9,8 @@ import {
   ProposalAccount,
   DevProposalAccount,
   DevAccount,
+  DaoProposalsMeta,
+  DaoProposalAccount,
 } from '.'
 
 /**
@@ -79,4 +81,18 @@ export function isDevProposalAccount(account: unknown): account is DevProposalAc
  */
 export function isDevAccount(account: unknown): account is DevAccount {
   return !!account && typeof account === 'object' && 'type' in account && account.type === 'DevAccount'
+}
+
+/**
+ * Type guard to check if an account is a DaoProposalsMeta account
+ */
+export function isDaoProposalsMeta(account: unknown): account is DaoProposalsMeta {
+  return !!account && typeof account === 'object' && 'type' in account && account.type === 'DaoProposalsMeta'
+}
+
+/**
+ * Type guard to check if an account is a DaoProposalAccount
+ */
+export function isDaoProposalAccount(account: unknown): account is DaoProposalAccount {
+  return !!account && typeof account === 'object' && 'type' in account && account.type === 'DaoProposalAccount'
 }
