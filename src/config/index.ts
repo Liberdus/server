@@ -100,6 +100,18 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   goldenTicketServerUrl: 'http://localhost:3456/golden/ticket',
   messageRetentionDays: 7,
   messageMaxLength: 500,
+  dao: {
+    proposalFeeUsdStr: '50.0',
+    voteThresholdUsdStr: '100.0',
+    minimumSpendUsdStr: '1.0',
+    voteExponent: 1.1,
+    pctBurned: 50,
+    reviewDuration: 2 * ONE_DAY,
+    votingDuration: 8 * ONE_DAY,
+    graceDuration: 7 * ONE_DAY,
+    claimDuration: 30 * ONE_DAY,
+    committeeAddresses: [] as string[],
+  },
 }
 
 function replaceAll(str, find, replace) {
@@ -237,6 +249,9 @@ interface LiberdusFlags {
   fetchNetworkAccountFromArchiver: boolean
   enableArchiverNetworkAccountValidation: boolean
   enableDAOTransactions: boolean
+  enableNewDAOTransactions: boolean
+  minCommitteeMembers: number
+  maxCommitteeMembers: number
   enableAJVValidation: boolean
   versionFlags: {
     replierNoToll: boolean
@@ -283,6 +298,9 @@ export const LiberdusFlags: LiberdusFlags = {
   fetchNetworkAccountFromArchiver: true,
   enableArchiverNetworkAccountValidation: false,
   enableDAOTransactions: false,
+  enableNewDAOTransactions: true,
+  minCommitteeMembers: 4,
+  maxCommitteeMembers: 10,
   enableAJVValidation: false,
   versionFlags: {
     replierNoToll: true, // turn on by 2.3.5
