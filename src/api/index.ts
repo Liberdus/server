@@ -9,6 +9,7 @@ import staking from './staking'
 import node from './node'
 import { handlePutAdminCertificate } from './admin_certificate'
 import { debug_liberdus_flags, set_liberdus_flag } from './liberdus_flags'
+import dao from './dao'
 import { Shardus } from '@shardus/core'
 export default (dapp: Shardus): void => {
   dapp.registerExternalPost('inject', inject(dapp))
@@ -32,6 +33,12 @@ export default (dapp: Shardus): void => {
   dapp.registerExternalGet('proposals/dev', proposals.dev_all(dapp))
   dapp.registerExternalGet('proposals/dev/latest', proposals.dev_latest(dapp))
   dapp.registerExternalGet('proposals/dev/count', proposals.dev_count(dapp))
+
+  // New DAO API routes (specific routes must be registered before parametric ones)
+  dapp.registerExternalGet('dao/proposals/meta', dao.proposals.meta(dapp))
+  dapp.registerExternalGet('dao/proposals/:id', dao.proposals.single(dapp))
+  dapp.registerExternalGet('dao/proposals', dao.proposals.all(dapp))
+  dapp.registerExternalGet('dao/voters/:proposalId', dao.voters.list(dapp))
 
   dapp.registerExternalGet('account/:id', accounts.account(dapp))
   dapp.registerExternalGet('account/:id/alias', accounts.alias(dapp))
