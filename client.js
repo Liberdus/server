@@ -2572,5 +2572,408 @@ vorpal.command('faucet', 'requests tokens from the faucet server').action(async 
   }
 })
 
+// =============================================================================
+// DAO COMMANDS (Phase 1: governance / economic / protocol proposals)
+// =============================================================================
+
+// Helper: compute the proposals meta account address
+function daoMetaId() {
+  return crypto.hash('dao proposals meta')
+}
+
+// Helper: compute a proposal account address by proposal number
+function daoProposalId(n) {
+  return crypto.hash(`dao proposal #${n}`)
+}
+
+// Helper: fetch the meta account to get current count
+async function getDaoMeta() {
+  const res = await axios.get(`${PROTOCOL}://${HOST}/dao/proposals/meta`)
+  return res.data.meta
+}
+
+// ---------------------------------------------------------------------------
+// dao proposal create
+// ---------------------------------------------------------------------------
+vorpal.command('dao proposal create', 'create a new DAO governance/economic/protocol proposal').action(async function (args, callback) {
+  const answers = await this.prompt([
+    {
+      type: 'list',
+      name: 'proposalType',
+      message: 'Proposal type:',
+      choices: ['governance', 'economic', 'protocol'],
+    },
+    {
+      type: 'confirm',
+      name: 'emergency',
+      message: 'Is this an emergency proposal?',
+      default: false,
+    },
+    {
+      type: 'input',
+      name: 'description',
+      message: 'Enter a description for the proposal:',
+    },
+    {
+      type: 'input',
+      name: 'options',
+      message: 'Enter ballot options as comma-separated list (e.g. yes,no):',
+      default: 'yes,no',
+    },
+    {
+      type: 'input',
+      name: 'changesJson',
+      message: 'Enter parameter changes as JSON array (e.g. [{"key":"voteExponent","value":"1.2","current":"1.1"}]):',
+      default: '[]',
+    },
+    {
+      type: 'number',
+      name: 'gracePeriodDays',
+      message: 'Grace period in days (0 = use network default):',
+      default: 7,
+    },
+  ])
+
+  try {
+    const meta = await getDaoMeta()
+    const nextCount = meta ? meta.count + 1 : 1
+    const metaId = daoMetaId()
+    const proposalId = daoProposalId(nextCount)
+
+    const options = answers.options.split(',').map((s) => s.trim())
+    const changes = JSON.parse(answers.changesJson)
+    const gracePeriod = answers.gracePeriodDays * ONE_DAY
+
+    const typePayload = {}
+    if (answers.proposalType === 'governance') typePayload.governance = { changes }
+    else if (answers.proposalType === 'economic') typePayload.economic = { changes }
+    else if (answers.proposalType === 'protocol') typePayload.protocol = { changes }
+
+    const tx = {
+      type: 'dao_proposal_create',
+      from: USER.address,
+      proposalId,
+      metaId,
+      emergency: answers.emergency,
+      proposalType: answers.proposalType,
+      gracePeriod,
+      description: answers.description,
+      options,
+      ...typePayload,
+      timestamp: Date.now(),
+    }
+    signTransaction(tx)
+    const res = await injectTx(tx)
+    this.log(res)
+    this.log(`Proposal #${nextCount} submitted. Address: ${proposalId}`)
+  } catch (err) {
+    this.log('Error:', err.message)
+  }
+  callback()
+})
+
+// ---------------------------------------------------------------------------
+// dao committee vote
+// ---------------------------------------------------------------------------
+vorpal.command('dao committee vote', 'cast a committee accept/withhold vote on a proposal').action(async function (args, callback) {
+  const answers = await this.prompt([
+    {
+      type: 'number',
+      name: 'proposalNumber',
+      message: 'Enter proposal number:',
+    },
+    {
+      type: 'list',
+      name: 'vote',
+      message: 'Your vote:',
+      choices: ['accept', 'withhold'],
+    },
+    {
+      // NOTE: the server schema (schemaDaoCommitteeVoteTX, additionalProperties: false) and
+      // dao_committee_vote.validate_fields() expect "withheldReason" (a required, non-empty
+      // string when vote === 'withhold') — NOT "reason". Sending "reason" gets the whole tx
+      // rejected by AJV before it ever reaches the handler.
+      type: 'input',
+      name: 'withheldReason',
+      message: 'Reason for withholding:',
+      when: (currentAnswers) => currentAnswers.vote === 'withhold',
+      validate: (input) => (typeof input === 'string' && input.trim().length > 0) || 'A non-empty reason is required when withholding',
+    },
+  ])
+
+  try {
+    const proposalId = daoProposalId(answers.proposalNumber)
+    const tx = {
+      type: 'dao_committee_vote',
+      from: USER.address,
+      proposalId,
+      vote: answers.vote,
+      timestamp: Date.now(),
+    }
+    if (answers.vote === 'withhold') {
+      tx.withheldReason = answers.withheldReason.trim()
+    }
+    signTransaction(tx)
+    const res = await injectTx(tx)
+    this.log(res)
+  } catch (err) {
+    this.log('Error:', err.message)
+  }
+  callback()
+})
+
+// ---------------------------------------------------------------------------
+// dao committee result
+// ---------------------------------------------------------------------------
+vorpal.command('dao committee result', 'finalize committee review after review period ends').action(async function (args, callback) {
+  const answers = await this.prompt([
+    {
+      type: 'number',
+      name: 'proposalNumber',
+      message: 'Enter proposal number:',
+    },
+  ])
+
+  try {
+    const proposalId = daoProposalId(answers.proposalNumber)
+    const tx = {
+      type: 'dao_committee_result',
+      from: USER.address,
+      proposalId,
+      timestamp: Date.now(),
+    }
+    signTransaction(tx)
+    const res = await injectTx(tx)
+    this.log(res)
+  } catch (err) {
+    this.log('Error:', err.message)
+  }
+  callback()
+})
+
+// ---------------------------------------------------------------------------
+// dao vote
+// ---------------------------------------------------------------------------
+vorpal.command('dao vote', 'cast a community vote on a proposal').action(async function (args, callback) {
+  try {
+    const { proposalNumber } = await this.prompt([
+      {
+        type: 'number',
+        name: 'proposalNumber',
+        message: 'Enter proposal number:',
+      },
+    ])
+
+    const proposalId = daoProposalId(proposalNumber)
+
+    // NOTE: the v2 dao_vote schema/handler expect "weights" — an array of per-option weights
+    // sized to proposal.options.length (NOT a single "optionIndex"; see schemaDaoVoteTX,
+    // additionalProperties: false — sending optionIndex gets the whole tx rejected by AJV).
+    // Fetch the proposal first so we know how many options exist and can build that array.
+    const proposalRes = await axios.get(`${PROTOCOL}://${HOST}/dao/proposals/${proposalNumber}`)
+    const body = parseDaoApiBody(proposalRes.data)
+    const proposal = body?.proposal
+    if (!proposal || !Array.isArray(proposal.options) || proposal.options.length < 2) {
+      this.log(`Proposal #${proposalNumber} not found or has no votable options.`)
+      return callback()
+    }
+
+    const { optionIndex, spendLib } = await this.prompt([
+      {
+        type: 'list',
+        name: 'optionIndex',
+        message: 'Select an option to vote for:',
+        choices: proposal.options.map((opt, i) => ({ name: `${i}: ${opt}`, value: i })),
+      },
+      {
+        type: 'number',
+        name: 'spendLib',
+        message: 'Amount of LIB to spend on this vote (minimum = minimumSpend):',
+        default: 1,
+      },
+    ])
+
+    // Put the entire selection weight on the chosen option — equivalent to the old
+    // single-choice "optionIndex" UX, expressed in the new additive weights[] model
+    // (weights[i] maps 1:1 onto proposal.options[i]; see dao_vote.ts validate_fields).
+    const weights = proposal.options.map((_, i) => (i === optionIndex ? 1 : 0))
+
+    const tx = {
+      type: 'dao_vote',
+      from: USER.address,
+      proposalId,
+      weights,
+      spend: libToWei(spendLib),
+      timestamp: Date.now(),
+    }
+    signTransaction(tx)
+    const res = await injectTx(tx)
+    this.log(res)
+  } catch (err) {
+    this.log('Error:', err.message)
+  }
+  callback()
+})
+
+// ---------------------------------------------------------------------------
+// dao vote result
+// ---------------------------------------------------------------------------
+vorpal.command('dao vote result', 'finalize community vote after voting period ends').action(async function (args, callback) {
+  const answers = await this.prompt([
+    {
+      type: 'number',
+      name: 'proposalNumber',
+      message: 'Enter proposal number:',
+    },
+  ])
+
+  try {
+    const proposalId = daoProposalId(answers.proposalNumber)
+    const tx = {
+      type: 'dao_vote_result',
+      from: USER.address,
+      proposalId,
+      timestamp: Date.now(),
+    }
+    signTransaction(tx)
+    const res = await injectTx(tx)
+    this.log(res)
+  } catch (err) {
+    this.log('Error:', err.message)
+  }
+  callback()
+})
+
+// ---------------------------------------------------------------------------
+// dao apply parameters
+// ---------------------------------------------------------------------------
+vorpal.command('dao apply parameters', 'apply an accepted proposal after the grace period').action(async function (args, callback) {
+  const answers = await this.prompt([
+    {
+      type: 'number',
+      name: 'proposalNumber',
+      message: 'Enter proposal number:',
+    },
+  ])
+
+  try {
+    const proposalId = daoProposalId(answers.proposalNumber)
+    const tx = {
+      type: 'dao_apply_parameters',
+      from: USER.address,
+      proposalId,
+      timestamp: Date.now(),
+    }
+    signTransaction(tx)
+    const res = await injectTx(tx)
+    this.log(res)
+  } catch (err) {
+    this.log('Error:', err.message)
+  }
+  callback()
+})
+
+// ---------------------------------------------------------------------------
+// dao claim reward
+// ---------------------------------------------------------------------------
+vorpal.command('dao claim reward', 'claim your voter reward for a proposal').action(async function (args, callback) {
+  const answers = await this.prompt([
+    {
+      type: 'number',
+      name: 'proposalNumber',
+      message: 'Enter proposal number:',
+    },
+  ])
+
+  try {
+    const proposalId = daoProposalId(answers.proposalNumber)
+    const tx = {
+      type: 'dao_claim_reward',
+      from: USER.address,
+      proposalId,
+      timestamp: Date.now(),
+    }
+    signTransaction(tx)
+    const res = await injectTx(tx)
+    this.log(res)
+  } catch (err) {
+    this.log('Error:', err.message)
+  }
+  callback()
+})
+
+// ---------------------------------------------------------------------------
+// dao proposals  (query)
+// ---------------------------------------------------------------------------
+vorpal.command('dao proposals [status]', 'list DAO proposals, optionally filtered by status').action(async function (args, callback) {
+  try {
+    const url = args.status
+      ? `${PROTOCOL}://${HOST}/dao/proposals?status=${args.status}`
+      : `${PROTOCOL}://${HOST}/dao/proposals`
+    const res = await axios.get(url)
+    const proposals = res.data.proposals || []
+    if (proposals.length === 0) {
+      this.log('No proposals found.')
+    } else {
+      for (const p of proposals) {
+        this.log(`#${p.number} [${p.status}] ${p.proposalType} | options: ${p.options.join('/')} | pool: ${weiToLib(p.voterRewardPool)} LIB`)
+        this.log(`  "${p.description.slice(0, 80)}${p.description.length > 80 ? '...' : ''}"`)
+      }
+    }
+  } catch (err) {
+    this.log('Error:', err.message)
+  }
+  callback()
+})
+
+// ---------------------------------------------------------------------------
+// dao proposal <n>  (query single)
+// ---------------------------------------------------------------------------
+vorpal.command('dao proposal <number>', 'show details of a single DAO proposal').action(async function (args, callback) {
+  try {
+    const res = await axios.get(`${PROTOCOL}://${HOST}/dao/proposals/${args.number}`)
+    const p = res.data.proposal
+    if (!p) {
+      this.log(`Proposal #${args.number} not found.`)
+    } else {
+      this.log(`\n--- Proposal #${p.number} ---`)
+      this.log(`Status:       ${p.status}`)
+      this.log(`Type:         ${p.proposalType}${p.emergency ? ' (EMERGENCY)' : ''}`)
+      this.log(`Options:      ${p.options.join(', ')}`)
+      this.log(`Weights:      ${p.weights.map((w) => weiToLib(w).toFixed(4)).join(', ')} LIB`)
+      this.log(`Reward pool:  ${weiToLib(p.voterRewardPool)} LIB`)
+      this.log(`Voters:       ${p.voterList.length} | Claims: ${p.claimList.length}`)
+      this.log(`Review ends:  ${new Date(p.reviewEnd).toISOString()}`)
+      if (p.votingEnd) this.log(`Voting ends:  ${new Date(p.votingEnd).toISOString()}`)
+      if (p.claimEnd) this.log(`Claim ends:   ${new Date(p.claimEnd).toISOString()}`)
+      this.log(`Description:  ${p.description}`)
+      if (p.governance) this.log(`Changes:      ${JSON.stringify(p.governance.changes)}`)
+      if (p.economic) this.log(`Changes:      ${JSON.stringify(p.economic.changes)}`)
+      if (p.protocol) this.log(`Changes:      ${JSON.stringify(p.protocol.changes)}`)
+    }
+  } catch (err) {
+    this.log('Error:', err.message)
+  }
+  callback()
+})
+
+// ---------------------------------------------------------------------------
+// dao voters <proposalId>  (query)
+// ---------------------------------------------------------------------------
+vorpal.command('dao voters <proposalId>', 'show the voter list and claim list for a proposal').action(async function (args, callback) {
+  try {
+    const res = await axios.get(`${PROTOCOL}://${HOST}/dao/voters/${args.proposalId}`)
+    const data = res.data
+    this.log(`Voters (${data.voterCount}):`)
+    for (const v of data.voterList) {
+      const claimed = data.claimList.includes(v.address) ? ' [claimed]' : ''
+      this.log(`  ${v.address} at ${new Date(v.timestamp).toISOString()}${claimed}`)
+    }
+  } catch (err) {
+    this.log('Error:', err.message)
+  }
+  callback()
+})
+
 vorpal.delimiter('>').show()
 vorpal.exec('init').then((res) => (USER = res))
