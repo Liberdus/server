@@ -52,6 +52,8 @@ import * as dao_committee_vote from './dao_committee_vote'
 import * as dao_committee_result from './dao_committee_result'
 import * as dao_vote from './dao_vote'
 import * as dao_vote_result from './dao_vote_result'
+import * as dao_apply_parameters from './dao_apply_parameters'
+import * as dao_claim_reward from './dao_claim_reward'
 
 export default {
   init_network,
@@ -108,4 +110,6 @@ export default {
   dao_committee_result,
   dao_vote,
   dao_vote_result,
+  dao_apply_parameters,
+  dao_claim_reward,
 }
