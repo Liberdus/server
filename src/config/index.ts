@@ -110,7 +110,13 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
     votingDuration: 8 * ONE_DAY,
     graceDuration: 7 * ONE_DAY,
     claimDuration: 30 * ONE_DAY,
-    committeeAddresses: [] as string[],
+    committeeAddresses: [
+      '29fade38139aa68def5590ec433c48c33b478ebf000000000000000000000000',
+      'd268b0edcc39b9e54d11453c3a1e9b5f5eff31e0000000000000000000000000',
+      '00447504874e7300713133f04d9c58dbb17a9c43000000000000000000000000',
+      'bfd7173582ba21a4e78973763a13c0b819c69ff3000000000000000000000000',
+      'cda7a371d648ec626ca4ff41a30ffc85283b594d000000000000000000000000',
+    ],
   },
 }
 
