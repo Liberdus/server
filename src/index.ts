@@ -1974,7 +1974,7 @@ const shardusSetup = (): void => {
         /* eslint-disable security/detect-object-injection */
         for (const [key, value] of Object.entries(changeObj)) {
           if (existingObject[key] != null) {
-            if (typeof value === 'object') {
+            if (typeof value === 'object' && !Array.isArray(value)) {
               await patchAndUpdate(existingObject[key], value, parentPath === '' ? key : parentPath + '.' + key)
             } else {
               if (key === 'activeVersion') {
