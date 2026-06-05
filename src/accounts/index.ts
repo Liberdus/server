@@ -8,6 +8,8 @@ import { deserializeIssueAccount, issueAccount, serializeIssueAccount } from './
 import { deserializeNetworkAccount, networkAccount, serializeNetworkAccount } from './networkAccount'
 import { deserializeNodeAccount, nodeAccount, serializeNodeAccount } from './nodeAccount'
 import { deserializeProposalAccount, proposalAccount, serializeProposalAccount } from './proposalAccount'
+import { daoProposalsMetaAccount, deserializeDaoProposalsMetaAccount, serializeDaoProposalsMetaAccount } from './daoProposalsMetaAccount'
+import { daoProposalAccount, deserializeDaoProposalAccount, serializeDaoProposalAccount } from './daoProposalAccount'
 import { VectorBufferStream } from '@shardus/core'
 import {
   DeveloperPayment,
@@ -22,6 +24,8 @@ import {
   ProposalAccount,
   UserAccount,
   DevAccount,
+  DaoProposalsMeta,
+  DaoProposalAccount,
 } from '../@types'
 import { Utils } from '@shardus/lib-types'
 
@@ -39,6 +43,8 @@ export enum SerdeTypeIdent {
   NetworkParameters,
   DevAccount,
   Fallback,
+  DaoProposalsMeta,
+  DaoProposalAccount,
 }
 
 export const serializeAccounts = (inp: AccountVariant): VectorBufferStream => {
@@ -74,6 +80,12 @@ export const serializeAccounts = (inp: AccountVariant): VectorBufferStream => {
     case 'devAccount':
       serializeDevAccount(stream, inp as DevAccount, true)
       break
+    case 'DaoProposalsMeta':
+      serializeDaoProposalsMetaAccount(stream, inp as DaoProposalsMeta, true)
+      break
+    case 'DaoProposalAccount':
+      serializeDaoProposalAccount(stream, inp as DaoProposalAccount, true)
+      break
     default:
       fallbackSerializer(stream, inp, true)
       break
@@ -106,6 +118,10 @@ export const deserializeAccounts = (buffer: Buffer): AccountVariant => {
       return deserializeUserAccount(stream)
     case SerdeTypeIdent.DevAccount:
       return deserializeDevAccount(stream)
+    case SerdeTypeIdent.DaoProposalsMeta:
+      return deserializeDaoProposalsMetaAccount(stream)
+    case SerdeTypeIdent.DaoProposalAccount:
+      return deserializeDaoProposalAccount(stream)
     default:
       return fallbackDeserializer(stream)
   }
@@ -200,4 +216,6 @@ export default {
   nodeAccount,
   proposalAccount,
   userAccount,
+  daoProposalsMetaAccount,
+  daoProposalAccount,
 }

@@ -523,7 +523,7 @@ export namespace Tx {
     from: string
     proposalId: string
     vote: 'accept' | 'withhold'
-    // Required when vote === 'withhold' (v2 policy: "must select a reason from a dropdown list").
+    // Required when vote === 'withhold'; the voter must supply a reason.
     withheldReason?: string
   }
 
@@ -772,7 +772,7 @@ export interface DevAccount {
 }
 
 // New DAO account types (Phase 1: governance/economic/protocol proposals)
-export type DaoProposalStatus = 'discuss' | 'review' | 'withheld' | 'voting' | 'rejected' | 'accepted' | 'applied'
+export type DaoProposalStatus = 'review' | 'withheld' | 'voting' | 'rejected' | 'accepted' | 'applied'
 export type DaoProposalType = 'governance' | 'economic' | 'protocol'
 
 export interface DaoGovernanceData {
@@ -819,6 +819,7 @@ export interface DaoProposalAccount {
   votingDuration: number
   graceDuration: number
   claimDuration: number
+  committeeAddresses: string[]
   // Committee review tracking — one entry per member; switching a vote replaces (not appends)
   // that member's entry, so withheldReason always stays attributed to the member's current vote.
   committeeVotes: Array<{ memberAddress: string; vote: 'accept' | 'withhold'; withheldReason?: string }>
