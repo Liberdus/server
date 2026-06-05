@@ -75,6 +75,14 @@ export enum AJVSchemaEnum {
   init_reward = 'init_reward',
   claim_reward = 'claim_reward',
   apply_penalty = 'apply_penalty',
+  // New DAO transactions (Phase 1: governance/economic/protocol proposals)
+  dao_proposal_create = 'dao_proposal_create',
+  dao_committee_vote = 'dao_committee_vote',
+  dao_committee_result = 'dao_committee_result',
+  dao_vote = 'dao_vote',
+  dao_vote_result = 'dao_vote_result',
+  dao_apply_parameters = 'dao_apply_parameters',
+  dao_claim_reward = 'dao_claim_reward',
 }
 
 export enum TXTypes {
@@ -132,6 +140,14 @@ export enum TXTypes {
   init_reward = 'init_reward',
   claim_reward = 'claim_reward',
   apply_penalty = 'apply_penalty',
+  // New DAO transactions (Phase 1: governance/economic/protocol proposals)
+  dao_proposal_create = 'dao_proposal_create',
+  dao_committee_vote = 'dao_committee_vote',
+  dao_committee_result = 'dao_committee_result',
+  dao_vote = 'dao_vote',
+  dao_vote_result = 'dao_vote_result',
+  dao_apply_parameters = 'dao_apply_parameters',
+  dao_claim_reward = 'dao_claim_reward',
 }
 
 export interface BaseLiberdusTx {
@@ -484,6 +500,64 @@ export namespace Tx {
     violationType: ViolationType
     violationData: LeftNetworkEarlyViolationData | SyncingTimeoutViolationData | NodeRefutedViolationData
   }
+
+  // New DAO transaction interfaces (Phase 1: governance/economic/protocol proposals)
+  export interface DaoProposalCreate extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+    metaId: string
+    emergency: boolean
+    proposalType: DaoProposalType
+    gracePeriod: number
+    description: string
+    options: string[]
+    governance?: DaoGovernanceData
+    economic?: DaoEconomicData
+    protocol?: DaoProtocolData
+    // Optional: when committee review should begin. Must be >= tx.timestamp (creation time);
+    // defaults to tx.timestamp (creationTime) when omitted. See dao_proposal_create.validate.
+    startTime?: number
+  }
+
+  export interface DaoCommitteeVote extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+    vote: 'accept' | 'withhold'
+    // Required when vote === 'withhold' (v2 policy: "must select a reason from a dropdown list").
+    withheldReason?: string
+  }
+
+  export interface DaoCommitteeResult extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+  }
+
+  export interface DaoVote extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+    // Relative weight the voter assigns to each proposal option, mapped 1:1 by index onto
+    // proposal.options (e.g. weights: [3, 5, 0, 2] for options [bob, tom, sam, jim]).
+    // Replaces the old single-option `optionIndex` — a vote can now spread its spend-weight
+    // across multiple options proportionally. Must have the same length as proposal.options,
+    // contain non-negative finite numbers, and sum to > 0.
+    weights: number[]
+    spend: bigint
+  }
+
+  export interface DaoVoteResult extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+  }
+
+  export interface DaoApplyParameters extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+  }
+
+  export interface DaoClaimReward extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+  }
 }
 
 export interface Signature {
@@ -697,6 +771,73 @@ export interface DevAccount {
   timestamp: number
 }
 
+// New DAO account types (Phase 1: governance/economic/protocol proposals)
+export type DaoProposalStatus = 'discuss' | 'review' | 'withheld' | 'voting' | 'rejected' | 'accepted' | 'applied'
+export type DaoProposalType = 'governance' | 'economic' | 'protocol'
+
+export interface DaoGovernanceData {
+  changes: Array<{ key: string; value: string; current: string }>
+}
+
+export interface DaoEconomicData {
+  changes: Array<{ key: string; value: string; current: string }>
+}
+
+export interface DaoProtocolData {
+  changes: Array<{ key: string; value: string; current: string }>
+}
+
+export interface DaoProposalsMeta {
+  id: string
+  type: 'DaoProposalsMeta'
+  count: number
+  hash: string
+  timestamp: number
+}
+
+export interface DaoProposalAccount {
+  id: string
+  type: 'DaoProposalAccount'
+  status: DaoProposalStatus
+  emergency: boolean
+  proposalType: DaoProposalType
+  number: number
+  // Only these two timestamps are stored; reviewEnd/votingStart/votingEnd/claimEnd/
+  // applyEligibleAt are all derived from them + the duration fields below.
+  // See getReviewEnd/getVotingStart/getVotingEnd/getClaimEnd/getApplyEligibleAt
+  // in src/accounts/daoProposalAccount.ts (single source of truth for the formulas).
+  creationTime: number
+  startTime: number
+  gracePeriod: number
+  // Snapshot of DAO network params captured at proposal creation time
+  proposalFeeWei: bigint
+  voteThresholdWei: bigint
+  minimumSpendWei: bigint
+  voteExponent: number
+  pctBurned: number
+  reviewDuration: number
+  votingDuration: number
+  graceDuration: number
+  claimDuration: number
+  // Committee review tracking — one entry per member; switching a vote replaces (not appends)
+  // that member's entry, so withheldReason always stays attributed to the member's current vote.
+  committeeVotes: Array<{ memberAddress: string; vote: 'accept' | 'withhold'; withheldReason?: string }>
+  // Voting state
+  options: string[]
+  weights: bigint[]
+  voterRewardPool: bigint
+  rewardPoolAfterBurn: bigint
+  voterList: Array<{ address: string; timestamp: number }>
+  claimList: string[]
+  // Proposal content
+  description: string
+  governance?: DaoGovernanceData
+  economic?: DaoEconomicData
+  protocol?: DaoProtocolData
+  hash: string
+  timestamp: number
+}
+
 export type Accounts = NetworkAccount &
   IssueAccount &
   DevIssueAccount &
@@ -717,6 +858,8 @@ export type AccountVariant =
   | NodeAccount
   | ChatAccount
   | DevAccount
+  | DaoProposalsMeta
+  | DaoProposalAccount
 
 /**
  * ---------------------- NETWORK DATA export interfaceS ----------------------
@@ -772,6 +915,18 @@ export interface NetworkParameters {
   minTollUsdStr: string
   defaultTollUsdStr: string
   goldenTicketServerUrl: string
+  dao: {
+    proposalFeeUsdStr: string
+    voteThresholdUsdStr: string
+    minimumSpendUsdStr: string
+    voteExponent: number
+    pctBurned: number
+    reviewDuration: number
+    votingDuration: number
+    graceDuration: number
+    claimDuration: number
+    committeeAddresses: string[]
+  }
 }
 
 export interface Windows {
