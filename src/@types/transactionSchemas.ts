@@ -755,6 +755,118 @@ export const schemaApplyDevTallyTX = {
   additionalProperties: false,
 }
 
+// New DAO schemas (Phase 1: governance/economic/protocol proposals)
+export const schemaDaoProposalCreateTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    metaId: { type: 'string', minLength: 64, maxLength: 64 },
+    emergency: { type: 'boolean' },
+    proposalType: { enum: ['governance', 'economic', 'protocol'] },
+    gracePeriod: { type: 'number', minimum: 0 },
+    description: { type: 'string', maxLength: 10000 },
+    options: {
+      type: 'array',
+      items: { type: 'string' },
+      minItems: 2,
+      maxItems: 10,
+    },
+    governance: { type: 'object' },
+    economic: { type: 'object' },
+    protocol: { type: 'object' },
+    startTime: { type: 'number', minimum: 0 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId', 'metaId', 'emergency', 'proposalType', 'gracePeriod', 'description', 'options'],
+  additionalProperties: false,
+}
+
+export const schemaDaoCommitteeVoteTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    vote: { enum: ['accept', 'withhold'] },
+    // Required (enforced in validate, not here, since it's conditional on vote === 'withhold')
+    withheldReason: { type: 'string' },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId', 'vote'],
+  additionalProperties: false,
+}
+
+export const schemaDaoCommitteeResultTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId'],
+  additionalProperties: false,
+}
+
+export const schemaDaoVoteTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    // weights[i] applies to proposal.options[i]; length/sum checks happen in validate()
+    // where the proposal account (and therefore proposal.options.length) is available.
+    weights: {
+      type: 'array',
+      items: { type: 'number', minimum: 0 },
+      minItems: 2,
+      maxItems: 10,
+    },
+    spend: { isBigInt: true },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId', 'weights', 'spend'],
+  additionalProperties: false,
+}
+
+export const schemaDaoVoteResultTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId'],
+  additionalProperties: false,
+}
+
+export const schemaDaoApplyParametersTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId'],
+  additionalProperties: false,
+}
+
+export const schemaDaoClaimRewardTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId'],
+  additionalProperties: false,
+}
+
 export function initSchemas(): void {
   try {
     addSchemas()
@@ -823,6 +935,14 @@ function addSchemas(): void {
     [TXTypes.apply_tally]: schemaApplyTallyTX,
     [TXTypes.apply_dev_tally]: schemaApplyDevTallyTX,
     [TXTypes.apply_penalty]: schemaPenaltyTX,
+    // New DAO transactions
+    [TXTypes.dao_proposal_create]: schemaDaoProposalCreateTX,
+    [TXTypes.dao_committee_vote]: schemaDaoCommitteeVoteTX,
+    [TXTypes.dao_committee_result]: schemaDaoCommitteeResultTX,
+    [TXTypes.dao_vote]: schemaDaoVoteTX,
+    [TXTypes.dao_vote_result]: schemaDaoVoteResultTX,
+    [TXTypes.dao_apply_parameters]: schemaDaoApplyParametersTX,
+    [TXTypes.dao_claim_reward]: schemaDaoClaimRewardTX,
   }
   // Loop through TXTypes and register corresponding schemas
   Object.entries(txSchemaMap).forEach(([txType, schema]) => {

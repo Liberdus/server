@@ -47,6 +47,9 @@ import * as init_reward from './staking/init_reward'
 import * as claim_reward from './staking/claim_reward'
 import * as apply_penalty from './staking/apply_penalty'
 import * as admin_certificate from './admin_certificate'
+import * as dao_proposal_create from './dao_proposal_create'
+import * as dao_committee_vote from './dao_committee_vote'
+import * as dao_committee_result from './dao_committee_result'
 
 export default {
   init_network,
@@ -98,4 +101,7 @@ export default {
   claim_reward,
   apply_penalty,
   admin_certificate,
+  dao_proposal_create,
+  dao_committee_vote,
+  dao_committee_result,
 }
