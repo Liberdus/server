@@ -34,10 +34,11 @@ export default (dapp: Shardus): void => {
   dapp.registerExternalGet('proposals/dev/latest', proposals.dev_latest(dapp))
   dapp.registerExternalGet('proposals/dev/count', proposals.dev_count(dapp))
 
-  // New DAO API routes (specific routes must be registered before parametric ones)
-  dapp.registerExternalGet('dao/proposals/meta', dao.proposals.meta(dapp))
-  dapp.registerExternalGet('dao/proposals/:id', dao.proposals.single(dapp))
+  // New DAO API routes — Shardus applies registerExternalGet routes in LIFO order
+  // (last registered = first matched in Express), so register specific paths last.
   dapp.registerExternalGet('dao/proposals', dao.proposals.all(dapp))
+  dapp.registerExternalGet('dao/proposals/:id', dao.proposals.single(dapp))
+  dapp.registerExternalGet('dao/proposals/meta', dao.proposals.meta(dapp))
   dapp.registerExternalGet('dao/voters/:proposalId', dao.voters.list(dapp))
 
   dapp.registerExternalGet('account/:id', accounts.account(dapp))

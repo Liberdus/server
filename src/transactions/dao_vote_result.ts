@@ -27,7 +27,7 @@ export const validate_fields = (tx: Tx.DaoVoteResult, response: ShardusTypes.Inc
     response.reason = 'tx must be signed by the from account'
     return response
   }
-  if (crypto.verifyObj(tx, true) === false) {
+  if (crypto.verifyObj(tx) === false) {
     response.reason = 'incorrect signing'
     return response
   }
