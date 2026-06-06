@@ -20,6 +20,8 @@
     "prepare": "npm run compile",
     "pretest": "npm run compile",
     "posttest": "npm run check",
+    "pretest:dao:e2e": "npm run compile",
+    "test:dao:e2e": "ts-node --project tsconfig.scripts.json scripts/test-dao-e2e.ts",
     "dbg": "shardus start 3 && shardus stop && rm -rf instances/",
     "build-docker-dev": "sudo docker build -f dev.Dockerfile -t ghcr.io/liberdus/server:dev .",
     "push-docker-dev": "sudo docker push ghcr.io/liberdus/server:dev",

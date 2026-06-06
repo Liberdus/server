@@ -16,3 +16,4 @@ coverage
 .idea
 stakedNodeLists.json
 dao-committee-keys.json
+test-logs/*.log
