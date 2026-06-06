@@ -7,8 +7,10 @@
  * Usage:
  *   npm run test:dao:e2e
  *   npm run test:dao:e2e -- --no-start             (reuse a running network)
+ *   npm run test:dao:e2e -- --no-stop              (keep network alive after all tests pass)
  *   npm run test:dao:e2e -- --verbose              (print full TX/response bodies)
  *   npm run test:dao:e2e -- --stop                 (tear down even when tests fail)
+ *   npm run test:dao:e2e -- --parallel             (proposal creation sequential, then scenario bodies concurrent)
  *   npm run test:dao:e2e -- --scenario 1           (run only scenario 1)
  *   npm run test:dao:e2e -- --scenario 1,3,5       (run scenarios 1, 3 and 5)
  *   npm run test:dao:e2e -- --step 1.8             (run only step 1.8)
@@ -16,6 +18,11 @@
  *
  * --step implies --no-start (assumes the network and account state are already set up).
  * Step IDs must match the leading token of the step name exactly, e.g. "1.8", "5.1".
+ *
+ * --parallel splits each scenario into a setup phase (proposal creation, run sequentially
+ * to avoid meta.count races) and a body phase (all remaining steps run concurrently).
+ * Output lines are prefixed with [S1]…[S5] to distinguish interleaved scenarios.
+ * Note: --step is not designed to combine with --parallel.
  *
  * By default the network is left running when any step fails so you can iterate on
  * the test script without a full restart. Use --stop to force teardown. After server
@@ -76,6 +83,13 @@ const STEP_FILTER: Set<string> | null = (() => {
 
 // --step implies --no-start (network + account state must already exist)
 const NO_START = cliArgs.includes('--no-start') || STEP_FILTER !== null
+
+/**
+ * --parallel  Run all scenario setups (proposal creation) sequentially to avoid
+ * meta.count races, then run all scenario bodies concurrently via Promise.allSettled.
+ * Each body step is prefixed with [Sn] in console output.
+ */
+const PARALLEL = cliArgs.includes('--parallel')
 
 const HOST = 'localhost:9001'
 const ARCHIVER_HOST = 'localhost:4000'
@@ -182,6 +196,22 @@ interface StepResult {
   error?: string
 }
 
+/**
+ * Describes a single test scenario split into two phases:
+ *  - setupSteps: must run sequentially (e.g. proposal creation that increments meta.count)
+ *  - bodySteps:  can run in parallel with other scenarios once all setups are done
+ *
+ * In sequential mode both arrays are concatenated and run in order.
+ * In --parallel mode all setupSteps across all scenarios run first (sequentially),
+ * then all bodySteps run concurrently.
+ */
+interface ScenarioDef {
+  num: number
+  name: string
+  setupSteps: Array<[string, () => Promise<void>]>
+  bodySteps: Array<[string, () => Promise<void>]>
+}
+
 interface TestAccount {
   /** 64-char Shardus address derived from Ethereum address: ethAddr.slice(2).toLowerCase() + '0'.repeat(24) */
   address: string
@@ -226,15 +256,15 @@ function assert(condition: boolean, message: string): asserts condition {
 
 // ─── Step / Scenario runner ───────────────────────────────────────────────────
 
-async function step(name: string, fn: () => Promise<void>): Promise<void> {
+async function step(name: string, fn: () => Promise<void>, prefix = ''): Promise<void> {
   const start = Date.now()
   try {
     await fn()
     results.push({ name, status: 'pass', ms: Date.now() - start })
-    console.log(`  ✅  ${name}`)
+    console.log(`${prefix}  ✅  ${name}`)
   } catch (err: any) {
     results.push({ name, status: 'fail', ms: Date.now() - start, error: err.message })
-    console.log(`  ❌  ${name}: ${err.message}`)
+    console.log(`${prefix}  ❌  ${name}: ${err.message}`)
     throw err
   }
 }
@@ -257,20 +287,26 @@ function effectiveScenarioFilter(): Set<number> | null {
   return SCENARIO_FILTER
 }
 
-async function scenario(num: number, name: string, steps: Array<[string, () => Promise<void>]>): Promise<void> {
+/**
+ * Run a scenario sequentially (combines setupSteps + bodySteps in order).
+ * Honours --scenario and --step filters.
+ */
+async function scenario(def: ScenarioDef): Promise<void> {
   const filter = effectiveScenarioFilter()
-  if (filter && !filter.has(num)) {
-    console.log(`\n── ${name} (skipped — not in filter) ──`)
-    for (const [stepName] of steps) {
+  const allSteps = [...def.setupSteps, ...def.bodySteps]
+
+  if (filter && !filter.has(def.num)) {
+    console.log(`\n── ${def.name} (skipped — not in filter) ──`)
+    for (const [stepName] of allSteps) {
       results.push({ name: stepName, status: 'skip', ms: 0 })
       console.log(`  ⏭   ${stepName} (skipped)`)
     }
     return
   }
 
-  console.log(`\n── ${name} ──`)
+  console.log(`\n── ${def.name} ──`)
   let failed = false
-  for (const [stepName, fn] of steps) {
+  for (const [stepName, fn] of allSteps) {
     // Extract step ID from the step name: "1.8  Sleep past..." → "1.8"
     const stepId = stepName.trim().split(/\s+/)[0]
     const stepFiltered = STEP_FILTER && !STEP_FILTER.has(stepId)
@@ -286,6 +322,86 @@ async function scenario(num: number, name: string, steps: Array<[string, () => P
       failed = true
     }
   }
+}
+
+/**
+ * Run the body steps of a single scenario (used in parallel mode).
+ * prefix is printed before each step result, e.g. "[S1]".
+ */
+async function runScenarioBody(def: ScenarioDef, prefix: string): Promise<void> {
+  console.log(`\n${prefix} ── ${def.name} ──`)
+  let failed = false
+  for (const [stepName, fn] of def.bodySteps) {
+    const stepId = stepName.trim().split(/\s+/)[0]
+    const stepFiltered = STEP_FILTER && !STEP_FILTER.has(stepId)
+
+    if (failed || stepFiltered) {
+      results.push({ name: stepName, status: 'skip', ms: 0 })
+      console.log(`${prefix}  ⏭   ${stepName} (skipped${stepFiltered ? ' — not in --step filter' : ''})`)
+      continue
+    }
+    try {
+      await step(stepName, fn, prefix)
+    } catch {
+      failed = true
+    }
+  }
+}
+
+/**
+ * Run scenarios in two phases:
+ *   1. All setupSteps across all scenarios execute sequentially (preserves meta.count order).
+ *   2. All bodySteps execute concurrently via Promise.allSettled.
+ *
+ * Failures in one scenario body do not abort other scenarios.
+ */
+async function runScenariosParallel(defs: ScenarioDef[]): Promise<void> {
+  const filter = effectiveScenarioFilter()
+  const activeDefs = defs.filter(d => !filter || filter.has(d.num))
+  const skippedDefs = defs.filter(d => filter && !filter.has(d.num))
+
+  // Mark skipped scenarios up-front
+  for (const def of skippedDefs) {
+    console.log(`\n── ${def.name} (skipped — not in filter) ──`)
+    for (const [stepName] of [...def.setupSteps, ...def.bodySteps]) {
+      results.push({ name: stepName, status: 'skip', ms: 0 })
+      console.log(`  ⏭   ${stepName} (skipped)`)
+    }
+  }
+
+  // ── Phase 1: Sequential setup (proposal creation must be in order) ──────
+  console.log('\n' + '═'.repeat(64))
+  console.log('  Phase 1 — Sequential setup (proposal creation)')
+  console.log('═'.repeat(64))
+  for (const def of activeDefs) {
+    if (def.setupSteps.length === 0) continue
+    console.log(`\n── ${def.name} — setup ──`)
+    let failed = false
+    for (const [stepName, fn] of def.setupSteps) {
+      const stepId = stepName.trim().split(/\s+/)[0]
+      const stepFiltered = STEP_FILTER && !STEP_FILTER.has(stepId)
+      if (failed || stepFiltered) {
+        results.push({ name: stepName, status: 'skip', ms: 0 })
+        console.log(`  ⏭   ${stepName} (skipped${stepFiltered ? ' — not in --step filter' : ''})`)
+        continue
+      }
+      try {
+        await step(stepName, fn)
+      } catch {
+        failed = true
+      }
+    }
+  }
+
+  // ── Phase 2: Parallel bodies ──────────────────────────────────────────
+  console.log('\n' + '═'.repeat(64))
+  console.log(`  Phase 2 — Parallel scenario bodies (${activeDefs.filter(d => d.bodySteps.length > 0).length} concurrent)`)
+  console.log('═'.repeat(64))
+  await Promise.allSettled(
+    activeDefs
+      .filter(d => d.bodySteps.length > 0)
+      .map(def => runScenarioBody(def, `[S${def.num}]`))
+  )
 }
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
@@ -744,7 +860,10 @@ async function main(): Promise<void> {
   // ─────────────────────────────────────────────────────────────────────────
   // Scenario 1 — Happy path: governance proposal → accepted → applied → claimed
   // ─────────────────────────────────────────────────────────────────────────
-  await scenario(1, 'Scenario 1 — Happy path (governance → accepted → applied → claimed)', [
+  const sc1: ScenarioDef = {
+    num: 1,
+    name: 'Scenario 1 — Happy path (governance → accepted → applied → claimed)',
+    setupSteps: [
     [
       '1.1  Fund all accounts',
       async () => {
@@ -784,7 +903,8 @@ async function main(): Promise<void> {
         assert(proposal.status === 'review', `Expected status 'review', got '${proposal.status}'`)
       },
     ],
-
+    ],
+    bodySteps: [
     [
       '1.3  committee_vote accept #1 (status still review)',
       async () => {
@@ -1032,12 +1152,16 @@ async function main(): Promise<void> {
         )
       },
     ],
-  ])
+    ],
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Scenario 2 — Withheld path
   // ─────────────────────────────────────────────────────────────────────────
-  await scenario(2, 'Scenario 2 — Withheld path', [
+  const sc2: ScenarioDef = {
+    num: 2,
+    name: 'Scenario 2 — Withheld path',
+    setupSteps: [
     [
       '2.1  dao_proposal_create (new governance proposal)',
       async () => {
@@ -1065,7 +1189,8 @@ async function main(): Promise<void> {
         assert(proposal.status === 'review', `Expected status 'review', got '${proposal.status}'`)
       },
     ],
-
+    ],
+    bodySteps: [
     [
       '2.2  committee_vote withhold x3 → decisive withhold, status withheld',
       async () => {
@@ -1098,12 +1223,16 @@ async function main(): Promise<void> {
         )
       },
     ],
-  ])
+    ],
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Scenario 3 — Auto-accept via dao_committee_result
   // ─────────────────────────────────────────────────────────────────────────
-  await scenario(3, 'Scenario 3 — Auto-accept via committee_result (no committee votes submitted)', [
+  const sc3: ScenarioDef = {
+    num: 3,
+    name: 'Scenario 3 — Auto-accept via committee_result (no committee votes submitted)',
+    setupSteps: [
     [
       '3.1  dao_proposal_create (non-emergency, no votes will be submitted)',
       async () => {
@@ -1131,7 +1260,8 @@ async function main(): Promise<void> {
         assert(proposal.status === 'review', `Expected status 'review', got '${proposal.status}'`)
       },
     ],
-
+    ],
+    bodySteps: [
     [
       '3.2  Sleep past reviewEnd',
       async () => {
@@ -1158,12 +1288,16 @@ async function main(): Promise<void> {
         assert(proposal.status === 'voting', `Expected status 'voting', got '${proposal.status}'`)
       },
     ],
-  ])
+    ],
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Scenario 4 — Emergency proposal path
   // ─────────────────────────────────────────────────────────────────────────
-  await scenario(4, 'Scenario 4 — Emergency proposal path', [
+  const sc4: ScenarioDef = {
+    num: 4,
+    name: 'Scenario 4 — Emergency proposal path',
+    setupSteps: [
     [
       '4.1  Non-committee address submits emergency proposal → rejected',
       async () => {
@@ -1219,7 +1353,8 @@ async function main(): Promise<void> {
         assert(proposal.emergency === true, 'Expected emergency === true')
       },
     ],
-
+    ],
+    bodySteps: [
     [
       '4.3  committee_vote accept x3 → accepted (emergency skips community voting)',
       async () => {
@@ -1262,12 +1397,16 @@ async function main(): Promise<void> {
         assert(proposal.votingEnd > 0, `Expected votingEnd > 0, got ${proposal.votingEnd}`)
       },
     ],
-  ])
+    ],
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Scenario 5 — Access control & rejection cases
   // ─────────────────────────────────────────────────────────────────────────
-  await scenario(5, 'Scenario 5 — Access control & rejection cases', [
+  const sc5: ScenarioDef = {
+    num: 5,
+    name: 'Scenario 5 — Access control & rejection cases',
+    setupSteps: [
     [
       '5.1  Non-committee address submits committee_vote on fresh review proposal → rejected',
       async () => {
@@ -1306,7 +1445,8 @@ async function main(): Promise<void> {
         )
       },
     ],
-
+    ],
+    bodySteps: [
     [
       '5.2  dao_vote on review-status proposal → rejected (not in voting phase)',
       async () => {
@@ -1342,7 +1482,21 @@ async function main(): Promise<void> {
         )
       },
     ],
-  ])
+    ],
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Run scenarios — sequential (default) or parallel (--parallel flag)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (PARALLEL) {
+    await runScenariosParallel([sc1, sc2, sc3, sc4, sc5])
+  } else {
+    await scenario(sc1)
+    await scenario(sc2)
+    await scenario(sc3)
+    await scenario(sc4)
+    await scenario(sc5)
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Final summary

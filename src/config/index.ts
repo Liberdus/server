@@ -109,7 +109,7 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
     minimumSpendUsdStr: '1.0',
     voteExponent: 1.1,
     pctBurned: 50,
-    reviewDuration: isDAOTestMode ? 30_000 : 2 * ONE_DAY,
+    reviewDuration: isDAOTestMode ? 90_000 : 2 * ONE_DAY,
     votingDuration: isDAOTestMode ? 60_000 : 8 * ONE_DAY,
     graceDuration: isDAOTestMode ? 30_000 : 7 * ONE_DAY,
     claimDuration: isDAOTestMode ? 120_000 : 30 * ONE_DAY,
