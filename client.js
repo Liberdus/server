@@ -2586,10 +2586,28 @@ function daoProposalId(n) {
   return crypto.hash(`dao proposal #${n}`)
 }
 
+// DAO API responses use res.send(Utils.safeStringify(...)) — body may be a JSON string.
+function parseDaoApiBody(data) {
+  if (typeof data === 'string') return Utils.safeJsonParse(data)
+  return data
+}
+
+function asBigIntForDisplay(value) {
+  if (typeof value === 'bigint') return value
+  if (typeof value === 'string' || typeof value === 'number') return BigInt(value)
+  return 0n
+}
+
 // Helper: fetch the meta account to get current count
 async function getDaoMeta() {
   const res = await axios.get(`${PROTOCOL}://${HOST}/dao/proposals/meta`)
-  return res.data.meta
+  const body = parseDaoApiBody(res.data)
+  return body?.meta ?? null
+}
+
+async function getDaoGraceDurationMs() {
+  const res = await axios.get(`${PROTOCOL}://${HOST}/network/parameters`)
+  return res.data?.parameters?.current?.dao?.graceDuration ?? 7 * ONE_DAY
 }
 
 // ---------------------------------------------------------------------------
@@ -2629,8 +2647,8 @@ vorpal.command('dao proposal create', 'create a new DAO governance/economic/prot
     {
       type: 'number',
       name: 'gracePeriodDays',
-      message: 'Grace period in days (0 = use network default):',
-      default: 7,
+      message: 'Grace period in days (0 = use full network graceDuration):',
+      default: 0,
     },
   ])
 
@@ -2642,7 +2660,11 @@ vorpal.command('dao proposal create', 'create a new DAO governance/economic/prot
 
     const options = answers.options.split(',').map((s) => s.trim())
     const changes = JSON.parse(answers.changesJson)
-    const gracePeriod = answers.gracePeriodDays * ONE_DAY
+    const maxGraceMs = await getDaoGraceDurationMs()
+    const gracePeriod =
+      answers.gracePeriodDays <= 0
+        ? maxGraceMs
+        : Math.min(answers.gracePeriodDays * ONE_DAY, maxGraceMs)
 
     const typePayload = {}
     if (answers.proposalType === 'governance') typePayload.governance = { changes }
@@ -2911,12 +2933,13 @@ vorpal.command('dao proposals [status]', 'list DAO proposals, optionally filtere
       ? `${PROTOCOL}://${HOST}/dao/proposals?status=${args.status}`
       : `${PROTOCOL}://${HOST}/dao/proposals`
     const res = await axios.get(url)
-    const proposals = res.data.proposals || []
+    const body = parseDaoApiBody(res.data)
+    const proposals = body?.proposals || []
     if (proposals.length === 0) {
       this.log('No proposals found.')
     } else {
       for (const p of proposals) {
-        this.log(`#${p.number} [${p.status}] ${p.proposalType} | options: ${p.options.join('/')} | pool: ${weiToLib(p.voterRewardPool)} LIB`)
+        this.log(`#${p.number} [${p.status}] ${p.proposalType} | options: ${p.options.join('/')} | pool: ${weiToLib(asBigIntForDisplay(p.voterRewardPool))} LIB`)
         this.log(`  "${p.description.slice(0, 80)}${p.description.length > 80 ? '...' : ''}"`)
       }
     }
@@ -2932,7 +2955,8 @@ vorpal.command('dao proposals [status]', 'list DAO proposals, optionally filtere
 vorpal.command('dao proposal <number>', 'show details of a single DAO proposal').action(async function (args, callback) {
   try {
     const res = await axios.get(`${PROTOCOL}://${HOST}/dao/proposals/${args.number}`)
-    const p = res.data.proposal
+    const body = parseDaoApiBody(res.data)
+    const p = body?.proposal
     if (!p) {
       this.log(`Proposal #${args.number} not found.`)
     } else {
@@ -2940,8 +2964,8 @@ vorpal.command('dao proposal <number>', 'show details of a single DAO proposal')
       this.log(`Status:       ${p.status}`)
       this.log(`Type:         ${p.proposalType}${p.emergency ? ' (EMERGENCY)' : ''}`)
       this.log(`Options:      ${p.options.join(', ')}`)
-      this.log(`Weights:      ${p.weights.map((w) => weiToLib(w).toFixed(4)).join(', ')} LIB`)
-      this.log(`Reward pool:  ${weiToLib(p.voterRewardPool)} LIB`)
+      this.log(`Weights:      ${p.weights.map((w) => weiToLib(asBigIntForDisplay(w)).toFixed(4)).join(', ')} LIB`)
+      this.log(`Reward pool:  ${weiToLib(asBigIntForDisplay(p.voterRewardPool))} LIB`)
       this.log(`Voters:       ${p.voterList.length} | Claims: ${p.claimList.length}`)
       this.log(`Review ends:  ${new Date(p.reviewEnd).toISOString()}`)
       if (p.votingEnd) this.log(`Voting ends:  ${new Date(p.votingEnd).toISOString()}`)
@@ -2958,12 +2982,13 @@ vorpal.command('dao proposal <number>', 'show details of a single DAO proposal')
 })
 
 // ---------------------------------------------------------------------------
-// dao voters <proposalId>  (query)
+// dao voters <number>  (query by proposal number)
 // ---------------------------------------------------------------------------
-vorpal.command('dao voters <proposalId>', 'show the voter list and claim list for a proposal').action(async function (args, callback) {
+vorpal.command('dao voters <number>', 'show the voter list and claim list for proposal #N').action(async function (args, callback) {
   try {
-    const res = await axios.get(`${PROTOCOL}://${HOST}/dao/voters/${args.proposalId}`)
-    const data = res.data
+    const proposalId = daoProposalId(parseInt(args.number, 10))
+    const res = await axios.get(`${PROTOCOL}://${HOST}/dao/voters/${proposalId}`)
+    const data = parseDaoApiBody(res.data)
     this.log(`Voters (${data.voterCount}):`)
     for (const v of data.voterList) {
       const claimed = data.claimList.includes(v.address) ? ' [claimed]' : ''

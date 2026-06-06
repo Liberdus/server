@@ -6,11 +6,18 @@
  *
  * Usage:
  *   npm run test:dao:e2e
- *   npm run test:dao:e2e -- --no-start --no-stop   (skip network management)
- *   npm run test:dao:e2e -- --verbose               (print full TX/response bodies)
+ *   npm run test:dao:e2e -- --no-start             (reuse a running network)
+ *   npm run test:dao:e2e -- --verbose              (print full TX/response bodies)
+ *   npm run test:dao:e2e -- --stop                 (tear down even when tests fail)
+ *
+ * By default the network is left running when any step fails so you can iterate on
+ * the test script without a full restart. Use --stop to force teardown. After server
+ * code changes, restart the network (omit --no-start) so nodes pick up dist/.
  *
  * All timing values are read live from the network — nothing is hardcoded.
- * Each run writes a full log to test-logs/dao-e2e-<timestamp>.log.
+ * Each run writes:
+ *   test-logs/dao-e2e-<timestamp>.log          — structured app log (console intercept)
+ *   test-logs/dao-e2e-terminal-<timestamp>.log   — full terminal tee (compile, shardus, stdout/stderr)
  */
 
 import axios from 'axios'
@@ -31,35 +38,103 @@ ShardusCrypto.setCustomStringifier(Utils.safeStringify, 'shardus_safeStringify')
 
 const cliArgs = process.argv.slice(2)
 const NO_START = cliArgs.includes('--no-start')
-const NO_STOP = cliArgs.includes('--no-stop')
+const FORCE_STOP = cliArgs.includes('--stop')
+const NO_STOP = cliArgs.includes('--no-stop') // legacy alias: always keep network up
 const VERBOSE = cliArgs.includes('--verbose')
 
 const HOST = 'localhost:9001'
 const ARCHIVER_HOST = 'localhost:4000'
 
+/** Every test account is funded with this much LIB — well above any fee/threshold at any stability factor. */
+const TEST_ACCOUNT_FUND_LIB = 100_000
+
 // ─── Log file setup ───────────────────────────────────────────────────────────
+// App log: test-logs/dao-e2e-<timestamp>.log
+// Terminal log: test-logs/dao-e2e-terminal-<timestamp>.log (full stdout/stderr via run-dao-e2e.sh tee)
 
 const logDir = path.resolve(__dirname, '../test-logs')
 if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true })
-const logTimestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19)
-const logFile = path.join(logDir, `dao-e2e-${logTimestamp}.log`)
-const logStream = fs.createWriteStream(logFile, { flags: 'w' })
 
-// Intercept console.log so every line goes to both stdout and the log file.
+function newLogStamp(): string {
+  return new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').replace('Z', '')
+}
+
+const logStamp = process.env.DAO_E2E_LOG_STAMP ?? newLogStamp()
+const logFile = path.join(logDir, `dao-e2e-${logStamp}.log`)
+const terminalLogFile =
+  process.env.DAO_E2E_TERMINAL_LOG ?? path.join(logDir, `dao-e2e-terminal-${logStamp}.log`)
+const shellTeeActive = Boolean(process.env.DAO_E2E_TERMINAL_LOG)
+
+const logStream = fs.createWriteStream(logFile, { flags: 'wx' })
+let terminalStream: fs.WriteStream | null = null
+let logClosed = false
+
+/** When ts-node is invoked directly (no shell tee), mirror raw stdout/stderr to the terminal log. */
+function setupDirectTerminalCapture(): void {
+  if (shellTeeActive) return
+  terminalStream = fs.createWriteStream(terminalLogFile, { flags: 'wx' })
+  const writeRaw = (chunk: any, encoding?: BufferEncoding) => {
+    if (logClosed || !terminalStream) return
+    const text = typeof chunk === 'string' ? chunk : chunk.toString(encoding ?? 'utf8')
+    terminalStream.write(text)
+  }
+  const origStdoutWrite = process.stdout.write.bind(process.stdout)
+  const origStderrWrite = process.stderr.write.bind(process.stderr)
+  process.stdout.write = ((chunk: any, encoding?: any, cb?: any) => {
+    writeRaw(chunk)
+    return origStdoutWrite(chunk, encoding, cb)
+  }) as typeof process.stdout.write
+  process.stderr.write = ((chunk: any, encoding?: any, cb?: any) => {
+    writeRaw(chunk)
+    return origStderrWrite(chunk, encoding, cb)
+  }) as typeof process.stderr.write
+}
+
+function closeLog(): void {
+  if (logClosed) return
+  logClosed = true
+  logStream.end()
+  terminalStream?.end()
+}
+
+function writeLog(line: string): void {
+  if (!logClosed) logStream.write(line + '\n')
+}
+
+setupDirectTerminalCapture()
+
+// Intercept console.log so every line goes to both stdout and the app log file.
 const _origLog = console.log.bind(console)
 console.log = (...args: any[]) => {
   const line = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ')
-  logStream.write(line + '\n')
+  writeLog(line)
   _origLog(...args)
 }
 const _origError = console.error.bind(console)
 console.error = (...args: any[]) => {
   const line = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ')
-  logStream.write('[ERROR] ' + line + '\n')
+  writeLog('[ERROR] ' + line)
   _origError(...args)
 }
 
-console.log(`Log file: ${logFile}`)
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.on(signal, () => {
+    writeLog(`[${signal}] Run interrupted`)
+    closeLog()
+    _origLog(`\nLogs saved:\n  App:      ${logFile}\n  Terminal: ${terminalLogFile}`)
+    process.exit(130)
+  })
+}
+
+writeLog('═'.repeat(64))
+writeLog('DAO E2E test run')
+writeLog(`Started: ${new Date().toISOString()}`)
+writeLog(`App log: ${logFile}`)
+writeLog(`Terminal log: ${terminalLogFile}`)
+writeLog(`Args: ${cliArgs.length > 0 ? cliArgs.join(' ') : '(none)'}`)
+writeLog('═'.repeat(64))
+console.log(`App log:      ${logFile}`)
+console.log(`Terminal log: ${terminalLogFile}`)
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -90,6 +165,9 @@ interface NetworkTiming {
   votingDurationMs: number
   graceDurationMs: number
   claimDurationMs: number
+  /** For computing minimum dao_vote spend (USD → LIB via stabilityFactor). */
+  stabilityFactorStr: string
+  minimumSpendUsdStr: string
 }
 
 // ─── Global state ─────────────────────────────────────────────────────────────
@@ -101,6 +179,9 @@ const results: StepResult[] = []
  * mode and included in every TX to pass isValidNetworkId().
  */
 let currentNetworkId = ''
+
+/** Max wait for a queued TX to produce a receipt or for a proposal account to appear. */
+let txSettleTimeoutMs = 45_000
 
 // ─── Assertion ───────────────────────────────────────────────────────────────
 
@@ -151,12 +232,30 @@ function libToWei(lib: number): bigint {
   return BigInt(lib) * 10n ** 18n
 }
 
-/**
- * Normalise a bigint field that may come back as bigint, string, or number
- * after Utils.safeStringify / axios JSON parse round-trip.
- */
-function asBigInt(value: bigint | string | number): bigint {
-  return typeof value === 'bigint' ? value : BigInt(value)
+/** Convert a USD string to whole LIB (ceil), matching server usdStrToWei + stabilityFactor. */
+function usdStrToLibCeil(usdStr: string, stabilityFactorStr: string): number {
+  const stabilityWei = ethers.parseEther(stabilityFactorStr)
+  const usdWei = ethers.parseEther(usdStr)
+  const libWei = (usdWei * 10n ** 18n) / stabilityWei
+  return Math.ceil(Number(ethers.formatEther(libWei)))
+}
+
+/** Parse a numeric string that may be decimal or hex (safeStringify bi values are often hex). */
+function parseBiString(s: string): bigint {
+  if (s.startsWith('0x')) return BigInt(s)
+  if (/^[0-9]+$/.test(s)) return BigInt(s)
+  if (/^[0-9a-fA-F]+$/.test(s)) return BigInt('0x' + s)
+  return BigInt(s)
+}
+
+/** Normalise bigint fields from API (bigint, decimal/hex string, or safeStringify {dataType:'bi',value}). */
+function asBigInt(value: bigint | string | number | { dataType?: string; value?: string }): bigint {
+  if (typeof value === 'bigint') return value
+  if (value != null && typeof value === 'object' && (value as any).dataType === 'bi' && (value as any).value != null) {
+    return parseBiString(String((value as any).value))
+  }
+  if (typeof value === 'string') return parseBiString(value)
+  return BigInt(value as number)
 }
 
 /**
@@ -234,10 +333,42 @@ async function signTx<T extends object>(tx: T, account: TestAccount): Promise<T>
 
 // ─── HTTP helpers ─────────────────────────────────────────────────────────────
 
+interface TxReceipt {
+  success: boolean
+  reason?: string
+  txId: string
+  type: string
+}
+
 /**
- * Sign, inject, and assert success.
+ * Poll GET /transaction/:txId until the app receipt is available.
+ * Inject returns success when the TX is queued; apply success/failure is on the receipt.
+ */
+async function waitForTxReceipt(txId: string): Promise<TxReceipt> {
+  let receipt: TxReceipt | null = null
+  await pollUntil(
+    async () => {
+      try {
+        const res = await axios.get(`http://${HOST}/transaction/${txId}`)
+        const tx = res.data?.transaction
+        if (tx && typeof tx.success === 'boolean') {
+          receipt = tx as TxReceipt
+          return true
+        }
+        return false
+      } catch {
+        return false
+      }
+    },
+    txSettleTimeoutMs,
+    2_000,
+  )
+  return receipt!
+}
+
+/**
+ * Sign, inject, wait for receipt, and assert apply succeeded.
  * Posts { tx: Utils.safeStringify(tx) } — /inject reads req.body.tx via safeJsonParse.
- * Handles axios HTTP 4xx by surfacing the response body in the error message.
  */
 async function injectAndAssert<T extends object>(tx: T, account: TestAccount): Promise<any> {
   await signTx(tx, account)
@@ -249,14 +380,20 @@ async function injectAndAssert<T extends object>(tx: T, account: TestAccount): P
     if (err.response) throw new Error(`HTTP ${err.response.status}: ${JSON.stringify(err.response.data)}`)
     throw err
   }
-  if (VERBOSE) console.log('  ← Response:', JSON.stringify(res.data))
-  assert(res.data.result?.success === true, `TX rejected: ${JSON.stringify(res.data)}`)
-  return res.data
+  if (VERBOSE) console.log('  ← Inject:', JSON.stringify(res.data))
+  assert(res.data.result?.success === true, `TX rejected at inject: ${JSON.stringify(res.data)}`)
+  const txId: string = res.data.result.txId
+  assert(typeof txId === 'string' && txId.length > 0, `Inject succeeded but no txId returned`)
+
+  const receipt = await waitForTxReceipt(txId)
+  if (VERBOSE) console.log('  ← Receipt:', JSON.stringify(receipt))
+  assert(receipt.success === true, `TX failed at apply: ${JSON.stringify(receipt)}`)
+  return { ...res.data, receipt }
 }
 
 /**
- * Sign and inject a TX expected to be rejected by the network.
- * Handles axios HTTP 4xx as a valid rejection response.
+ * Sign and inject a TX expected to be rejected.
+ * Rejection may occur at inject (validate_fields) or at apply (validate) — check both.
  */
 async function injectExpectReject<T extends object>(
   tx: T,
@@ -268,19 +405,29 @@ async function injectExpectReject<T extends object>(
   let result: any
   try {
     const res = await axios.post(`http://${HOST}/inject`, { tx: Utils.safeStringify(tx) })
-    if (VERBOSE) console.log('  ← Response:', JSON.stringify(res.data))
+    if (VERBOSE) console.log('  ← Inject:', JSON.stringify(res.data))
     result = res.data?.result
   } catch (err: any) {
     if (err.response) {
-      if (VERBOSE) console.log('  ← Response (HTTP error):', JSON.stringify(err.response.data))
+      if (VERBOSE) console.log('  ← Inject (HTTP error):', JSON.stringify(err.response.data))
       result = err.response.data?.result ?? err.response.data
     } else {
       throw err
     }
   }
-  assert(result?.success !== true, `Expected TX to be rejected but it succeeded`)
+
+  let reason: string
+  if (result?.success === true && result.txId) {
+    const receipt = await waitForTxReceipt(result.txId)
+    if (VERBOSE) console.log('  ← Receipt:', JSON.stringify(receipt))
+    assert(receipt.success !== true, `Expected TX to be rejected at apply but receipt succeeded`)
+    reason = receipt.reason ?? ''
+  } else {
+    assert(result?.success !== true, `Expected TX to be rejected but inject succeeded without failure`)
+    reason = result?.reason ?? ''
+  }
+
   if (reasonIncludes) {
-    const reason: string = result?.reason ?? ''
     assert(
       reason.toLowerCase().includes(reasonIncludes.toLowerCase()),
       `Expected rejection reason to include "${reasonIncludes}", got: "${reason}"`,
@@ -289,23 +436,49 @@ async function injectExpectReject<T extends object>(
 }
 
 /**
- * Fetch proposal #n via /dao/proposals/:n (uses safeStringify, handles bigint fields).
+ * Fetch proposal #n via /dao/proposals/:n — polls until the account exists post-apply.
  */
 async function getProposal(n: number): Promise<DaoProposalAccount> {
-  const res = await axios.get(`http://${HOST}/dao/proposals/${n}`)
-  const body = safeParse(res.data)
-  assert(body?.proposal != null, `Proposal #${n} not found`)
-  return body.proposal as DaoProposalAccount
+  let proposal: DaoProposalAccount | null = null
+  await pollUntil(
+    async () => {
+      try {
+        const res = await axios.get(`http://${HOST}/dao/proposals/${n}`)
+        const body = safeParse(res.data)
+        if (body?.proposal != null) {
+          proposal = body.proposal as DaoProposalAccount
+          return true
+        }
+        return false
+      } catch (err: any) {
+        if (err.response?.status === 404) return false
+        throw err
+      }
+    },
+    txSettleTimeoutMs,
+    2_000,
+  )
+  return proposal!
 }
 
 /** Query current proposal count so we always use the right sequential number. */
 async function nextProposalNumber(): Promise<number> {
-  const res = await axios.get(`http://${HOST}/dao/proposals/meta`)
+  let res: any
+  try {
+    res = await axios.get(`http://${HOST}/dao/proposals/meta`)
+  } catch (err: any) {
+    if (err.response) {
+      throw new Error(
+        `GET /dao/proposals/meta HTTP ${err.response.status}: ${JSON.stringify(err.response.data)}`,
+      )
+    }
+    throw err
+  }
   const body = safeParse(res.data)
   return ((body?.meta?.count ?? 0) as number) + 1
 }
 
-/** Inject a 'create' TX to fund an account. Fire-and-forget — caller must wait for settlement. */
+/** Inject a 'create' TX to fund an account and wait for apply receipt. */
 async function fundAccount(account: TestAccount, amountLib: number): Promise<void> {
   const tx: any = {
     type: 'create',
@@ -315,6 +488,7 @@ async function fundAccount(account: TestAccount, amountLib: number): Promise<voi
     timestamp: Date.now(),
   }
   await signTx(tx, account)
+  if (VERBOSE) console.log(`  → Fund TX (${amountLib} LIB):`, Utils.safeStringify(tx))
   let res: any
   try {
     res = await axios.post(`http://${HOST}/inject`, { tx: Utils.safeStringify(tx) })
@@ -323,6 +497,10 @@ async function fundAccount(account: TestAccount, amountLib: number): Promise<voi
     throw err
   }
   assert(res.data.result?.success === true, `Fund TX failed: ${JSON.stringify(res.data)}`)
+  const txId: string = res.data.result.txId
+  const receipt = await waitForTxReceipt(txId)
+  if (VERBOSE) console.log('  ← Fund receipt:', JSON.stringify(receipt))
+  assert(receipt.success === true, `Fund TX failed at apply: ${JSON.stringify(receipt)}`)
 }
 
 // ─── Network management ───────────────────────────────────────────────────────
@@ -363,13 +541,16 @@ async function waitForNetwork(): Promise<NetworkTiming> {
 
   console.log('Reading DAO parameters from network...')
   let daoParams: any = null
+  let stabilityFactorStr = ''
   await pollUntil(
     async () => {
       try {
         const res = await axios.get(`http://${HOST}/network/parameters`)
-        const dao = res.data?.parameters?.current?.dao
-        if (dao?.reviewDuration && dao?.votingDuration) {
+        const current = res.data?.parameters?.current
+        const dao = current?.dao
+        if (dao?.reviewDuration && dao?.votingDuration && current?.stabilityFactorStr) {
           daoParams = dao
+          stabilityFactorStr = current.stabilityFactorStr
           return true
         }
         return false
@@ -388,6 +569,8 @@ async function waitForNetwork(): Promise<NetworkTiming> {
     votingDurationMs: daoParams.votingDuration,
     graceDurationMs: daoParams.graceDuration,
     claimDurationMs: daoParams.claimDuration,
+    stabilityFactorStr,
+    minimumSpendUsdStr: daoParams.minimumSpendUsdStr,
   }
 
   console.log(
@@ -456,13 +639,24 @@ async function main(): Promise<void> {
   if (!NO_START) await startNetwork()
 
   const timing = await waitForNetwork()
-  const { cycleDurationMs, networkId, reviewDurationMs, votingDurationMs, graceDurationMs } = timing
+  const {
+    cycleDurationMs,
+    networkId,
+    reviewDurationMs,
+    votingDurationMs,
+    graceDurationMs,
+    stabilityFactorStr,
+    minimumSpendUsdStr,
+  } = timing
   currentNetworkId = networkId
 
   // Derived timing constants
   const applyParamsPollMs = cycleDurationMs * 5   // global message fires at cycle+3
-  const fundSettleMs = cycleDurationMs * 2         // wait 2 full cycles for fund TXs
   const SLEEP_BUFFER_MS = 5_000
+  txSettleTimeoutMs = cycleDurationMs * 2 + SLEEP_BUFFER_MS
+
+  const minVoteSpendLib = usdStrToLibCeil(minimumSpendUsdStr, stabilityFactorStr)
+  console.log(`Funding: ${TEST_ACCOUNT_FUND_LIB} LIB per account; min dao_vote spend≈${minVoteSpendLib} LIB`)
 
   // ─────────────────────────────────────────────────────────────────────────
   // Scenario 1 — Happy path: governance proposal → accepted → applied → claimed
@@ -472,13 +666,11 @@ async function main(): Promise<void> {
       '1.1  Fund all accounts',
       async () => {
         await Promise.all([
-          fundAccount(proposer, 500),
-          fundAccount(voter1, 200),
-          fundAccount(voter2, 200),
-          ...committee.map(c => fundAccount(c, 50)),
+          fundAccount(proposer, TEST_ACCOUNT_FUND_LIB),
+          fundAccount(voter1, TEST_ACCOUNT_FUND_LIB),
+          fundAccount(voter2, TEST_ACCOUNT_FUND_LIB),
+          ...committee.map(c => fundAccount(c, TEST_ACCOUNT_FUND_LIB)),
         ])
-        console.log(`    Waiting ${fundSettleMs / 1000}s for fund TXs to settle (2 cycles)...`)
-        await sleep(fundSettleMs)
       },
     ],
 
@@ -499,7 +691,7 @@ async function main(): Promise<void> {
             options: ['yes', 'no'],
             gracePeriod: graceDurationMs,
             governance: {
-              changes: [{ key: 'dao.voteExponent', value: '1.2', current: '1.1' }],
+              changes: [{ key: 'voteExponent', value: '1.2', current: '1.1' }],
             },
             timestamp: Date.now(),
           },
@@ -585,7 +777,7 @@ async function main(): Promise<void> {
             from: voter1.address,
             proposalId: daoProposalId(sc1ProposalN),
             optionIndex: 0,
-            spend: libToWei(10),
+            spend: libToWei(minVoteSpendLib),
             timestamp: Date.now(),
           },
           voter1,
@@ -597,7 +789,7 @@ async function main(): Promise<void> {
             from: voter2.address,
             proposalId: daoProposalId(sc1ProposalN),
             optionIndex: 0,
-            spend: libToWei(5),
+            spend: libToWei(minVoteSpendLib),
             timestamp: Date.now(),
           },
           voter2,
@@ -669,13 +861,31 @@ async function main(): Promise<void> {
         const hasChange = listOfChanges.some((c: any) => c?.appData?.dao?.voteExponent === 1.2)
         assert(
           hasChange,
-          `Expected listOfChanges to contain dao.voteExponent=1.2, got: ${JSON.stringify(listOfChanges)}`,
+          `Expected listOfChanges to contain appData.dao.voteExponent=1.2, got: ${JSON.stringify(listOfChanges)}`,
         )
       },
     ],
 
     [
-      '1.9  dao_claim_reward (voter1 + voter2)',
+      '1.9  Non-voter (proposer) tries dao_claim_reward on applied proposal → rejected',
+      async () => {
+        // Must run before claimDuration elapses (scenarios 2–4 take longer than claim window).
+        await injectExpectReject(
+          {
+            type: 'dao_claim_reward',
+            networkId: currentNetworkId,
+            from: proposer.address,
+            proposalId: daoProposalId(sc1ProposalN),
+            timestamp: Date.now(),
+          },
+          proposer,
+          'did not vote',
+        )
+      },
+    ],
+
+    [
+      '1.10 dao_claim_reward (voter1 + voter2)',
       async () => {
         await injectAndAssert(
           {
@@ -703,7 +913,7 @@ async function main(): Promise<void> {
     ],
 
     [
-      '1.10 Double-claim rejected (voter1 claims again)',
+      '1.11 Double-claim rejected (voter1 claims again)',
       async () => {
         await injectExpectReject(
           {
@@ -741,7 +951,7 @@ async function main(): Promise<void> {
             options: ['yes', 'no'],
             gracePeriod: graceDurationMs,
             governance: {
-              changes: [{ key: 'dao.pctBurned', value: '60', current: '50' }],
+              changes: [{ key: 'pctBurned', value: '60', current: '50' }],
             },
             timestamp: Date.now(),
           },
@@ -807,7 +1017,7 @@ async function main(): Promise<void> {
             options: ['yes', 'no'],
             gracePeriod: graceDurationMs,
             governance: {
-              changes: [{ key: 'dao.pctBurned', value: '55', current: '50' }],
+              changes: [{ key: 'pctBurned', value: '55', current: '50' }],
             },
             timestamp: Date.now(),
           },
@@ -867,7 +1077,7 @@ async function main(): Promise<void> {
             options: ['yes', 'no'],
             gracePeriod: graceDurationMs,
             governance: {
-              changes: [{ key: 'dao.pctBurned', value: '70', current: '50' }],
+              changes: [{ key: 'pctBurned', value: '70', current: '50' }],
             },
             timestamp: Date.now(),
           },
@@ -894,7 +1104,7 @@ async function main(): Promise<void> {
             options: ['yes', 'no'],
             gracePeriod: graceDurationMs,
             governance: {
-              changes: [{ key: 'dao.pctBurned', value: '70', current: '50' }],
+              changes: [{ key: 'pctBurned', value: '70', current: '50' }],
             },
             timestamp: Date.now(),
           },
@@ -971,7 +1181,7 @@ async function main(): Promise<void> {
             options: ['yes', 'no'],
             gracePeriod: graceDurationMs,
             governance: {
-              changes: [{ key: 'dao.pctBurned', value: '45', current: '50' }],
+              changes: [{ key: 'pctBurned', value: '45', current: '50' }],
             },
             timestamp: Date.now(),
           },
@@ -1003,7 +1213,7 @@ async function main(): Promise<void> {
             from: voter1.address,
             proposalId: daoProposalId(sc5ProposalN),
             optionIndex: 0,
-            spend: libToWei(5),
+            spend: libToWei(minVoteSpendLib),
             timestamp: Date.now(),
           },
           voter1,
@@ -1013,18 +1223,18 @@ async function main(): Promise<void> {
     ],
 
     [
-      '5.3  Non-voter (proposer) tries dao_claim_reward on applied proposal → rejected',
+      '5.3  dao_vote_result on review proposal (sc5) → rejected',
       async () => {
         await injectExpectReject(
           {
-            type: 'dao_claim_reward',
+            type: 'dao_vote_result',
             networkId: currentNetworkId,
             from: proposer.address,
-            proposalId: daoProposalId(sc1ProposalN),
+            proposalId: daoProposalId(sc5ProposalN),
             timestamp: Date.now(),
           },
           proposer,
-          'did not vote',
+          'voting',
         )
       },
     ],
@@ -1053,16 +1263,29 @@ async function main(): Promise<void> {
     `  Passed: ${passed} / ${results.length}   Failed: ${failed}   Skipped: ${skipped}   Total: ~${totalSec}s`,
   )
   console.log('═'.repeat(64))
+  console.log(`Logs saved:\n  App:      ${logFile}\n  Terminal: ${terminalLogFile}`)
 
-  logStream.end()
+  writeLog(`Finished: ${new Date().toISOString()}`)
+  writeLog(`Terminal log: ${terminalLogFile}`)
+  closeLog()
 
-  if (!NO_STOP) await stopNetwork()
+  const shouldStop = FORCE_STOP || (failed === 0 && !NO_STOP)
+  if (shouldStop) {
+    await stopNetwork()
+  } else if (failed > 0) {
+    console.log('\nNetwork left running (tests failed). Re-run with:')
+    console.log('  npm run test:dao:e2e -- --no-start [--verbose]')
+    console.log('After server code changes, omit --no-start so nodes reload dist/.')
+    console.log('Use --stop to tear down the network.')
+  }
 
   process.exit(failed > 0 ? 1 : 0)
 }
 
 main().catch(err => {
   console.error('Fatal error:', err)
-  logStream.end()
+  writeLog(`Fatal error: ${err?.message ?? err}`)
+  closeLog()
+  _origLog(`Logs saved:\n  App:      ${logFile}\n  Terminal: ${terminalLogFile}`)
   process.exit(1)
 })
