@@ -16,7 +16,9 @@
  *   npm run test:dao:e2e -- --step 1.8             (run only step 1.8)
  *   npm run test:dao:e2e -- --step 1.8,1.9         (run steps 1.8 and 1.9)
  *
- * --step implies --no-start (assumes the network and account state are already set up).
+ * --step implies --no-start (assumes the network is already running).
+ * Account keys and proposal numbers are restored from test-logs/dao-e2e-run-state.json,
+ * which is written automatically on every fresh run and updated after each proposal creation.
  * Step IDs must match the leading token of the step name exactly, e.g. "1.8", "5.1".
  *
  * --parallel splits each scenario into a setup phase (proposal creation, run sequentially
@@ -185,6 +187,44 @@ writeLog('═'.repeat(64))
 console.log(`App log:      ${logFile}`)
 console.log(`Terminal log: ${terminalLogFile}`)
 
+// ─── Run-state persistence ────────────────────────────────────────────────────
+// Written after every proposal-creation setup step so that `--step X.Y` retries
+// can restore the exact account keys and proposal numbers from the previous run,
+// rather than defaulting to 0 and targeting the wrong proposal.
+//
+// The file lives in test-logs/ (gitignored) because it contains private keys.
+
+const RUN_STATE_PATH = path.join(logDir, 'dao-e2e-run-state.json')
+
+interface RunState {
+  networkId: string
+  proposerKey: string
+  voter1Key: string
+  voter2Key: string
+  sc1ProposalN: number
+  sc2ProposalN: number
+  sc3ProposalN: number
+  sc4ProposalN: number
+  sc5ProposalN: number
+}
+
+function saveRunState(state: RunState): void {
+  try {
+    fs.writeFileSync(RUN_STATE_PATH, JSON.stringify(state, null, 2))
+  } catch (err) {
+    console.warn(`Warning: failed to save run state to ${RUN_STATE_PATH}: ${err}`)
+  }
+}
+
+function loadRunState(): RunState | null {
+  try {
+    const raw = fs.readFileSync(RUN_STATE_PATH, 'utf-8')
+    return JSON.parse(raw) as RunState
+  } catch {
+    return null
+  }
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type StepStatus = 'pass' | 'fail' | 'skip'
@@ -216,7 +256,7 @@ interface TestAccount {
   /** 64-char Shardus address derived from Ethereum address: ethAddr.slice(2).toLowerCase() + '0'.repeat(24) */
   address: string
   /** ethers v6: Wallet (from privateKey) or HDNodeWallet (from createRandom) — both have signMessage */
-  wallet: { address: string; signMessage(message: string | Uint8Array): Promise<string> }
+  wallet: { address: string; privateKey: string; signMessage(message: string | Uint8Array): Promise<string> }
 }
 
 /** Live network timing — read from the network once it reaches 'processing' mode. */
@@ -824,16 +864,24 @@ async function main(): Promise<void> {
   )
   const committee: TestAccount[] = committeeKeysFile.map(k => makeAccountFromPrivateKey(k.privateKey))
 
-  // Fresh test participant accounts (funded during step 1.1)
-  const proposer = makeAccount()
-  const voter1 = makeAccount()
-  const voter2 = makeAccount()
+  // Restore or create test participant accounts.
+  // On a --no-start / --step run we load the saved state so retried steps target
+  // the exact same accounts and proposals as the original run.
+  const savedState = NO_START ? loadRunState() : null
+  if (savedState) {
+    console.log(`  Restored run state from ${RUN_STATE_PATH}`)
+    console.log(`  Saved networkId: ${savedState.networkId}`)
+  }
 
-  let sc1ProposalN = 0
-  let sc2ProposalN = 0
-  let sc3ProposalN = 0
-  let sc4ProposalN = 0
-  let sc5ProposalN = 0
+  const proposer = savedState ? makeAccountFromPrivateKey(savedState.proposerKey) : makeAccount()
+  const voter1   = savedState ? makeAccountFromPrivateKey(savedState.voter1Key)   : makeAccount()
+  const voter2   = savedState ? makeAccountFromPrivateKey(savedState.voter2Key)   : makeAccount()
+
+  let sc1ProposalN = savedState?.sc1ProposalN ?? 0
+  let sc2ProposalN = savedState?.sc2ProposalN ?? 0
+  let sc3ProposalN = savedState?.sc3ProposalN ?? 0
+  let sc4ProposalN = savedState?.sc4ProposalN ?? 0
+  let sc5ProposalN = savedState?.sc5ProposalN ?? 0
 
   if (!NO_START) await startNetwork()
 
@@ -848,6 +896,35 @@ async function main(): Promise<void> {
     minimumSpendUsdStr,
   } = timing
   currentNetworkId = networkId
+
+  // Warn if the saved network ID doesn't match — proposal numbers from a previous network are invalid.
+  if (savedState && savedState.networkId !== networkId) {
+    console.log(`  ⚠️  Run-state networkId mismatch!`)
+    console.log(`  ⚠️  Saved: ${savedState.networkId}`)
+    console.log(`  ⚠️  Current: ${networkId}`)
+    console.log(`  ⚠️  Restored accounts and proposal numbers may not match this network.`)
+  }
+
+  // Snapshot all mutable run-state variables and persist to disk.
+  // Called once after waitForNetwork() on a fresh run, then again after every
+  // proposal-creation setup step so --step retries always have current data.
+  function saveCurrentRunState(): void {
+    saveRunState({
+      networkId: currentNetworkId,
+      proposerKey: proposer.wallet.privateKey,
+      voter1Key: voter1.wallet.privateKey,
+      voter2Key: voter2.wallet.privateKey,
+      sc1ProposalN,
+      sc2ProposalN,
+      sc3ProposalN,
+      sc4ProposalN,
+      sc5ProposalN,
+    })
+  }
+
+  // On a fresh run, immediately persist the account keys so they're available
+  // for --step retries even if the run is interrupted before any proposals are created.
+  if (!NO_START) saveCurrentRunState()
 
   // Derived timing constants
   const applyParamsPollMs = cycleDurationMs * 5   // global message fires at cycle+3
@@ -880,6 +957,7 @@ async function main(): Promise<void> {
       '1.2  dao_proposal_create (governance: voteExponent 1.1 → 1.2)',
       async () => {
         sc1ProposalN = await nextProposalNumber()
+        saveCurrentRunState()
         await injectAndAssert(
           {
             type: 'dao_proposal_create',
@@ -1166,6 +1244,7 @@ async function main(): Promise<void> {
       '2.1  dao_proposal_create (new governance proposal)',
       async () => {
         sc2ProposalN = await nextProposalNumber()
+        saveCurrentRunState()
         await injectAndAssert(
           {
             type: 'dao_proposal_create',
@@ -1237,6 +1316,7 @@ async function main(): Promise<void> {
       '3.1  dao_proposal_create (non-emergency, no votes will be submitted)',
       async () => {
         sc3ProposalN = await nextProposalNumber()
+        saveCurrentRunState()
         await injectAndAssert(
           {
             type: 'dao_proposal_create',
@@ -1329,6 +1409,7 @@ async function main(): Promise<void> {
       '4.2  committee[0] creates emergency proposal (status review)',
       async () => {
         sc4ProposalN = await nextProposalNumber()
+        saveCurrentRunState()
         await injectAndAssert(
           {
             type: 'dao_proposal_create',
@@ -1411,6 +1492,7 @@ async function main(): Promise<void> {
       '5.1  Non-committee address submits committee_vote on fresh review proposal → rejected',
       async () => {
         sc5ProposalN = await nextProposalNumber()
+        saveCurrentRunState()
         await injectAndAssert(
           {
             type: 'dao_proposal_create',
