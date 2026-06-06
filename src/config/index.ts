@@ -18,8 +18,11 @@ export const ONE_DAY = 24 * ONE_HOUR
 // export const ONE_WEEK = 7 * ONE_DAY
 // export const ONE_YEAR = 365 * ONE_DAY
 
+// Short DAO durations when DAO_TEST_MODE=1 (used by E2E test script)
+const isDAOTestMode = process.env.DAO_TEST_MODE === '1'
+
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
-export const cycleDuration = 60
+export const cycleDuration = 16
 const reduceTimeFromTxTimestamp = cycleDuration * ONE_SECOND
 const halfCycleDuration = (cycleDuration * 1000) / 2
 
@@ -106,10 +109,10 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
     minimumSpendUsdStr: '1.0',
     voteExponent: 1.1,
     pctBurned: 50,
-    reviewDuration: 2 * ONE_DAY,
-    votingDuration: 8 * ONE_DAY,
-    graceDuration: 7 * ONE_DAY,
-    claimDuration: 30 * ONE_DAY,
+    reviewDuration: isDAOTestMode ? 30_000 : 2 * ONE_DAY,
+    votingDuration: isDAOTestMode ? 60_000 : 8 * ONE_DAY,
+    graceDuration: isDAOTestMode ? 30_000 : 7 * ONE_DAY,
+    claimDuration: isDAOTestMode ? 120_000 : 30 * ONE_DAY,
     committeeAddresses: [
       '29fade38139aa68def5590ec433c48c33b478ebf000000000000000000000000',
       'd268b0edcc39b9e54d11453c3a1e9b5f5eff31e0000000000000000000000000',
@@ -528,7 +531,7 @@ config = merge(config, {
       allowActivePerCycleRecover: 4,
 
       flexibleRotationEnabled: true, //ITN 1.16.1
-      flexibleRotationDelta: 1,
+      flexibleRotationDelta: 0,
 
       maxStandbyCount: 30000, //max allowed standby nodes count
       enableMaxStandbyCount: true,
