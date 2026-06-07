@@ -450,6 +450,43 @@ function sleep(ms: number): Promise<void> {
   return new Promise(r => setTimeout(r, ms))
 }
 
+/**
+ * Sleep until a specific *on-chain derived* timestamp (e.g. a proposal's `reviewEnd`/
+ * `votingEnd`/`applyEligibleAt`) has passed, plus a small buffer — rather than sleeping a fixed
+ * duration measured from "now".
+ *
+ * Why this matters: in the v2 timing model, phase boundaries are strictly derived from the
+ * proposal's `startTime` (fixed at creation) and are NOT elastic — they don't shift based on when
+ * transition transactions actually execute. A fixed "sleep `phaseDuration + buffer` from now"
+ * implicitly assumes "now ≈ the start of this phase", which only holds when steps run back-to-back
+ * with near-constant latency (i.e. sequential mode). Under `--parallel` contention, the gap
+ * between proposal creation and when a scenario's body actually gets to run can grow large *and
+ * variable*, so "now" drifts arbitrarily far ahead of the proposal's nominal boundaries — and a
+ * fixed-duration sleep on top compounds that drift, potentially overshooting not just the
+ * intended boundary but the *next* one too (exactly what caused the parallel-mode "Voting period
+ * has ended" failure on step 1.6).
+ *
+ * Anchoring the wait to the actual derived timestamp (fetched fresh from the API/account) makes
+ * the pacing self-correcting regardless of how much wall-clock drift preceded it.
+ */
+async function sleepUntilTimestamp(targetMs: number, label: string, bufferMs = 5_000): Promise<void> {
+  const remaining = targetMs - Date.now()
+  if (remaining > 0) {
+    const waitMs = remaining + bufferMs
+    console.log(
+      `    Waiting ${(waitMs / 1000).toFixed(1)}s for ${label} ` +
+        `(${(remaining / 1000).toFixed(1)}s remaining + ${(bufferMs / 1000).toFixed(1)}s buffer)...`,
+    )
+    await sleep(waitMs)
+  } else {
+    console.log(
+      `    ${label} already elapsed ~${(-remaining / 1000).toFixed(1)}s ago — proceeding without ` +
+        `waiting (this scenario's pacing fell behind, likely due to contention; downstream steps ` +
+        `may now be racing a later boundary too).`,
+    )
+  }
+}
+
 /** Convert whole-LIB amount to wei (bigint). */
 function libToWei(lib: number): bigint {
   return BigInt(lib) * 10n ** 18n
@@ -659,17 +696,32 @@ async function injectExpectReject<T extends object>(
 }
 
 /**
+ * DaoProposalAccount only stores `creationTime`/`startTime` — every other phase-boundary
+ * timestamp (reviewEnd, votingStart, votingEnd, claimEnd, applyEligibleAt) is derived from
+ * those plus the duration snapshots (see src/accounts/daoProposalAccount.ts) and decorated
+ * onto the API response by `withDerivedTiming` in src/api/dao/proposals.ts. This local type
+ * mirrors that decorated shape so assertions below can read the derived fields directly.
+ */
+type DaoProposalWithTiming = DaoProposalAccount & {
+  reviewEnd: number
+  votingStart: number
+  votingEnd: number
+  claimEnd: number
+  applyEligibleAt: number
+}
+
+/**
  * Fetch proposal #n via /dao/proposals/:n — polls until the account exists post-apply.
  */
-async function getProposal(n: number): Promise<DaoProposalAccount> {
-  let proposal: DaoProposalAccount | null = null
+async function getProposal(n: number): Promise<DaoProposalWithTiming> {
+  let proposal: DaoProposalWithTiming | null = null
   await pollUntil(
     async () => {
       try {
         const res = await axios.get(`http://${HOST}/dao/proposals/${n}`)
         const body = safeParse(res.data)
         if (body?.proposal != null) {
-          proposal = body.proposal as DaoProposalAccount
+          proposal = body.proposal as DaoProposalWithTiming
           return true
         }
         return false
@@ -929,7 +981,12 @@ async function main(): Promise<void> {
   // Derived timing constants
   const applyParamsPollMs = cycleDurationMs * 5   // global message fires at cycle+3
   const SLEEP_BUFFER_MS = 5_000
-  txSettleTimeoutMs = cycleDurationMs * 2 + SLEEP_BUFFER_MS
+  // In --parallel mode, multiple scenario bodies submit overlapping transactions onto the same
+  // network concurrently, which measurably increases per-tx queue/confirmation latency (we saw a
+  // decisive dao_committee_vote blow past the default 2-cycle budget and time out at 37s under
+  // 5-way concurrency). Give receipts more cycles' worth of headroom to settle when running
+  // concurrently so a slow-but-successful confirmation doesn't get misreported as a failure.
+  txSettleTimeoutMs = cycleDurationMs * (PARALLEL ? 5 : 2) + SLEEP_BUFFER_MS
 
   const minVoteSpendLib = usdStrToLibCeil(minimumSpendUsdStr, stabilityFactorStr)
   console.log(`Funding: ${TEST_ACCOUNT_FUND_LIB} LIB per account; min dao_vote spend≈${minVoteSpendLib} LIB`)
@@ -979,6 +1036,7 @@ async function main(): Promise<void> {
         )
         const proposal = await getProposal(sc1ProposalN)
         assert(proposal.status === 'review', `Expected status 'review', got '${proposal.status}'`)
+        assert(Array.isArray(proposal.committeeAddresses) && proposal.committeeAddresses.length > 0, 'Expected committeeAddresses snapshot to be non-empty')
       },
     ],
     ],
@@ -998,10 +1056,8 @@ async function main(): Promise<void> {
           committee[0],
         )
         const proposal = await getProposal(sc1ProposalN)
-        assert(
-          proposal.committeeVotesAccept.length === 1,
-          `Expected 1 accept vote, got ${proposal.committeeVotesAccept.length}`,
-        )
+        const acceptCount = proposal.committeeVotes.filter((v) => v.vote === 'accept').length
+        assert(acceptCount === 1, `Expected 1 accept vote, got ${acceptCount}`)
         assert(proposal.status === 'review', `Expected status still 'review', got '${proposal.status}'`)
       },
     ],
@@ -1021,16 +1077,14 @@ async function main(): Promise<void> {
           committee[1],
         )
         const proposal = await getProposal(sc1ProposalN)
-        assert(
-          proposal.committeeVotesAccept.length === 2,
-          `Expected 2 accept votes, got ${proposal.committeeVotesAccept.length}`,
-        )
+        const acceptCount = proposal.committeeVotes.filter((v) => v.vote === 'accept').length
+        assert(acceptCount === 2, `Expected 2 accept votes, got ${acceptCount}`)
         assert(proposal.status === 'review', `Expected status still 'review', got '${proposal.status}'`)
       },
     ],
 
     [
-      '1.5  committee_vote accept #3 → decisive (3-of-5), status voting',
+      '1.5  committee_vote accept #3 → decisive (3-of-5), but regular proposals still wait for reviewEnd',
       async () => {
         await injectAndAssert(
           {
@@ -1044,7 +1098,32 @@ async function main(): Promise<void> {
           committee[2],
         )
         const proposal = await getProposal(sc1ProposalN)
+        // Decisive committee accept does not fast-track regular proposals — dao_committee_vote
+        // never flips status early; only dao_committee_result (after reviewEnd) does.
+        assert(proposal.status === 'review', `Expected status still 'review' (decisive accept does not fast-track regular proposals), got '${proposal.status}'`)
+      },
+    ],
+
+    [
+      '1.5b  Sleep past reviewEnd, then dao_committee_result → status voting',
+      async () => {
+        // Anchor the wait to the proposal's actual derived reviewEnd (not a fixed duration from
+        // "now") — see sleepUntilTimestamp's doc comment for why this matters under contention.
+        const proposalBefore = await getProposal(sc1ProposalN)
+        await sleepUntilTimestamp(proposalBefore.reviewEnd, 'reviewEnd', SLEEP_BUFFER_MS)
+        await injectAndAssert(
+          {
+            type: 'dao_committee_result',
+            networkId: currentNetworkId,
+            from: proposer.address,
+            proposalId: daoProposalId(sc1ProposalN),
+            timestamp: Date.now(),
+          },
+          proposer,
+        )
+        const proposal = await getProposal(sc1ProposalN)
         assert(proposal.status === 'voting', `Expected status 'voting', got '${proposal.status}'`)
+        assert(asBigInt(proposal.voterRewardPool) > 0n, 'Expected voterRewardPool funded with proposal fee on review → voting transition')
       },
     ],
 
@@ -1057,7 +1136,9 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter1.address,
             proposalId: daoProposalId(sc1ProposalN),
-            optionIndex: 0,
+            // weights[i] maps 1:1 by index onto proposal.options[i] — [1, 0] puts the vote's
+            // entire weight on options[0] ('yes'), mirroring the old optionIndex: 0 behavior.
+            weights: [1, 0],
             spend: libToWei(minVoteSpendLib),
             timestamp: Date.now(),
           },
@@ -1069,7 +1150,9 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter2.address,
             proposalId: daoProposalId(sc1ProposalN),
-            optionIndex: 0,
+            // weights[i] maps 1:1 by index onto proposal.options[i] — [1, 0] puts the vote's
+            // entire weight on options[0] ('yes'), mirroring the old optionIndex: 0 behavior.
+            weights: [1, 0],
             spend: libToWei(minVoteSpendLib),
             timestamp: Date.now(),
           },
@@ -1084,9 +1167,8 @@ async function main(): Promise<void> {
     [
       '1.7  Sleep past votingEnd then dao_vote_result → accepted',
       async () => {
-        const waitMs = votingDurationMs + SLEEP_BUFFER_MS
-        console.log(`    Waiting ${waitMs / 1000}s for votingEnd (votingDuration=${votingDurationMs / 1000}s)...`)
-        await sleep(waitMs)
+        const proposalBefore = await getProposal(sc1ProposalN)
+        await sleepUntilTimestamp(proposalBefore.votingEnd, 'votingEnd', SLEEP_BUFFER_MS)
         await injectAndAssert(
           {
             type: 'dao_vote_result',
@@ -1105,11 +1187,37 @@ async function main(): Promise<void> {
     ],
 
     [
-      '1.8  Sleep past graceDuration, dao_apply_parameters → applied + network param updated',
+      '1.8  Non-voter (proposer) tries dao_claim_reward on accepted proposal → rejected',
       async () => {
-        const waitMs = graceDurationMs + SLEEP_BUFFER_MS
-        console.log(`    Waiting ${waitMs / 1000}s for grace period (graceDuration=${graceDurationMs / 1000}s)...`)
-        await sleep(waitMs)
+        // Run immediately after 1.7 (right at votingEnd, while the full claimDuration window is
+        // still ahead) rather than after the grace-period sleep in 1.9. claimEnd is now strictly
+        // derived (= votingEnd + claimDuration, independent of when dao_vote_result actually
+        // executes), so any extra delay eats directly into the claim window margin — running the
+        // "did not vote" check here (instead of after 1.9's ~88s grace-period sleep) keeps us
+        // comfortably inside the window. Validation order is intentional: the time-window check
+        // in dao_claim_reward.validate() runs before the voter-membership check, so a
+        // late-arriving tx correctly reports "Claim period has ended" rather than "did not vote" —
+        // this step's whole point is to assert the *voter-membership* rejection, hence the need
+        // to run it well within the window.
+        await injectExpectReject(
+          {
+            type: 'dao_claim_reward',
+            networkId: currentNetworkId,
+            from: proposer.address,
+            proposalId: daoProposalId(sc1ProposalN),
+            timestamp: Date.now(),
+          },
+          proposer,
+          'did not vote',
+        )
+      },
+    ],
+
+    [
+      '1.9  Sleep past graceDuration, dao_apply_parameters → applied + network param updated',
+      async () => {
+        const proposalBefore = await getProposal(sc1ProposalN)
+        await sleepUntilTimestamp(proposalBefore.applyEligibleAt, 'applyEligibleAt (grace period end)', SLEEP_BUFFER_MS)
         await injectAndAssert(
           {
             type: 'dao_apply_parameters',
@@ -1148,31 +1256,48 @@ async function main(): Promise<void> {
     ],
 
     [
-      '1.9  Non-voter (proposer) tries dao_claim_reward on applied proposal → rejected',
-      async () => {
-        // Must run before claimDuration elapses (scenarios 2–4 take longer than claim window).
-        await injectExpectReject(
-          {
-            type: 'dao_claim_reward',
-            networkId: currentNetworkId,
-            from: proposer.address,
-            proposalId: daoProposalId(sc1ProposalN),
-            timestamp: Date.now(),
-          },
-          proposer,
-          'did not vote',
-        )
-      },
-    ],
-
-    [
       '1.10 dao_claim_reward (voter1 + voter2)',
       async () => {
-        // Snapshot balances before claiming so we can verify they increased
-        const voter1BalBefore = (await getBalance(voter1.address)) ?? 0n
-        const voter2BalBefore = (await getBalance(voter2.address)) ?? 0n
+        // NOTE: dao_claim_reward's payout is explicitly *time-weighted* — see apply():
+        //   previousTimestamp = (first voter) ? getVotingStart(proposal) : prior voter's timestamp
+        //   timeDelta         = voterEntry.timestamp - previousTimestamp
+        //   reward            = rewardPoolAfterBurn * (timeDelta/votingDuration/2 + 1/voterCount/2)
+        // So "both voters spent the same amount" does NOT imply "near-equal rewards" — the
+        // formula rewards voters based on the *gap* between their vote and the previous voter's
+        // (or votingStart for the first voter), not on spend size. Two equal-spend votes cast
+        // even ~5-10s apart relative to a 60s votingDuration can legitimately differ by >10%
+        // (confirmed: observed an 11.62% diff explained almost exactly by the recorded
+        // voterList timestamps — timeDelta1≈13.0s, timeDelta2≈8.0s — when this assertion was
+        // a flat "<5% near-equal" check). Asserting near-equality is therefore an incorrect
+        // test premise, not a timing-margin issue to paper over with a looser tolerance.
+        //
+        // Instead, fetch the finalized proposal (voterList timestamps, votingStart,
+        // votingDuration, and the immutable rewardPoolAfterBurn snapshot are all frozen once
+        // dao_vote_result has run) and independently recompute each voter's *exact* expected
+        // reward via the same formula — then assert the actual claimed amount matches exactly.
+        // This verifies the distribution mechanism precisely, with zero sensitivity to timing.
+        const proposalForReward = await getProposal(sc1ProposalN)
+        const REWARD_PRECISION = 10n ** 18n
+        const computeExpectedReward = (voterAddress: string): bigint => {
+          const voterIndex = proposalForReward.voterList.findIndex(v => v.address === voterAddress)
+          assert(voterIndex !== -1, `${voterAddress} not found in proposal.voterList`)
+          const voterEntry = proposalForReward.voterList[voterIndex]
+          const previousTimestamp =
+            voterIndex === 0 ? proposalForReward.votingStart : proposalForReward.voterList[voterIndex - 1].timestamp
+          const timeDelta = BigInt(voterEntry.timestamp - previousTimestamp)
+          const votingDuration = BigInt(proposalForReward.votingDuration)
+          const N = BigInt(proposalForReward.voterList.length)
+          const timePart = (timeDelta * REWARD_PRECISION) / votingDuration
+          const equalPart = REWARD_PRECISION / N
+          const rewardNumerator = asBigInt(proposalForReward.rewardPoolAfterBurn) * (timePart + equalPart)
+          let reward = rewardNumerator / (2n * REWARD_PRECISION)
+          if (reward > asBigInt(proposalForReward.voterRewardPool)) reward = asBigInt(proposalForReward.voterRewardPool)
+          return reward
+        }
+        const expectedVoter1Reward = computeExpectedReward(voter1.address)
+        const expectedVoter2Reward = computeExpectedReward(voter2.address)
 
-        await injectAndAssert(
+        const { receipt: claim1Receipt } = await injectAndAssert(
           {
             type: 'dao_claim_reward',
             networkId: currentNetworkId,
@@ -1182,7 +1307,7 @@ async function main(): Promise<void> {
           },
           voter1,
         )
-        await injectAndAssert(
+        const { receipt: claim2Receipt } = await injectAndAssert(
           {
             type: 'dao_claim_reward',
             networkId: currentNetworkId,
@@ -1195,22 +1320,24 @@ async function main(): Promise<void> {
         const proposal = await getProposal(sc1ProposalN)
         assert(proposal.claimList.length === 2, `Expected 2 claimants, got ${proposal.claimList.length}`)
 
-        // Verify both voters actually received tokens — balance must have increased.
-        // Each reward comes from rewardPoolAfterBurn; both voters have the same spend so
-        // rewards should be nearly equal and non-zero.
-        const voter1BalAfter = (await getBalance(voter1.address)) ?? 0n
-        const voter2BalAfter = (await getBalance(voter2.address)) ?? 0n
-        assert(voter1BalAfter > voter1BalBefore, `voter1 balance did not increase after claim (before=${voter1BalBefore} after=${voter1BalAfter})`)
-        assert(voter2BalAfter > voter2BalBefore, `voter2 balance did not increase after claim (before=${voter2BalBefore} after=${voter2BalAfter})`)
-
-        // Both voters had the same spend amount — their rewards should be within 1% of each other
-        const voter1Reward = voter1BalAfter - voter1BalBefore
-        const voter2Reward = voter2BalAfter - voter2BalBefore
-        const pctDiff = voter1Reward > voter2Reward
-          ? Number((voter1Reward - voter2Reward) * 10000n / voter1Reward) / 100
-          : Number((voter2Reward - voter1Reward) * 10000n / voter2Reward) / 100
-        assert(pctDiff < 5, `Voter rewards differ by ${pctDiff.toFixed(2)}% (expected <5% for same-sized votes): voter1=${voter1Reward} voter2=${voter2Reward}`)
-        console.log(`    Rewards: voter1 +${ethers.formatEther(voter1Reward)} LIB, voter2 +${ethers.formatEther(voter2Reward)} LIB (${pctDiff.toFixed(3)}% diff)`)
+        const voter1Reward = asBigInt(claim1Receipt.additionalInfo.reward)
+        const voter2Reward = asBigInt(claim2Receipt.additionalInfo.reward)
+        assert(voter1Reward > 0n, 'voter1 received a zero reward')
+        assert(voter2Reward > 0n, 'voter2 received a zero reward')
+        assert(
+          voter1Reward === expectedVoter1Reward,
+          `voter1 claimed reward ${voter1Reward} != expected time-weighted reward ${expectedVoter1Reward} ` +
+            `(formula: rewardPoolAfterBurn * (timeDelta/votingDuration/2 + 1/voterCount/2) — see dao_claim_reward.apply)`,
+        )
+        assert(
+          voter2Reward === expectedVoter2Reward,
+          `voter2 claimed reward ${voter2Reward} != expected time-weighted reward ${expectedVoter2Reward} ` +
+            `(formula: rewardPoolAfterBurn * (timeDelta/votingDuration/2 + 1/voterCount/2) — see dao_claim_reward.apply)`,
+        )
+        console.log(
+          `    Rewards (time-weighted, verified exact against formula): ` +
+            `voter1 +${ethers.formatEther(voter1Reward)} LIB, voter2 +${ethers.formatEther(voter2Reward)} LIB`,
+        )
       },
     ],
 
@@ -1281,7 +1408,7 @@ async function main(): Promise<void> {
               from: committee[i].address,
               proposalId: daoProposalId(sc2ProposalN),
               vote: 'withhold',
-              reason: 'Test withhold',
+              withheldReason: 'Test withhold',
               timestamp: Date.now(),
             },
             committee[i],
@@ -1345,9 +1472,8 @@ async function main(): Promise<void> {
     [
       '3.2  Sleep past reviewEnd',
       async () => {
-        const waitMs = reviewDurationMs + SLEEP_BUFFER_MS
-        console.log(`    Waiting ${waitMs / 1000}s for reviewEnd (reviewDuration=${reviewDurationMs / 1000}s)...`)
-        await sleep(waitMs)
+        const proposalBefore = await getProposal(sc3ProposalN)
+        await sleepUntilTimestamp(proposalBefore.reviewEnd, 'reviewEnd', SLEEP_BUFFER_MS)
       },
     ],
 
@@ -1472,10 +1598,19 @@ async function main(): Promise<void> {
     ],
 
     [
-      '4.5  votingEnd > 0 (set to acceptance txTimestamp, used as grace period base)',
+      '4.5  votingEnd derived (collapses onto votingStart/reviewEnd — zero-length nominal voting phase)',
       async () => {
         const proposal = await getProposal(sc4ProposalN)
+        // Emergency proposals derive every phase boundary from startTime, same as regular ones —
+        // "emergency" speeds up the *decision* (status flips to 'accepted' early on a decisive
+        // committee vote), not the nominal apply-eligibility schedule. Per the derivation
+        // formulas (getVotingEnd in src/accounts/daoProposalAccount.ts), emergency proposals have
+        // a zero-length nominal voting phase: votingEnd === votingStart === reviewEnd.
         assert(proposal.votingEnd > 0, `Expected votingEnd > 0, got ${proposal.votingEnd}`)
+        assert(
+          proposal.votingEnd === proposal.votingStart && proposal.votingStart === proposal.reviewEnd,
+          `Expected votingEnd === votingStart === reviewEnd for emergency proposal, got votingEnd=${proposal.votingEnd}, votingStart=${proposal.votingStart}, reviewEnd=${proposal.reviewEnd}`,
+        )
       },
     ],
     ],
@@ -1538,7 +1673,7 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter1.address,
             proposalId: daoProposalId(sc5ProposalN),
-            optionIndex: 0,
+            weights: [1, 0],
             spend: libToWei(minVoteSpendLib),
             timestamp: Date.now(),
           },
