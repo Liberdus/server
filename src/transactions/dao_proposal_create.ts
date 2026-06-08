@@ -27,12 +27,12 @@ export const validate_fields = (tx: Tx.DaoProposalCreate, response: ShardusTypes
     response.reason = 'tx "from" is not a valid address'
     return response
   }
-  if (typeof tx.proposalId !== 'string' || tx.proposalId.length !== 64) {
-    response.reason = 'tx "proposalId" must be a 64-char hex string'
+  if (utils.isValidAddress(tx.proposalId) === false) {
+    response.reason = 'tx "proposalId" is not a valid address'
     return response
   }
-  if (typeof tx.metaId !== 'string' || tx.metaId.length !== 64) {
-    response.reason = 'tx "metaId" must be a 64-char hex string'
+  if (utils.isValidAddress(tx.metaId) === false) {
+    response.reason = 'tx "metaId" is not a valid address'
     return response
   }
   if (typeof tx.emergency !== 'boolean') {
@@ -72,6 +72,12 @@ export const validate_fields = (tx: Tx.DaoProposalCreate, response: ShardusTypes
   }
   if (tx.startTime !== undefined && (typeof tx.startTime !== 'number' || tx.startTime < 0 || !Number.isFinite(tx.startTime))) {
     response.reason = 'tx "startTime" must be a non-negative number if provided'
+    return response
+  }
+  // startTime gives the committee some lead time before review begins; it cannot be in the past
+  // relative to creation (tx.timestamp). If omitted, it defaults to creationTime in apply().
+  if (tx.startTime !== undefined && tx.startTime < tx.timestamp) {
+    response.reason = `tx "startTime" (${tx.startTime}) cannot be earlier than the creation time (${tx.timestamp})`
     return response
   }
   // Validate the type-specific changes payload
@@ -150,7 +156,7 @@ export const validate = (
     return response
   }
 
-  const nextCount = meta ? meta.count + 1 : 1
+  const nextCount = meta.count + 1
   const expectedProposalId = crypto.hash(`dao proposal #${nextCount}`)
   if (tx.proposalId !== expectedProposalId) {
     response.reason = `tx "proposalId" does not match the expected next proposal id (expected ${expectedProposalId})`
@@ -166,13 +172,6 @@ export const validate = (
 
   if (tx.gracePeriod > daoParams.graceDuration) {
     response.reason = `tx "gracePeriod" (${tx.gracePeriod}ms) exceeds the maximum allowed grace duration (${daoParams.graceDuration}ms)`
-    return response
-  }
-
-  // startTime gives the committee some lead time before review begins; it cannot be in the past
-  // relative to creation (tx.timestamp). If omitted, it defaults to creationTime in apply().
-  if (tx.startTime !== undefined && tx.startTime < tx.timestamp) {
-    response.reason = `tx "startTime" (${tx.startTime}) cannot be earlier than the creation time (${tx.timestamp})`
     return response
   }
 
@@ -192,6 +191,13 @@ export const validate = (
       }
       if (existing === undefined) {
         response.reason = `key "${change.key}" does not exist in ${tx.proposalType} parameters`
+        return response
+      }
+      // Economic proposals may only modify scalar fields; the nested "dao" sub-object is governed
+      // exclusively by governance proposals. Mirror the guard in dao_apply_parameters.validate()
+      // so an invalid proposal is caught at creation time, not only at apply time.
+      if (tx.proposalType === 'economic' && typeof existing === 'object' && existing !== null && !Array.isArray(existing)) {
+        response.reason = `key "${change.key}" is an object parameter; economic proposals can only modify scalar fields`
         return response
       }
     }
@@ -241,8 +247,9 @@ export const apply = (
   proposal.emergency = tx.emergency
   proposal.proposalType = tx.proposalType
   proposal.creationTime = txTimestamp
-  // startTime gives the committee lead time before review begins; defaults to creationTime
-  // when not provided. Validated in validate() to never be earlier than creationTime.
+  // startTime defaults to creationTime when omitted. All phase boundaries (reviewEnd,
+  // votingStart, votingEnd, claimEnd, applyEligibleAt) are derived from startTime + the
+  // duration snapshots below; see getReviewEnd/getVotingStart/etc in daoProposalAccount.ts.
   proposal.startTime = tx.startTime ?? txTimestamp
   proposal.description = tx.description
   proposal.options = tx.options
@@ -275,18 +282,16 @@ export const apply = (
   from.timestamp = txTimestamp
   meta.timestamp = txTimestamp
   proposal.timestamp = txTimestamp
-  meta.hash = crypto.hashObj(meta)
-  proposal.hash = crypto.hashObj(proposal)
-  from.hash = crypto.hashObj(from)
 
   const appReceiptData: AppReceiptData = {
     txId,
     timestamp: txTimestamp,
     success: true,
     from: tx.from,
+    to: tx.proposalId,
     type: tx.type,
     transactionFee: txFeeWei,
-    additionalInfo: { proposalId: tx.proposalId, proposalNumber: meta.count, emergency: tx.emergency },
+    additionalInfo: { proposalNumber: meta.count, emergency: tx.emergency },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
@@ -302,14 +307,29 @@ export const createFailedAppReceiptData = (
   applyResponse: ShardusTypes.ApplyResponse,
   reason: string,
 ): void => {
+  const from: UserAccount = wrappedStates[tx.from] && (wrappedStates[tx.from].data as unknown as UserAccount)
+  let transactionFee = BigInt(0)
+  if (from) {
+    const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+    if (from.data.balance >= txFeeWei) {
+      transactionFee = txFeeWei
+      from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
+    } else {
+      transactionFee = from.data.balance
+      from.data.balance = BigInt(0)
+    }
+    from.timestamp = txTimestamp
+  }
+
   const appReceiptData: AppReceiptData = {
     txId,
     timestamp: txTimestamp,
     success: false,
     reason,
     from: tx.from,
+    to: tx.proposalId,
     type: tx.type,
-    transactionFee: BigInt(0),
+    transactionFee,
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
@@ -342,12 +362,13 @@ export const createRelevantAccount = (
   if (!account) {
     if (accountId === tx.proposalId) {
       account = create.daoProposalAccount(accountId)
+      accountCreated = true
     } else if (accountId === tx.metaId) {
       account = create.daoProposalsMetaAccount(accountId)
+      accountCreated = true
     } else {
-      account = create.userAccount(accountId, tx.timestamp)
+      throw new Error(`dao_proposal_create.createRelevantAccount: UserAccount ${accountId} does not exist`)
     }
-    accountCreated = true
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }
