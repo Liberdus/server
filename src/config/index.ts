@@ -112,7 +112,7 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
     reviewDuration: isDAOTestMode ? 90_000 : 2 * ONE_DAY,
     votingDuration: isDAOTestMode ? 60_000 : 8 * ONE_DAY,
     graceDuration: isDAOTestMode ? 30_000 : 7 * ONE_DAY,
-    claimDuration: isDAOTestMode ? 120_000 : 30 * ONE_DAY,
+    claimDuration: isDAOTestMode ? 300_000 : 30 * ONE_DAY,
     committeeAddresses: [
       '29fade38139aa68def5590ec433c48c33b478ebf000000000000000000000000',
       'd268b0edcc39b9e54d11453c3a1e9b5f5eff31e0000000000000000000000000',

@@ -413,6 +413,7 @@ async function runScenariosParallel(defs: ScenarioDef[]): Promise<void> {
   console.log('\n' + '═'.repeat(64))
   console.log('  Phase 1 — Sequential setup (proposal creation)')
   console.log('═'.repeat(64))
+  const failedSetupNums = new Set<number>()
   for (const def of activeDefs) {
     if (def.setupSteps.length === 0) continue
     console.log(`\n── ${def.name} — setup ──`)
@@ -431,15 +432,24 @@ async function runScenariosParallel(defs: ScenarioDef[]): Promise<void> {
         failed = true
       }
     }
+    if (failed) failedSetupNums.add(def.num)
   }
 
   // ── Phase 2: Parallel bodies ──────────────────────────────────────────
   console.log('\n' + '═'.repeat(64))
   console.log(`  Phase 2 — Parallel scenario bodies (${activeDefs.filter(d => d.bodySteps.length > 0).length} concurrent)`)
   console.log('═'.repeat(64))
+  // Skip body steps for any scenario whose setup failed — avoid running against missing/stale state
+  for (const def of activeDefs.filter(d => failedSetupNums.has(d.num))) {
+    console.log(`\n[S${def.num}] ── ${def.name} — body skipped (setup failed) ──`)
+    for (const [stepName] of def.bodySteps) {
+      results.push({ name: stepName, status: 'skip', ms: 0 })
+      console.log(`  ⏭   ${stepName} (skipped — setup failed)`)
+    }
+  }
   await Promise.allSettled(
     activeDefs
-      .filter(d => d.bodySteps.length > 0)
+      .filter(d => d.bodySteps.length > 0 && !failedSetupNums.has(d.num))
       .map(def => runScenarioBody(def, `[S${def.num}]`))
   )
 }
