@@ -9,6 +9,13 @@
  *   npm run test:dao:e2e -- --no-start             (reuse a running network)
  *   npm run test:dao:e2e -- --verbose              (print full TX/response bodies)
  *   npm run test:dao:e2e -- --stop                 (tear down even when tests fail)
+ *   npm run test:dao:e2e -- --scenario 1           (run only scenario 1)
+ *   npm run test:dao:e2e -- --scenario 1,3,5       (run scenarios 1, 3 and 5)
+ *   npm run test:dao:e2e -- --step 1.8             (run only step 1.8)
+ *   npm run test:dao:e2e -- --step 1.8,1.9         (run steps 1.8 and 1.9)
+ *
+ * --step implies --no-start (assumes the network and account state are already set up).
+ * Step IDs must match the leading token of the step name exactly, e.g. "1.8", "5.1".
  *
  * By default the network is left running when any step fails so you can iterate on
  * the test script without a full restart. Use --stop to force teardown. After server
@@ -37,10 +44,38 @@ ShardusCrypto.setCustomStringifier(Utils.safeStringify, 'shardus_safeStringify')
 // ─── CLI Flags ───────────────────────────────────────────────────────────────
 
 const cliArgs = process.argv.slice(2)
-const NO_START = cliArgs.includes('--no-start')
+const VERBOSE = cliArgs.includes('--verbose')
 const FORCE_STOP = cliArgs.includes('--stop')
 const NO_STOP = cliArgs.includes('--no-stop') // legacy alias: always keep network up
-const VERBOSE = cliArgs.includes('--verbose')
+
+/**
+ * --scenario 1,3,5  — set of scenario numbers to run (default: all)
+ * null means no filter (run all).
+ */
+const SCENARIO_FILTER: Set<number> | null = (() => {
+  const idx = cliArgs.indexOf('--scenario')
+  if (idx === -1) return null
+  const val = cliArgs[idx + 1]
+  if (!val || val.startsWith('--')) return null
+  return new Set(val.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)))
+})()
+
+/**
+ * --step 1.8,1.9  — set of step IDs to run (default: all).
+ * Step ID is the leading token of the step name, e.g. "1.8".
+ * When set, only the matching steps execute; all others are skipped.
+ * Automatically implies --no-start and derives SCENARIO_FILTER from the step numbers.
+ */
+const STEP_FILTER: Set<string> | null = (() => {
+  const idx = cliArgs.indexOf('--step')
+  if (idx === -1) return null
+  const val = cliArgs[idx + 1]
+  if (!val || val.startsWith('--')) return null
+  return new Set(val.split(',').map(s => s.trim()).filter(Boolean))
+})()
+
+// --step implies --no-start (network + account state must already exist)
+const NO_START = cliArgs.includes('--no-start') || STEP_FILTER !== null
 
 const HOST = 'localhost:9001'
 const ARCHIVER_HOST = 'localhost:4000'
@@ -204,13 +239,45 @@ async function step(name: string, fn: () => Promise<void>): Promise<void> {
   }
 }
 
-async function scenario(name: string, steps: Array<[string, () => Promise<void>]>): Promise<void> {
+/**
+ * Derive the effective scenario filter, merging --scenario and --step flags.
+ * If --step is set, the scenario filter is automatically narrowed to the
+ * scenario numbers implied by the step IDs (e.g. "1.8" → scenario 1).
+ */
+function effectiveScenarioFilter(): Set<number> | null {
+  if (STEP_FILTER) {
+    // Derive scenario numbers from step IDs: "1.8" → 1, "5.1" → 5
+    const nums = new Set<number>()
+    for (const id of STEP_FILTER) {
+      const n = parseInt(id.split('.')[0], 10)
+      if (!isNaN(n)) nums.add(n)
+    }
+    return nums
+  }
+  return SCENARIO_FILTER
+}
+
+async function scenario(num: number, name: string, steps: Array<[string, () => Promise<void>]>): Promise<void> {
+  const filter = effectiveScenarioFilter()
+  if (filter && !filter.has(num)) {
+    console.log(`\n── ${name} (skipped — not in filter) ──`)
+    for (const [stepName] of steps) {
+      results.push({ name: stepName, status: 'skip', ms: 0 })
+      console.log(`  ⏭   ${stepName} (skipped)`)
+    }
+    return
+  }
+
   console.log(`\n── ${name} ──`)
   let failed = false
   for (const [stepName, fn] of steps) {
-    if (failed) {
+    // Extract step ID from the step name: "1.8  Sleep past..." → "1.8"
+    const stepId = stepName.trim().split(/\s+/)[0]
+    const stepFiltered = STEP_FILTER && !STEP_FILTER.has(stepId)
+
+    if (failed || stepFiltered) {
       results.push({ name: stepName, status: 'skip', ms: 0 })
-      console.log(`  ⏭   ${stepName} (skipped)`)
+      console.log(`  ⏭   ${stepName} (skipped${stepFiltered ? ' — not in --step filter' : ''})`)
       continue
     }
     try {
@@ -461,6 +528,22 @@ async function getProposal(n: number): Promise<DaoProposalAccount> {
   return proposal!
 }
 
+/**
+ * Fetch the balance of a user account in wei.
+ * Returns null if the account doesn't exist yet.
+ */
+async function getBalance(address: string): Promise<bigint | null> {
+  try {
+    const res = await axios.get(`http://${HOST}/account/${address}`)
+    const data = safeParse(res.data)
+    const account = data?.account ?? data?.data
+    if (account?.data?.balance == null) return null
+    return asBigInt(account.data.balance)
+  } catch {
+    return null
+  }
+}
+
 /** Query current proposal count so we always use the right sequential number. */
 async function nextProposalNumber(): Promise<number> {
   let res: any
@@ -661,7 +744,7 @@ async function main(): Promise<void> {
   // ─────────────────────────────────────────────────────────────────────────
   // Scenario 1 — Happy path: governance proposal → accepted → applied → claimed
   // ─────────────────────────────────────────────────────────────────────────
-  await scenario('Scenario 1 — Happy path (governance → accepted → applied → claimed)', [
+  await scenario(1, 'Scenario 1 — Happy path (governance → accepted → applied → claimed)', [
     [
       '1.1  Fund all accounts',
       async () => {
@@ -887,6 +970,10 @@ async function main(): Promise<void> {
     [
       '1.10 dao_claim_reward (voter1 + voter2)',
       async () => {
+        // Snapshot balances before claiming so we can verify they increased
+        const voter1BalBefore = (await getBalance(voter1.address)) ?? 0n
+        const voter2BalBefore = (await getBalance(voter2.address)) ?? 0n
+
         await injectAndAssert(
           {
             type: 'dao_claim_reward',
@@ -909,6 +996,23 @@ async function main(): Promise<void> {
         )
         const proposal = await getProposal(sc1ProposalN)
         assert(proposal.claimList.length === 2, `Expected 2 claimants, got ${proposal.claimList.length}`)
+
+        // Verify both voters actually received tokens — balance must have increased.
+        // Each reward comes from rewardPoolAfterBurn; both voters have the same spend so
+        // rewards should be nearly equal and non-zero.
+        const voter1BalAfter = (await getBalance(voter1.address)) ?? 0n
+        const voter2BalAfter = (await getBalance(voter2.address)) ?? 0n
+        assert(voter1BalAfter > voter1BalBefore, `voter1 balance did not increase after claim (before=${voter1BalBefore} after=${voter1BalAfter})`)
+        assert(voter2BalAfter > voter2BalBefore, `voter2 balance did not increase after claim (before=${voter2BalBefore} after=${voter2BalAfter})`)
+
+        // Both voters had the same spend amount — their rewards should be within 1% of each other
+        const voter1Reward = voter1BalAfter - voter1BalBefore
+        const voter2Reward = voter2BalAfter - voter2BalBefore
+        const pctDiff = voter1Reward > voter2Reward
+          ? Number((voter1Reward - voter2Reward) * 10000n / voter1Reward) / 100
+          : Number((voter2Reward - voter1Reward) * 10000n / voter2Reward) / 100
+        assert(pctDiff < 5, `Voter rewards differ by ${pctDiff.toFixed(2)}% (expected <5% for same-sized votes): voter1=${voter1Reward} voter2=${voter2Reward}`)
+        console.log(`    Rewards: voter1 +${ethers.formatEther(voter1Reward)} LIB, voter2 +${ethers.formatEther(voter2Reward)} LIB (${pctDiff.toFixed(3)}% diff)`)
       },
     ],
 
@@ -933,7 +1037,7 @@ async function main(): Promise<void> {
   // ─────────────────────────────────────────────────────────────────────────
   // Scenario 2 — Withheld path
   // ─────────────────────────────────────────────────────────────────────────
-  await scenario('Scenario 2 — Withheld path', [
+  await scenario(2, 'Scenario 2 — Withheld path', [
     [
       '2.1  dao_proposal_create (new governance proposal)',
       async () => {
@@ -999,7 +1103,7 @@ async function main(): Promise<void> {
   // ─────────────────────────────────────────────────────────────────────────
   // Scenario 3 — Auto-accept via dao_committee_result
   // ─────────────────────────────────────────────────────────────────────────
-  await scenario('Scenario 3 — Auto-accept via committee_result (no committee votes submitted)', [
+  await scenario(3, 'Scenario 3 — Auto-accept via committee_result (no committee votes submitted)', [
     [
       '3.1  dao_proposal_create (non-emergency, no votes will be submitted)',
       async () => {
@@ -1059,7 +1163,7 @@ async function main(): Promise<void> {
   // ─────────────────────────────────────────────────────────────────────────
   // Scenario 4 — Emergency proposal path
   // ─────────────────────────────────────────────────────────────────────────
-  await scenario('Scenario 4 — Emergency proposal path', [
+  await scenario(4, 'Scenario 4 — Emergency proposal path', [
     [
       '4.1  Non-committee address submits emergency proposal → rejected',
       async () => {
@@ -1163,7 +1267,7 @@ async function main(): Promise<void> {
   // ─────────────────────────────────────────────────────────────────────────
   // Scenario 5 — Access control & rejection cases
   // ─────────────────────────────────────────────────────────────────────────
-  await scenario('Scenario 5 — Access control & rejection cases', [
+  await scenario(5, 'Scenario 5 — Access control & rejection cases', [
     [
       '5.1  Non-committee address submits committee_vote on fresh review proposal → rejected',
       async () => {
