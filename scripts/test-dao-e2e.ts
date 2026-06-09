@@ -50,6 +50,18 @@ import { DaoProposalAccount } from '../src/@types'
 ShardusCrypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 ShardusCrypto.setCustomStringifier(Utils.safeStringify, 'shardus_safeStringify')
 
+// ─── Timestamp-prefix all console output ─────────────────────────────────────
+// Patch console.log/warn/error once so every line carries a wall-clock prefix
+// (HH:MM:SS.mmm) without needing to touch each call site.
+;((['log', 'warn', 'error'] as const)).forEach((method) => {
+  const orig = console[method].bind(console)
+  console[method] = (...args: unknown[]) => {
+    const d = new Date()
+    const ts = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}.${String(d.getMilliseconds()).padStart(3, '0')}`
+    orig(`[${ts}]`, ...args)
+  }
+})
+
 // ─── CLI Flags ───────────────────────────────────────────────────────────────
 
 const cliArgs = process.argv.slice(2)
@@ -1410,7 +1422,11 @@ async function main(): Promise<void> {
     [
       '2.2  committee_vote withhold x3 → decisive withhold, status withheld',
       async () => {
-        for (let i = 0; i < 3; i++) {
+        // Use committee[2..4] (not [0..2]) to avoid concurrent account-lock conflicts in parallel
+        // mode: S1 and S4 both start their body with committee[0] at the same time as S2, causing
+        // cant_preApply failures on the shared from-account execution shard. Starting from index 2
+        // ensures S2's first vote has no temporal overlap with S1/S4's first votes.
+        for (let i = 2; i < 5; i++) {
           await injectAndAssert(
             {
               type: 'dao_committee_vote',
