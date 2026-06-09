@@ -149,6 +149,10 @@ export const validate = (
     response.reason = 'from account not found or is not a UserAccount'
     return response
   }
+  if (!meta) {
+    response.reason = 'DAO proposals meta account not found'
+    return response
+  }
 
   const expectedMetaId = crypto.hash(DAO_PROPOSALS_META_ID_STRING)
   if (tx.metaId !== expectedMetaId) {

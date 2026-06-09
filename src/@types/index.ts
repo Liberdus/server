@@ -980,7 +980,7 @@ export interface GlobalMessage extends Omit<P2P.GlobalAccountsTypes.SetGlobalTx,
   value:
     | Tx.InitNetwork
     | Tx.ApplyChangeConfig
-    | Tx.ApplyChangeConfig
+    | Tx.ApplyChangeNetworkParam
     | Tx.ApplyDevParameters
     | Tx.ApplyDevTally
     | Tx.ApplyDevPayment

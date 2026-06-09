@@ -97,8 +97,10 @@ export const apply = (
   // Convention: index 0 is the affirmative option ('yes' or equivalent)
   proposal.status = winnerIndex === 0 ? 'accepted' : 'rejected'
 
-  // Burn pctBurned% of the voter reward pool (reduce pool; coins leave circulation)
-  const burnAmount = (proposal.voterRewardPool * BigInt(proposal.pctBurned)) / 100n
+  // Burn pctBurned% of the voter reward pool (reduce pool; coins leave circulation).
+  // Math.round guards against non-integer pctBurned values that could arise if a governance
+  // proposal sets it to a decimal (e.g. 50.5) — BigInt() throws on non-integer inputs.
+  const burnAmount = (proposal.voterRewardPool * BigInt(Math.round(proposal.pctBurned))) / 100n
   proposal.voterRewardPool = proposal.voterRewardPool - burnAmount
   // Snapshot the post-burn pool so all claimants use the same fixed base regardless of claim order
   proposal.rewardPoolAfterBurn = proposal.voterRewardPool
