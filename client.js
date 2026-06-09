@@ -987,6 +987,7 @@ vorpal.command('create', 'creates tokens for an account').action(async function 
       timestamp: Date.now(),
       networkId,
     }
+    signTransaction(tx)
     injectTx(tx).then((res) => {
       this.log(res)
       callback()
@@ -2512,6 +2513,16 @@ function weiToLib(wei) {
   return Number(wei) / 10 ** 18
 }
 
+// Full-precision wei → LIB string using ethers.formatEther (avoids Number() truncation on large
+// BigInt values). Use this for all DAO display where exact amounts matter.
+function weiToLibStr(wei) {
+  try {
+    return ethers.formatEther(BigInt(wei))
+  } catch {
+    return (Number(wei) / 10 ** 18).toString()
+  }
+}
+
 // COMMAND TO REQUEST TOKENS FROM THE FAUCET
 vorpal.command('faucet', 'requests tokens from the faucet server').action(async function (_, callback) {
   // Check if user has registered an alias
@@ -2588,8 +2599,10 @@ function daoProposalId(n) {
 
 // DAO API responses use res.send(Utils.safeStringify(...)) — body may be a JSON string.
 function parseDaoApiBody(data) {
-  if (typeof data === 'string') return Utils.safeJsonParse(data)
-  return data
+  // Always round-trip through safeStringify + safeJsonParse so Shardus-serialized BigInt
+  // objects ({ dataType: 'bi', value: '<hex>' }) that axios leaves as plain JS objects are
+  // properly revived as native BigInt values before any display or arithmetic.
+  return Utils.safeJsonParse(Utils.safeStringify(data))
 }
 
 function asBigIntForDisplay(value) {
@@ -2810,8 +2823,8 @@ vorpal.command('dao vote', 'cast a community vote on a proposal').action(async f
       {
         type: 'number',
         name: 'spendLib',
-        message: 'Amount of LIB to spend on this vote (minimum = minimumSpend):',
-        default: 1,
+        message: `Amount of LIB to spend on this vote (minimum = ${weiToLibStr(asBigIntForDisplay(proposal.minimumSpendWei))} LIB):`,
+        default: Number(weiToLibStr(asBigIntForDisplay(proposal.minimumSpendWei))),
       },
     ])
 
@@ -2939,7 +2952,7 @@ vorpal.command('dao proposals [status]', 'list DAO proposals, optionally filtere
       this.log('No proposals found.')
     } else {
       for (const p of proposals) {
-        this.log(`#${p.number} [${p.status}] ${p.proposalType} | options: ${p.options.join('/')} | pool: ${weiToLib(asBigIntForDisplay(p.voterRewardPool))} LIB`)
+        this.log(`#${p.number} [${p.status}] ${p.proposalType} | options: ${p.options.join('/')} | pool: ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
         this.log(`  "${p.description.slice(0, 80)}${p.description.length > 80 ? '...' : ''}"`)
       }
     }
@@ -2961,15 +2974,42 @@ vorpal.command('dao proposal <number>', 'show details of a single DAO proposal')
       this.log(`Proposal #${args.number} not found.`)
     } else {
       this.log(`\n--- Proposal #${p.number} ---`)
+      this.log(`ID:           ${p.id}`)
       this.log(`Status:       ${p.status}`)
       this.log(`Type:         ${p.proposalType}${p.emergency ? ' (EMERGENCY)' : ''}`)
+      // Economics snapshot
+      this.log(`Proposal fee: ${weiToLibStr(asBigIntForDisplay(p.proposalFeeWei))} LIB`)
+      this.log(`Vote thresh:  ${weiToLibStr(asBigIntForDisplay(p.voteThresholdWei))} LIB`)
+      this.log(`Pct burned:   ${p.pctBurned}% (on withhold)`)
+      // Voting state
       this.log(`Options:      ${p.options.join(', ')}`)
-      this.log(`Weights:      ${p.weights.map((w) => weiToLib(asBigIntForDisplay(w)).toFixed(4)).join(', ')} LIB`)
-      this.log(`Reward pool:  ${weiToLib(asBigIntForDisplay(p.voterRewardPool))} LIB`)
+      this.log(`Weights:      ${p.weights.map((w) => weiToLibStr(asBigIntForDisplay(w))).join(', ')} LIB`)
+      this.log(`Reward pool:  ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
+      if (asBigIntForDisplay(p.rewardPoolAfterBurn) > 0n)
+        this.log(`Pool (post-burn): ${weiToLibStr(asBigIntForDisplay(p.rewardPoolAfterBurn))} LIB`)
       this.log(`Voters:       ${p.voterList.length} | Claims: ${p.claimList.length}`)
+      // Committee votes
+      const committeeSize = Array.isArray(p.committeeAddresses) ? p.committeeAddresses.length : 0
+      const votes = Array.isArray(p.committeeVotes) ? p.committeeVotes : []
+      const acceptCount = votes.filter((v) => v.vote === 'accept').length
+      const withholdCount = votes.filter((v) => v.vote === 'withhold').length
+      this.log(`Committee:    ${votes.length}/${committeeSize} voted  (accept: ${acceptCount}, withhold: ${withholdCount})`)
+      if (votes.length > 0) {
+        for (const v of votes) {
+          const addr = `${v.memberAddress.slice(0, 8)}...`
+          const label = v.vote === 'withhold' ? `withhold — ${v.withheldReason || ''}` : v.vote
+          this.log(`  ${addr}  ${label}`)
+        }
+      }
+      // Timeline
+      this.log(`Current time: ${new Date().toISOString()}`)
+      if (p.creationTime) this.log(`Created:      ${new Date(p.creationTime).toISOString()}`)
+      if (p.startTime)   this.log(`Starts:       ${new Date(p.startTime).toISOString()}`)
       this.log(`Review ends:  ${new Date(p.reviewEnd).toISOString()}`)
-      if (p.votingEnd) this.log(`Voting ends:  ${new Date(p.votingEnd).toISOString()}`)
-      if (p.claimEnd) this.log(`Claim ends:   ${new Date(p.claimEnd).toISOString()}`)
+      if (p.votingEnd)   this.log(`Voting ends:  ${new Date(p.votingEnd).toISOString()}`)
+      if (p.applyEligibleAt) this.log(`Apply after:  ${new Date(p.applyEligibleAt).toISOString()}`)
+      if (p.claimEnd)    this.log(`Claim ends:   ${new Date(p.claimEnd).toISOString()}`)
+      // Content
       this.log(`Description:  ${p.description}`)
       if (p.governance) this.log(`Changes:      ${JSON.stringify(p.governance.changes)}`)
       if (p.economic) this.log(`Changes:      ${JSON.stringify(p.economic.changes)}`)
