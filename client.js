@@ -2599,7 +2599,11 @@ function daoProposalId(n) {
 
 // DAO API responses use res.send(Utils.safeStringify(...)) — body may be a JSON string.
 function parseDaoApiBody(data) {
-  // Always round-trip through safeStringify + safeJsonParse so Shardus-serialized BigInt
+  // If axios ever leaves the body as a raw JSON string (e.g. silentJSONParsing fallback),
+  // parse it directly — re-stringifying a string would double-encode it and safeJsonParse
+  // would hand back the original string unparsed.
+  if (typeof data === 'string') return Utils.safeJsonParse(data)
+  // Otherwise, round-trip through safeStringify + safeJsonParse so Shardus-serialized BigInt
   // objects ({ dataType: 'bi', value: '<hex>' }) that axios leaves as plain JS objects are
   // properly revived as native BigInt values before any display or arithmetic.
   return Utils.safeJsonParse(Utils.safeStringify(data))
