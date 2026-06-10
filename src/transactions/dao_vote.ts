@@ -1,4 +1,3 @@
-import Decimal from 'decimal.js'
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
@@ -9,27 +8,7 @@ import * as utils from '../utils'
 import { isUserAccount, isDaoProposalAccount } from '../@types/accountTypeGuards'
 import { LiberdusFlags } from '../config'
 import { getVotingStart, getVotingEnd } from '../accounts/daoProposalAccount'
-
-// Isolated Decimal context for vote-weight math. Using Decimal (not Math.pow/Number) ensures
-// consensus-critical calculations — especially the fractional voteExponent pow() — are
-// deterministic across all nodes regardless of JS engine version or IEEE-754 rounding.
-// precision: 40 is conservative since spend, voteExponent, and minimumSpend are unbounded
-// or governance-mutable; tighten once explicit parameter bounds are enforced.
-const DaoDecimal = Decimal.clone({ precision: 40 })
-const WEI_PER_LIB = new DaoDecimal('1e18')
-const WEIGHT_PRECISION = new DaoDecimal('1e12')
-
-// Time-decay: 1 in the first half of voting, then linearly decays to 0 by votingEnd.
-function getTimeMultiplier(txTimestamp: number, votingStart: number, votingEnd: number, halfDuration: number): Decimal {
-  if (halfDuration === 0) {
-    return new DaoDecimal(1)
-  }
-  if (txTimestamp - votingStart <= halfDuration) {
-    return new DaoDecimal(1)
-  }
-  // timeLeft / halfDuration decays from 1 → 0 over the second half; clamped at 0.
-  return DaoDecimal.max(0, new DaoDecimal(votingEnd - txTimestamp).dividedBy(halfDuration))
-}
+import { getTimeMultiplier, calculateOptionWeights } from '../utils/daoVoteMath'
 
 export const validate_fields = (tx: Tx.DaoVote, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (!LiberdusFlags.enableNewDAOTransactions) {
@@ -158,27 +137,20 @@ export const apply = (
   const votingStart = getVotingStart(proposal)
   const votingEnd = getVotingEnd(proposal)
   const halfDuration = proposal.votingDuration / 2
-  const totalSelectionWeight = tx.weights.reduce((sum, w) => sum + w, 0)
 
-  // Policy formula:
-  //   option[x] = voteSpend * (voteSpend / minimumSpend)^voteExponent
-  //               * timeLeftInSecondHalf / totalTimeInSecondHalf
-  //               * selectionWeight[x] / totalSelectionWeight
-  // baseWeight = spendInLIB * spendBoost * timeMultiplier * WEIGHT_PRECISION / totalSelectionWeight
-  // pre-divides by totalSelectionWeight so each loop iteration just multiplies by weights[i].
-  // WEIGHT_PRECISION (1e12) scales the result into a bigint without losing sub-LIB precision.
   const timeMultiplier = getTimeMultiplier(txTimestamp, votingStart, votingEnd, halfDuration)
-  const spendInLIB = new DaoDecimal(tx.spend.toString()).dividedBy(WEI_PER_LIB)
-  const spendBoost = new DaoDecimal(tx.spend.toString()).dividedBy(proposal.minimumSpendWei.toString()).pow(proposal.voteExponent)
-  const baseWeight = spendInLIB.times(spendBoost).times(timeMultiplier).times(WEIGHT_PRECISION).dividedBy(totalSelectionWeight)
 
   // Distribute weight across options proportionally; votes are additive across multiple casts.
-  const optionWeights: bigint[] = proposal.options.map(() => 0n)
-  for (let i = 0; i < tx.weights.length; i++) {
-    if (tx.weights[i] <= 0) continue
-    const optionWeight = BigInt(baseWeight.times(tx.weights[i]).floor().toFixed())
-    optionWeights[i] = optionWeight
-    proposal.weights[i] = (proposal.weights[i] ?? 0n) + optionWeight
+  const optionWeights = calculateOptionWeights({
+    spend: tx.spend,
+    minimumSpendWei: proposal.minimumSpendWei,
+    voteExponent: proposal.voteExponent,
+    weights: tx.weights,
+    timeMultiplier,
+  })
+  for (let i = 0; i < optionWeights.length; i++) {
+    if (optionWeights[i] === 0n) continue
+    proposal.weights[i] = (proposal.weights[i] ?? 0n) + optionWeights[i]
   }
 
   // Add spend to reward pool
