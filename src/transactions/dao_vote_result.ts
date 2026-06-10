@@ -1,6 +1,5 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
-import create from '../accounts'
 import * as config from '../config'
 import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
@@ -113,10 +112,10 @@ export const apply = (
     timestamp: txTimestamp,
     success: true,
     from: tx.from,
+    to: tx.proposalId,
     type: tx.type,
     transactionFee: txFeeWei,
     additionalInfo: {
-      proposalId: tx.proposalId,
       winningOption,
       status: proposal.status,
       burnAmount: burnAmount.toString(),
@@ -157,6 +156,7 @@ export const createFailedAppReceiptData = (
     success: false,
     reason,
     from: tx.from,
+    to: tx.proposalId,
     type: tx.type,
     transactionFee,
   }
@@ -189,8 +189,7 @@ export const createRelevantAccount = (
   accountCreated = false,
 ): ShardusTypes.WrappedResponse => {
   if (!account) {
-    account = create.userAccount(accountId, tx.timestamp)
-    accountCreated = true
+    throw new Error(`dao_vote_result.createRelevantAccount: account ${accountId} does not exist`)
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }
