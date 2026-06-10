@@ -115,6 +115,10 @@ export const validate = (
     response.reason = `spend (${utils.weiToLib(tx.spend)} LIB) is less than the minimum required (${utils.weiToLib(proposal.minimumSpendWei)} LIB)`
     return response
   }
+  if (tx.spend > from.data.balance) {
+    response.reason = `spend (${utils.weiToLib(tx.spend)} LIB) exceeds account balance (${utils.weiToLib(from.data.balance)} LIB)`
+    return response
+  }
   if (from.data.balance < proposal.voteThresholdWei) {
     response.reason = `account balance (${utils.weiToLib(from.data.balance)} LIB) is below the vote threshold (${utils.weiToLib(proposal.voteThresholdWei)} LIB)`
     return response

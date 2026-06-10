@@ -75,6 +75,10 @@ export const validate = (
     response.reason = 'No voters eligible for reward on this proposal'
     return response
   }
+  if (proposal.voterRewardPool === 0n) {
+    response.reason = 'Reward pool is empty'
+    return response
+  }
 
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   if (from.data.balance < txFeeWei) {
