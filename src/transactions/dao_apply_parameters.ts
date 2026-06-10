@@ -54,6 +54,10 @@ export const validate = (
     response.reason = 'Proposal account not found or is not a DaoProposalAccount'
     return response
   }
+  if (!network) {
+    response.reason = 'Network account not found'
+    return response
+  }
   if (proposal.status !== 'accepted') {
     response.reason = `Proposal is not in accepted status (current: ${proposal.status})`
     return response
@@ -64,10 +68,6 @@ export const validate = (
   }
   if (tx.timestamp < getApplyEligibleAt(proposal)) {
     response.reason = 'Grace period has not elapsed yet'
-    return response
-  }
-  if (!network) {
-    response.reason = 'Network account not found'
     return response
   }
 
