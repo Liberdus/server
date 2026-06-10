@@ -71,6 +71,10 @@ export const validate = (
     response.reason = 'tx sender has already claimed their reward for this proposal'
     return response
   }
+  if (proposal.voterList.length === 0) {
+    response.reason = 'No voters eligible for reward on this proposal'
+    return response
+  }
 
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   if (from.data.balance < txFeeWei) {
