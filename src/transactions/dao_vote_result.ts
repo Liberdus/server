@@ -18,7 +18,7 @@ export const validate_fields = (tx: Tx.DaoVoteResult, response: ShardusTypes.Inc
     response.reason = 'tx "from" is not a valid address'
     return response
   }
-  if (typeof tx.proposalId !== 'string' || tx.proposalId.length !== 64) {
+  if (utils.isValidAddress(tx.proposalId) === false) {
     response.reason = 'tx "proposalId" must be a 64-char hex string'
     return response
   }

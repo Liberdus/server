@@ -666,8 +666,8 @@ export const isObject = (val): boolean => {
 }
 
 export const isValidAddress = (address: string): boolean => {
-  // Address must be a string, fully lowercase and exactly 64 characters
-  return typeof address === 'string' && address === address.toLowerCase() && address.length === 64
+  // Address must be a string of exactly 64 lowercase hex characters
+  return typeof address === 'string' && /^[0-9a-f]{64}$/.test(address)
 }
 
 export const sortAddresses = (from: string, to: string): string[] => {
