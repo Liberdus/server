@@ -21,6 +21,9 @@ const WEIGHT_PRECISION = new DaoDecimal('1e12')
 
 // Time-decay: 1 in the first half of voting, then linearly decays to 0 by votingEnd.
 function getTimeMultiplier(txTimestamp: number, votingStart: number, votingEnd: number, halfDuration: number): Decimal {
+  if (halfDuration === 0) {
+    return new DaoDecimal(1)
+  }
   if (txTimestamp - votingStart <= halfDuration) {
     return new DaoDecimal(1)
   }
