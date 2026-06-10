@@ -7,6 +7,8 @@ import { getReviewEnd, getVotingStart, getVotingEnd, getClaimEnd, getApplyEligib
 const metaId = () => crypto.hash(DAO_PROPOSALS_META_ID_STRING)
 const proposalId = (n: number) => crypto.hash(`dao proposal #${n}`)
 
+const VALID_PROPOSAL_STATUSES: DaoProposalStatus[] = ['review', 'withheld', 'voting', 'rejected', 'accepted', 'applied']
+
 // Only `creationTime`/`startTime` are stored on DaoProposalAccount — every other phase-boundary
 // timestamp is derived from those plus the duration snapshots (see
 // src/accounts/daoProposalAccount.ts). API consumers (web client, explorer, E2E scripts)
@@ -52,6 +54,10 @@ export const all = (dapp) => async (req, res): Promise<void> => {
     }
     const count: number = (metaAccount.data as DaoProposalsMeta).count
     const statusFilter: DaoProposalStatus | undefined = req.query.status as DaoProposalStatus | undefined
+    if (statusFilter !== undefined && !VALID_PROPOSAL_STATUSES.includes(statusFilter)) {
+      res.status(400).json({ error: `Invalid status: "${statusFilter}"` })
+      return
+    }
 
     const proposals: DaoProposalWithDerivedTiming[] = []
     for (let i = 1; i <= count; i++) {
