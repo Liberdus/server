@@ -100,9 +100,10 @@ export const apply = (
   // Math.round guards against non-integer pctBurned values that could arise if a governance
   // proposal sets it to a decimal (e.g. 50.5) — BigInt() throws on non-integer inputs.
   const burnAmount = (proposal.voterRewardPool * BigInt(Math.round(proposal.pctBurned))) / 100n
+  // voterRewardPool becomes the fixed, immutable post-burn pool from this point on — every
+  // dao_claim_reward computes its share from this value, and claimedAmount (still 0 here)
+  // tracks the running total paid out.
   proposal.voterRewardPool = proposal.voterRewardPool - burnAmount
-  // Snapshot the post-burn pool so all claimants use the same fixed base regardless of claim order
-  proposal.rewardPoolAfterBurn = proposal.voterRewardPool
 
   from.timestamp = txTimestamp
   proposal.timestamp = txTimestamp

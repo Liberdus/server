@@ -29,7 +29,7 @@ export function daoProposalAccount(id: string): DaoProposalAccount {
     options: [],
     weights: [],
     voterRewardPool: 0n,
-    rewardPoolAfterBurn: 0n,
+    claimedAmount: 0n,
     voterList: [],
     claimList: [],
     description: '',
