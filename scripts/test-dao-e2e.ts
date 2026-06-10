@@ -210,14 +210,18 @@ const RUN_STATE_PATH = path.join(logDir, 'dao-e2e-run-state.json')
 
 interface RunState {
   networkId: string
-  proposerKey: string
-  voter1Key: string
-  voter2Key: string
-  sc1ProposalN: number
-  sc2ProposalN: number
-  sc3ProposalN: number
-  sc4ProposalN: number
-  sc5ProposalN: number
+  proposerKeys?: string[]
+  voterKeys?: string[]
+  proposalNumbers?: Record<string, number>
+  // Legacy fields kept so --no-start can still resume an older run-state file.
+  proposerKey?: string
+  voter1Key?: string
+  voter2Key?: string
+  sc1ProposalN?: number
+  sc2ProposalN?: number
+  sc3ProposalN?: number
+  sc4ProposalN?: number
+  sc5ProposalN?: number
 }
 
 function saveRunState(state: RunState): void {
@@ -262,6 +266,8 @@ interface ScenarioDef {
   name: string
   setupSteps: Array<[string, () => Promise<void>]>
   bodySteps: Array<[string, () => Promise<void>]>
+  /** Timing- or account-contention-sensitive scenarios stay sequential even when --parallel is used. */
+  sequentialOnly?: boolean
 }
 
 interface TestAccount {
@@ -411,6 +417,8 @@ async function runScenariosParallel(defs: ScenarioDef[]): Promise<void> {
   const filter = effectiveScenarioFilter()
   const activeDefs = defs.filter(d => !filter || filter.has(d.num))
   const skippedDefs = defs.filter(d => filter && !filter.has(d.num))
+  const parallelDefs = activeDefs.filter(d => !d.sequentialOnly)
+  const sequentialDefs = activeDefs.filter(d => d.sequentialOnly)
 
   // Mark skipped scenarios up-front
   for (const def of skippedDefs) {
@@ -449,7 +457,7 @@ async function runScenariosParallel(defs: ScenarioDef[]): Promise<void> {
 
   // ── Phase 2: Parallel bodies ──────────────────────────────────────────
   console.log('\n' + '═'.repeat(64))
-  console.log(`  Phase 2 — Parallel scenario bodies (${activeDefs.filter(d => d.bodySteps.length > 0).length} concurrent)`)
+  console.log(`  Phase 2 — Parallel scenario bodies (${parallelDefs.filter(d => d.bodySteps.length > 0).length} concurrent)`)
   console.log('═'.repeat(64))
   // Skip body steps for any scenario whose setup failed — avoid running against missing/stale state
   for (const def of activeDefs.filter(d => failedSetupNums.has(d.num))) {
@@ -460,10 +468,19 @@ async function runScenariosParallel(defs: ScenarioDef[]): Promise<void> {
     }
   }
   await Promise.allSettled(
-    activeDefs
+    parallelDefs
       .filter(d => d.bodySteps.length > 0 && !failedSetupNums.has(d.num))
       .map(def => runScenarioBody(def, `[S${def.num}]`))
   )
+
+  if (sequentialDefs.some(d => d.bodySteps.length > 0 && !failedSetupNums.has(d.num))) {
+    console.log('\n' + '═'.repeat(64))
+    console.log('  Phase 3 — Sequential-only scenario bodies')
+    console.log('═'.repeat(64))
+    for (const def of sequentialDefs.filter(d => d.bodySteps.length > 0 && !failedSetupNums.has(d.num))) {
+      await runScenarioBody(def, `[S${def.num}]`)
+    }
+  }
 }
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
@@ -541,11 +558,12 @@ function asBigInt(value: bigint | string | number | { dataType?: string; value?:
 }
 
 /**
- * Defensively parse a response body — axios may or may not auto-parse the
- * Content-Type returned by res.send(Utils.safeStringify(...)).
+ * Defensively parse a response body. DAO APIs may arrive as raw JSON strings, or as already
+ * parsed objects containing Shardus bigint sentinel objects; round-tripping parsed objects
+ * revives those sentinel objects into native BigInt values for assertions.
  */
 function safeParse(data: unknown): any {
-  return typeof data === 'string' ? Utils.safeJsonParse(data) : data
+  return typeof data === 'string' ? Utils.safeJsonParse(data) : Utils.safeJsonParse(Utils.safeStringify(data))
 }
 
 /** Shardus account address for proposal #n */
@@ -571,6 +589,14 @@ async function pollUntil(check: () => Promise<boolean>, timeoutMs: number, inter
     await sleep(intervalMs)
   }
   throw new Error(`pollUntil timed out after ${timeoutMs}ms`)
+}
+
+function daoMetaId(): string {
+  return ShardusCrypto.hash('dao proposals meta')
+}
+
+function nowPlus(ms: number): number {
+  return Date.now() + ms
 }
 
 // ─── Accounts ────────────────────────────────────────────────────────────────
@@ -620,6 +646,9 @@ interface TxReceipt {
   reason?: string
   txId: string
   type: string
+  to?: string
+  transactionFee?: bigint | string | number | { dataType?: string; value?: string }
+  additionalInfo?: any
 }
 
 /**
@@ -681,7 +710,7 @@ async function injectExpectReject<T extends object>(
   tx: T,
   account: TestAccount,
   reasonIncludes?: string,
-): Promise<void> {
+): Promise<{ reason: string; receipt?: TxReceipt; result?: any }> {
   await signTx(tx, account)
   if (VERBOSE) console.log('  → TX (expect reject):', Utils.safeStringify(tx))
   let result: any
@@ -699,8 +728,9 @@ async function injectExpectReject<T extends object>(
   }
 
   let reason: string
+  let receipt: TxReceipt | undefined
   if (result?.success === true && result.txId) {
-    const receipt = await waitForTxReceipt(result.txId)
+    receipt = await waitForTxReceipt(result.txId)
     if (VERBOSE) console.log('  ← Receipt:', JSON.stringify(receipt))
     assert(receipt.success !== true, `Expected TX to be rejected at apply but receipt succeeded`)
     reason = receipt.reason ?? ''
@@ -715,6 +745,7 @@ async function injectExpectReject<T extends object>(
       `Expected rejection reason to include "${reasonIncludes}", got: "${reason}"`,
     )
   }
+  return { reason, receipt, result }
 }
 
 /**
@@ -789,6 +820,148 @@ async function nextProposalNumber(): Promise<number> {
   }
   const body = safeParse(res.data)
   return ((body?.meta?.count ?? 0) as number) + 1
+}
+
+async function getNetworkParameters(): Promise<any> {
+  const res = await axios.get(`http://${HOST}/network/parameters`)
+  return safeParse(res.data)?.parameters
+}
+
+async function getDaoParameters(): Promise<any> {
+  return (await getNetworkParameters())?.current?.dao
+}
+
+async function getProposalListOfChanges(): Promise<any[]> {
+  return (await getNetworkParameters())?.listOfChanges ?? []
+}
+
+async function getCurrentNetworkValue(key: string): Promise<unknown> {
+  return (await getNetworkParameters())?.current?.[key]
+}
+
+async function getTransactionFeeWei(): Promise<bigint> {
+  const current = (await getNetworkParameters())?.current
+  if (!current?.transactionFee) return 0n
+  const stabilityFactorStr = current.stabilityFactorStr ?? '1'
+  return ethers.parseEther(String(current.transactionFee)) * ethers.parseEther(String(stabilityFactorStr)) / 10n ** 18n
+}
+
+type ProposalType = 'governance' | 'economic' | 'protocol'
+
+interface ProposalCreateOptions {
+  proposer: TestAccount
+  proposalType?: ProposalType
+  emergency?: boolean
+  description: string
+  options?: string[]
+  changes: Array<{ key: string; value: string; current: string }>
+  gracePeriodMs: number
+  startTime?: number
+}
+
+function proposalPayloadKey(type: ProposalType): 'governance' | 'economic' | 'protocol' {
+  return type
+}
+
+async function createDaoProposal(opts: ProposalCreateOptions): Promise<number> {
+  const proposalType = opts.proposalType ?? 'governance'
+  const proposalNumber = await nextProposalNumber()
+  const tx: any = {
+    type: 'dao_proposal_create',
+    networkId: currentNetworkId,
+    from: opts.proposer.address,
+    proposalId: daoProposalId(proposalNumber),
+    metaId: daoMetaId(),
+    proposalType,
+    emergency: opts.emergency ?? false,
+    description: opts.description,
+    options: opts.options ?? ['yes', 'no'],
+    gracePeriod: opts.gracePeriodMs,
+    [proposalPayloadKey(proposalType)]: { changes: opts.changes },
+    timestamp: Date.now(),
+  }
+  if (opts.startTime !== undefined) tx.startTime = opts.startTime
+  await injectAndAssert(tx, opts.proposer)
+  return proposalNumber
+}
+
+async function committeeAcceptToVoting(proposalNumber: number, actor: TestAccount, committee: TestAccount[], sleepBufferMs: number): Promise<void> {
+  for (let i = 0; i < 3; i++) {
+    await injectAndAssert(
+      {
+        type: 'dao_committee_vote',
+        networkId: currentNetworkId,
+        from: committee[i].address,
+        proposalId: daoProposalId(proposalNumber),
+        vote: 'accept',
+        timestamp: Date.now(),
+      },
+      committee[i],
+    )
+  }
+  const proposalBeforeResult = await getProposal(proposalNumber)
+  await sleepUntilTimestamp(proposalBeforeResult.reviewEnd, 'reviewEnd', sleepBufferMs)
+  await injectAndAssert(
+    {
+      type: 'dao_committee_result',
+      networkId: currentNetworkId,
+      from: actor.address,
+      proposalId: daoProposalId(proposalNumber),
+      timestamp: Date.now(),
+    },
+    actor,
+  )
+  const proposal = await getProposal(proposalNumber)
+  assert(proposal.status === 'voting', `Expected proposal ${proposalNumber} to be voting, got ${proposal.status}`)
+}
+
+async function castVote(proposalNumber: number, voter: TestAccount, weights: number[], spendLib: number): Promise<any> {
+  return injectAndAssert(
+    {
+      type: 'dao_vote',
+      networkId: currentNetworkId,
+      from: voter.address,
+      proposalId: daoProposalId(proposalNumber),
+      weights,
+      spend: libToWei(spendLib),
+      timestamp: Date.now(),
+    },
+    voter,
+  )
+}
+
+async function finalizeVote(proposalNumber: number, actor: TestAccount, sleepBufferMs: number): Promise<any> {
+  const proposalBeforeResult = await getProposal(proposalNumber)
+  await sleepUntilTimestamp(proposalBeforeResult.votingEnd, 'votingEnd', sleepBufferMs)
+  return injectAndAssert(
+    {
+      type: 'dao_vote_result',
+      networkId: currentNetworkId,
+      from: actor.address,
+      proposalId: daoProposalId(proposalNumber),
+      timestamp: Date.now(),
+    },
+    actor,
+  )
+}
+
+async function applyAcceptedProposal(proposalNumber: number, actor: TestAccount, sleepBufferMs: number): Promise<any> {
+  const proposalBeforeApply = await getProposal(proposalNumber)
+  await sleepUntilTimestamp(proposalBeforeApply.applyEligibleAt, 'applyEligibleAt', sleepBufferMs)
+  return injectAndAssert(
+    {
+      type: 'dao_apply_parameters',
+      networkId: currentNetworkId,
+      from: actor.address,
+      proposalId: daoProposalId(proposalNumber),
+      timestamp: Date.now(),
+    },
+    actor,
+  )
+}
+
+function assertReceiptTargetsProposal(receipt: TxReceipt, proposalNumber: number): void {
+  assert((receipt as any).to === daoProposalId(proposalNumber), `Expected receipt.to to be proposal id for #${proposalNumber}, got ${(receipt as any).to}`)
 }
 
 /** Inject a 'create' TX to fund an account and wait for apply receipt. */
@@ -947,15 +1120,37 @@ async function main(): Promise<void> {
     console.log(`  Saved networkId: ${savedState.networkId}`)
   }
 
-  const proposer = savedState ? makeAccountFromPrivateKey(savedState.proposerKey) : makeAccount()
-  const voter1   = savedState ? makeAccountFromPrivateKey(savedState.voter1Key)   : makeAccount()
-  const voter2   = savedState ? makeAccountFromPrivateKey(savedState.voter2Key)   : makeAccount()
+  const savedProposerKeys = savedState?.proposerKeys ?? (savedState?.proposerKey ? [savedState.proposerKey] : [])
+  const savedVoterKeys = savedState?.voterKeys ?? [savedState?.voter1Key, savedState?.voter2Key].filter((k): k is string => Boolean(k))
+  const makePool = (savedKeys: string[], count: number): TestAccount[] => {
+    const accounts = savedKeys.slice(0, count).map(k => makeAccountFromPrivateKey(k))
+    while (accounts.length < count) accounts.push(makeAccount())
+    return accounts
+  }
+  const proposers = makePool(savedProposerKeys, 3)
+  const voters = makePool(savedVoterKeys, 8)
+  const [proposer, proposer2, proposer3] = proposers
+  const [voter1, voter2, voter3, voter4, voter5, voter6, voter7, voter8] = voters
 
-  let sc1ProposalN = savedState?.sc1ProposalN ?? 0
-  let sc2ProposalN = savedState?.sc2ProposalN ?? 0
-  let sc3ProposalN = savedState?.sc3ProposalN ?? 0
-  let sc4ProposalN = savedState?.sc4ProposalN ?? 0
-  let sc5ProposalN = savedState?.sc5ProposalN ?? 0
+  const proposalNumbers: Record<string, number> = {
+    ...(savedState?.proposalNumbers ?? {}),
+    ...(savedState?.sc1ProposalN ? { sc1: savedState.sc1ProposalN } : {}),
+    ...(savedState?.sc2ProposalN ? { sc2: savedState.sc2ProposalN } : {}),
+    ...(savedState?.sc3ProposalN ? { sc3: savedState.sc3ProposalN } : {}),
+    ...(savedState?.sc4ProposalN ? { sc4: savedState.sc4ProposalN } : {}),
+    ...(savedState?.sc5ProposalN ? { sc5: savedState.sc5ProposalN } : {}),
+  }
+  const getProposalN = (key: string): number => proposalNumbers[key] ?? 0
+  const setProposalN = (key: string, value: number): number => {
+    proposalNumbers[key] = value
+    return value
+  }
+
+  let sc1ProposalN = getProposalN('sc1')
+  let sc2ProposalN = getProposalN('sc2')
+  let sc3ProposalN = getProposalN('sc3')
+  let sc4ProposalN = getProposalN('sc4')
+  let sc5ProposalN = getProposalN('sc5')
 
   if (!NO_START) await startNetwork()
 
@@ -985,14 +1180,16 @@ async function main(): Promise<void> {
   function saveCurrentRunState(): void {
     saveRunState({
       networkId: currentNetworkId,
-      proposerKey: proposer.wallet.privateKey,
-      voter1Key: voter1.wallet.privateKey,
-      voter2Key: voter2.wallet.privateKey,
-      sc1ProposalN,
-      sc2ProposalN,
-      sc3ProposalN,
-      sc4ProposalN,
-      sc5ProposalN,
+      proposerKeys: proposers.map(a => a.wallet.privateKey),
+      voterKeys: voters.map(a => a.wallet.privateKey),
+      proposalNumbers: {
+        ...proposalNumbers,
+        sc1: sc1ProposalN,
+        sc2: sc2ProposalN,
+        sc3: sc3ProposalN,
+        sc4: sc4ProposalN,
+        sc5: sc5ProposalN,
+      },
     })
   }
 
@@ -1024,9 +1221,8 @@ async function main(): Promise<void> {
       '1.1  Fund all accounts',
       async () => {
         await Promise.all([
-          fundAccount(proposer, TEST_ACCOUNT_FUND_LIB),
-          fundAccount(voter1, TEST_ACCOUNT_FUND_LIB),
-          fundAccount(voter2, TEST_ACCOUNT_FUND_LIB),
+          ...proposers.map(a => fundAccount(a, TEST_ACCOUNT_FUND_LIB)),
+          ...voters.map(a => fundAccount(a, TEST_ACCOUNT_FUND_LIB)),
           ...committee.map(c => fundAccount(c, TEST_ACCOUNT_FUND_LIB)),
         ])
       },
