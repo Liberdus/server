@@ -252,6 +252,12 @@ interface StepResult {
   error?: string
 }
 
+interface StepSortKey {
+  scenario: number
+  step: number
+  suffix: string
+}
+
 /**
  * Describes a single test scenario split into two phases:
  *  - setupSteps: must run sequentially (e.g. proposal creation that increments meta.count)
@@ -310,6 +316,28 @@ let txSettleTimeoutMs = 45_000
 
 function assert(condition: boolean, message: string): asserts condition {
   if (!condition) throw new Error(message)
+}
+
+function stepSortKey(name: string): StepSortKey {
+  const stepId = name.trim().split(/\s+/)[0] ?? ''
+  const match = stepId.match(/^(\d+)\.(\d+)([a-z]*)$/i)
+  if (!match) return { scenario: Number.MAX_SAFE_INTEGER, step: Number.MAX_SAFE_INTEGER, suffix: stepId }
+  return {
+    scenario: Number(match[1]),
+    step: Number(match[2]),
+    suffix: match[3].toLowerCase(),
+  }
+}
+
+function compareStepResults(a: StepResult, b: StepResult): number {
+  const aKey = stepSortKey(a.name)
+  const bKey = stepSortKey(b.name)
+  return (
+    aKey.scenario - bKey.scenario ||
+    aKey.step - bKey.step ||
+    aKey.suffix.localeCompare(bKey.suffix) ||
+    a.name.localeCompare(b.name)
+  )
 }
 
 // ─── Step / Scenario runner ───────────────────────────────────────────────────
@@ -2677,7 +2705,7 @@ async function main(): Promise<void> {
   console.log('\n' + '═'.repeat(64))
   console.log('  DAO E2E Test Results')
   console.log('═'.repeat(64))
-  for (const r of results) {
+  for (const r of [...results].sort(compareStepResults)) {
     const icon = r.status === 'pass' ? '✅' : r.status === 'fail' ? '❌' : '⏭ '
     const timeStr = r.status !== 'skip' ? `${(r.ms / 1000).toFixed(1)}s` : '-'
     const errStr = r.error ? `  [${r.error}]` : ''
