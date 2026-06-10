@@ -79,6 +79,10 @@ export const validate = (
     response.reason = 'Reward pool is empty'
     return response
   }
+  if (proposal.claimedAmount >= proposal.voterRewardPool) {
+    response.reason = 'Reward pool has been fully claimed'
+    return response
+  }
 
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   if (from.data.balance < txFeeWei) {
@@ -119,23 +123,25 @@ export const apply = (
 
   // Reward formula (bigint fixed-point with PRECISION = 10^18):
   // reward = pool * (timeDelta / votingDuration / 2 + 1 / voterCount / 2)
-  // Uses rewardPoolAfterBurn (fixed snapshot) so all claimants get the same base regardless of order.
+  // Uses voterRewardPool (fixed post-burn pool, immutable since dao_vote_result) so all
+  // claimants get the same base regardless of order.
   const timePart = (timeDelta * PRECISION) / votingDuration
   const equalPart = PRECISION / N
-  const rewardNumerator = proposal.rewardPoolAfterBurn * (timePart + equalPart)
+  const rewardNumerator = proposal.voterRewardPool * (timePart + equalPart)
   let reward = rewardNumerator / (2n * PRECISION)
 
-  // Cap at remaining pool to prevent rounding over-distribution
-  if (reward > proposal.voterRewardPool) {
-    reward = proposal.voterRewardPool
+  // Cap at remaining unclaimed pool to prevent rounding over-distribution
+  const remainingPool = SafeBigIntMath.subtract(proposal.voterRewardPool, proposal.claimedAmount)
+  if (reward > remainingPool) {
+    reward = remainingPool
   }
 
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
 
-  // Credit reward, deduct tx fee, and reduce remaining pool
+  // Credit reward, deduct tx fee, and accumulate the claimed total
   from.data.balance = (from.data.balance ?? 0n) + reward
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
-  proposal.voterRewardPool = SafeBigIntMath.subtract(proposal.voterRewardPool, reward)
+  proposal.claimedAmount = proposal.claimedAmount + reward
   proposal.claimList.push(tx.from)
 
   from.timestamp = txTimestamp
@@ -149,7 +155,11 @@ export const apply = (
     to: tx.proposalId,
     type: tx.type,
     transactionFee: txFeeWei,
-    additionalInfo: { reward: reward.toString(), remainingPool: proposal.voterRewardPool.toString() },
+    additionalInfo: {
+      reward: reward.toString(),
+      claimedAmount: proposal.claimedAmount.toString(),
+      remainingPool: SafeBigIntMath.subtract(proposal.voterRewardPool, proposal.claimedAmount).toString(),
+    },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)

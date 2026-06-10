@@ -826,8 +826,11 @@ export interface DaoProposalAccount {
   // Voting state
   options: string[]
   weights: bigint[]
+  // Fixed once dao_vote_result runs (post-burn pool); accumulates pre-burn (proposalFeeWei +
+  // sum of vote spends). claimedAmount tracks the running total paid out via dao_claim_reward;
+  // remaining unclaimed = voterRewardPool - claimedAmount.
   voterRewardPool: bigint
-  rewardPoolAfterBurn: bigint
+  claimedAmount: bigint
   voterList: Array<{ address: string; timestamp: number }>
   claimList: string[]
   // Proposal content

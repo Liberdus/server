@@ -1203,7 +1203,14 @@ async function main(): Promise<void> {
         )
         const proposal = await getProposal(sc1ProposalN)
         assert(proposal.status === 'accepted', `Expected status 'accepted', got '${proposal.status}'`)
-        assert(asBigInt(proposal.rewardPoolAfterBurn) > 0n, 'Expected rewardPoolAfterBurn > 0 after burn')
+        // voterRewardPool is now the fixed, immutable post-burn pool — assert the burn actually
+        // reduced it relative to the pre-vote_result (pre-burn) value.
+        assert(asBigInt(proposal.voterRewardPool) > 0n, 'Expected voterRewardPool > 0 after burn')
+        assert(
+          asBigInt(proposal.voterRewardPool) < asBigInt(proposalBefore.voterRewardPool),
+          `Expected voterRewardPool to shrink after burn (before=${proposalBefore.voterRewardPool}, after=${proposal.voterRewardPool})`,
+        )
+        assert(asBigInt(proposal.claimedAmount) === 0n, `Expected claimedAmount = 0 immediately after vote_result, got ${proposal.claimedAmount}`)
         assert(proposal.claimEnd > 0, `Expected claimEnd > 0, got ${proposal.claimEnd}`)
       },
     ],
@@ -1283,7 +1290,7 @@ async function main(): Promise<void> {
         // NOTE: dao_claim_reward's payout is explicitly *time-weighted* — see apply():
         //   previousTimestamp = (first voter) ? getVotingStart(proposal) : prior voter's timestamp
         //   timeDelta         = voterEntry.timestamp - previousTimestamp
-        //   reward            = rewardPoolAfterBurn * (timeDelta/votingDuration/2 + 1/voterCount/2)
+        //   reward            = voterRewardPool * (timeDelta/votingDuration/2 + 1/voterCount/2)
         // So "both voters spent the same amount" does NOT imply "near-equal rewards" — the
         // formula rewards voters based on the *gap* between their vote and the previous voter's
         // (or votingStart for the first voter), not on spend size. Two equal-spend votes cast
@@ -1294,13 +1301,13 @@ async function main(): Promise<void> {
         // test premise, not a timing-margin issue to paper over with a looser tolerance.
         //
         // Instead, fetch the finalized proposal (voterList timestamps, votingStart,
-        // votingDuration, and the immutable rewardPoolAfterBurn snapshot are all frozen once
+        // votingDuration, and the immutable voterRewardPool snapshot are all frozen once
         // dao_vote_result has run) and independently recompute each voter's *exact* expected
         // reward via the same formula — then assert the actual claimed amount matches exactly.
         // This verifies the distribution mechanism precisely, with zero sensitivity to timing.
         const proposalForReward = await getProposal(sc1ProposalN)
         const REWARD_PRECISION = 10n ** 18n
-        const computeExpectedReward = (voterAddress: string): bigint => {
+        const computeExpectedReward = (voterAddress: string, claimedSoFar: bigint): bigint => {
           const voterIndex = proposalForReward.voterList.findIndex(v => v.address === voterAddress)
           assert(voterIndex !== -1, `${voterAddress} not found in proposal.voterList`)
           const voterEntry = proposalForReward.voterList[voterIndex]
@@ -1311,13 +1318,14 @@ async function main(): Promise<void> {
           const N = BigInt(proposalForReward.voterList.length)
           const timePart = (timeDelta * REWARD_PRECISION) / votingDuration
           const equalPart = REWARD_PRECISION / N
-          const rewardNumerator = asBigInt(proposalForReward.rewardPoolAfterBurn) * (timePart + equalPart)
+          const rewardNumerator = asBigInt(proposalForReward.voterRewardPool) * (timePart + equalPart)
           let reward = rewardNumerator / (2n * REWARD_PRECISION)
-          if (reward > asBigInt(proposalForReward.voterRewardPool)) reward = asBigInt(proposalForReward.voterRewardPool)
+          const remainingPool = asBigInt(proposalForReward.voterRewardPool) - claimedSoFar
+          if (reward > remainingPool) reward = remainingPool
           return reward
         }
-        const expectedVoter1Reward = computeExpectedReward(voter1.address)
-        const expectedVoter2Reward = computeExpectedReward(voter2.address)
+        const expectedVoter1Reward = computeExpectedReward(voter1.address, 0n)
+        const expectedVoter2Reward = computeExpectedReward(voter2.address, expectedVoter1Reward)
 
         const { receipt: claim1Receipt } = await injectAndAssert(
           {
@@ -1349,12 +1357,12 @@ async function main(): Promise<void> {
         assert(
           voter1Reward === expectedVoter1Reward,
           `voter1 claimed reward ${voter1Reward} != expected time-weighted reward ${expectedVoter1Reward} ` +
-            `(formula: rewardPoolAfterBurn * (timeDelta/votingDuration/2 + 1/voterCount/2) — see dao_claim_reward.apply)`,
+            `(formula: voterRewardPool * (timeDelta/votingDuration/2 + 1/voterCount/2) — see dao_claim_reward.apply)`,
         )
         assert(
           voter2Reward === expectedVoter2Reward,
           `voter2 claimed reward ${voter2Reward} != expected time-weighted reward ${expectedVoter2Reward} ` +
-            `(formula: rewardPoolAfterBurn * (timeDelta/votingDuration/2 + 1/voterCount/2) — see dao_claim_reward.apply)`,
+            `(formula: voterRewardPool * (timeDelta/votingDuration/2 + 1/voterCount/2) — see dao_claim_reward.apply)`,
         )
         console.log(
           `    Rewards (time-weighted, verified exact against formula): ` +

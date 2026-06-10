@@ -2989,8 +2989,8 @@ vorpal.command('dao proposal <number>', 'show details of a single DAO proposal')
       this.log(`Options:      ${p.options.join(', ')}`)
       this.log(`Weights:      ${p.weights.map((w) => weiToLibStr(asBigIntForDisplay(w))).join(', ')} LIB`)
       this.log(`Reward pool:  ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
-      if (asBigIntForDisplay(p.rewardPoolAfterBurn) > 0n)
-        this.log(`Pool (post-burn): ${weiToLibStr(asBigIntForDisplay(p.rewardPoolAfterBurn))} LIB`)
+      if (p.status === 'accepted' || p.status === 'rejected' || p.status === 'applied')
+        this.log(`Claimed:      ${weiToLibStr(asBigIntForDisplay(p.claimedAmount))} / ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
       this.log(`Voters:       ${p.voterList.length} | Claims: ${p.claimList.length}`)
       // Committee votes
       const committeeSize = Array.isArray(p.committeeAddresses) ? p.committeeAddresses.length : 0
