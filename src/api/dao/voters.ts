@@ -1,10 +1,11 @@
 import * as crypto from '../../crypto'
 import { DaoProposalAccount } from '../../@types'
+import * as utils from '../../utils'
 
 export const list = (dapp) => async (req, res): Promise<void> => {
   try {
     const proposalId = req.params.proposalId
-    if (typeof proposalId !== 'string' || proposalId.length !== 64) {
+    if (typeof proposalId !== 'string' || !utils.isValidAddress(proposalId)) {
       res.status(400).json({ error: 'Invalid proposalId: must be a 64-char hex string' })
       return
     }
