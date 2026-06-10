@@ -105,7 +105,6 @@ const NO_START = cliArgs.includes('--no-start') || STEP_FILTER !== null
  */
 const PARALLEL = cliArgs.includes('--parallel')
 
-const HOST = 'localhost:9001'
 const ARCHIVER_HOST = 'localhost:4000'
 
 /** Every test account is funded with this much LIB — well above any fee/threshold at any stability factor. */
@@ -689,7 +688,7 @@ async function tryWaitForTxReceipt(txId: string, timeoutMs = txSettleTimeoutMs):
     await pollUntil(
       async () => {
         try {
-          const res = await axios.get(`http://${HOST}/transaction/${txId}`)
+          const res = await apiGet(`/transaction/${txId}`)
           const tx = res.data?.transaction
           if (tx && typeof tx.success === 'boolean') {
             receipt = tx as TxReceipt
@@ -729,7 +728,7 @@ async function injectExpectRejectOrNoReceipt<T extends object>(
   if (VERBOSE) console.log('  → TX (expect reject/no receipt):', Utils.safeStringify(tx))
   let result: any
   try {
-    const res = await axios.post(`http://${HOST}/inject`, { tx: Utils.safeStringify(tx) })
+    const res = await apiPost('/inject', { tx: Utils.safeStringify(tx) })
     if (VERBOSE) console.log('  ← Inject:', JSON.stringify(res.data))
     result = res.data?.result
   } catch (err: any) {
@@ -773,7 +772,7 @@ async function injectAndAssert<T extends object>(tx: T, account: TestAccount): P
   if (VERBOSE) console.log('  → TX:', Utils.safeStringify(tx))
   let res: any
   try {
-    res = await axios.post(`http://${HOST}/inject`, { tx: Utils.safeStringify(tx) })
+    res = await apiPost('/inject', { tx: Utils.safeStringify(tx) })
   } catch (err: any) {
     if (err.response) throw new Error(`HTTP ${err.response.status}: ${JSON.stringify(err.response.data)}`)
     throw err
@@ -802,7 +801,7 @@ async function injectExpectReject<T extends object>(
   if (VERBOSE) console.log('  → TX (expect reject):', Utils.safeStringify(tx))
   let result: any
   try {
-    const res = await axios.post(`http://${HOST}/inject`, { tx: Utils.safeStringify(tx) })
+    const res = await apiPost('/inject', { tx: Utils.safeStringify(tx) })
     if (VERBOSE) console.log('  ← Inject:', JSON.stringify(res.data))
     result = res.data?.result
   } catch (err: any) {
@@ -858,7 +857,7 @@ async function getProposal(n: number): Promise<DaoProposalWithTiming> {
   await pollUntil(
     async () => {
       try {
-        const res = await axios.get(`http://${HOST}/dao/proposals/${n}`)
+        const res = await apiGet(`/dao/proposals/${n}`)
         const body = safeParse(res.data)
         if (body?.proposal != null) {
           proposal = body.proposal as DaoProposalWithTiming
@@ -882,7 +881,7 @@ async function getProposal(n: number): Promise<DaoProposalWithTiming> {
  */
 async function getBalance(address: string): Promise<bigint | null> {
   try {
-    const res = await axios.get(`http://${HOST}/account/${address}`)
+    const res = await apiGet(`/account/${address}`)
     const data = safeParse(res.data)
     const account = data?.account ?? data?.data
     if (account?.data?.balance == null) return null
@@ -896,7 +895,7 @@ async function getBalance(address: string): Promise<bigint | null> {
 async function nextProposalNumber(): Promise<number> {
   let res: any
   try {
-    res = await axios.get(`http://${HOST}/dao/proposals/meta`)
+    res = await apiGet('/dao/proposals/meta')
   } catch (err: any) {
     if (err.response) {
       throw new Error(
@@ -910,7 +909,7 @@ async function nextProposalNumber(): Promise<number> {
 }
 
 async function getNetworkParameters(): Promise<any> {
-  const res = await axios.get(`http://${HOST}/network/parameters`)
+  const res = await apiGet('/network/parameters')
   return safeParse(res.data)?.parameters
 }
 
@@ -1068,7 +1067,7 @@ async function fundAccount(account: TestAccount, amountLib: number): Promise<voi
   if (VERBOSE) console.log(`  → Fund TX (${amountLib} LIB):`, Utils.safeStringify(tx))
   let res: any
   try {
-    res = await axios.post(`http://${HOST}/inject`, { tx: Utils.safeStringify(tx) })
+    res = await apiPost('/inject', { tx: Utils.safeStringify(tx) })
   } catch (err: any) {
     if (err.response) throw new Error(`Fund TX HTTP ${err.response.status}: ${JSON.stringify(err.response.data)}`)
     throw err
@@ -1081,6 +1080,30 @@ async function fundAccount(account: TestAccount, amountLib: number): Promise<voi
 }
 
 // ─── Network management ───────────────────────────────────────────────────────
+
+/**
+ * Fetch the active node list from the archiver and return one node's host:port,
+ * replacing the previously hardcoded localhost:9001.
+ */
+async function pickActiveHost(): Promise<string> {
+  const res = await axios.get(`http://${ARCHIVER_HOST}/nodelist`)
+  const nodeList: Array<{ ip: string; port: number }> = res.data?.nodeList ?? []
+  assert(nodeList.length > 0, 'Archiver returned an empty nodelist')
+  const node = nodeList[Math.floor(Math.random() * nodeList.length)]
+  return `${node.ip}:${node.port}`
+}
+
+/** GET against a freshly-picked node from the archiver's /nodelist. */
+async function apiGet(urlPath: string, config?: Parameters<typeof axios.get>[1]) {
+  const host = await pickActiveHost()
+  return axios.get(`http://${host}${urlPath}`, config)
+}
+
+/** POST against a freshly-picked node from the archiver's /nodelist. */
+async function apiPost(urlPath: string, body: unknown, config?: Parameters<typeof axios.post>[2]) {
+  const host = await pickActiveHost()
+  return axios.post(`http://${host}${urlPath}`, body, config)
+}
 
 /**
  * Wait until the network reaches 'processing' mode, then return live timing values.
@@ -1122,7 +1145,7 @@ async function waitForNetwork(): Promise<NetworkTiming> {
   await pollUntil(
     async () => {
       try {
-        const res = await axios.get(`http://${HOST}/network/parameters`)
+        const res = await apiGet('/network/parameters')
         const current = res.data?.parameters?.current
         const dao = current?.dao
         if (dao?.reviewDuration && dao?.votingDuration && current?.stabilityFactorStr) {
@@ -1161,8 +1184,17 @@ async function waitForNetwork(): Promise<NetworkTiming> {
   return timing
 }
 
+// Default short DAO durations (ms) for the E2E run, used unless overridden in process.env.
+const E2E_DAO_DURATION_DEFAULTS: Record<string, string> = {
+  DAO_REVIEW_DURATION_MS: '90000',
+  DAO_VOTING_DURATION_MS: '90000',
+  DAO_GRACE_DURATION_MS: '30000',
+  DAO_CLAIM_DURATION_MS: '150000',
+  CYCLE_DURATION: '16',
+}
+
 async function startNetwork(): Promise<void> {
-  console.log('Starting 10-node network with DAO_TEST_MODE=1...')
+  console.log('Starting 10-node network with short DAO durations...')
   try {
     execa.commandSync('shardus clean-net', { stdio: [0, 1, 2] })
   } catch {
@@ -1175,7 +1207,7 @@ async function startNetwork(): Promise<void> {
   }
   execa.commandSync('shardus create-net 10', {
     stdio: [0, 1, 2],
-    env: { ...process.env, DAO_TEST_MODE: '1' },
+    env: { ...E2E_DAO_DURATION_DEFAULTS, ...process.env },
   })
 }
 
@@ -1572,14 +1604,14 @@ async function main(): Promise<void> {
         )
         await pollUntil(async () => {
           try {
-            const r = await axios.get(`http://${HOST}/network/parameters`)
+            const r = await apiGet('/network/parameters')
             return r.data?.parameters?.current?.dao?.voteExponent === 1.2
           } catch {
             return false
           }
         }, applyParamsPollMs)
 
-        const r = await axios.get(`http://${HOST}/network/parameters`)
+        const r = await apiGet('/network/parameters')
         const listOfChanges: any[] = r.data?.parameters?.listOfChanges ?? []
         const hasChange = listOfChanges.some((c: any) => c?.appData?.dao?.voteExponent === 1.2)
         assert(
@@ -2675,7 +2707,7 @@ async function main(): Promise<void> {
           proposer,
         )
 
-        const badStatus = await axios.get(`http://${HOST}/dao/proposals?status=bogus`, { validateStatus: () => true })
+        const badStatus = await apiGet('/dao/proposals?status=bogus', { validateStatus: () => true })
         assert(badStatus.status === 400, `Expected invalid status filter HTTP 400, got ${badStatus.status}`)
       },
     ],
