@@ -655,26 +655,85 @@ interface TxReceipt {
  * Poll GET /transaction/:txId until the app receipt is available.
  * Inject returns success when the TX is queued; apply success/failure is on the receipt.
  */
-async function waitForTxReceipt(txId: string): Promise<TxReceipt> {
+async function tryWaitForTxReceipt(txId: string, timeoutMs = txSettleTimeoutMs): Promise<TxReceipt | null> {
   let receipt: TxReceipt | null = null
-  await pollUntil(
-    async () => {
-      try {
-        const res = await axios.get(`http://${HOST}/transaction/${txId}`)
-        const tx = res.data?.transaction
-        if (tx && typeof tx.success === 'boolean') {
-          receipt = tx as TxReceipt
-          return true
+  try {
+    await pollUntil(
+      async () => {
+        try {
+          const res = await axios.get(`http://${HOST}/transaction/${txId}`)
+          const tx = res.data?.transaction
+          if (tx && typeof tx.success === 'boolean') {
+            receipt = tx as TxReceipt
+            return true
+          }
+          return false
+        } catch {
+          return false
         }
-        return false
-      } catch {
-        return false
-      }
-    },
-    txSettleTimeoutMs,
-    2_000,
-  )
-  return receipt!
+      },
+      timeoutMs,
+      2_000,
+    )
+  } catch {
+    return null
+  }
+  return receipt
+}
+
+async function waitForTxReceipt(txId: string): Promise<TxReceipt> {
+  const receipt = await tryWaitForTxReceipt(txId)
+  assert(receipt !== null, `Timed out waiting for receipt ${txId} after ${txSettleTimeoutMs}ms`)
+  return receipt
+}
+
+/**
+ * Some validate-stage DAO rejects are queued and dropped without an app receipt.
+ * This helper still fails if a success receipt appears, while allowing callers
+ * to assert state stayed unchanged when no receipt is produced.
+ */
+async function injectExpectRejectOrNoReceipt<T extends object>(
+  tx: T,
+  account: TestAccount,
+  reasonIncludes?: string,
+): Promise<{ reason: string; receipt?: TxReceipt; result?: any }> {
+  await signTx(tx, account)
+  if (VERBOSE) console.log('  → TX (expect reject/no receipt):', Utils.safeStringify(tx))
+  let result: any
+  try {
+    const res = await axios.post(`http://${HOST}/inject`, { tx: Utils.safeStringify(tx) })
+    if (VERBOSE) console.log('  ← Inject:', JSON.stringify(res.data))
+    result = res.data?.result
+  } catch (err: any) {
+    if (err.response) {
+      if (VERBOSE) console.log('  ← Inject (HTTP error):', JSON.stringify(err.response.data))
+      result = err.response.data?.result ?? err.response.data
+    } else {
+      throw err
+    }
+  }
+
+  let reason = ''
+  let receipt: TxReceipt | undefined
+  if (result?.success === true && result.txId) {
+    receipt = (await tryWaitForTxReceipt(result.txId)) ?? undefined
+    if (receipt) {
+      if (VERBOSE) console.log('  ← Receipt:', JSON.stringify(receipt))
+      assert(receipt.success !== true, `Expected TX to be rejected but receipt succeeded`)
+      reason = receipt.reason ?? ''
+    }
+  } else {
+    assert(result?.success !== true, `Expected TX to be rejected but inject succeeded without failure`)
+    reason = result?.reason ?? ''
+  }
+
+  if (reasonIncludes && reason) {
+    assert(
+      reason.toLowerCase().includes(reasonIncludes.toLowerCase()),
+      `Expected rejection reason to include "${reasonIncludes}", got: "${reason}"`,
+    )
+  }
+  return { reason, receipt, result }
 }
 
 /**
@@ -1994,7 +2053,8 @@ async function main(): Promise<void> {
         const burnAmount = asBigInt(receipt.additionalInfo.burnAmount)
         assert(proposal.status === 'rejected', `Expected rejected status, got ${proposal.status}`)
         assert(burnAmount > 0n, `Expected non-zero burnAmount, got ${burnAmount}`)
-        assert(asBigInt(proposal.rewardPoolAfterBurn) > 0n, 'Expected rewardPoolAfterBurn > 0 on rejected proposal')
+        assert(asBigInt(proposal.voterRewardPool) > 0n, 'Expected voterRewardPool > 0 after burn on rejected proposal')
+        assert(asBigInt(proposal.claimedAmount) === 0n, `Expected claimedAmount = 0 before rejected-branch claims, got ${proposal.claimedAmount}`)
         assert(asBigInt(proposal.voterRewardPool) === poolBeforeBurn - burnAmount, 'Rejected branch did not reduce voterRewardPool by burnAmount')
       },
     ],
@@ -2011,13 +2071,18 @@ async function main(): Promise<void> {
           },
           voter3,
         )
-        assert(asBigInt(receipt.additionalInfo.reward) > 0n, 'Expected non-zero claim reward on rejected proposal')
+        const reward = asBigInt(receipt.additionalInfo.reward)
+        assert(reward > 0n, 'Expected non-zero claim reward on rejected proposal')
+        const proposal = await getProposal(sc6ProposalN)
+        assert(asBigInt(proposal.claimedAmount) === reward, `Expected claimedAmount to equal first rejected-branch claim reward ${reward}, got ${proposal.claimedAmount}`)
+        assert(asBigInt(proposal.claimedAmount) <= asBigInt(proposal.voterRewardPool), 'Rejected-branch claim exceeded the post-burn voterRewardPool')
       },
     ],
     [
       '6.5  dao_apply_parameters rejected for rejected proposal',
       async () => {
-        const rejected = await injectExpectReject(
+        const changesBefore = await getProposalListOfChanges()
+        const rejected = await injectExpectRejectOrNoReceipt(
           {
             type: 'dao_apply_parameters',
             networkId: currentNetworkId,
@@ -2032,6 +2097,10 @@ async function main(): Promise<void> {
           assertReceiptTargetsProposal(rejected.receipt, sc6ProposalN)
           assertFailedReceiptCharged(rejected.receipt)
         }
+        const proposalAfter = await getProposal(sc6ProposalN)
+        const changesAfter = await getProposalListOfChanges()
+        assert(proposalAfter.status === 'rejected', `Rejected proposal apply attempt changed status to ${proposalAfter.status}`)
+        assert(changesAfter.length === changesBefore.length, 'Rejected proposal apply attempt unexpectedly queued a network change')
       },
     ],
     ],
@@ -2156,8 +2225,8 @@ async function main(): Promise<void> {
         sc8ProtocolProposalN = setProposalN('sc8Protocol', await createDaoProposal({
           proposer: proposer3,
           proposalType: 'protocol',
-          description: 'Protocol proposal patches server.debug.countEndpointStart',
-          changes: [{ key: 'server', value: '{"debug":{"countEndpointStart":-1}}', current: '{"debug":{"countEndpointStart":-1}}' }],
+          description: 'Protocol proposal patches debug.countEndpointStart',
+          changes: [{ key: 'debug', value: '{"countEndpointStart":-1}', current: '{"countEndpointStart":-1}' }],
           gracePeriodMs: graceDurationMs,
         }))
         saveCurrentRunState()
@@ -2167,8 +2236,8 @@ async function main(): Promise<void> {
         await applyAcceptedProposal(sc8ProtocolProposalN, proposer3, SLEEP_BUFFER_MS)
         const changes = await getProposalListOfChanges()
         assert(
-          changes.some(c => c?.change?.server?.debug?.countEndpointStart === -1),
-          'Expected protocol change in listOfChanges.change.server.debug.countEndpointStart',
+          changes.some(c => c?.change?.debug?.countEndpointStart === -1),
+          'Expected protocol change in listOfChanges.change.debug.countEndpointStart',
         )
       },
     ],
@@ -2503,12 +2572,14 @@ async function main(): Promise<void> {
     [
       '13.3 dao_vote validation failures are rejected',
       async () => {
+        const voter4Balance = await getBalance(voter4.address)
+        assert(voter4Balance !== null, `Expected voter4 account to exist before overspend validation`)
         const cases = [
           { name: 'length mismatch', weights: [1, 0, 0], spend: libToWei(minVoteSpendLib), reason: 'length' },
           { name: 'all zero', weights: [0, 0], spend: libToWei(minVoteSpendLib), reason: 'positive weight' },
           { name: 'negative weight', weights: [1, -1], spend: libToWei(minVoteSpendLib), reason: undefined },
           { name: 'below minimum spend', weights: [1, 0], spend: 1n, reason: 'minimum required' },
-          { name: 'spend upper bound', weights: [1, 0], spend: libToWei(TEST_ACCOUNT_FUND_LIB + 1), reason: 'exceeds account balance' },
+          { name: 'spend upper bound', weights: [1, 0], spend: voter4Balance + 1n, reason: 'exceeds account balance' },
         ]
         for (const c of cases) {
           const rejected = await injectExpectReject(
@@ -2536,7 +2607,8 @@ async function main(): Promise<void> {
       async () => {
         await castVote(sc13ProposalN, voter5, [1, 0], minVoteSpendLib)
         await finalizeVote(sc13ProposalN, proposer, SLEEP_BUFFER_MS)
-        const beforeGrace = await injectExpectReject(
+        const changesBefore = await getProposalListOfChanges()
+        const beforeGrace = await injectExpectRejectOrNoReceipt(
           { type: 'dao_apply_parameters', networkId: currentNetworkId, from: proposer.address, proposalId: daoProposalId(sc13ProposalN), timestamp: Date.now() },
           proposer,
           'Grace period',
@@ -2545,6 +2617,10 @@ async function main(): Promise<void> {
           assertReceiptTargetsProposal(beforeGrace.receipt, sc13ProposalN)
           assertFailedReceiptCharged(beforeGrace.receipt)
         }
+        const proposalAfter = await getProposal(sc13ProposalN)
+        const changesAfter = await getProposalListOfChanges()
+        assert(proposalAfter.status === 'accepted', `Early apply attempt changed proposal status to ${proposalAfter.status}`)
+        assert(changesAfter.length === changesBefore.length, 'Early apply attempt unexpectedly queued a network change')
       },
     ],
     [
