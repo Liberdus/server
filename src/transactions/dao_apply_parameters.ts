@@ -268,7 +268,10 @@ function coerce(existing: unknown, value: string): unknown {
     if (value !== 'true' && value !== 'false') throw new Error(`"${value}" is not a valid boolean — must be exactly "true" or "false"`)
     return value === 'true'
   }
-  if (typeof existing === 'bigint') return BigInt(value) // throws on invalid input
+  if (typeof existing === 'bigint') {
+    if (!/^-?\d+$/.test(value)) throw new Error(`"${value}" is not a valid integer string for this field`)
+    return BigInt(value)
+  }
   if (Array.isArray(existing)) {
     const parsed = JSON.parse(value)
     if (!Array.isArray(parsed)) throw new Error(`"${value}" does not parse to an array`)
