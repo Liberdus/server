@@ -2234,10 +2234,12 @@ async function main(): Promise<void> {
         await castVote(sc8ProtocolProposalN, voter8, [1, 0], minVoteSpendLib)
         await finalizeVote(sc8ProtocolProposalN, proposer3, SLEEP_BUFFER_MS)
         await applyAcceptedProposal(sc8ProtocolProposalN, proposer3, SLEEP_BUFFER_MS)
-        const changes = await getProposalListOfChanges()
-        assert(
-          changes.some(c => c?.change?.debug?.countEndpointStart === -1),
-          'Expected protocol change in listOfChanges.change.debug.countEndpointStart',
+        await pollUntil(
+          async () => {
+            const changes = await getProposalListOfChanges()
+            return changes.some(c => c?.change?.debug?.countEndpointStart === -1)
+          },
+          applyParamsPollMs,
         )
       },
     ],
