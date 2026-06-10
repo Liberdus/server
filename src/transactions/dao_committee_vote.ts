@@ -130,9 +130,12 @@ export const apply = (
   // of the proposal's DAO-param fields) — the committee that is authoritative for quorum/
   // decisiveness math is whoever is on the committee *at vote time*, e.g. if a governance
   // proposal changes committeeAddresses mid-review, in-flight reviews use the new list.
+  // Votes from members who have since been removed from the live committee are excluded —
+  // otherwise stale votes from a shrunken committee could produce phantom decisiveness.
+  const currentCommittee = new Set(network.current.dao.committeeAddresses)
   const committeeSize = network.current.dao.committeeAddresses.length
-  const acceptCount = proposal.committeeVotes.filter((v) => v.vote === 'accept').length
-  const withholdCount = proposal.committeeVotes.filter((v) => v.vote === 'withhold').length
+  const acceptCount = proposal.committeeVotes.filter((v) => v.vote === 'accept' && currentCommittee.has(v.memberAddress)).length
+  const withholdCount = proposal.committeeVotes.filter((v) => v.vote === 'withhold' && currentCommittee.has(v.memberAddress)).length
 
   // Decisive means the result cannot change even if all remaining members vote the other way
   const remainingVotes = committeeSize - acceptCount - withholdCount
