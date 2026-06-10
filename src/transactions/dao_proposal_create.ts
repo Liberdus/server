@@ -257,7 +257,7 @@ export const apply = (
   proposal.startTime = tx.startTime ?? txTimestamp
   proposal.description = tx.description
   proposal.options = tx.options
-  proposal.weights = tx.options.map(() => 0n)
+  proposal.totalVote = tx.options.map(() => 0n)
   proposal.voterRewardPool = 0n // fee added only when proposal reaches voting
   proposal.committeeVotes = []
   proposal.voterList = []

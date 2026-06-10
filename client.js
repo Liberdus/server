@@ -2987,7 +2987,7 @@ vorpal.command('dao proposal <number>', 'show details of a single DAO proposal')
       this.log(`Pct burned:   ${p.pctBurned}% (on withhold)`)
       // Voting state
       this.log(`Options:      ${p.options.join(', ')}`)
-      this.log(`Weights:      ${p.weights.map((w) => weiToLibStr(asBigIntForDisplay(w))).join(', ')} LIB`)
+      this.log(`Total weight: ${p.totalVote.map((w) => asBigIntForDisplay(w).toString()).join(', ')}`)
       this.log(`Reward pool:  ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
       if (p.status === 'accepted' || p.status === 'rejected' || p.status === 'applied')
         this.log(`Claimed:      ${weiToLibStr(asBigIntForDisplay(p.claimedAmount))} / ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)

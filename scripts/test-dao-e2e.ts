@@ -1518,7 +1518,7 @@ async function main(): Promise<void> {
           voter2,
         )
         const proposal = await getProposal(sc1ProposalN)
-        assert(asBigInt(proposal.weights[0]) > 0n, 'Expected weights[0] > 0 after votes')
+        assert(asBigInt(proposal.totalVote[0]) > 0n, 'Expected totalVote[0] > 0 after votes')
         assert(asBigInt(proposal.voterRewardPool) > 0n, 'Expected voterRewardPool > 0 after vote spend')
       },
     ],
@@ -2209,10 +2209,10 @@ async function main(): Promise<void> {
 
         const proposal = await getProposal(sc7ProposalN)
         const expected = [w1[0] + w2[0], w1[1] + w2[1], w1[2] + w2[2]]
-        const actual = proposal.weights.map(asBigInt)
+        const actual = proposal.totalVote.map(asBigInt)
         assert(
           actual.length === expected.length && actual.every((w, i) => w === expected[i]),
-          `Expected proposal.weights ${expected} to equal accumulated receipt optionWeights, got ${actual}`,
+          `Expected proposal.totalVote ${expected} to equal accumulated receipt optionWeights, got ${actual}`,
         )
       },
     ],
