@@ -86,8 +86,8 @@ export const apply = (
 
   // Find the winning option: highest weight wins; lower index wins on tie
   let winnerIndex = 0
-  for (let i = 1; i < proposal.weights.length; i++) {
-    if ((proposal.weights[i] ?? 0n) > (proposal.weights[winnerIndex] ?? 0n)) {
+  for (let i = 1; i < proposal.totalVote.length; i++) {
+    if ((proposal.totalVote[i] ?? 0n) > (proposal.totalVote[winnerIndex] ?? 0n)) {
       winnerIndex = i
     }
   }

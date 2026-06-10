@@ -825,7 +825,7 @@ export interface DaoProposalAccount {
   committeeVotes: Array<{ memberAddress: string; vote: 'accept' | 'withhold'; withheldReason?: string }>
   // Voting state
   options: string[]
-  weights: bigint[]
+  totalVote: bigint[]
   // Fixed once dao_vote_result runs (post-burn pool); accumulates pre-burn (proposalFeeWei +
   // sum of vote spends). claimedAmount tracks the running total paid out via dao_claim_reward;
   // remaining unclaimed = voterRewardPool - claimedAmount.

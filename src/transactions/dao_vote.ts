@@ -150,7 +150,7 @@ export const apply = (
   })
   for (let i = 0; i < optionWeights.length; i++) {
     if (optionWeights[i] === 0n) continue
-    proposal.weights[i] = (proposal.weights[i] ?? 0n) + optionWeights[i]
+    proposal.totalVote[i] = (proposal.totalVote[i] ?? 0n) + optionWeights[i]
   }
 
   // Add spend to reward pool

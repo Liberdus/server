@@ -27,7 +27,7 @@ export function daoProposalAccount(id: string): DaoProposalAccount {
     committeeAddresses: [],
     committeeVotes: [],
     options: [],
-    weights: [],
+    totalVote: [],
     voterRewardPool: 0n,
     claimedAmount: 0n,
     voterList: [],
