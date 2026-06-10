@@ -137,6 +137,20 @@ export const createFailedAppReceiptData = (
   applyResponse: ShardusTypes.ApplyResponse,
   reason: string,
 ): void => {
+  const from: UserAccount = wrappedStates[tx.from] && (wrappedStates[tx.from].data as unknown as UserAccount)
+  let transactionFee = BigInt(0)
+  if (from) {
+    const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+    if (from.data.balance >= txFeeWei) {
+      transactionFee = txFeeWei
+      from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
+    } else {
+      transactionFee = from.data.balance
+      from.data.balance = BigInt(0)
+    }
+    from.timestamp = txTimestamp
+  }
+
   const appReceiptData: AppReceiptData = {
     txId,
     timestamp: txTimestamp,
@@ -144,7 +158,7 @@ export const createFailedAppReceiptData = (
     reason,
     from: tx.from,
     type: tx.type,
-    transactionFee: BigInt(0),
+    transactionFee,
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
