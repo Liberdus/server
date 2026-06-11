@@ -2615,6 +2615,19 @@ function asBigIntForDisplay(value) {
   return 0n
 }
 
+// Mirrors utils.usdStrToWei on the server — converts a USD-string snapshot to Wei at the
+// given exchange rate.
+function usdStrToWei(usdStr, stabilityFactorStr) {
+  const stabilityFactor = ethers.parseEther(stabilityFactorStr)
+  const usdBigInt = ethers.parseEther(usdStr)
+  return (usdBigInt * 10n ** 18n) / stabilityFactor
+}
+
+async function getStabilityFactorStr() {
+  const res = await axios.get(`${PROTOCOL}://${HOST}/network/parameters`)
+  return res.data?.parameters?.current?.stabilityFactorStr ?? '1'
+}
+
 // Helper: fetch the meta account to get current count
 async function getDaoMeta() {
   const res = await axios.get(`${PROTOCOL}://${HOST}/dao/proposals/meta`)
@@ -2817,6 +2830,9 @@ vorpal.command('dao vote', 'cast a community vote on a proposal').action(async f
       return callback()
     }
 
+    const stabilityFactorStr = await getStabilityFactorStr()
+    const minimumSpendWei = usdStrToWei(proposal.minimumSpendUsdStr, stabilityFactorStr)
+
     const { optionIndex, spendLib } = await this.prompt([
       {
         type: 'list',
@@ -2827,8 +2843,8 @@ vorpal.command('dao vote', 'cast a community vote on a proposal').action(async f
       {
         type: 'number',
         name: 'spendLib',
-        message: `Amount of LIB to spend on this vote (minimum = ${weiToLibStr(asBigIntForDisplay(proposal.minimumSpendWei))} LIB):`,
-        default: Number(weiToLibStr(asBigIntForDisplay(proposal.minimumSpendWei))),
+        message: `Amount of LIB to spend on this vote (minimum = ${weiToLibStr(minimumSpendWei)} LIB):`,
+        default: Number(weiToLibStr(minimumSpendWei)),
       },
     ])
 
@@ -3010,9 +3026,11 @@ vorpal.command('dao proposal <number>', 'show details of a single DAO proposal')
       this.log(`ID:           ${p.id}`)
       this.log(`Status:       ${p.status}`)
       this.log(`Type:         ${p.proposalType}${p.emergency ? ' (EMERGENCY)' : ''}`)
-      // Economics snapshot
-      this.log(`Proposal fee: ${weiToLibStr(asBigIntForDisplay(p.proposalFeeWei))} LIB`)
-      this.log(`Vote thresh:  ${weiToLibStr(asBigIntForDisplay(p.voteThresholdWei))} LIB`)
+      // Economics snapshot (USD-string fields converted to LIB at the live rate)
+      const stabilityFactorStr = await getStabilityFactorStr()
+      this.log(`Proposal fee: ${weiToLibStr(usdStrToWei(p.proposalFeeUsdStr, stabilityFactorStr))} LIB (${p.proposalFeeUsdStr} USD)`)
+      this.log(`Vote thresh:  ${weiToLibStr(usdStrToWei(p.voteThresholdUsdStr, stabilityFactorStr))} LIB (${p.voteThresholdUsdStr} USD)`)
+      this.log(`Min spend:    ${weiToLibStr(usdStrToWei(p.minimumSpendUsdStr, stabilityFactorStr))} LIB (${p.minimumSpendUsdStr} USD)`)
       this.log(`Pct burned:   ${p.pctBurned}% (on withhold)`)
       // Voting state
       this.log(`Options:      ${p.options.join(', ')}`)

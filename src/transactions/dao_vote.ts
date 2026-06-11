@@ -93,16 +93,20 @@ export const validate = (
     response.reason = 'tx "weights" sum exceeds safe integer range; individual values are too large'
     return response
   }
-  if (tx.spend < proposal.minimumSpendWei) {
-    response.reason = `spend (${utils.weiToLib(tx.spend)} LIB) is less than the minimum required (${utils.weiToLib(proposal.minimumSpendWei)} LIB)`
+  // usdStrToWei re-converts at the current exchange rate, not the rate at proposal creation
+  const minimumSpendWei = utils.usdStrToWei(proposal.minimumSpendUsdStr, AccountsStorage.cachedNetworkAccount)
+  const voteThresholdWei = utils.usdStrToWei(proposal.voteThresholdUsdStr, AccountsStorage.cachedNetworkAccount)
+
+  if (tx.spend < minimumSpendWei) {
+    response.reason = `spend (${utils.weiToLib(tx.spend)} LIB) is less than the minimum required (${utils.weiToLib(minimumSpendWei)} LIB)`
     return response
   }
   if (tx.spend > from.data.balance) {
     response.reason = `spend (${utils.weiToLib(tx.spend)} LIB) exceeds account balance (${utils.weiToLib(from.data.balance)} LIB)`
     return response
   }
-  if (from.data.balance < proposal.voteThresholdWei) {
-    response.reason = `account balance (${utils.weiToLib(from.data.balance)} LIB) is below the vote threshold (${utils.weiToLib(proposal.voteThresholdWei)} LIB)`
+  if (from.data.balance < voteThresholdWei) {
+    response.reason = `account balance (${utils.weiToLib(from.data.balance)} LIB) is below the vote threshold (${utils.weiToLib(voteThresholdWei)} LIB)`
     return response
   }
 
@@ -141,9 +145,10 @@ export const apply = (
   const timeMultiplier = getTimeMultiplier(txTimestamp, votingStart, votingEnd, halfDuration)
 
   // Distribute weight across options proportionally; votes are additive across multiple casts.
+  const minimumSpendWei = utils.usdStrToWei(proposal.minimumSpendUsdStr, AccountsStorage.cachedNetworkAccount)
   const optionWeights = calculateOptionWeights({
     spend: tx.spend,
-    minimumSpendWei: proposal.minimumSpendWei,
+    minimumSpendWei,
     voteExponent: proposal.voteExponent,
     weights: tx.weights,
     timeMultiplier,

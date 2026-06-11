@@ -107,7 +107,7 @@ export const apply = (
       // Proposal fee (seeded into voterRewardPool at creation) is burned on withhold.
       proposal.voterRewardPool = 0n
     } else {
-      // voterRewardPool already seeded with proposalFeeWei at creation; kept as-is.
+      // voterRewardPool already seeded with the proposal fee at creation; kept as-is.
       proposal.status = 'voting'
     }
   }

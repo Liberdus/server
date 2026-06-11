@@ -816,10 +816,11 @@ export interface DaoProposalAccount {
   creationTime: number
   startTime: number
   gracePeriod: number
-  // Snapshot of DAO network params captured at proposal creation time
-  proposalFeeWei: bigint
-  voteThresholdWei: bigint
-  minimumSpendWei: bigint
+  // Snapshot of DAO network params captured at proposal creation time.
+  // USD-string values, converted to Wei via utils.usdStrToWei(...) at each point of use, against the current exchange rate.
+  proposalFeeUsdStr: string
+  voteThresholdUsdStr: string
+  minimumSpendUsdStr: string
   voteExponent: number
   pctBurned: number
   reviewDuration: number
