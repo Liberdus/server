@@ -2041,6 +2041,45 @@ async function main(): Promise<void> {
         assert(proposal.status === 'applied', `Expected status 'applied', got '${proposal.status}'`)
       },
     ],
+
+    [
+      '4.8  dao_burn_reward after claimEnd burns the unclaimed pool (no community voters)',
+      async () => {
+        const proposalBefore = await getProposal(sc4ProposalN)
+        await sleepUntilTimestamp(proposalBefore.claimEnd, 'claimEnd', SLEEP_BUFFER_MS)
+        const poolBefore = asBigInt(proposalBefore.voterRewardPool)
+        const { receipt } = await injectAndAssert(
+          {
+            type: 'dao_burn_reward',
+            networkId: currentNetworkId,
+            from: voter1.address,
+            proposalId: daoProposalId(sc4ProposalN),
+            timestamp: Date.now(),
+          },
+          voter1,
+        )
+        assert(asBigInt(receipt.additionalInfo.burned) === poolBefore, `Expected burned to equal pre-burn voterRewardPool ${poolBefore}, got ${receipt.additionalInfo.burned}`)
+        const proposal = await getProposal(sc4ProposalN)
+        assert(asBigInt(proposal.voterRewardPool) === asBigInt(proposal.claimedReward), `Expected voterRewardPool === claimedReward after burn, got ${proposal.voterRewardPool} vs ${proposal.claimedReward}`)
+      },
+    ],
+
+    [
+      '4.9  dao_burn_reward called again → rejected (nothing left to burn)',
+      async () => {
+        await injectExpectReject(
+          {
+            type: 'dao_burn_reward',
+            networkId: currentNetworkId,
+            from: voter2.address,
+            proposalId: daoProposalId(sc4ProposalN),
+            timestamp: Date.now(),
+          },
+          voter2,
+          'Nothing left to burn',
+        )
+      },
+    ],
     ],
   }
 
