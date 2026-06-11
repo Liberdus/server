@@ -1765,7 +1765,7 @@ async function main(): Promise<void> {
     ],
     bodySteps: [
     [
-      '2.2  committee_vote withhold x3 → decisive withhold, status withheld',
+      '2.2  committee_vote withhold x3 → decisive tally recorded, status remains review',
       async () => {
         // Use committee[2..4] (not [0..2]) to avoid concurrent account-lock conflicts in parallel
         // mode: S1 and S4 both start their body with committee[0] at the same time as S2, causing
@@ -1785,6 +1785,22 @@ async function main(): Promise<void> {
             committee[i],
           )
         }
+        // Regular proposals never flip status mid-review, even on a decisive withhold tally —
+        // only dao_committee_result (after reviewEnd) decides voting vs withheld.
+        const proposal = await getProposal(sc2ProposalN)
+        assert(proposal.status === 'review', `Expected status 'review' (decided only at reviewEnd), got '${proposal.status}'`)
+      },
+    ],
+
+    [
+      '2.2b committee_result after reviewEnd → withheld (>50% withhold votes)',
+      async () => {
+        const proposalBefore = await getProposal(sc2ProposalN)
+        await sleepUntilTimestamp(proposalBefore.reviewEnd, 'reviewEnd', SLEEP_BUFFER_MS)
+        await injectAndAssert(
+          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer.address, proposalId: daoProposalId(sc2ProposalN), timestamp: Date.now() },
+          proposer,
+        )
         const proposal = await getProposal(sc2ProposalN)
         assert(proposal.status === 'withheld', `Expected status 'withheld', got '${proposal.status}'`)
       },
@@ -1958,12 +1974,16 @@ async function main(): Promise<void> {
     ],
 
     [
-      '4.4  voterRewardPool === 0 (no community voting for emergency)',
+      '4.4  voterRewardPool > 0 (proposal fee seeded at creation, kept on accept)',
       async () => {
+        // The proposal fee is seeded into voterRewardPool at creation and only burned on a
+        // 'withheld' outcome. This emergency proposal was decisively accepted, so the seeded
+        // fee is kept — fully claimable via dao_burn_reward after claimEnd since there are no
+        // community voters.
         const proposal = await getProposal(sc4ProposalN)
         assert(
-          asBigInt(proposal.voterRewardPool) === 0n,
-          `Expected voterRewardPool = 0n for emergency, got ${proposal.voterRewardPool}`,
+          asBigInt(proposal.voterRewardPool) > 0n,
+          `Expected voterRewardPool > 0 (proposal fee kept) for emergency-accepted, got ${proposal.voterRewardPool}`,
         )
       },
     ],
@@ -2506,7 +2526,7 @@ async function main(): Promise<void> {
       },
     ],
     [
-      '10.3 Final withhold tally becomes decisive',
+      '10.3 Final withhold tally becomes decisive, but status remains review',
       async () => {
         for (let i = 1; i <= 2; i++) {
           await injectAndAssert(
@@ -2522,6 +2542,21 @@ async function main(): Promise<void> {
             committee[i],
           )
         }
+        // Regular proposals never flip status mid-review, even on a decisive withhold tally —
+        // only dao_committee_result (after reviewEnd) decides voting vs withheld.
+        const proposal = await getProposal(sc10ProposalN)
+        assert(proposal.status === 'review', `Expected status 'review' (decided only at reviewEnd), got ${proposal.status}`)
+      },
+    ],
+    [
+      '10.4 committee_result after reviewEnd → withheld (>50% withhold votes)',
+      async () => {
+        const proposalBefore = await getProposal(sc10ProposalN)
+        await sleepUntilTimestamp(proposalBefore.reviewEnd, 'reviewEnd', SLEEP_BUFFER_MS)
+        await injectAndAssert(
+          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer3.address, proposalId: daoProposalId(sc10ProposalN), timestamp: Date.now() },
+          proposer3,
+        )
         const proposal = await getProposal(sc10ProposalN)
         assert(proposal.status === 'withheld', `Expected decisive final withhold status, got ${proposal.status}`)
       },
