@@ -135,22 +135,25 @@ export const apply = (
   const acceptDecisive = acceptCount > withholdCount + remainingVotes
   const withholdDecisive = withholdCount > acceptCount + remainingVotes
 
-  if (withholdDecisive) {
-    proposal.status = 'withheld'
-    // Proposal fee is burned (voterRewardPool stays 0; fee was never added)
-  } else if (acceptDecisive && proposal.emergency) {
-    // Emergency proposals skip community voting and are accepted immediately on a decisive
-    // accept — no early transition exists for regular proposals (see note below). All phase
-    // boundaries (votingStart/votingEnd/claimEnd/applyEligibleAt) remain fully derived from
-    // startTime (see getVotingEnd/getClaimEnd/getApplyEligibleAt) — "emergency" speeds up the
-    // *decision*, not the nominal apply-eligibility schedule. voterRewardPool stays 0 — no
-    // community voters exist to claim it, so the proposal fee remains burned.
-    proposal.status = 'accepted'
+  // Only emergency proposals transition early on a decisive committee vote. Regular
+  // proposals never change status mid-review — per policy, "the user voting does not start
+  // until the review period is over" even once a result is decisive — so dao_committee_result
+  // (after reviewEnd) is the sole place a regular proposal's status is decided.
+  if (proposal.emergency) {
+    if (withholdDecisive) {
+      proposal.status = 'withheld'
+      // Proposal fee (seeded into voterRewardPool at creation) is burned on withhold.
+      proposal.voterRewardPool = 0n
+    } else if (acceptDecisive) {
+      // Emergency proposals skip community voting and are accepted immediately on a decisive
+      // accept. All phase boundaries (votingStart/votingEnd/claimEnd) remain fully derived
+      // from startTime (see getVotingEnd/getClaimEnd) — "emergency" speeds up the *decision*,
+      // not the nominal voting schedule. voterRewardPool keeps the proposal fee seeded at
+      // creation; with no community voters, claimedReward stays 0 and the full pool is
+      // burned via dao_burn_reward after claimEnd.
+      proposal.status = 'accepted'
+    }
   }
-  // Regular (non-emergency) proposals never transition early on a decisive accept — community
-  // voting does not start until the review period is over. dao_committee_result is the sole
-  // trigger for the review → voting transition once the review window has elapsed. A decisive
-  // withhold above is the only early-exit path for regular proposals.
 
   from.timestamp = txTimestamp
   proposal.timestamp = txTimestamp

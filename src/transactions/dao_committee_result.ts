@@ -88,13 +88,28 @@ export const apply = (
     // Emergency proposals: dao_committee_vote already flips status to 'accepted' the moment a
     // decisive accept is reached (and 'withheld' on a decisive withhold), so reaching this point
     // with status still 'review' means the committee never reached a decisive result before the
-    // (nominal) review window elapsed — the proposal is withheld.
+    // (nominal) review window elapsed — per policy, an emergency proposal that does not meet
+    // the +50% requirement is withheld after the review period is over.
     proposal.status = 'withheld'
+    // Proposal fee (seeded into voterRewardPool at creation) is burned on withhold.
+    proposal.voterRewardPool = 0n
   } else {
-    // Sole path from 'review' → 'voting' for regular proposals; dao_committee_vote never
-    // flips status early regardless of outcome — voting always starts at reviewEnd.
-    proposal.status = 'voting'
-    proposal.voterRewardPool = proposal.proposalFeeWei
+    // Sole path from 'review' → 'voting'/'withheld' for regular proposals; dao_committee_vote
+    // never flips status early regardless of outcome — the result is decided here, once, at
+    // reviewEnd. Per policy: >50% of committee members voting "withhold" -> withheld; otherwise
+    // (accept-majority, tie, or insufficient turnout) -> automatically accepted into voting.
+    const snapshotCommittee = new Set(proposal.committeeAddresses)
+    const committeeSize = proposal.committeeAddresses.length
+    const withholdCount = proposal.committeeVotes.filter((v) => v.vote === 'withhold' && snapshotCommittee.has(v.memberAddress)).length
+
+    if (withholdCount > committeeSize / 2) {
+      proposal.status = 'withheld'
+      // Proposal fee (seeded into voterRewardPool at creation) is burned on withhold.
+      proposal.voterRewardPool = 0n
+    } else {
+      // voterRewardPool already seeded with proposalFeeWei at creation; kept as-is.
+      proposal.status = 'voting'
+    }
   }
 
   from.timestamp = txTimestamp

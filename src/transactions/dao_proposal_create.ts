@@ -258,7 +258,10 @@ export const apply = (
   proposal.description = tx.description
   proposal.options = tx.options
   proposal.totalVote = tx.options.map(() => 0n)
-  proposal.voterRewardPool = 0n // fee added only when proposal reaches voting
+  // The proposal fee is added to the voter reward pool at creation time. It is burned (zeroed)
+  // if the proposal is later withheld by the committee; otherwise it is kept to incentivize
+  // voting (see dao_committee_vote/dao_committee_result withheld branches).
+  proposal.voterRewardPool = proposalFeeWei
   proposal.committeeVotes = []
   proposal.voterList = []
   proposal.claimList = []
