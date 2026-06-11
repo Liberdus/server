@@ -79,7 +79,7 @@ export const validate = (
     response.reason = 'Reward pool is empty'
     return response
   }
-  if (proposal.claimedAmount >= proposal.voterRewardPool) {
+  if (proposal.claimedReward >= proposal.voterRewardPool) {
     response.reason = 'Reward pool has been fully claimed'
     return response
   }
@@ -131,7 +131,7 @@ export const apply = (
   let reward = rewardNumerator / (2n * PRECISION)
 
   // Cap at remaining unclaimed pool to prevent rounding over-distribution
-  const remainingPool = SafeBigIntMath.subtract(proposal.voterRewardPool, proposal.claimedAmount)
+  const remainingPool = SafeBigIntMath.subtract(proposal.voterRewardPool, proposal.claimedReward)
   if (reward > remainingPool) {
     reward = remainingPool
   }
@@ -141,7 +141,7 @@ export const apply = (
   // Credit reward, deduct tx fee, and accumulate the claimed total
   from.data.balance = (from.data.balance ?? 0n) + reward
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
-  proposal.claimedAmount = proposal.claimedAmount + reward
+  proposal.claimedReward = proposal.claimedReward + reward
   proposal.claimList.push(tx.from)
 
   from.timestamp = txTimestamp
@@ -157,8 +157,8 @@ export const apply = (
     transactionFee: txFeeWei,
     additionalInfo: {
       reward: reward.toString(),
-      claimedAmount: proposal.claimedAmount.toString(),
-      remainingPool: SafeBigIntMath.subtract(proposal.voterRewardPool, proposal.claimedAmount).toString(),
+      claimedReward: proposal.claimedReward.toString(),
+      remainingPool: SafeBigIntMath.subtract(proposal.voterRewardPool, proposal.claimedReward).toString(),
     },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)

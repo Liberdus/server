@@ -867,6 +867,18 @@ export const schemaDaoClaimRewardTX = {
   additionalProperties: false,
 }
 
+export const schemaDaoBurnRewardTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId'],
+  additionalProperties: false,
+}
+
 export function initSchemas(): void {
   try {
     addSchemas()
@@ -943,6 +955,7 @@ function addSchemas(): void {
     [TXTypes.dao_vote_result]: schemaDaoVoteResultTX,
     [TXTypes.dao_apply_parameters]: schemaDaoApplyParametersTX,
     [TXTypes.dao_claim_reward]: schemaDaoClaimRewardTX,
+    [TXTypes.dao_burn_reward]: schemaDaoBurnRewardTX,
   }
   // Loop through TXTypes and register corresponding schemas
   Object.entries(txSchemaMap).forEach(([txType, schema]) => {
