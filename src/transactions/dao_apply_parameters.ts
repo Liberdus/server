@@ -66,7 +66,14 @@ export const validate = (
     response.reason = `Proposal type "${proposal.proposalType}" does not support parameter application`
     return response
   }
-  if (tx.timestamp < getApplyEligibleAt(proposal)) {
+  if (proposal.emergency) {
+    // Emergency proposals have no grace period and can be applied immediately after being
+    // accepted, but only a committee member may submit the apply tx.
+    if (!proposal.committeeAddresses.includes(tx.from)) {
+      response.reason = 'Only a committee member can submit an apply tx for an emergency proposal'
+      return response
+    }
+  } else if (tx.timestamp < getApplyEligibleAt(proposal)) {
     response.reason = 'Grace period has not elapsed yet'
     return response
   }

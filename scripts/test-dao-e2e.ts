@@ -1984,6 +1984,43 @@ async function main(): Promise<void> {
         )
       },
     ],
+
+    [
+      '4.6  dao_apply_parameters from non-committee member → rejected',
+      async () => {
+        await injectExpectReject(
+          {
+            type: 'dao_apply_parameters',
+            networkId: currentNetworkId,
+            from: voter1.address,
+            proposalId: daoProposalId(sc4ProposalN),
+            timestamp: Date.now(),
+          },
+          voter1,
+          'committee member',
+        )
+      },
+    ],
+
+    [
+      '4.7  dao_apply_parameters from committee member → applied immediately (no grace period)',
+      async () => {
+        // Emergency proposals can be applied immediately after acceptance — no need to wait
+        // for applyEligibleAt/gracePeriod (R20).
+        await injectAndAssert(
+          {
+            type: 'dao_apply_parameters',
+            networkId: currentNetworkId,
+            from: committee[0].address,
+            proposalId: daoProposalId(sc4ProposalN),
+            timestamp: Date.now(),
+          },
+          committee[0],
+        )
+        const proposal = await getProposal(sc4ProposalN)
+        assert(proposal.status === 'applied', `Expected status 'applied', got '${proposal.status}'`)
+      },
+    ],
     ],
   }
 
