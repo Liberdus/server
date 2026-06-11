@@ -1,15 +1,14 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
-import * as config from '../config'
 import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 import * as utils from '../utils'
 import { isUserAccount, isDaoProposalAccount } from '../@types/accountTypeGuards'
 import { LiberdusFlags } from '../config'
-import { getVotingEnd } from '../accounts/daoProposalAccount'
+import { getClaimEnd } from '../accounts/daoProposalAccount'
 
-export const validate_fields = (tx: Tx.DaoVoteResult, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
+export const validate_fields = (tx: Tx.DaoBurnReward, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (!LiberdusFlags.enableNewDAOTransactions) {
     response.reason = 'New DAO transactions are not enabled'
     return response
@@ -35,7 +34,7 @@ export const validate_fields = (tx: Tx.DaoVoteResult, response: ShardusTypes.Inc
 }
 
 export const validate = (
-  tx: Tx.DaoVoteResult,
+  tx: Tx.DaoBurnReward,
   wrappedStates: WrappedStates,
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
@@ -51,14 +50,23 @@ export const validate = (
     response.reason = 'Proposal account not found or is not a DaoProposalAccount'
     return response
   }
-  if (proposal.status !== 'voting') {
-    response.reason = `Proposal is not in voting status (current: ${proposal.status})`
+  if (proposal.status === 'withheld') {
+    response.reason = 'Proposal is withheld; the reward pool was already burned'
     return response
   }
-  if (tx.timestamp <= getVotingEnd(proposal)) {
-    response.reason = 'Voting period has not ended yet'
+  if (proposal.status !== 'accepted' && proposal.status !== 'applied' && proposal.status !== 'rejected') {
+    response.reason = `Proposal voting has not been finalised (current status: ${proposal.status})`
     return response
   }
+  if (tx.timestamp <= getClaimEnd(proposal)) {
+    response.reason = 'Claim period has not ended yet'
+    return response
+  }
+  if (proposal.voterRewardPool <= proposal.claimedReward) {
+    response.reason = 'Nothing left to burn'
+    return response
+  }
+
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   if (from.data.balance < txFeeWei) {
     response.reason = 'Insufficient balance to cover the transaction fee'
@@ -71,7 +79,7 @@ export const validate = (
 }
 
 export const apply = (
-  tx: Tx.DaoVoteResult,
+  tx: Tx.DaoBurnReward,
   txTimestamp: number,
   txId: string,
   wrappedStates: WrappedStates,
@@ -82,28 +90,10 @@ export const apply = (
   const proposal: DaoProposalAccount = wrappedStates[tx.proposalId].data as unknown as DaoProposalAccount
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
 
+  const burned = SafeBigIntMath.subtract(proposal.voterRewardPool, proposal.claimedReward)
+  proposal.voterRewardPool = proposal.claimedReward
+
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
-
-  // Find the winning option: highest weight wins; lower index wins on tie
-  let winnerIndex = 0
-  for (let i = 1; i < proposal.totalVote.length; i++) {
-    if ((proposal.totalVote[i] ?? 0n) > (proposal.totalVote[winnerIndex] ?? 0n)) {
-      winnerIndex = i
-    }
-  }
-
-  const winningOption = proposal.options[winnerIndex]
-  // Convention: index 0 is the affirmative option ('yes' or equivalent)
-  proposal.status = winnerIndex === 0 ? 'accepted' : 'rejected'
-
-  // Burn pctBurned% of the voter reward pool (reduce pool; coins leave circulation).
-  // Math.round guards against non-integer pctBurned values that could arise if a governance
-  // proposal sets it to a decimal (e.g. 50.5) — BigInt() throws on non-integer inputs.
-  const burnAmount = (proposal.voterRewardPool * BigInt(Math.round(proposal.pctBurned))) / 100n
-  // voterRewardPool becomes the fixed, immutable post-burn pool from this point on — every
-  // dao_claim_reward computes its share from this value, and claimedReward (still 0 here)
-  // tracks the running total paid out.
-  proposal.voterRewardPool = proposal.voterRewardPool - burnAmount
 
   from.timestamp = txTimestamp
   proposal.timestamp = txTimestamp
@@ -117,19 +107,17 @@ export const apply = (
     type: tx.type,
     transactionFee: txFeeWei,
     additionalInfo: {
-      winningOption,
-      status: proposal.status,
-      burnAmount: burnAmount.toString(),
-      remainingPool: proposal.voterRewardPool.toString(),
+      burned: burned.toString(),
+      voterRewardPool: proposal.voterRewardPool.toString(),
     },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
-  dapp.log('Applied dao_vote_result tx', tx.proposalId, proposal.status, 'winner:', winningOption)
+  dapp.log('Applied dao_burn_reward tx', tx.from, tx.proposalId, burned.toString())
 }
 
 export const createFailedAppReceiptData = (
-  tx: Tx.DaoVoteResult,
+  tx: Tx.DaoBurnReward,
   txTimestamp: number,
   txId: string,
   wrappedStates: WrappedStates,
@@ -165,14 +153,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.DaoVoteResult, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
+export const keys = (tx: Tx.DaoBurnReward, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [tx.proposalId]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.DaoVoteResult, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.DaoBurnReward, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from, tx.proposalId],
     wo: [],
@@ -186,11 +174,11 @@ export const createRelevantAccount = (
   dapp: Shardus,
   account: UserAccount | DaoProposalAccount,
   accountId: string,
-  tx: Tx.DaoVoteResult,
+  tx: Tx.DaoBurnReward,
   accountCreated = false,
 ): ShardusTypes.WrappedResponse => {
   if (!account) {
-    throw new Error(`dao_vote_result.createRelevantAccount: account ${accountId} does not exist`)
+    throw new Error(`dao_burn_reward.createRelevantAccount: account ${accountId} does not exist`)
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }

@@ -2942,6 +2942,35 @@ vorpal.command('dao claim reward', 'claim your voter reward for a proposal').act
 })
 
 // ---------------------------------------------------------------------------
+// dao burn reward
+// ---------------------------------------------------------------------------
+vorpal.command('dao burn reward', "burn the unclaimed voter reward for a proposal after the claim period ends").action(async function (args, callback) {
+  const answers = await this.prompt([
+    {
+      type: 'number',
+      name: 'proposalNumber',
+      message: 'Enter proposal number:',
+    },
+  ])
+
+  try {
+    const proposalId = daoProposalId(answers.proposalNumber)
+    const tx = {
+      type: 'dao_burn_reward',
+      from: USER.address,
+      proposalId,
+      timestamp: Date.now(),
+    }
+    signTransaction(tx)
+    const res = await injectTx(tx)
+    this.log(res)
+  } catch (err) {
+    this.log('Error:', err.message)
+  }
+  callback()
+})
+
+// ---------------------------------------------------------------------------
 // dao proposals  (query)
 // ---------------------------------------------------------------------------
 vorpal.command('dao proposals [status]', 'list DAO proposals, optionally filtered by status').action(async function (args, callback) {
@@ -2990,7 +3019,7 @@ vorpal.command('dao proposal <number>', 'show details of a single DAO proposal')
       this.log(`Total weight: ${p.totalVote.map((w) => asBigIntForDisplay(w).toString()).join(', ')}`)
       this.log(`Reward pool:  ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
       if (p.status === 'accepted' || p.status === 'rejected' || p.status === 'applied')
-        this.log(`Claimed:      ${weiToLibStr(asBigIntForDisplay(p.claimedAmount))} / ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
+        this.log(`Claimed:      ${weiToLibStr(asBigIntForDisplay(p.claimedReward))} / ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
       this.log(`Voters:       ${p.voterList.length} | Claims: ${p.claimList.length}`)
       // Committee votes
       const committeeSize = Array.isArray(p.committeeAddresses) ? p.committeeAddresses.length : 0

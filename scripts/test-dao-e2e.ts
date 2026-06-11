@@ -1547,7 +1547,7 @@ async function main(): Promise<void> {
           asBigInt(proposal.voterRewardPool) < asBigInt(proposalBefore.voterRewardPool),
           `Expected voterRewardPool to shrink after burn (before=${proposalBefore.voterRewardPool}, after=${proposal.voterRewardPool})`,
         )
-        assert(asBigInt(proposal.claimedAmount) === 0n, `Expected claimedAmount = 0 immediately after vote_result, got ${proposal.claimedAmount}`)
+        assert(asBigInt(proposal.claimedReward) === 0n, `Expected claimedReward = 0 immediately after vote_result, got ${proposal.claimedReward}`)
         assert(proposal.claimEnd > 0, `Expected claimEnd > 0, got ${proposal.claimEnd}`)
       },
     ],
@@ -2171,7 +2171,7 @@ async function main(): Promise<void> {
         assert(proposal.status === 'rejected', `Expected rejected status, got ${proposal.status}`)
         assert(burnAmount > 0n, `Expected non-zero burnAmount, got ${burnAmount}`)
         assert(asBigInt(proposal.voterRewardPool) > 0n, 'Expected voterRewardPool > 0 after burn on rejected proposal')
-        assert(asBigInt(proposal.claimedAmount) === 0n, `Expected claimedAmount = 0 before rejected-branch claims, got ${proposal.claimedAmount}`)
+        assert(asBigInt(proposal.claimedReward) === 0n, `Expected claimedReward = 0 before rejected-branch claims, got ${proposal.claimedReward}`)
         assert(asBigInt(proposal.voterRewardPool) === poolBeforeBurn - burnAmount, 'Rejected branch did not reduce voterRewardPool by burnAmount')
       },
     ],
@@ -2191,8 +2191,8 @@ async function main(): Promise<void> {
         const reward = asBigInt(receipt.additionalInfo.reward)
         assert(reward > 0n, 'Expected non-zero claim reward on rejected proposal')
         const proposal = await getProposal(sc6ProposalN)
-        assert(asBigInt(proposal.claimedAmount) === reward, `Expected claimedAmount to equal first rejected-branch claim reward ${reward}, got ${proposal.claimedAmount}`)
-        assert(asBigInt(proposal.claimedAmount) <= asBigInt(proposal.voterRewardPool), 'Rejected-branch claim exceeded the post-burn voterRewardPool')
+        assert(asBigInt(proposal.claimedReward) === reward, `Expected claimedReward to equal first rejected-branch claim reward ${reward}, got ${proposal.claimedReward}`)
+        assert(asBigInt(proposal.claimedReward) <= asBigInt(proposal.voterRewardPool), 'Rejected-branch claim exceeded the post-burn voterRewardPool')
       },
     ],
     [

@@ -83,6 +83,7 @@ export enum AJVSchemaEnum {
   dao_vote_result = 'dao_vote_result',
   dao_apply_parameters = 'dao_apply_parameters',
   dao_claim_reward = 'dao_claim_reward',
+  dao_burn_reward = 'dao_burn_reward',
 }
 
 export enum TXTypes {
@@ -148,6 +149,7 @@ export enum TXTypes {
   dao_vote_result = 'dao_vote_result',
   dao_apply_parameters = 'dao_apply_parameters',
   dao_claim_reward = 'dao_claim_reward',
+  dao_burn_reward = 'dao_burn_reward',
 }
 
 export interface BaseLiberdusTx {
@@ -558,6 +560,11 @@ export namespace Tx {
     from: string
     proposalId: string
   }
+
+  export interface DaoBurnReward extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+  }
 }
 
 export interface Signature {
@@ -827,10 +834,10 @@ export interface DaoProposalAccount {
   options: string[]
   totalVote: bigint[]
   // Fixed once dao_vote_result runs (post-burn pool); accumulates pre-burn (proposalFeeWei +
-  // sum of vote spends). claimedAmount tracks the running total paid out via dao_claim_reward;
-  // remaining unclaimed = voterRewardPool - claimedAmount.
+  // sum of vote spends). claimedReward tracks the running total paid out via dao_claim_reward;
+  // remaining unclaimed = voterRewardPool - claimedReward.
   voterRewardPool: bigint
-  claimedAmount: bigint
+  claimedReward: bigint
   voterList: Array<{ address: string; timestamp: number }>
   claimList: string[]
   // Proposal content
