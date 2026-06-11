@@ -106,15 +106,15 @@ const SCENARIOS: Scenario[] = [
   },
 ]
 
-// Builds only the fields the timing/weight helpers actually read — avoids invoking the
-// full daoProposalAccount() factory (which hashes the account and isn't needed here).
-function buildProposal(scenario: Scenario): Pick<DaoProposalAccount, 'startTime' | 'reviewDuration' | 'votingDuration' | 'emergency' | 'minimumSpendWei' | 'voteExponent' | 'options'> {
+// Builds only the fields the timing helpers actually read — avoids invoking the full
+// daoProposalAccount() factory (which hashes the account and isn't needed here).
+// minimumSpendWei is computed separately below since the proposal only stores a USD-string snapshot.
+function buildProposal(scenario: Scenario): Pick<DaoProposalAccount, 'startTime' | 'reviewDuration' | 'votingDuration' | 'emergency' | 'voteExponent' | 'options'> {
   return {
     startTime: scenario.startTime,
     reviewDuration: scenario.reviewDuration,
     votingDuration: scenario.votingDuration,
     emergency: scenario.emergency,
-    minimumSpendWei: libToWei(scenario.minimumSpendLib),
     voteExponent: scenario.voteExponent,
     options: scenario.weights.map((_, i) => `Option ${i}`),
   }
@@ -128,7 +128,8 @@ for (const scenario of SCENARIOS) {
   console.log(`\n=== ${scenario.name} ===`)
 
   const proposal = buildProposal(scenario)
-  console.log(`  [1] minimumSpendWei: ${proposal.minimumSpendWei.toString()} (= ${scenario.minimumSpendLib} LIB * 1e18)`)
+  const minimumSpendWei = libToWei(scenario.minimumSpendLib)
+  console.log(`  [1] minimumSpendWei: ${minimumSpendWei.toString()} (= ${scenario.minimumSpendLib} LIB * 1e18)`)
   console.log(`  [1] voteExponent:    ${proposal.voteExponent}`)
 
   const votingStart = getVotingStart(proposal as DaoProposalAccount)
@@ -160,7 +161,7 @@ for (const scenario of SCENARIOS) {
 
   const voteWeightInput = {
     spend: spendWei,
-    minimumSpendWei: proposal.minimumSpendWei,
+    minimumSpendWei,
     voteExponent: proposal.voteExponent,
     weights: scenario.weights,
     timeMultiplier,

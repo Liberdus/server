@@ -267,10 +267,10 @@ export const apply = (
   proposal.claimList = []
   proposal.gracePeriod = tx.gracePeriod
 
-  // Snapshot DAO params at creation time
-  proposal.proposalFeeWei = proposalFeeWei
-  proposal.voteThresholdWei = utils.usdStrToWei(daoParams.voteThresholdUsdStr, network)
-  proposal.minimumSpendWei = utils.usdStrToWei(daoParams.minimumSpendUsdStr, network)
+  // Snapshot DAO params as USD strings (see DaoProposalAccount field comments)
+  proposal.proposalFeeUsdStr = daoParams.proposalFeeUsdStr
+  proposal.voteThresholdUsdStr = daoParams.voteThresholdUsdStr
+  proposal.minimumSpendUsdStr = daoParams.minimumSpendUsdStr
   proposal.voteExponent = daoParams.voteExponent
   proposal.pctBurned = daoParams.pctBurned
   proposal.reviewDuration = daoParams.reviewDuration
