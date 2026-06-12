@@ -401,7 +401,17 @@ const shardusSetup = (): void => {
       const txId: string = utils.generateTxId(tx)
       try {
         // Call the transaction receipt pass for the global txs
-        if (transactions[tx.type].transactionReceiptPass) transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
+        if (transactions[tx.type].transactionReceiptPass) {
+          // globalMsg is only set by apply() on success; failed txs only run createFailedAppReceiptData
+          // and never populate appDefinedData.globalMsg, so this is the expected/normal path for those.
+          if ((applyResponse.appDefinedData as LiberdusTypes.OurAppDefinedData | undefined)?.globalMsg == null) {
+            console.log(
+              `transactionReceiptPass: no globalMsg for ${tx.type} tx ${txId}; appDefinedData=${Utils.safeStringify(applyResponse.appDefinedData)}`,
+            )
+          } else {
+            transactions[tx.type].transactionReceiptPass(tx, txId, wrappedStates, dapp, applyResponse)
+          }
+        }
         // Send the appReceiptData of the tx to cache in the network
         if (applyResponse == null || applyResponse.appReceiptData == null) return
         const appReceiptData = applyResponse.appReceiptData as LiberdusTypes.AppReceiptData
@@ -417,7 +427,7 @@ const shardusSetup = (): void => {
             throw new Error(`Error in sending appReceiptData for tx ${txId}: ${err.message}`)
           })
       } catch (e) {
-        console.log(`Error in transactionReceiptPass: ${e.message}`)
+        console.error(`Error in transactionReceiptPass: ${e.message}`)
       }
     },
     async getStateId(accountAddress: string, mustExist = true): Promise<string> {
