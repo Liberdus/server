@@ -23,7 +23,7 @@
  *
  * --parallel splits each scenario into a setup phase (proposal creation, run sequentially
  * to avoid meta.count races) and a body phase (all remaining steps run concurrently).
- * Output lines are prefixed with [S1]…[S5] to distinguish interleaved scenarios.
+ * Output lines are prefixed with [S1]…[S13] to distinguish interleaved scenarios.
  * Note: --step is not designed to combine with --parallel.
  *
  * By default the network is left running when any step fails so you can iterate on
@@ -37,6 +37,7 @@
  */
 
 import axios from 'axios'
+import { AsyncLocalStorage } from 'async_hooks'
 import execa from 'execa'
 import { ethers } from 'ethers'
 import fs from 'fs'
@@ -311,10 +312,41 @@ let currentNetworkId = ''
 /** Max wait for a queued TX to produce a receipt or for a proposal account to appear. */
 let txSettleTimeoutMs = 45_000
 
+/**
+ * Per-sender queue used only by the test harness. In parallel mode several scenarios can
+ * submit TXs from the same committee/proposer/voter account at once; serializing by sender
+ * avoids account-lock/cant_preApply contention while preserving concurrency for different
+ * accounts.
+ */
+const senderLocks = new Map<string, Promise<void>>()
+
+async function withSenderLock<T>(sender: string, fn: () => Promise<T>): Promise<T> {
+  const previous = senderLocks.get(sender) ?? Promise.resolve()
+  let release!: () => void
+  const blocker = new Promise<void>(resolve => {
+    release = resolve
+  })
+  const next = previous.catch(() => undefined).then(() => blocker)
+  senderLocks.set(sender, next)
+
+  await previous.catch(() => undefined)
+  try {
+    return await fn()
+  } finally {
+    release()
+    if (senderLocks.get(sender) === next) senderLocks.delete(sender)
+  }
+}
+
 // ─── Assertion ───────────────────────────────────────────────────────────────
 
 function assert(condition: boolean, message: string): asserts condition {
   if (!condition) throw new Error(message)
+}
+
+function refreshTxTimestamp<T extends object>(tx: T): void {
+  const timestampedTx = tx as { timestamp?: number }
+  timestampedTx.timestamp = Date.now()
 }
 
 function stepSortKey(name: string): StepSortKey {
@@ -339,12 +371,39 @@ function compareStepResults(a: StepResult, b: StepResult): number {
   )
 }
 
+interface StepLogContext {
+  stepId: string
+  scenario: number
+}
+
+const stepLogContext = new AsyncLocalStorage<StepLogContext>()
+
+function stepIdFromName(name: string): string {
+  return name.trim().split(/\s+/)[0] ?? '-'
+}
+
+function stepLogPrefix(): string {
+  const ctx = stepLogContext.getStore()
+  if (!ctx) return '[no-step]'
+  return `[S${ctx.scenario} ${ctx.stepId}]`
+}
+
+function verboseStepLog(...args: unknown[]): void {
+  if (!VERBOSE) return
+  console.log(`  ${stepLogPrefix()}`, ...args)
+}
+
 // ─── Step / Scenario runner ───────────────────────────────────────────────────
 
 async function step(name: string, fn: () => Promise<void>, prefix = ''): Promise<void> {
   const start = Date.now()
+  const key = stepSortKey(name)
+  const context = {
+    stepId: stepIdFromName(name),
+    scenario: key.scenario,
+  }
   try {
-    await fn()
+    await stepLogContext.run(context, fn)
     results.push({ name, status: 'pass', ms: Date.now() - start })
     console.log(`${prefix}  ✅  ${name}`)
   } catch (err: any) {
@@ -474,7 +533,7 @@ async function runScenariosParallel(defs: ScenarioDef[]): Promise<void> {
         continue
       }
       try {
-        await step(stepName, fn)
+        await step(stepName, fn, `[S${def.num}]`)
       } catch {
         failed = true
       }
@@ -687,17 +746,21 @@ async function tryWaitForTxReceipt(txId: string, timeoutMs = txSettleTimeoutMs):
   try {
     await pollUntil(
       async () => {
-        try {
-          const res = await apiGet(`/transaction/${txId}`)
-          const tx = res.data?.transaction
-          if (tx && typeof tx.success === 'boolean') {
-            receipt = tx as TxReceipt
+        const hosts = await getActiveHosts()
+        const results = await Promise.allSettled(
+          hosts.map(async host => {
+            const res = await axios.get(`http://${host}/transaction/${txId}`)
+            const tx = res.data?.transaction
+            return tx && typeof tx.success === 'boolean' ? (tx as TxReceipt) : null
+          }),
+        )
+        for (const result of results) {
+          if (result.status === 'fulfilled' && result.value) {
+            receipt = result.value
             return true
           }
-          return false
-        } catch {
-          return false
         }
+        return false
       },
       timeoutMs,
       2_000,
@@ -715,77 +778,31 @@ async function waitForTxReceipt(txId: string): Promise<TxReceipt> {
 }
 
 /**
- * Some validate-stage DAO rejects are queued and dropped without an app receipt.
- * This helper still fails if a success receipt appears, while allowing callers
- * to assert state stayed unchanged when no receipt is produced.
- */
-async function injectExpectRejectOrNoReceipt<T extends object>(
-  tx: T,
-  account: TestAccount,
-  reasonIncludes?: string,
-): Promise<{ reason: string; receipt?: TxReceipt; result?: any }> {
-  await signTx(tx, account)
-  if (VERBOSE) console.log('  → TX (expect reject/no receipt):', Utils.safeStringify(tx))
-  let result: any
-  try {
-    const res = await apiPost('/inject', { tx: Utils.safeStringify(tx) })
-    if (VERBOSE) console.log('  ← Inject:', JSON.stringify(res.data))
-    result = res.data?.result
-  } catch (err: any) {
-    if (err.response) {
-      if (VERBOSE) console.log('  ← Inject (HTTP error):', JSON.stringify(err.response.data))
-      result = err.response.data?.result ?? err.response.data
-    } else {
-      throw err
-    }
-  }
-
-  let reason = ''
-  let receipt: TxReceipt | undefined
-  if (result?.success === true && result.txId) {
-    receipt = (await tryWaitForTxReceipt(result.txId)) ?? undefined
-    if (receipt) {
-      if (VERBOSE) console.log('  ← Receipt:', JSON.stringify(receipt))
-      assert(receipt.success !== true, `Expected TX to be rejected but receipt succeeded`)
-      reason = receipt.reason ?? ''
-    }
-  } else {
-    assert(result?.success !== true, `Expected TX to be rejected but inject succeeded without failure`)
-    reason = result?.reason ?? ''
-  }
-
-  if (reasonIncludes && reason) {
-    assert(
-      reason.toLowerCase().includes(reasonIncludes.toLowerCase()),
-      `Expected rejection reason to include "${reasonIncludes}", got: "${reason}"`,
-    )
-  }
-  return { reason, receipt, result }
-}
-
-/**
  * Sign, inject, wait for receipt, and assert apply succeeded.
  * Posts { tx: Utils.safeStringify(tx) } — /inject reads req.body.tx via safeJsonParse.
  */
 async function injectAndAssert<T extends object>(tx: T, account: TestAccount): Promise<any> {
-  await signTx(tx, account)
-  if (VERBOSE) console.log('  → TX:', Utils.safeStringify(tx))
-  let res: any
-  try {
-    res = await apiPost('/inject', { tx: Utils.safeStringify(tx) })
-  } catch (err: any) {
-    if (err.response) throw new Error(`HTTP ${err.response.status}: ${JSON.stringify(err.response.data)}`)
-    throw err
-  }
-  if (VERBOSE) console.log('  ← Inject:', JSON.stringify(res.data))
-  assert(res.data.result?.success === true, `TX rejected at inject: ${JSON.stringify(res.data)}`)
-  const txId: string = res.data.result.txId
-  assert(typeof txId === 'string' && txId.length > 0, `Inject succeeded but no txId returned`)
+  return withSenderLock(account.address, async () => {
+    refreshTxTimestamp(tx)
+    await signTx(tx, account)
+    verboseStepLog('→ TX:', Utils.safeStringify(tx))
+    let res: any
+    try {
+      res = await apiPost('/inject', { tx: Utils.safeStringify(tx) })
+    } catch (err: any) {
+      if (err.response) throw new Error(`HTTP ${err.response.status}: ${JSON.stringify(err.response.data)}`)
+      throw err
+    }
+    verboseStepLog('← Inject:', JSON.stringify(res.data))
+    assert(res.data.result?.success === true, `TX rejected at inject: ${JSON.stringify(res.data)}`)
+    const txId: string = res.data.result.txId
+    assert(typeof txId === 'string' && txId.length > 0, `Inject succeeded but no txId returned`)
 
-  const receipt = await waitForTxReceipt(txId)
-  if (VERBOSE) console.log('  ← Receipt:', JSON.stringify(receipt))
-  assert(receipt.success === true, `TX failed at apply: ${JSON.stringify(receipt)}`)
-  return { ...res.data, receipt }
+    const receipt = await waitForTxReceipt(txId)
+    verboseStepLog('← Receipt:', JSON.stringify(receipt))
+    assert(receipt.success === true, `TX failed at apply: ${JSON.stringify(receipt)}`)
+    return { ...res.data, receipt }
+  })
 }
 
 /**
@@ -797,41 +814,44 @@ async function injectExpectReject<T extends object>(
   account: TestAccount,
   reasonIncludes?: string,
 ): Promise<{ reason: string; receipt?: TxReceipt; result?: any }> {
-  await signTx(tx, account)
-  if (VERBOSE) console.log('  → TX (expect reject):', Utils.safeStringify(tx))
-  let result: any
-  try {
-    const res = await apiPost('/inject', { tx: Utils.safeStringify(tx) })
-    if (VERBOSE) console.log('  ← Inject:', JSON.stringify(res.data))
-    result = res.data?.result
-  } catch (err: any) {
-    if (err.response) {
-      if (VERBOSE) console.log('  ← Inject (HTTP error):', JSON.stringify(err.response.data))
-      result = err.response.data?.result ?? err.response.data
-    } else {
-      throw err
+  return withSenderLock(account.address, async () => {
+    refreshTxTimestamp(tx)
+    await signTx(tx, account)
+    verboseStepLog('→ TX (expect reject):', Utils.safeStringify(tx))
+    let result: any
+    try {
+      const res = await apiPost('/inject', { tx: Utils.safeStringify(tx) })
+      verboseStepLog('← Inject:', JSON.stringify(res.data))
+      result = res.data?.result
+    } catch (err: any) {
+      if (err.response) {
+        verboseStepLog('← Inject (HTTP error):', JSON.stringify(err.response.data))
+        result = err.response.data?.result ?? err.response.data
+      } else {
+        throw err
+      }
     }
-  }
 
-  let reason: string
-  let receipt: TxReceipt | undefined
-  if (result?.success === true && result.txId) {
-    receipt = await waitForTxReceipt(result.txId)
-    if (VERBOSE) console.log('  ← Receipt:', JSON.stringify(receipt))
-    assert(receipt.success !== true, `Expected TX to be rejected at apply but receipt succeeded`)
-    reason = receipt.reason ?? ''
-  } else {
-    assert(result?.success !== true, `Expected TX to be rejected but inject succeeded without failure`)
-    reason = result?.reason ?? ''
-  }
+    let reason: string
+    let receipt: TxReceipt | undefined
+    if (result?.success === true && result.txId) {
+      receipt = await waitForTxReceipt(result.txId)
+      verboseStepLog('← Receipt:', JSON.stringify(receipt))
+      assert(receipt.success !== true, `Expected TX to be rejected at apply but receipt succeeded`)
+      reason = receipt.reason ?? ''
+    } else {
+      assert(result?.success !== true, `Expected TX to be rejected but inject succeeded without failure`)
+      reason = result?.reason ?? ''
+    }
 
-  if (reasonIncludes) {
-    assert(
-      reason.toLowerCase().includes(reasonIncludes.toLowerCase()),
-      `Expected rejection reason to include "${reasonIncludes}", got: "${reason}"`,
-    )
-  }
-  return { reason, receipt, result }
+    if (reasonIncludes) {
+      assert(
+        reason.toLowerCase().includes(reasonIncludes.toLowerCase()),
+        `Expected rejection reason to include "${reasonIncludes}", got: "${reason}"`,
+      )
+    }
+    return { reason, receipt, result }
+  })
 }
 
 /**
@@ -925,6 +945,37 @@ async function getCurrentNetworkValue(key: string): Promise<unknown> {
   return (await getNetworkParameters())?.current?.[key]
 }
 
+function getPathValue(value: any, path: string[]): unknown {
+  return path.reduce((current, key) => current?.[key], value)
+}
+
+async function waitForNetworkParameter(path: string[], expected: unknown, timeoutMs: number): Promise<void> {
+  let lastValue: unknown
+  try {
+    await pollUntil(async () => {
+      const parameters = await getNetworkParameters()
+      lastValue = getPathValue(parameters, path)
+      return String(lastValue) === String(expected)
+    }, timeoutMs)
+  } catch {
+    throw new Error(
+      `Timed out waiting for /network/parameters.${path.join('.')} === ${JSON.stringify(expected)}; last value was ${JSON.stringify(lastValue)}`,
+    )
+  }
+}
+
+async function waitForListOfChanges(description: string, matches: (change: any) => boolean, timeoutMs: number): Promise<void> {
+  let lastChanges: any[] = []
+  try {
+    await pollUntil(async () => {
+      lastChanges = await getProposalListOfChanges()
+      return lastChanges.some(matches)
+    }, timeoutMs)
+  } catch {
+    throw new Error(`Timed out waiting for listOfChanges to contain ${description}; last listOfChanges was ${JSON.stringify(lastChanges)}`)
+  }
+}
+
 async function getTransactionFeeWei(): Promise<bigint> {
   const current = (await getNetworkParameters())?.current
   if (!current?.transactionFee) return 0n
@@ -971,8 +1022,14 @@ async function createDaoProposal(opts: ProposalCreateOptions): Promise<number> {
   return proposalNumber
 }
 
-async function committeeAcceptToVoting(proposalNumber: number, actor: TestAccount, committee: TestAccount[], sleepBufferMs: number): Promise<void> {
-  for (let i = 0; i < 3; i++) {
+async function committeeAcceptToVoting(
+  proposalNumber: number,
+  actor: TestAccount,
+  committee: TestAccount[],
+  sleepBufferMs: number,
+  committeeIndexes: number[] = [0, 1, 2],
+): Promise<void> {
+  for (const i of committeeIndexes) {
     await injectAndAssert(
       {
         type: 'dao_committee_vote',
@@ -1034,7 +1091,7 @@ async function finalizeVote(proposalNumber: number, actor: TestAccount, sleepBuf
 async function applyAcceptedProposal(proposalNumber: number, actor: TestAccount, sleepBufferMs: number): Promise<any> {
   const proposalBeforeApply = await getProposal(proposalNumber)
   await sleepUntilTimestamp(proposalBeforeApply.applyEligibleAt, 'applyEligibleAt', sleepBufferMs)
-  return injectAndAssert(
+  const result = await injectAndAssert(
     {
       type: 'dao_apply_parameters',
       networkId: currentNetworkId,
@@ -1044,6 +1101,9 @@ async function applyAcceptedProposal(proposalNumber: number, actor: TestAccount,
     },
     actor,
   )
+  const proposal = await getProposal(proposalNumber)
+  assert(proposal.status === 'applied', `Expected proposal #${proposalNumber} status 'applied', got '${proposal.status}'`)
+  return result
 }
 
 function assertReceiptTargetsProposal(receipt: TxReceipt, proposalNumber: number): void {
@@ -1056,27 +1116,29 @@ function assertFailedReceiptCharged(receipt: TxReceipt): void {
 
 /** Inject a 'create' TX to fund an account and wait for apply receipt. */
 async function fundAccount(account: TestAccount, amountLib: number): Promise<void> {
-  const tx: any = {
-    type: 'create',
-    networkId: currentNetworkId,
-    from: account.address,
-    amount: libToWei(amountLib),
-    timestamp: Date.now(),
-  }
-  await signTx(tx, account)
-  if (VERBOSE) console.log(`  → Fund TX (${amountLib} LIB):`, Utils.safeStringify(tx))
-  let res: any
-  try {
-    res = await apiPost('/inject', { tx: Utils.safeStringify(tx) })
-  } catch (err: any) {
-    if (err.response) throw new Error(`Fund TX HTTP ${err.response.status}: ${JSON.stringify(err.response.data)}`)
-    throw err
-  }
-  assert(res.data.result?.success === true, `Fund TX failed: ${JSON.stringify(res.data)}`)
-  const txId: string = res.data.result.txId
-  const receipt = await waitForTxReceipt(txId)
-  if (VERBOSE) console.log('  ← Fund receipt:', JSON.stringify(receipt))
-  assert(receipt.success === true, `Fund TX failed at apply: ${JSON.stringify(receipt)}`)
+  return withSenderLock(account.address, async () => {
+    const tx: any = {
+      type: 'create',
+      networkId: currentNetworkId,
+      from: account.address,
+      amount: libToWei(amountLib),
+      timestamp: Date.now(),
+    }
+    await signTx(tx, account)
+    verboseStepLog(`→ Fund TX (${amountLib} LIB):`, Utils.safeStringify(tx))
+    let res: any
+    try {
+      res = await apiPost('/inject', { tx: Utils.safeStringify(tx) })
+    } catch (err: any) {
+      if (err.response) throw new Error(`Fund TX HTTP ${err.response.status}: ${JSON.stringify(err.response.data)}`)
+      throw err
+    }
+    assert(res.data.result?.success === true, `Fund TX failed: ${JSON.stringify(res.data)}`)
+    const txId: string = res.data.result.txId
+    const receipt = await waitForTxReceipt(txId)
+    verboseStepLog('← Fund receipt:', JSON.stringify(receipt))
+    assert(receipt.success === true, `Fund TX failed at apply: ${JSON.stringify(receipt)}`)
+  })
 }
 
 // ─── Network management ───────────────────────────────────────────────────────
@@ -1086,11 +1148,15 @@ async function fundAccount(account: TestAccount, amountLib: number): Promise<voi
  * replacing the previously hardcoded localhost:9001.
  */
 async function pickActiveHost(): Promise<string> {
+  const hosts = await getActiveHosts()
+  return hosts[Math.floor(Math.random() * hosts.length)]
+}
+
+async function getActiveHosts(): Promise<string[]> {
   const res = await axios.get(`http://${ARCHIVER_HOST}/nodelist`)
   const nodeList: Array<{ ip: string; port: number }> = res.data?.nodeList ?? []
   assert(nodeList.length > 0, 'Archiver returned an empty nodelist')
-  const node = nodeList[Math.floor(Math.random() * nodeList.length)]
-  return `${node.ip}:${node.port}`
+  return nodeList.map(node => `${node.ip}:${node.port}`)
 }
 
 /** GET against a freshly-picked node from the archiver's /nodelist. */
@@ -1186,7 +1252,9 @@ async function waitForNetwork(): Promise<NetworkTiming> {
 
 // Default short DAO durations (ms) for the E2E run, used unless overridden in process.env.
 const E2E_DAO_DURATION_DEFAULTS: Record<string, string> = {
-  DAO_REVIEW_DURATION_MS: '90000',
+  // Parallel mode performs all proposal-creation setup before scenario bodies. Keep the
+  // committee review window large enough that early setup proposals are still reviewable.
+  DAO_REVIEW_DURATION_MS: PARALLEL ? '300000' : '90000',
   DAO_VOTING_DURATION_MS: '90000',
   DAO_GRACE_DURATION_MS: '30000',
   DAO_CLAIM_DURATION_MS: '150000',
@@ -1250,10 +1318,10 @@ async function main(): Promise<void> {
     while (accounts.length < count) accounts.push(makeAccount())
     return accounts
   }
-  const proposers = makePool(savedProposerKeys, 3)
-  const voters = makePool(savedVoterKeys, 8)
-  const [proposer, proposer2, proposer3] = proposers
-  const [voter1, voter2, voter3, voter4, voter5, voter6, voter7, voter8] = voters
+  const proposers = makePool(savedProposerKeys, 10)
+  const voters = makePool(savedVoterKeys, 16)
+  const [proposer, proposer2, proposer3, proposer4, proposer5, proposer6, proposer7, proposer8, proposer9, proposer10] = proposers
+  const [voter1, voter2, voter3, voter4, voter5, voter6, voter7, voter8, voter9, voter10, voter11, voter12] = voters
 
   const proposalNumbers: Record<string, number> = {
     ...(savedState?.proposalNumbers ?? {}),
@@ -1341,15 +1409,27 @@ async function main(): Promise<void> {
   // Derived timing constants
   const applyParamsPollMs = cycleDurationMs * 5   // global message fires at cycle+3
   const SLEEP_BUFFER_MS = 5_000
+  const futureStartDelayMs = PARALLEL ? 120_000 : reviewDurationMs + 60_000
   // In --parallel mode, multiple scenario bodies submit overlapping transactions onto the same
   // network concurrently, which measurably increases per-tx queue/confirmation latency (we saw a
-  // decisive dao_committee_vote blow past the default 2-cycle budget and time out at 37s under
-  // 5-way concurrency). Give receipts more cycles' worth of headroom to settle when running
-  // concurrently so a slow-but-successful confirmation doesn't get misreported as a failure.
-  txSettleTimeoutMs = cycleDurationMs * (PARALLEL ? 5 : 2) + SLEEP_BUFFER_MS
+  // decisive dao_committee_vote blow past the default 2-cycle budget and an expected-reject
+  // dao_apply_parameters receipt arrive after the old 5-cycle parallel budget). Give receipts
+  // enough headroom to settle when running concurrently so a slow-but-valid confirmation doesn't
+  // get misreported as a failure.
+  txSettleTimeoutMs = cycleDurationMs * (PARALLEL ? 8 : 2) + SLEEP_BUFFER_MS
 
   const minVoteSpendLib = usdStrToLibCeil(minimumSpendUsdStr, stabilityFactorStr)
   console.log(`Funding: ${TEST_ACCOUNT_FUND_LIB} LIB per account; min dao_vote spend≈${minVoteSpendLib} LIB`)
+
+  if (!NO_START) {
+    await step('0.1  Fund all DAO E2E accounts', async () => {
+      await Promise.all([
+        ...proposers.map(a => fundAccount(a, TEST_ACCOUNT_FUND_LIB)),
+        ...voters.map(a => fundAccount(a, TEST_ACCOUNT_FUND_LIB)),
+        ...committee.map(c => fundAccount(c, TEST_ACCOUNT_FUND_LIB)),
+      ])
+    })
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Scenario 1 — Happy path: governance proposal → accepted → applied → claimed
@@ -1358,17 +1438,6 @@ async function main(): Promise<void> {
     num: 1,
     name: 'Scenario 1 — Happy path (governance → accepted → applied → claimed)',
     setupSteps: [
-    [
-      '1.1  Fund all accounts',
-      async () => {
-        await Promise.all([
-          ...proposers.map(a => fundAccount(a, TEST_ACCOUNT_FUND_LIB)),
-          ...voters.map(a => fundAccount(a, TEST_ACCOUNT_FUND_LIB)),
-          ...committee.map(c => fundAccount(c, TEST_ACCOUNT_FUND_LIB)),
-        ])
-      },
-    ],
-
     [
       '1.2  dao_proposal_create (governance: voteExponent 1.1 → 1.2)',
       async () => {
@@ -1602,21 +1671,11 @@ async function main(): Promise<void> {
           `    Polling up to ${applyParamsPollMs / 1000}s for network.current.dao.voteExponent === 1.2` +
             ` (global msg at cycle+3 ≈ ${(cycleDurationMs * 3) / 1000}s)...`,
         )
-        await pollUntil(async () => {
-          try {
-            const r = await apiGet('/network/parameters')
-            return r.data?.parameters?.current?.dao?.voteExponent === 1.2
-          } catch {
-            return false
-          }
-        }, applyParamsPollMs)
-
-        const r = await apiGet('/network/parameters')
-        const listOfChanges: any[] = r.data?.parameters?.listOfChanges ?? []
-        const hasChange = listOfChanges.some((c: any) => c?.appData?.dao?.voteExponent === 1.2)
-        assert(
-          hasChange,
-          `Expected listOfChanges to contain appData.dao.voteExponent=1.2, got: ${JSON.stringify(listOfChanges)}`,
+        await waitForNetworkParameter(['current', 'dao', 'voteExponent'], 1.2, applyParamsPollMs)
+        await waitForListOfChanges(
+          'appData.dao.voteExponent=1.2',
+          c => String(c?.appData?.dao?.voteExponent) === '1.2',
+          applyParamsPollMs,
         )
       },
     ],
@@ -1767,10 +1826,7 @@ async function main(): Promise<void> {
     [
       '2.2  committee_vote withhold x3 → decisive tally recorded, status remains review',
       async () => {
-        // Use committee[2..4] (not [0..2]) to avoid concurrent account-lock conflicts in parallel
-        // mode: S1 and S4 both start their body with committee[0] at the same time as S2, causing
-        // cant_preApply failures on the shared from-account execution shard. Starting from index 2
-        // ensures S2's first vote has no temporal overlap with S1/S4's first votes.
+        // Rotate away from the default [0..2] group so parallel runs spread committee traffic.
         for (let i = 2; i < 5; i++) {
           await injectAndAssert(
             {
@@ -1952,7 +2008,7 @@ async function main(): Promise<void> {
     [
       '4.3  committee_vote accept x3 → accepted (emergency skips community voting)',
       async () => {
-        for (let i = 0; i < 3; i++) {
+        for (const i of [3, 4, 0]) {
           await injectAndAssert(
             {
               type: 'dao_committee_vote',
@@ -2039,6 +2095,12 @@ async function main(): Promise<void> {
         )
         const proposal = await getProposal(sc4ProposalN)
         assert(proposal.status === 'applied', `Expected status 'applied', got '${proposal.status}'`)
+        await waitForNetworkParameter(['current', 'dao', 'pctBurned'], 70, applyParamsPollMs)
+        await waitForListOfChanges(
+          'appData.dao.pctBurned=70',
+          c => String(c?.appData?.dao?.pctBurned) === '70',
+          applyParamsPollMs,
+        )
       },
     ],
 
@@ -2175,13 +2237,12 @@ async function main(): Promise<void> {
   const sc6: ScenarioDef = {
     num: 6,
     name: 'Scenario 6 — Rejected proposal path',
-    sequentialOnly: true,
     setupSteps: [
     [
       '6.1  Create governance proposal for rejected branch',
       async () => {
         sc6ProposalN = setProposalN('sc6', await createDaoProposal({
-          proposer: proposer2,
+          proposer: proposer4,
           description: 'Rejected branch test proposal',
           changes: [{ key: 'pctBurned', value: '55', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -2194,17 +2255,17 @@ async function main(): Promise<void> {
     [
       '6.2  Advance proposal to voting',
       async () => {
-        await committeeAcceptToVoting(sc6ProposalN, proposer2, committee, SLEEP_BUFFER_MS)
+        await committeeAcceptToVoting(sc6ProposalN, proposer4, committee, SLEEP_BUFFER_MS, [2, 3, 4])
       },
     ],
     [
       '6.3  Community votes no → dao_vote_result rejects and burns reward pool',
       async () => {
-        await castVote(sc6ProposalN, voter3, [0, 1], minVoteSpendLib)
-        await castVote(sc6ProposalN, voter4, [0, 1], minVoteSpendLib)
+        await castVote(sc6ProposalN, voter9, [0, 1], minVoteSpendLib)
+        await castVote(sc6ProposalN, voter10, [0, 1], minVoteSpendLib)
         const beforeResult = await getProposal(sc6ProposalN)
         const poolBeforeBurn = asBigInt(beforeResult.voterRewardPool)
-        const { receipt } = await finalizeVote(sc6ProposalN, proposer2, SLEEP_BUFFER_MS)
+        const { receipt } = await finalizeVote(sc6ProposalN, proposer4, SLEEP_BUFFER_MS)
         const proposal = await getProposal(sc6ProposalN)
         const burnAmount = asBigInt(receipt.additionalInfo.burnAmount)
         assert(proposal.status === 'rejected', `Expected rejected status, got ${proposal.status}`)
@@ -2221,11 +2282,11 @@ async function main(): Promise<void> {
           {
             type: 'dao_claim_reward',
             networkId: currentNetworkId,
-            from: voter3.address,
+            from: voter9.address,
             proposalId: daoProposalId(sc6ProposalN),
             timestamp: Date.now(),
           },
-          voter3,
+          voter9,
         )
         const reward = asBigInt(receipt.additionalInfo.reward)
         assert(reward > 0n, 'Expected non-zero claim reward on rejected proposal')
@@ -2237,26 +2298,27 @@ async function main(): Promise<void> {
     [
       '6.5  dao_apply_parameters rejected for rejected proposal',
       async () => {
-        const changesBefore = await getProposalListOfChanges()
-        const rejected = await injectExpectRejectOrNoReceipt(
+        const rejected = await injectExpectReject(
           {
             type: 'dao_apply_parameters',
             networkId: currentNetworkId,
-            from: proposer2.address,
+            from: proposer4.address,
             proposalId: daoProposalId(sc6ProposalN),
             timestamp: Date.now(),
           },
-          proposer2,
+          proposer4,
           'accepted status',
         )
-        if (rejected.receipt) {
-          assertReceiptTargetsProposal(rejected.receipt, sc6ProposalN)
-          assertFailedReceiptCharged(rejected.receipt)
-        }
+        assert(rejected.receipt != null, 'Expected rejected dao_apply_parameters to produce a receipt')
+        assertReceiptTargetsProposal(rejected.receipt, sc6ProposalN)
+        assertFailedReceiptCharged(rejected.receipt)
         const proposalAfter = await getProposal(sc6ProposalN)
         const changesAfter = await getProposalListOfChanges()
         assert(proposalAfter.status === 'rejected', `Rejected proposal apply attempt changed status to ${proposalAfter.status}`)
-        assert(changesAfter.length === changesBefore.length, 'Rejected proposal apply attempt unexpectedly queued a network change')
+        assert(
+          !changesAfter.some(c => String(c?.appData?.dao?.pctBurned) === '55'),
+          'Rejected proposal apply attempt unexpectedly queued pctBurned=55',
+        )
       },
     ],
     ],
@@ -2268,13 +2330,12 @@ async function main(): Promise<void> {
   const sc7: ScenarioDef = {
     num: 7,
     name: 'Scenario 7 — Multi-option weighted-vote distribution',
-    sequentialOnly: true,
     setupSteps: [
     [
       '7.1  Create 3-option governance proposal',
       async () => {
         sc7ProposalN = setProposalN('sc7', await createDaoProposal({
-          proposer: proposer3,
+          proposer: proposer5,
           description: 'Multi-option weighted vote test proposal',
           options: ['yes', 'no', 'abstain'],
           changes: [{ key: 'voteExponent', value: '1.2', current: '1.5' }],
@@ -2288,7 +2349,7 @@ async function main(): Promise<void> {
     [
       '7.2  Advance proposal to voting',
       async () => {
-        await committeeAcceptToVoting(sc7ProposalN, proposer3, committee, SLEEP_BUFFER_MS)
+        await committeeAcceptToVoting(sc7ProposalN, proposer5, committee, SLEEP_BUFFER_MS, [0, 3, 4])
       },
     ],
     [
@@ -2321,14 +2382,13 @@ async function main(): Promise<void> {
   const sc8: ScenarioDef = {
     num: 8,
     name: 'Scenario 8 — Economic & protocol proposal types',
-    sequentialOnly: true,
     setupSteps: [
     [
       '8.1  Create economic proposal for top-level network.current key',
       async () => {
         const currentValue = String(await getCurrentNetworkValue('nodeRewardAmountUsdStr'))
         sc8EconomicProposalN = setProposalN('sc8Economic', await createDaoProposal({
-          proposer: proposer2,
+          proposer: proposer6,
           proposalType: 'economic',
           description: 'Economic proposal updates nodeRewardAmountUsdStr',
           changes: [{ key: 'nodeRewardAmountUsdStr', value: '1.25', current: currentValue }],
@@ -2345,7 +2405,7 @@ async function main(): Promise<void> {
           {
             type: 'dao_proposal_create',
             networkId: currentNetworkId,
-            from: proposer2.address,
+            from: proposer6.address,
             proposalId: daoProposalId(n),
             metaId: daoMetaId(),
             proposalType: 'governance',
@@ -2356,58 +2416,20 @@ async function main(): Promise<void> {
             governance: { changes: [{ key: 'nodeRewardAmountUsdStr', value: '1.5', current: '1.0' }] },
             timestamp: Date.now(),
           },
-          proposer2,
+          proposer6,
           'governance parameters',
         )
       },
     ],
-    ],
-    bodySteps: [
     [
-      '8.3  Economic proposal applies via apply_change_network_param',
-      async () => {
-        await committeeAcceptToVoting(sc8EconomicProposalN, proposer2, committee, SLEEP_BUFFER_MS)
-        await castVote(sc8EconomicProposalN, voter7, [1, 0], minVoteSpendLib)
-        await finalizeVote(sc8EconomicProposalN, proposer2, SLEEP_BUFFER_MS)
-        await applyAcceptedProposal(sc8EconomicProposalN, proposer2, SLEEP_BUFFER_MS)
-        await pollUntil(async () => String(await getCurrentNetworkValue('nodeRewardAmountUsdStr')) === '1.25', applyParamsPollMs)
-        const changes = await getProposalListOfChanges()
-        assert(changes.some(c => c?.appData?.nodeRewardAmountUsdStr === '1.25'), 'Expected economic change in listOfChanges.appData.nodeRewardAmountUsdStr')
-      },
-    ],
-    [
-      '8.4  Create and apply protocol proposal via apply_change_config',
-      async () => {
-        sc8ProtocolProposalN = setProposalN('sc8Protocol', await createDaoProposal({
-          proposer: proposer3,
-          proposalType: 'protocol',
-          description: 'Protocol proposal patches debug.countEndpointStart',
-          changes: [{ key: 'debug', value: '{"countEndpointStart":-1}', current: '{"countEndpointStart":-1}' }],
-          gracePeriodMs: graceDurationMs,
-        }))
-        saveCurrentRunState()
-        await committeeAcceptToVoting(sc8ProtocolProposalN, proposer3, committee, SLEEP_BUFFER_MS)
-        await castVote(sc8ProtocolProposalN, voter8, [1, 0], minVoteSpendLib)
-        await finalizeVote(sc8ProtocolProposalN, proposer3, SLEEP_BUFFER_MS)
-        await applyAcceptedProposal(sc8ProtocolProposalN, proposer3, SLEEP_BUFFER_MS)
-        await pollUntil(
-          async () => {
-            const changes = await getProposalListOfChanges()
-            return changes.some(c => c?.change?.debug?.countEndpointStart === -1)
-          },
-          applyParamsPollMs,
-        )
-      },
-    ],
-    [
-      '8.5  Reject protocol proposal using network-only key',
+      '8.3  Reject protocol proposal using network-only key',
       async () => {
         const n = await nextProposalNumber()
         await injectExpectReject(
           {
             type: 'dao_proposal_create',
             networkId: currentNetworkId,
-            from: proposer3.address,
+            from: proposer7.address,
             proposalId: daoProposalId(n),
             metaId: daoMetaId(),
             proposalType: 'protocol',
@@ -2418,8 +2440,47 @@ async function main(): Promise<void> {
             protocol: { changes: [{ key: 'nodeRewardAmountUsdStr', value: '1.5', current: '1.25' }] },
             timestamp: Date.now(),
           },
-          proposer3,
+          proposer7,
           'protocol parameters',
+        )
+      },
+    ],
+    ],
+    bodySteps: [
+    [
+      '8.4  Economic proposal applies via apply_change_network_param',
+      async () => {
+        await committeeAcceptToVoting(sc8EconomicProposalN, proposer6, committee, SLEEP_BUFFER_MS, [1, 2, 3])
+        await castVote(sc8EconomicProposalN, voter7, [1, 0], minVoteSpendLib)
+        await finalizeVote(sc8EconomicProposalN, proposer6, SLEEP_BUFFER_MS)
+        await applyAcceptedProposal(sc8EconomicProposalN, proposer6, SLEEP_BUFFER_MS)
+        await waitForNetworkParameter(['current', 'nodeRewardAmountUsdStr'], '1.25', applyParamsPollMs)
+        await waitForListOfChanges(
+          'appData.nodeRewardAmountUsdStr=1.25',
+          c => String(c?.appData?.nodeRewardAmountUsdStr) === '1.25',
+          applyParamsPollMs,
+        )
+      },
+    ],
+    [
+      '8.5  Create and apply protocol proposal via apply_change_config',
+      async () => {
+        sc8ProtocolProposalN = setProposalN('sc8Protocol', await createDaoProposal({
+          proposer: proposer7,
+          proposalType: 'protocol',
+          description: 'Protocol proposal patches debug.countEndpointStart',
+          changes: [{ key: 'debug', value: '{"countEndpointStart":-1}', current: '{"countEndpointStart":-1}' }],
+          gracePeriodMs: graceDurationMs,
+        }))
+        saveCurrentRunState()
+        await committeeAcceptToVoting(sc8ProtocolProposalN, proposer7, committee, SLEEP_BUFFER_MS, [0, 2, 4])
+        await castVote(sc8ProtocolProposalN, voter8, [1, 0], minVoteSpendLib)
+        await finalizeVote(sc8ProtocolProposalN, proposer7, SLEEP_BUFFER_MS)
+        await applyAcceptedProposal(sc8ProtocolProposalN, proposer7, SLEEP_BUFFER_MS)
+        await waitForListOfChanges(
+          'change.debug.countEndpointStart=-1',
+          c => c?.change?.debug?.countEndpointStart === -1,
+          applyParamsPollMs,
         )
       },
     ],
@@ -2432,7 +2493,6 @@ async function main(): Promise<void> {
   const sc9: ScenarioDef = {
     num: 9,
     name: 'Scenario 9 — Future startTime scheduling regression',
-    sequentialOnly: true,
     setupSteps: [
     [
       '9.1  Reject proposal with startTime before creation time',
@@ -2468,7 +2528,7 @@ async function main(): Promise<void> {
           description: 'Future startTime scheduling test',
           changes: [{ key: 'pctBurned', value: '53', current: '50' }],
           gracePeriodMs: graceDurationMs,
-          startTime: nowPlus(30_000),
+          startTime: nowPlus(futureStartDelayMs),
         }))
         saveCurrentRunState()
         const proposal = await getProposal(sc9ProposalN)
@@ -2484,12 +2544,12 @@ async function main(): Promise<void> {
           {
             type: 'dao_committee_vote',
             networkId: currentNetworkId,
-            from: committee[0].address,
+            from: committee[1].address,
             proposalId: daoProposalId(sc9ProposalN),
             vote: 'accept',
             timestamp: Date.now(),
           },
-          committee[0],
+          committee[1],
           'has not started',
         )
       },
@@ -2503,12 +2563,12 @@ async function main(): Promise<void> {
           {
             type: 'dao_committee_vote',
             networkId: currentNetworkId,
-            from: committee[0].address,
+            from: committee[1].address,
             proposalId: daoProposalId(sc9ProposalN),
             vote: 'accept',
             timestamp: Date.now(),
           },
-          committee[0],
+          committee[1],
         )
         const proposal = await getProposal(sc9ProposalN)
         assert(proposal.status === 'review', `Expected proposal to remain review before reviewEnd, got ${proposal.status}`)
@@ -2523,13 +2583,12 @@ async function main(): Promise<void> {
   const sc10: ScenarioDef = {
     num: 10,
     name: 'Scenario 10 — Committee vote changing during review',
-    sequentialOnly: true,
     setupSteps: [
     [
       '10.1 Create proposal for committee vote switch',
       async () => {
         sc10ProposalN = setProposalN('sc10', await createDaoProposal({
-          proposer: proposer3,
+          proposer: proposer8,
           description: 'Committee vote switch test',
           changes: [{ key: 'pctBurned', value: '54', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -2543,23 +2602,23 @@ async function main(): Promise<void> {
       '10.2 Committee member switches accept → withhold',
       async () => {
         await injectAndAssert(
-          { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(sc10ProposalN), vote: 'accept', timestamp: Date.now() },
-          committee[0],
+          { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[3].address, proposalId: daoProposalId(sc10ProposalN), vote: 'accept', timestamp: Date.now() },
+          committee[3],
         )
         await injectAndAssert(
           {
             type: 'dao_committee_vote',
             networkId: currentNetworkId,
-            from: committee[0].address,
+            from: committee[3].address,
             proposalId: daoProposalId(sc10ProposalN),
             vote: 'withhold',
             withheldReason: 'Need more analysis',
             timestamp: Date.now(),
           },
-          committee[0],
+          committee[3],
         )
         const proposal = await getProposal(sc10ProposalN)
-        const entries = proposal.committeeVotes.filter(v => v.memberAddress === committee[0].address)
+        const entries = proposal.committeeVotes.filter(v => v.memberAddress === committee[3].address)
         assert(entries.length === 1, `Expected one committeeVotes entry after switch, got ${entries.length}`)
         assert(entries[0].vote === 'withhold' && entries[0].withheldReason === 'Need more analysis', `Expected latest withhold vote, got ${JSON.stringify(entries[0])}`)
       },
@@ -2567,7 +2626,7 @@ async function main(): Promise<void> {
     [
       '10.3 Final withhold tally becomes decisive, but status remains review',
       async () => {
-        for (let i = 1; i <= 2; i++) {
+        for (const i of [1, 4]) {
           await injectAndAssert(
             {
               type: 'dao_committee_vote',
@@ -2609,13 +2668,12 @@ async function main(): Promise<void> {
   const sc11: ScenarioDef = {
     num: 11,
     name: 'Scenario 11 — Non-decisive committee split',
-    sequentialOnly: true,
     setupSteps: [
     [
       '11.1 Create proposal for tied committee split',
       async () => {
         sc11ProposalN = setProposalN('sc11', await createDaoProposal({
-          proposer: proposer2,
+          proposer: proposer9,
           description: 'Non-decisive committee split test',
           changes: [{ key: 'pctBurned', value: '56', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -2628,13 +2686,13 @@ async function main(): Promise<void> {
     [
       '11.2 Cast 2 accept and 2 withhold votes',
       async () => {
-        for (const i of [0, 1]) {
+        for (const i of [2, 4]) {
           await injectAndAssert(
             { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[i].address, proposalId: daoProposalId(sc11ProposalN), vote: 'accept', timestamp: Date.now() },
             committee[i],
           )
         }
-        for (const i of [2, 3]) {
+        for (const i of [0, 1]) {
           await injectAndAssert(
             {
               type: 'dao_committee_vote',
@@ -2658,8 +2716,8 @@ async function main(): Promise<void> {
         const proposalBefore = await getProposal(sc11ProposalN)
         await sleepUntilTimestamp(proposalBefore.reviewEnd, 'reviewEnd', SLEEP_BUFFER_MS)
         await injectAndAssert(
-          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer2.address, proposalId: daoProposalId(sc11ProposalN), timestamp: Date.now() },
-          proposer2,
+          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer9.address, proposalId: daoProposalId(sc11ProposalN), timestamp: Date.now() },
+          proposer9,
         )
         const proposal = await getProposal(sc11ProposalN)
         assert(proposal.status === 'voting', `Expected tied proposal to advance to voting, got ${proposal.status}`)
@@ -2674,13 +2732,12 @@ async function main(): Promise<void> {
   const sc12: ScenarioDef = {
     num: 12,
     name: 'Scenario 12 — Time decay and spend boost',
-    sequentialOnly: true,
     setupSteps: [
     [
       '12.1 Create proposal for time-decay/spend-boost checks',
       async () => {
         sc12ProposalN = setProposalN('sc12', await createDaoProposal({
-          proposer: proposer3,
+          proposer: proposer5,
           description: 'Time decay and spend boost test',
           changes: [{ key: 'pctBurned', value: '57', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -2693,17 +2750,17 @@ async function main(): Promise<void> {
     [
       '12.2 Advance proposal to voting',
       async () => {
-        await committeeAcceptToVoting(sc12ProposalN, proposer3, committee, SLEEP_BUFFER_MS)
+        await committeeAcceptToVoting(sc12ProposalN, proposer5, committee, SLEEP_BUFFER_MS, [1, 3, 4])
       },
     ],
     [
       '12.3 Early/min, early/high, and late/min votes show expected relative weights',
       async () => {
-        const earlyMin = await castVote(sc12ProposalN, voter1, [1, 0], minVoteSpendLib)
-        const earlyHigh = await castVote(sc12ProposalN, voter2, [1, 0], minVoteSpendLib * 3)
+        const earlyMin = await castVote(sc12ProposalN, voter9, [1, 0], minVoteSpendLib)
+        const earlyHigh = await castVote(sc12ProposalN, voter10, [1, 0], minVoteSpendLib * 3)
         const proposalBeforeLate = await getProposal(sc12ProposalN)
         await sleepUntilTimestamp(proposalBeforeLate.votingStart + Math.floor(proposalBeforeLate.votingDuration * 0.75), 'late second-half vote point', SLEEP_BUFFER_MS)
-        const lateMin = await castVote(sc12ProposalN, voter3, [1, 0], minVoteSpendLib)
+        const lateMin = await castVote(sc12ProposalN, voter11, [1, 0], minVoteSpendLib)
         const earlyMinWeight = asBigInt(earlyMin.receipt.additionalInfo.optionWeights[0])
         const earlyHighWeight = asBigInt(earlyHigh.receipt.additionalInfo.optionWeights[0])
         const lateMinWeight = asBigInt(lateMin.receipt.additionalInfo.optionWeights[0])
@@ -2720,13 +2777,12 @@ async function main(): Promise<void> {
   const sc13: ScenarioDef = {
     num: 13,
     name: 'Scenario 13 — Targeted validation/rejection sweep',
-    sequentialOnly: true,
     setupSteps: [
     [
       '13.1 Create live voting proposal for rejection checks',
       async () => {
         sc13ProposalN = setProposalN('sc13', await createDaoProposal({
-          proposer,
+          proposer: proposer10,
           description: 'Validation sweep proposal',
           changes: [{ key: 'pctBurned', value: '58', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -2734,77 +2790,15 @@ async function main(): Promise<void> {
         saveCurrentRunState()
       },
     ],
-    ],
-    bodySteps: [
     [
-      '13.2 Advance proposal to voting',
-      async () => {
-        await committeeAcceptToVoting(sc13ProposalN, proposer, committee, SLEEP_BUFFER_MS)
-      },
-    ],
-    [
-      '13.3 dao_vote validation failures are rejected',
-      async () => {
-        const voter4Balance = await getBalance(voter4.address)
-        assert(voter4Balance !== null, `Expected voter4 account to exist before overspend validation`)
-        const cases = [
-          { name: 'length mismatch', weights: [1, 0, 0], spend: libToWei(minVoteSpendLib), reason: 'length' },
-          { name: 'all zero', weights: [0, 0], spend: libToWei(minVoteSpendLib), reason: 'positive weight' },
-          { name: 'negative weight', weights: [1, -1], spend: libToWei(minVoteSpendLib), reason: undefined },
-          { name: 'below minimum spend', weights: [1, 0], spend: 1n, reason: 'minimum required' },
-          { name: 'spend upper bound', weights: [1, 0], spend: voter4Balance + 1n, reason: 'exceeds account balance' },
-        ]
-        for (const c of cases) {
-          const rejected = await injectExpectReject(
-            {
-              type: 'dao_vote',
-              networkId: currentNetworkId,
-              from: voter4.address,
-              proposalId: daoProposalId(sc13ProposalN),
-              weights: c.weights,
-              spend: c.spend,
-              timestamp: Date.now(),
-            },
-            voter4,
-            c.reason,
-          )
-          if (rejected.receipt) {
-            assertReceiptTargetsProposal(rejected.receipt, sc13ProposalN)
-            assertFailedReceiptCharged(rejected.receipt)
-          }
-        }
-      },
-    ],
-    [
-      '13.4 Accepted proposal still rejects apply before grace period',
-      async () => {
-        await castVote(sc13ProposalN, voter5, [1, 0], minVoteSpendLib)
-        await finalizeVote(sc13ProposalN, proposer, SLEEP_BUFFER_MS)
-        const changesBefore = await getProposalListOfChanges()
-        const beforeGrace = await injectExpectRejectOrNoReceipt(
-          { type: 'dao_apply_parameters', networkId: currentNetworkId, from: proposer.address, proposalId: daoProposalId(sc13ProposalN), timestamp: Date.now() },
-          proposer,
-          'Grace period',
-        )
-        if (beforeGrace.receipt) {
-          assertReceiptTargetsProposal(beforeGrace.receipt, sc13ProposalN)
-          assertFailedReceiptCharged(beforeGrace.receipt)
-        }
-        const proposalAfter = await getProposal(sc13ProposalN)
-        const changesAfter = await getProposalListOfChanges()
-        assert(proposalAfter.status === 'accepted', `Early apply attempt changed proposal status to ${proposalAfter.status}`)
-        assert(changesAfter.length === changesBefore.length, 'Early apply attempt unexpectedly queued a network change')
-      },
-    ],
-    [
-      '13.5 claim/proposal/API validation failures are rejected',
+      '13.2 Reject proposal with too many options',
       async () => {
         const badStartN = await nextProposalNumber()
         await injectExpectReject(
           {
             type: 'dao_proposal_create',
             networkId: currentNetworkId,
-            from: proposer.address,
+            from: proposer10.address,
             proposalId: daoProposalId(badStartN),
             metaId: daoMetaId(),
             proposalType: 'governance',
@@ -2815,9 +2809,76 @@ async function main(): Promise<void> {
             governance: { changes: [{ key: 'pctBurned', value: '59', current: '50' }] },
             timestamp: Date.now(),
           },
-          proposer,
+          proposer10,
         )
-
+      },
+    ],
+    ],
+    bodySteps: [
+    [
+      '13.3 Advance proposal to voting',
+      async () => {
+        await committeeAcceptToVoting(sc13ProposalN, proposer10, committee, SLEEP_BUFFER_MS, [0, 1, 4])
+      },
+    ],
+    [
+      '13.4 dao_vote validation failures are rejected',
+      async () => {
+        const voter12Balance = await getBalance(voter12.address)
+        assert(voter12Balance !== null, `Expected voter12 account to exist before overspend validation`)
+        const cases = [
+          { name: 'length mismatch', weights: [1, 0, 0], spend: libToWei(minVoteSpendLib), reason: 'length' },
+          { name: 'all zero', weights: [0, 0], spend: libToWei(minVoteSpendLib), reason: 'positive weight' },
+          { name: 'negative weight', weights: [1, -1], spend: libToWei(minVoteSpendLib), reason: undefined },
+          { name: 'below minimum spend', weights: [1, 0], spend: 1n, reason: 'minimum required' },
+          { name: 'spend upper bound', weights: [1, 0], spend: voter12Balance + 1n, reason: 'exceeds account balance' },
+        ]
+        for (const c of cases) {
+          const rejected = await injectExpectReject(
+            {
+              type: 'dao_vote',
+              networkId: currentNetworkId,
+              from: voter12.address,
+              proposalId: daoProposalId(sc13ProposalN),
+              weights: c.weights,
+              spend: c.spend,
+              timestamp: Date.now(),
+            },
+            voter12,
+            c.reason,
+          )
+          if (rejected.receipt) {
+            assertReceiptTargetsProposal(rejected.receipt, sc13ProposalN)
+            assertFailedReceiptCharged(rejected.receipt)
+          }
+        }
+      },
+    ],
+    [
+      '13.5 Accepted proposal still rejects apply before grace period',
+      async () => {
+        await castVote(sc13ProposalN, voter11, [1, 0], minVoteSpendLib)
+        await finalizeVote(sc13ProposalN, proposer10, SLEEP_BUFFER_MS)
+        const beforeGrace = await injectExpectReject(
+          { type: 'dao_apply_parameters', networkId: currentNetworkId, from: proposer10.address, proposalId: daoProposalId(sc13ProposalN), timestamp: Date.now() },
+          proposer10,
+          'Grace period',
+        )
+        assert(beforeGrace.receipt != null, 'Expected early dao_apply_parameters rejection to produce a receipt')
+        assertReceiptTargetsProposal(beforeGrace.receipt, sc13ProposalN)
+        assertFailedReceiptCharged(beforeGrace.receipt)
+        const proposalAfter = await getProposal(sc13ProposalN)
+        const changesAfter = await getProposalListOfChanges()
+        assert(proposalAfter.status === 'accepted', `Early apply attempt changed proposal status to ${proposalAfter.status}`)
+        assert(
+          !changesAfter.some(c => String(c?.appData?.dao?.pctBurned) === '58'),
+          'Early apply attempt unexpectedly queued pctBurned=58',
+        )
+      },
+    ],
+    [
+      '13.6 API validation failures are rejected',
+      async () => {
         const badStatus = await apiGet('/dao/proposals?status=bogus', { validateStatus: () => true })
         assert(badStatus.status === 400, `Expected invalid status filter HTTP 400, got ${badStatus.status}`)
       },
