@@ -91,6 +91,7 @@ export const apply = (
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
 
   const burned = SafeBigIntMath.subtract(proposal.voterRewardPool, proposal.claimedReward)
+  proposal.finalBurnedReward = burned
   proposal.voterRewardPool = proposal.claimedReward
 
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)

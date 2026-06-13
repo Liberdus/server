@@ -92,6 +92,7 @@ export const apply = (
     // the +50% requirement is withheld after the review period is over.
     proposal.status = 'withheld'
     // Proposal fee (seeded into voterRewardPool at creation) is burned on withhold.
+    proposal.initialBurnedReward = proposal.voterRewardPool
     proposal.voterRewardPool = 0n
   } else {
     // Sole path from 'review' → 'voting'/'withheld' for regular proposals; dao_committee_vote
@@ -105,6 +106,7 @@ export const apply = (
     if (withholdCount > committeeSize / 2) {
       proposal.status = 'withheld'
       // Proposal fee (seeded into voterRewardPool at creation) is burned on withhold.
+      proposal.initialBurnedReward = proposal.voterRewardPool
       proposal.voterRewardPool = 0n
     } else {
       // voterRewardPool already seeded with the proposal fee at creation; kept as-is.
