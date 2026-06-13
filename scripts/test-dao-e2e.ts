@@ -2030,16 +2030,15 @@ async function main(): Promise<void> {
     ],
 
     [
-      '4.4  voterRewardPool > 0 (proposal fee seeded at creation, kept on accept)',
+      '4.4  voterRewardPool === 0 (emergency proposals are exempt from the proposal fee)',
       async () => {
-        // The proposal fee is seeded into voterRewardPool at creation and only burned on a
-        // 'withheld' outcome. This emergency proposal was decisively accepted, so the seeded
-        // fee is kept — fully claimable via dao_burn_reward after claimEnd since there are no
-        // community voters.
+        // Emergency proposals pay no proposal fee, so nothing is seeded into voterRewardPool
+        // at creation. With no community voters and a decisive accept (no withhold), the pool
+        // stays at 0 — nothing is burned either.
         const proposal = await getProposal(sc4ProposalN)
         assert(
-          asBigInt(proposal.voterRewardPool) > 0n,
-          `Expected voterRewardPool > 0 (proposal fee kept) for emergency-accepted, got ${proposal.voterRewardPool}`,
+          asBigInt(proposal.voterRewardPool) === 0n,
+          `Expected voterRewardPool === 0n (no proposal fee for emergency proposals), got ${proposal.voterRewardPool}`,
         )
       },
     ],
@@ -2105,12 +2104,11 @@ async function main(): Promise<void> {
     ],
 
     [
-      '4.8  dao_burn_reward after claimEnd burns the unclaimed pool (no community voters)',
+      '4.8  dao_burn_reward after claimEnd → rejected (pool already 0, nothing to burn for fee-exempt emergency proposal)',
       async () => {
         const proposalBefore = await getProposal(sc4ProposalN)
         await sleepUntilTimestamp(proposalBefore.claimEnd, 'claimEnd', SLEEP_BUFFER_MS)
-        const poolBefore = asBigInt(proposalBefore.voterRewardPool)
-        const { receipt } = await injectAndAssert(
+        await injectExpectReject(
           {
             type: 'dao_burn_reward',
             networkId: currentNetworkId,
@@ -2119,15 +2117,13 @@ async function main(): Promise<void> {
             timestamp: Date.now(),
           },
           voter1,
+          'Nothing left to burn',
         )
-        assert(asBigInt(receipt.additionalInfo.burned) === poolBefore, `Expected burned to equal pre-burn voterRewardPool ${poolBefore}, got ${receipt.additionalInfo.burned}`)
-        const proposal = await getProposal(sc4ProposalN)
-        assert(asBigInt(proposal.voterRewardPool) === asBigInt(proposal.claimedReward), `Expected voterRewardPool === claimedReward after burn, got ${proposal.voterRewardPool} vs ${proposal.claimedReward}`)
       },
     ],
 
     [
-      '4.9  dao_burn_reward called again → rejected (nothing left to burn)',
+      '4.9  dao_burn_reward called again → still rejected (nothing left to burn)',
       async () => {
         await injectExpectReject(
           {
