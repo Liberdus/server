@@ -207,7 +207,8 @@ export const validate = (
     }
   }
 
-  const proposalFeeWei = utils.usdStrToWei(daoParams.proposalFeeUsdStr, network)
+  // Emergency proposals do not require a proposal fee.
+  const proposalFeeWei = tx.emergency ? 0n : utils.usdStrToWei(daoParams.proposalFeeUsdStr, network)
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   const totalRequired = proposalFeeWei + txFeeWei
 
@@ -235,7 +236,8 @@ export const apply = (
   const proposal: DaoProposalAccount = wrappedStates[tx.proposalId].data as unknown as DaoProposalAccount
 
   const daoParams = network.current.dao
-  const proposalFeeWei = utils.usdStrToWei(daoParams.proposalFeeUsdStr, network)
+  // Emergency proposals do not require a proposal fee.
+  const proposalFeeWei = tx.emergency ? 0n : utils.usdStrToWei(daoParams.proposalFeeUsdStr, network)
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
 
   // Deduct fees
