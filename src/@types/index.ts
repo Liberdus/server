@@ -839,6 +839,10 @@ export interface DaoProposalAccount {
   // remaining unclaimed = voterRewardPool - claimedReward.
   voterRewardPool: bigint
   claimedReward: bigint
+  // initialBurnedReward - the amount burned before the claim period (decisive committee withhold).
+  // finalBurnedReward - the amount burned after the claim period (unclaimed remainder via dao_burn_reward).
+  initialBurnedReward: bigint
+  finalBurnedReward: bigint
   voterList: Array<{ address: string; timestamp: number }>
   claimList: string[]
   // Proposal content

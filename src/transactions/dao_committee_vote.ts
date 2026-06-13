@@ -143,14 +143,15 @@ export const apply = (
     if (withholdDecisive) {
       proposal.status = 'withheld'
       // Proposal fee (seeded into voterRewardPool at creation) is burned on withhold.
+      proposal.initialBurnedReward = proposal.voterRewardPool
       proposal.voterRewardPool = 0n
     } else if (acceptDecisive) {
       // Emergency proposals skip community voting and are accepted immediately on a decisive
       // accept. All phase boundaries (votingStart/votingEnd/claimEnd) remain fully derived
       // from startTime (see getVotingEnd/getClaimEnd) — "emergency" speeds up the *decision*,
-      // not the nominal voting schedule. voterRewardPool keeps the proposal fee seeded at
-      // creation; with no community voters, claimedReward stays 0 and the full pool is
-      // burned via dao_burn_reward after claimEnd.
+      // not the nominal voting schedule. Emergency proposals are exempt from the proposal fee,
+      // so voterRewardPool stays 0; with no community voters, claimedReward stays 0 too, and
+      // dao_burn_reward after claimEnd has nothing to burn ("Nothing left to burn").
       proposal.status = 'accepted'
     }
   }

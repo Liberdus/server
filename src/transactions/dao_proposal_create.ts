@@ -264,6 +264,8 @@ export const apply = (
   // if the proposal is later withheld by the committee; otherwise it is kept to incentivize
   // voting (see dao_committee_vote/dao_committee_result withheld branches).
   proposal.voterRewardPool = proposalFeeWei
+  proposal.initialBurnedReward = 0n
+  proposal.finalBurnedReward = 0n
   proposal.committeeVotes = []
   proposal.voterList = []
   proposal.claimList = []

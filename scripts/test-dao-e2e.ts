@@ -1339,6 +1339,7 @@ async function main(): Promise<void> {
 
   let sc1ProposalN = getProposalN('sc1')
   let sc2ProposalN = getProposalN('sc2')
+  let sc2PoolBeforeWithhold = 0n
   let sc3ProposalN = getProposalN('sc3')
   let sc4ProposalN = getProposalN('sc4')
   let sc5ProposalN = getProposalN('sc5')
@@ -1859,17 +1860,27 @@ async function main(): Promise<void> {
         )
         const proposal = await getProposal(sc2ProposalN)
         assert(proposal.status === 'withheld', `Expected status 'withheld', got '${proposal.status}'`)
+        sc2PoolBeforeWithhold = asBigInt(proposalBefore.voterRewardPool)
       },
     ],
 
     [
-      '2.3  voterRewardPool === 0 (proposalFee burned on withhold)',
+      '2.3  voterRewardPool === 0, initialBurnedReward === pre-withhold pool (proposalFee burned on withhold)',
       async () => {
         const proposal = await getProposal(sc2ProposalN)
         assert(
           asBigInt(proposal.voterRewardPool) === 0n,
           `Expected voterRewardPool = 0n, got ${proposal.voterRewardPool}`,
         )
+        // sc2PoolBeforeWithhold is only populated when 2.2 runs in the same process; skip the
+        // exact-equality check on a standalone `--step 2.3` rerun where it defaults to 0n.
+        if (sc2PoolBeforeWithhold > 0n) {
+          assert(
+            asBigInt(proposal.initialBurnedReward) === sc2PoolBeforeWithhold,
+            `Expected initialBurnedReward (${proposal.initialBurnedReward}) === pre-withhold voterRewardPool (${sc2PoolBeforeWithhold})`,
+          )
+        }
+        assert(asBigInt(proposal.initialBurnedReward) > 0n, 'Expected initialBurnedReward > 0 (non-emergency proposal fee was burned)')
       },
     ],
     ],
@@ -2040,6 +2051,8 @@ async function main(): Promise<void> {
           asBigInt(proposal.voterRewardPool) === 0n,
           `Expected voterRewardPool === 0n (no proposal fee for emergency proposals), got ${proposal.voterRewardPool}`,
         )
+        assert(asBigInt(proposal.initialBurnedReward) === 0n, `Expected initialBurnedReward === 0n (not withheld), got ${proposal.initialBurnedReward}`)
+        assert(asBigInt(proposal.finalBurnedReward) === 0n, `Expected finalBurnedReward === 0n (before dao_burn_reward), got ${proposal.finalBurnedReward}`)
       },
     ],
 
@@ -2119,6 +2132,8 @@ async function main(): Promise<void> {
           voter1,
           'Nothing left to burn',
         )
+        const proposal = await getProposal(sc4ProposalN)
+        assert(asBigInt(proposal.finalBurnedReward) === 0n, `Expected finalBurnedReward === 0n (no-op burn), got ${proposal.finalBurnedReward}`)
       },
     ],
 

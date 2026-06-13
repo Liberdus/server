@@ -104,6 +104,8 @@ export const apply = (
   // dao_claim_reward computes its share from this value, and claimedReward (still 0 here)
   // tracks the running total paid out.
   proposal.voterRewardPool = proposal.voterRewardPool - burnAmount
+  // This burn happens before the claim period, so it counts toward initialBurnedReward.
+  proposal.initialBurnedReward = SafeBigIntMath.add(proposal.initialBurnedReward, burnAmount)
 
   from.timestamp = txTimestamp
   proposal.timestamp = txTimestamp
