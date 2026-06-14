@@ -23,7 +23,7 @@
  *
  * --parallel splits each scenario into a setup phase (proposal creation, run sequentially
  * to avoid meta.count races) and a body phase (all remaining steps run concurrently).
- * Output lines are prefixed with [S1]…[S13] to distinguish interleaved scenarios.
+ * Output lines are prefixed with [S1]…[S16] to distinguish interleaved scenarios.
  * Note: --step is not designed to combine with --parallel.
  *
  * By default the network is left running when any step fails so you can iterate on
@@ -1114,6 +1114,77 @@ function assertFailedReceiptCharged(receipt: TxReceipt): void {
   assert(asBigInt(receipt.transactionFee ?? 0n) > 0n, `Expected failed DAO receipt to charge a tx fee, got ${String(receipt.transactionFee ?? 0)}`)
 }
 
+function assertDerivedTimingAndSnapshots(proposal: DaoProposalWithTiming, daoParams: any): void {
+  const reviewEnd = proposal.startTime + proposal.reviewDuration
+  const votingStart = reviewEnd
+  const votingEnd = proposal.emergency ? votingStart : votingStart + proposal.votingDuration
+  const claimEnd = votingEnd + proposal.claimDuration
+  const applyEligibleAt = votingEnd + proposal.gracePeriod
+
+  assert(proposal.reviewEnd === reviewEnd, `Expected reviewEnd ${reviewEnd}, got ${proposal.reviewEnd}`)
+  assert(proposal.votingStart === votingStart, `Expected votingStart ${votingStart}, got ${proposal.votingStart}`)
+  assert(proposal.votingEnd === votingEnd, `Expected votingEnd ${votingEnd}, got ${proposal.votingEnd}`)
+  assert(proposal.claimEnd === claimEnd, `Expected claimEnd ${claimEnd}, got ${proposal.claimEnd}`)
+  assert(proposal.applyEligibleAt === applyEligibleAt, `Expected applyEligibleAt ${applyEligibleAt}, got ${proposal.applyEligibleAt}`)
+  assert(proposal.proposalFeeUsdStr === daoParams.proposalFeeUsdStr, `proposalFeeUsdStr snapshot mismatch: ${proposal.proposalFeeUsdStr} vs ${daoParams.proposalFeeUsdStr}`)
+  assert(proposal.voteThresholdUsdStr === daoParams.voteThresholdUsdStr, `voteThresholdUsdStr snapshot mismatch: ${proposal.voteThresholdUsdStr} vs ${daoParams.voteThresholdUsdStr}`)
+  assert(proposal.minimumSpendUsdStr === daoParams.minimumSpendUsdStr, `minimumSpendUsdStr snapshot mismatch: ${proposal.minimumSpendUsdStr} vs ${daoParams.minimumSpendUsdStr}`)
+}
+
+function computeExpectedClaimReward(proposal: DaoProposalWithTiming, voterAddress: string, claimedSoFar: bigint): bigint {
+  const voterIndex = proposal.voterList.findIndex(v => v.address === voterAddress)
+  assert(voterIndex !== -1, `${voterAddress} not found in proposal.voterList`)
+  const voterEntry = proposal.voterList[voterIndex]
+  const previousTimestamp = voterIndex === 0 ? proposal.votingStart : proposal.voterList[voterIndex - 1].timestamp
+  let timeDelta = BigInt(voterEntry.timestamp - previousTimestamp)
+  if (timeDelta < 0n) timeDelta = 0n
+
+  const rewardPrecision = 10n ** 18n
+  const votingDuration = BigInt(proposal.votingDuration)
+  const voterCount = BigInt(proposal.voterList.length)
+  const timePart = (timeDelta * rewardPrecision) / votingDuration
+  const equalPart = rewardPrecision / voterCount
+  const rewardNumerator = asBigInt(proposal.voterRewardPool) * (timePart + equalPart)
+  let reward = rewardNumerator / (2n * rewardPrecision)
+  const remainingPool = asBigInt(proposal.voterRewardPool) - claimedSoFar
+  if (reward > remainingPool) reward = remainingPool
+  return reward
+}
+
+type BurnExpectation = bigint | 'zero' | 'positive'
+
+function assertBurnFields(proposal: DaoProposalWithTiming, expected: { initial?: BurnExpectation; final?: BurnExpectation }): void {
+  const check = (label: string, actual: bigint, wanted: BurnExpectation): void => {
+    if (wanted === 'zero') {
+      assert(actual === 0n, `Expected ${label} === 0n, got ${actual}`)
+    } else if (wanted === 'positive') {
+      assert(actual > 0n, `Expected ${label} > 0n, got ${actual}`)
+    } else {
+      assert(actual === wanted, `Expected ${label} === ${wanted}, got ${actual}`)
+    }
+  }
+  if (expected.initial !== undefined) check('initialBurnedReward', asBigInt(proposal.initialBurnedReward), expected.initial)
+  if (expected.final !== undefined) check('finalBurnedReward', asBigInt(proposal.finalBurnedReward), expected.final)
+}
+
+async function expectApplyRejectNoGlobalChange(
+  tx: any,
+  account: TestAccount,
+  reasonIncludes: string,
+  proposalNumber: number,
+  changeMatcher: (change: any) => boolean,
+): Promise<void> {
+  const proposalBefore = await getProposal(proposalNumber)
+  const rejected = await injectExpectReject(tx, account, reasonIncludes)
+  assert(rejected.receipt != null, 'Expected rejected dao_apply_parameters to produce a receipt')
+  assertReceiptTargetsProposal(rejected.receipt, proposalNumber)
+  assertFailedReceiptCharged(rejected.receipt)
+  const proposalAfter = await getProposal(proposalNumber)
+  assert(proposalAfter.status === proposalBefore.status, `Rejected apply changed proposal status from ${proposalBefore.status} to ${proposalAfter.status}`)
+  const changesAfter = await getProposalListOfChanges()
+  assert(!changesAfter.some(changeMatcher), 'Rejected apply unexpectedly queued a matching global change')
+}
+
 /** Inject a 'create' TX to fund an account and wait for apply receipt. */
 async function fundAccount(account: TestAccount, amountLib: number): Promise<void> {
   return withSenderLock(account.address, async () => {
@@ -1321,7 +1392,7 @@ async function main(): Promise<void> {
   const proposers = makePool(savedProposerKeys, 10)
   const voters = makePool(savedVoterKeys, 16)
   const [proposer, proposer2, proposer3, proposer4, proposer5, proposer6, proposer7, proposer8, proposer9, proposer10] = proposers
-  const [voter1, voter2, voter3, voter4, voter5, voter6, voter7, voter8, voter9, voter10, voter11, voter12] = voters
+  const [voter1, voter2, voter3, voter4, voter5, voter6, voter7, voter8, voter9, voter10, voter11, voter12, voter13, voter14, voter15, voter16] = voters
 
   const proposalNumbers: Record<string, number> = {
     ...(savedState?.proposalNumbers ?? {}),
@@ -1352,6 +1423,11 @@ async function main(): Promise<void> {
   let sc11ProposalN = getProposalN('sc11')
   let sc12ProposalN = getProposalN('sc12')
   let sc13ProposalN = getProposalN('sc13')
+  let sc14ProposalN = getProposalN('sc14EmergencyWithhold')
+  let sc15ProposalAN = getProposalN('sc15A')
+  let sc15ProposalBN = getProposalN('sc15B')
+  let sc15CommitteeAddressesProposalN = getProposalN('sc15CommitteeAddresses')
+  let sc16ProposalN = getProposalN('sc16EmergencyTimeout')
 
   if (!NO_START) await startNetwork()
 
@@ -1399,6 +1475,11 @@ async function main(): Promise<void> {
         sc11: sc11ProposalN,
         sc12: sc12ProposalN,
         sc13: sc13ProposalN,
+        sc14EmergencyWithhold: sc14ProposalN,
+        sc15A: sc15ProposalAN,
+        sc15B: sc15ProposalBN,
+        sc15CommitteeAddresses: sc15CommitteeAddressesProposalN,
+        sc16EmergencyTimeout: sc16ProposalN,
       },
     })
   }
@@ -1466,6 +1547,14 @@ async function main(): Promise<void> {
         const proposal = await getProposal(sc1ProposalN)
         assert(proposal.status === 'review', `Expected status 'review', got '${proposal.status}'`)
         assert(Array.isArray(proposal.committeeAddresses) && proposal.committeeAddresses.length > 0, 'Expected committeeAddresses snapshot to be non-empty')
+      },
+    ],
+    [
+      '1.2b Derived timing and USD snapshots are correct',
+      async () => {
+        const proposal = await getProposal(sc1ProposalN)
+        const daoParams = await getDaoParameters()
+        assertDerivedTimingAndSnapshots(proposal, daoParams)
       },
     ],
     ],
@@ -1598,7 +1687,7 @@ async function main(): Promise<void> {
       async () => {
         const proposalBefore = await getProposal(sc1ProposalN)
         await sleepUntilTimestamp(proposalBefore.votingEnd, 'votingEnd', SLEEP_BUFFER_MS)
-        await injectAndAssert(
+        const { receipt } = await injectAndAssert(
           {
             type: 'dao_vote_result',
             networkId: currentNetworkId,
@@ -1609,9 +1698,12 @@ async function main(): Promise<void> {
           proposer,
         )
         const proposal = await getProposal(sc1ProposalN)
+        const burnAmount = asBigInt(receipt.additionalInfo.burnAmount)
         assert(proposal.status === 'accepted', `Expected status 'accepted', got '${proposal.status}'`)
         // voterRewardPool is now the fixed, immutable post-burn pool — assert the burn actually
         // reduced it relative to the pre-vote_result (pre-burn) value.
+        assertBurnFields(proposal, { initial: burnAmount })
+        assertBurnFields(proposal, { initial: 'positive' })
         assert(asBigInt(proposal.voterRewardPool) > 0n, 'Expected voterRewardPool > 0 after burn')
         assert(
           asBigInt(proposal.voterRewardPool) < asBigInt(proposalBefore.voterRewardPool),
@@ -1703,26 +1795,8 @@ async function main(): Promise<void> {
         // reward via the same formula — then assert the actual claimed amount matches exactly.
         // This verifies the distribution mechanism precisely, with zero sensitivity to timing.
         const proposalForReward = await getProposal(sc1ProposalN)
-        const REWARD_PRECISION = 10n ** 18n
-        const computeExpectedReward = (voterAddress: string, claimedSoFar: bigint): bigint => {
-          const voterIndex = proposalForReward.voterList.findIndex(v => v.address === voterAddress)
-          assert(voterIndex !== -1, `${voterAddress} not found in proposal.voterList`)
-          const voterEntry = proposalForReward.voterList[voterIndex]
-          const previousTimestamp =
-            voterIndex === 0 ? proposalForReward.votingStart : proposalForReward.voterList[voterIndex - 1].timestamp
-          const timeDelta = BigInt(voterEntry.timestamp - previousTimestamp)
-          const votingDuration = BigInt(proposalForReward.votingDuration)
-          const N = BigInt(proposalForReward.voterList.length)
-          const timePart = (timeDelta * REWARD_PRECISION) / votingDuration
-          const equalPart = REWARD_PRECISION / N
-          const rewardNumerator = asBigInt(proposalForReward.voterRewardPool) * (timePart + equalPart)
-          let reward = rewardNumerator / (2n * REWARD_PRECISION)
-          const remainingPool = asBigInt(proposalForReward.voterRewardPool) - claimedSoFar
-          if (reward > remainingPool) reward = remainingPool
-          return reward
-        }
-        const expectedVoter1Reward = computeExpectedReward(voter1.address, 0n)
-        const expectedVoter2Reward = computeExpectedReward(voter2.address, expectedVoter1Reward)
+        const expectedVoter1Reward = computeExpectedClaimReward(proposalForReward, voter1.address, 0n)
+        const expectedVoter2Reward = computeExpectedClaimReward(proposalForReward, voter2.address, expectedVoter1Reward)
 
         const { receipt: claim1Receipt } = await injectAndAssert(
           {
@@ -1781,6 +1855,39 @@ async function main(): Promise<void> {
           },
           voter1,
           'already claimed',
+        )
+      },
+    ],
+    [
+      '1.12 dao_burn_reward burns remaining unclaimed pool after claimEnd',
+      async () => {
+        const proposalBefore = await getProposal(sc1ProposalN)
+        await sleepUntilTimestamp(proposalBefore.claimEnd, 'claimEnd', SLEEP_BUFFER_MS)
+        const remainingBeforeBurn = asBigInt(proposalBefore.voterRewardPool) - asBigInt(proposalBefore.claimedReward)
+        const { receipt } = await injectAndAssert(
+          {
+            type: 'dao_burn_reward',
+            networkId: currentNetworkId,
+            from: voter3.address,
+            proposalId: daoProposalId(sc1ProposalN),
+            timestamp: Date.now(),
+          },
+          voter3,
+        )
+        assert(asBigInt(receipt.additionalInfo.burned) === remainingBeforeBurn, `Expected burned ${remainingBeforeBurn}, got ${receipt.additionalInfo.burned}`)
+        const proposal = await getProposal(sc1ProposalN)
+        assertBurnFields(proposal, { final: 'positive' })
+        assert(asBigInt(proposal.voterRewardPool) === asBigInt(proposal.claimedReward), `Expected voterRewardPool === claimedReward after final burn, got ${proposal.voterRewardPool} vs ${proposal.claimedReward}`)
+        await injectExpectReject(
+          {
+            type: 'dao_burn_reward',
+            networkId: currentNetworkId,
+            from: voter3.address,
+            proposalId: daoProposalId(sc1ProposalN),
+            timestamp: Date.now(),
+          },
+          voter3,
+          'Nothing left to burn',
         )
       },
     ],
@@ -1946,6 +2053,22 @@ async function main(): Promise<void> {
         )
         const proposal = await getProposal(sc3ProposalN)
         assert(proposal.status === 'voting', `Expected status 'voting', got '${proposal.status}'`)
+      },
+    ],
+    [
+      '3.4  dao_committee_result rejected after proposal already moved to voting',
+      async () => {
+        await injectExpectReject(
+          {
+            type: 'dao_committee_result',
+            networkId: currentNetworkId,
+            from: proposer.address,
+            proposalId: daoProposalId(sc3ProposalN),
+            timestamp: Date.now(),
+          },
+          proposer,
+          'not in review status',
+        )
       },
     ],
     ],
@@ -2281,6 +2404,8 @@ async function main(): Promise<void> {
         const burnAmount = asBigInt(receipt.additionalInfo.burnAmount)
         assert(proposal.status === 'rejected', `Expected rejected status, got ${proposal.status}`)
         assert(burnAmount > 0n, `Expected non-zero burnAmount, got ${burnAmount}`)
+        assertBurnFields(proposal, { initial: burnAmount })
+        assertBurnFields(proposal, { initial: 'positive' })
         assert(asBigInt(proposal.voterRewardPool) > 0n, 'Expected voterRewardPool > 0 after burn on rejected proposal')
         assert(asBigInt(proposal.claimedReward) === 0n, `Expected claimedReward = 0 before rejected-branch claims, got ${proposal.claimedReward}`)
         assert(asBigInt(proposal.voterRewardPool) === poolBeforeBurn - burnAmount, 'Rejected branch did not reduce voterRewardPool by burnAmount')
@@ -2307,9 +2432,31 @@ async function main(): Promise<void> {
       },
     ],
     [
+      '6.4b dao_burn_reward burns rejected proposal remainder after claimEnd',
+      async () => {
+        const proposalBefore = await getProposal(sc6ProposalN)
+        await sleepUntilTimestamp(proposalBefore.claimEnd, 'claimEnd', SLEEP_BUFFER_MS)
+        const remainingBeforeBurn = asBigInt(proposalBefore.voterRewardPool) - asBigInt(proposalBefore.claimedReward)
+        const { receipt } = await injectAndAssert(
+          {
+            type: 'dao_burn_reward',
+            networkId: currentNetworkId,
+            from: voter10.address,
+            proposalId: daoProposalId(sc6ProposalN),
+            timestamp: Date.now(),
+          },
+          voter10,
+        )
+        assert(asBigInt(receipt.additionalInfo.burned) === remainingBeforeBurn, `Expected burned ${remainingBeforeBurn}, got ${receipt.additionalInfo.burned}`)
+        const proposal = await getProposal(sc6ProposalN)
+        assertBurnFields(proposal, { final: 'positive' })
+        assert(asBigInt(proposal.voterRewardPool) === asBigInt(proposal.claimedReward), `Expected voterRewardPool === claimedReward after final burn, got ${proposal.voterRewardPool} vs ${proposal.claimedReward}`)
+      },
+    ],
+    [
       '6.5  dao_apply_parameters rejected for rejected proposal',
       async () => {
-        const rejected = await injectExpectReject(
+        await expectApplyRejectNoGlobalChange(
           {
             type: 'dao_apply_parameters',
             networkId: currentNetworkId,
@@ -2319,16 +2466,8 @@ async function main(): Promise<void> {
           },
           proposer4,
           'accepted status',
-        )
-        assert(rejected.receipt != null, 'Expected rejected dao_apply_parameters to produce a receipt')
-        assertReceiptTargetsProposal(rejected.receipt, sc6ProposalN)
-        assertFailedReceiptCharged(rejected.receipt)
-        const proposalAfter = await getProposal(sc6ProposalN)
-        const changesAfter = await getProposalListOfChanges()
-        assert(proposalAfter.status === 'rejected', `Rejected proposal apply attempt changed status to ${proposalAfter.status}`)
-        assert(
-          !changesAfter.some(c => String(c?.appData?.dao?.pctBurned) === '55'),
-          'Rejected proposal apply attempt unexpectedly queued pctBurned=55',
+          sc6ProposalN,
+          c => String(c?.appData?.dao?.pctBurned) === '55',
         )
       },
     ],
@@ -2382,6 +2521,23 @@ async function main(): Promise<void> {
           actual.length === expected.length && actual.every((w, i) => w === expected[i]),
           `Expected proposal.totalVote ${expected} to equal accumulated receipt optionWeights, got ${actual}`,
         )
+      },
+    ],
+    [
+      '7.4  Repeated vote from same address is additive but voterList stays unique',
+      async () => {
+        const before = await getProposal(sc7ProposalN)
+        const voterEntryBefore = before.voterList.find(v => v.address === voter5.address)
+        assert(voterEntryBefore != null, 'Expected voter5 to be in voterList before repeated vote')
+        const beforeTotal = before.totalVote.map(asBigInt)
+        const { receipt } = await castVote(sc7ProposalN, voter5, [1, 0, 2], minVoteSpendLib)
+        const addedWeights = receipt.additionalInfo.optionWeights.map(asBigInt)
+        const after = await getProposal(sc7ProposalN)
+        const afterTotal = after.totalVote.map(asBigInt)
+        assert(afterTotal.every((w, i) => w === beforeTotal[i] + addedWeights[i]), `Expected repeated vote to add ${addedWeights} to ${beforeTotal}, got ${afterTotal}`)
+        const voter5Entries = after.voterList.filter(v => v.address === voter5.address)
+        assert(voter5Entries.length === 1, `Expected voter5 to appear once in voterList, got ${voter5Entries.length}`)
+        assert(voter5Entries[0].timestamp === voterEntryBefore.timestamp, `Expected voter5 voterList timestamp to remain ${voterEntryBefore.timestamp}, got ${voter5Entries[0].timestamp}`)
       },
     ],
     ],
@@ -2779,6 +2935,34 @@ async function main(): Promise<void> {
         assert(earlyHighWeight > earlyMinWeight * 3n, `Expected spend boost to be disproportionate: high=${earlyHighWeight}, min=${earlyMinWeight}`)
       },
     ],
+    [
+      '12.4 Finalize and verify three time-weighted claims',
+      async () => {
+        await finalizeVote(sc12ProposalN, proposer5, SLEEP_BUFFER_MS)
+        const proposalForReward = await getProposal(sc12ProposalN)
+        const claimers = [voter9, voter10, voter11]
+        let claimedSoFar = 0n
+        for (const claimant of claimers) {
+          const expectedReward = computeExpectedClaimReward(proposalForReward, claimant.address, claimedSoFar)
+          const { receipt } = await injectAndAssert(
+            {
+              type: 'dao_claim_reward',
+              networkId: currentNetworkId,
+              from: claimant.address,
+              proposalId: daoProposalId(sc12ProposalN),
+              timestamp: Date.now(),
+            },
+            claimant,
+          )
+          const actualReward = asBigInt(receipt.additionalInfo.reward)
+          assert(actualReward === expectedReward, `Expected ${claimant.address} reward ${expectedReward}, got ${actualReward}`)
+          claimedSoFar += actualReward
+        }
+        const proposal = await getProposal(sc12ProposalN)
+        assert(asBigInt(proposal.claimedReward) === claimedSoFar, `Expected claimedReward ${claimedSoFar}, got ${proposal.claimedReward}`)
+        assert(claimedSoFar <= asBigInt(proposal.voterRewardPool), `Claimed ${claimedSoFar} exceeds voterRewardPool ${proposal.voterRewardPool}`)
+      },
+    ],
     ],
   }
 
@@ -2788,6 +2972,7 @@ async function main(): Promise<void> {
   const sc13: ScenarioDef = {
     num: 13,
     name: 'Scenario 13 — Targeted validation/rejection sweep',
+    sequentialOnly: true,
     setupSteps: [
     [
       '13.1 Create live voting proposal for rejection checks',
@@ -2898,9 +3083,438 @@ async function main(): Promise<void> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Scenario 14 — Emergency decisive withhold during review
+  // ─────────────────────────────────────────────────────────────────────────
+  const sc14: ScenarioDef = {
+    num: 14,
+    name: 'Scenario 14 — Emergency decisive withhold during review',
+    setupSteps: [
+    [
+      '14.1 Create emergency proposal for decisive withhold',
+      async () => {
+        sc14ProposalN = setProposalN('sc14EmergencyWithhold', await createDaoProposal({
+          proposer: committee[1],
+          emergency: true,
+          description: 'Emergency decisive withhold test',
+          changes: [{ key: 'pctBurned', value: '61', current: '50' }],
+          gracePeriodMs: 0,
+        }))
+        saveCurrentRunState()
+        const proposal = await getProposal(sc14ProposalN)
+        assert(proposal.status === 'review', `Expected status 'review', got '${proposal.status}'`)
+        assert(proposal.emergency === true, 'Expected emergency proposal')
+        assert(asBigInt(proposal.voterRewardPool) === 0n, `Expected fee-exempt emergency voterRewardPool 0n, got ${proposal.voterRewardPool}`)
+        assertBurnFields(proposal, { initial: 'zero', final: 'zero' })
+      },
+    ],
+    ],
+    bodySteps: [
+    [
+      '14.2 Three emergency withhold votes immediately set status withheld',
+      async () => {
+        for (const i of [0, 2, 3]) {
+          await injectAndAssert(
+            {
+              type: 'dao_committee_vote',
+              networkId: currentNetworkId,
+              from: committee[i].address,
+              proposalId: daoProposalId(sc14ProposalN),
+              vote: 'withhold',
+              withheldReason: 'Emergency withhold E2E test',
+              timestamp: Date.now(),
+            },
+            committee[i],
+          )
+        }
+        const proposal = await getProposal(sc14ProposalN)
+        assert(proposal.status === 'withheld', `Expected emergency proposal to be withheld immediately, got ${proposal.status}`)
+      },
+    ],
+    [
+      '14.3 Emergency withheld burn fields remain zero',
+      async () => {
+        const proposal = await getProposal(sc14ProposalN)
+        assert(asBigInt(proposal.voterRewardPool) === 0n, `Expected voterRewardPool 0n, got ${proposal.voterRewardPool}`)
+        assertBurnFields(proposal, { initial: 'zero', final: 'zero' })
+      },
+    ],
+    [
+      '14.4 committee_result rejected for already-withheld emergency proposal',
+      async () => {
+        await injectExpectReject(
+          {
+            type: 'dao_committee_result',
+            networkId: currentNetworkId,
+            from: voter13.address,
+            proposalId: daoProposalId(sc14ProposalN),
+            timestamp: Date.now(),
+          },
+          voter13,
+          'current: withheld',
+        )
+      },
+    ],
+    [
+      '14.5 dao_burn_reward rejected for withheld emergency proposal',
+      async () => {
+        await injectExpectReject(
+          {
+            type: 'dao_burn_reward',
+            networkId: currentNetworkId,
+            from: voter13.address,
+            proposalId: daoProposalId(sc14ProposalN),
+            timestamp: Date.now(),
+          },
+          voter13,
+          'already burned',
+        )
+        const proposal = await getProposal(sc14ProposalN)
+        assertBurnFields(proposal, { final: 'zero' })
+      },
+    ],
+    ],
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Scenario 15 — Extended validation/rejection sweep
+  // ─────────────────────────────────────────────────────────────────────────
+  const sc15: ScenarioDef = {
+    num: 15,
+    name: 'Scenario 15 — Extended validation/rejection sweep',
+    sequentialOnly: true,
+    setupSteps: [
+    [
+      '15.1 Future startTime proposal rejects early committee vote',
+      async () => {
+        sc15ProposalAN = setProposalN('sc15A', await createDaoProposal({
+          proposer: proposer3,
+          description: 'Extended validation future startTime proposal',
+          changes: [{ key: 'pctBurned', value: '62', current: '50' }],
+          gracePeriodMs: graceDurationMs,
+          startTime: nowPlus(10_000),
+        }))
+        saveCurrentRunState()
+        await injectExpectReject(
+          {
+            type: 'dao_committee_vote',
+            networkId: currentNetworkId,
+            from: committee[4].address,
+            proposalId: daoProposalId(sc15ProposalAN),
+            vote: 'accept',
+            timestamp: Date.now(),
+          },
+          committee[4],
+          'has not started',
+        )
+      },
+    ],
+    ],
+    bodySteps: [
+    [
+      '15.2 Committee vote after reviewEnd is rejected',
+      async () => {
+        const proposalBefore = await getProposal(sc15ProposalAN)
+        await sleepUntilTimestamp(proposalBefore.reviewEnd, 'reviewEnd', SLEEP_BUFFER_MS)
+        await injectExpectReject(
+          {
+            type: 'dao_committee_vote',
+            networkId: currentNetworkId,
+            from: committee[4].address,
+            proposalId: daoProposalId(sc15ProposalAN),
+            vote: 'accept',
+            timestamp: Date.now(),
+          },
+          committee[4],
+          'review period has ended',
+        )
+      },
+    ],
+    [
+      '15.3 Withhold vote requires non-empty withheldReason',
+      async () => {
+        await injectExpectReject(
+          {
+            type: 'dao_committee_vote',
+            networkId: currentNetworkId,
+            from: committee[4].address,
+            proposalId: daoProposalId(sc15ProposalAN),
+            vote: 'withhold',
+            timestamp: Date.now(),
+          },
+          committee[4],
+          'withheldReason',
+        )
+        await injectExpectReject(
+          {
+            type: 'dao_committee_vote',
+            networkId: currentNetworkId,
+            from: committee[4].address,
+            proposalId: daoProposalId(sc15ProposalAN),
+            vote: 'withhold',
+            withheldReason: '',
+            timestamp: Date.now(),
+          },
+          committee[4],
+          'withheldReason',
+        )
+      },
+    ],
+    [
+      '15.4 Proposal-create validation rejections',
+      async () => {
+        const rejectCreate = async (tx: any, account: TestAccount, reasonIncludes: string): Promise<void> => {
+          await injectExpectReject(tx, account, reasonIncludes)
+        }
+
+        let n = await nextProposalNumber()
+        await rejectCreate(
+          {
+            type: 'dao_proposal_create',
+            networkId: currentNetworkId,
+            from: proposer3.address,
+            proposalId: daoProposalId(n),
+            metaId: daoMetaId(),
+            proposalType: 'governance',
+            emergency: false,
+            description: 'Invalid affirmative option test',
+            options: ['no', 'yes'],
+            gracePeriod: graceDurationMs,
+            governance: { changes: [{ key: 'pctBurned', value: '63', current: '50' }] },
+            timestamp: Date.now(),
+          },
+          proposer3,
+          'options[0]',
+        )
+
+        n = await nextProposalNumber()
+        await rejectCreate(
+          {
+            type: 'dao_proposal_create',
+            networkId: currentNetworkId,
+            from: proposer3.address,
+            proposalId: daoProposalId(n),
+            metaId: daoMetaId(),
+            proposalType: 'governance',
+            emergency: false,
+            description: 'Duplicate changes key test',
+            options: ['yes', 'no'],
+            gracePeriod: graceDurationMs,
+            governance: { changes: [{ key: 'pctBurned', value: '63', current: '50' }, { key: 'pctBurned', value: '64', current: '50' }] },
+            timestamp: Date.now(),
+          },
+          proposer3,
+          'duplicate key',
+        )
+
+        n = await nextProposalNumber()
+        await rejectCreate(
+          {
+            type: 'dao_proposal_create',
+            networkId: currentNetworkId,
+            from: proposer3.address,
+            proposalId: daoProposalId(n),
+            metaId: daoMetaId(),
+            proposalType: 'governance',
+            emergency: false,
+            description: 'Excessive grace period test',
+            options: ['yes', 'no'],
+            gracePeriod: graceDurationMs + 1,
+            governance: { changes: [{ key: 'pctBurned', value: '63', current: '50' }] },
+            timestamp: Date.now(),
+          },
+          proposer3,
+          'exceeds the maximum',
+        )
+
+        const lowBalanceAccount = makeAccount()
+        await fundAccount(lowBalanceAccount, 1)
+        n = await nextProposalNumber()
+        await rejectCreate(
+          {
+            type: 'dao_proposal_create',
+            networkId: currentNetworkId,
+            from: lowBalanceAccount.address,
+            proposalId: daoProposalId(n),
+            metaId: daoMetaId(),
+            proposalType: 'governance',
+            emergency: false,
+            description: 'Insufficient proposal fee balance test',
+            options: ['yes', 'no'],
+            gracePeriod: graceDurationMs,
+            governance: { changes: [{ key: 'pctBurned', value: '63', current: '50' }] },
+            timestamp: Date.now(),
+          },
+          lowBalanceAccount,
+          'Insufficient balance',
+        )
+      },
+    ],
+    [
+      '15.5 dao_burn_reward before claimEnd is rejected',
+      async () => {
+        sc15ProposalBN = setProposalN('sc15B', await createDaoProposal({
+          proposer: proposer3,
+          description: 'Extended validation burn before claimEnd proposal',
+          changes: [{ key: 'pctBurned', value: '64', current: '50' }],
+          gracePeriodMs: graceDurationMs,
+        }))
+        saveCurrentRunState()
+        await committeeAcceptToVoting(sc15ProposalBN, proposer3, committee, SLEEP_BUFFER_MS, [0, 2, 4])
+        await castVote(sc15ProposalBN, voter13, [1, 0], minVoteSpendLib)
+        await finalizeVote(sc15ProposalBN, proposer3, SLEEP_BUFFER_MS)
+        await injectExpectReject(
+          {
+            type: 'dao_burn_reward',
+            networkId: currentNetworkId,
+            from: voter14.address,
+            proposalId: daoProposalId(sc15ProposalBN),
+            timestamp: Date.now(),
+          },
+          voter14,
+          'Claim period has not ended yet',
+        )
+      },
+    ],
+    [
+      '15.6 dao_claim_reward after claimEnd is rejected',
+      async () => {
+        const proposalBefore = await getProposal(sc15ProposalBN)
+        await sleepUntilTimestamp(proposalBefore.claimEnd, 'claimEnd', SLEEP_BUFFER_MS)
+        await injectExpectReject(
+          {
+            type: 'dao_claim_reward',
+            networkId: currentNetworkId,
+            from: voter13.address,
+            proposalId: daoProposalId(sc15ProposalBN),
+            timestamp: Date.now(),
+          },
+          voter13,
+          'Claim period has ended',
+        )
+      },
+    ],
+    [
+      '15.7 Invalid committeeAddresses apply is rejected without global change',
+      async () => {
+        const daoParams = await getDaoParameters()
+        const invalidCommitteeAddresses = [committee[0].address]
+        sc15CommitteeAddressesProposalN = setProposalN('sc15CommitteeAddresses', await createDaoProposal({
+          proposer: proposer3,
+          description: 'Invalid committeeAddresses apply validation proposal',
+          changes: [{ key: 'committeeAddresses', value: JSON.stringify(invalidCommitteeAddresses), current: JSON.stringify(daoParams.committeeAddresses) }],
+          gracePeriodMs: graceDurationMs,
+        }))
+        saveCurrentRunState()
+        await committeeAcceptToVoting(sc15CommitteeAddressesProposalN, proposer3, committee, SLEEP_BUFFER_MS, [1, 2, 3])
+        await castVote(sc15CommitteeAddressesProposalN, voter15, [1, 0], minVoteSpendLib)
+        await finalizeVote(sc15CommitteeAddressesProposalN, proposer3, SLEEP_BUFFER_MS)
+        const proposalBeforeApply = await getProposal(sc15CommitteeAddressesProposalN)
+        await sleepUntilTimestamp(proposalBeforeApply.applyEligibleAt, 'applyEligibleAt', SLEEP_BUFFER_MS)
+        await expectApplyRejectNoGlobalChange(
+          {
+            type: 'dao_apply_parameters',
+            networkId: currentNetworkId,
+            from: proposer3.address,
+            proposalId: daoProposalId(sc15CommitteeAddressesProposalN),
+            timestamp: Date.now(),
+          },
+          proposer3,
+          'committeeAddresses must contain between',
+          sc15CommitteeAddressesProposalN,
+          c => Array.isArray(c?.appData?.dao?.committeeAddresses) && c.appData.dao.committeeAddresses.length === 1,
+        )
+      },
+    ],
+    ],
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Scenario 16 — Emergency no-decisive-result timeout
+  // ─────────────────────────────────────────────────────────────────────────
+  const sc16: ScenarioDef = {
+    num: 16,
+    name: 'Scenario 16 — Emergency no-decisive-result timeout',
+    setupSteps: [
+    [
+      '16.1 Create emergency proposal for no-decisive-result timeout',
+      async () => {
+        sc16ProposalN = setProposalN('sc16EmergencyTimeout', await createDaoProposal({
+          proposer: committee[4],
+          emergency: true,
+          description: 'Emergency non-decisive committee result test',
+          changes: [{ key: 'pctBurned', value: '65', current: '50' }],
+          gracePeriodMs: 0,
+        }))
+        saveCurrentRunState()
+        const proposal = await getProposal(sc16ProposalN)
+        assert(proposal.status === 'review', `Expected status 'review', got '${proposal.status}'`)
+        assert(asBigInt(proposal.voterRewardPool) === 0n, `Expected voterRewardPool 0n, got ${proposal.voterRewardPool}`)
+        assertBurnFields(proposal, { initial: 'zero', final: 'zero' })
+      },
+    ],
+    ],
+    bodySteps: [
+    [
+      '16.2 Non-decisive emergency committee split leaves status review',
+      async () => {
+        await injectAndAssert(
+          { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[4].address, proposalId: daoProposalId(sc16ProposalN), vote: 'accept', timestamp: Date.now() },
+          committee[4],
+        )
+        await injectAndAssert(
+          {
+            type: 'dao_committee_vote',
+            networkId: currentNetworkId,
+            from: committee[2].address,
+            proposalId: daoProposalId(sc16ProposalN),
+            vote: 'withhold',
+            withheldReason: 'Emergency timeout split test',
+            timestamp: Date.now(),
+          },
+          committee[2],
+        )
+        const proposal = await getProposal(sc16ProposalN)
+        assert(proposal.status === 'review', `Expected non-decisive emergency split to remain review, got ${proposal.status}`)
+      },
+    ],
+    [
+      '16.3 committee_result after reviewEnd withholds non-decisive emergency proposal',
+      async () => {
+        const proposalBefore = await getProposal(sc16ProposalN)
+        await sleepUntilTimestamp(proposalBefore.reviewEnd, 'reviewEnd', SLEEP_BUFFER_MS)
+        await injectAndAssert(
+          { type: 'dao_committee_result', networkId: currentNetworkId, from: voter14.address, proposalId: daoProposalId(sc16ProposalN), timestamp: Date.now() },
+          voter14,
+        )
+        const proposal = await getProposal(sc16ProposalN)
+        assert(proposal.status === 'withheld', `Expected emergency proposal withheld after non-decisive reviewEnd, got ${proposal.status}`)
+        assert(asBigInt(proposal.voterRewardPool) === 0n, `Expected voterRewardPool 0n, got ${proposal.voterRewardPool}`)
+        assertBurnFields(proposal, { initial: 'zero', final: 'zero' })
+      },
+    ],
+    [
+      '16.4 dao_apply_parameters rejects withheld emergency proposal',
+      async () => {
+        await injectExpectReject(
+          {
+            type: 'dao_apply_parameters',
+            networkId: currentNetworkId,
+            from: voter16.address,
+            proposalId: daoProposalId(sc16ProposalN),
+            timestamp: Date.now(),
+          },
+          voter16,
+          'accepted status',
+        )
+      },
+    ],
+    ],
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Run scenarios — sequential (default) or parallel (--parallel flag)
   // ─────────────────────────────────────────────────────────────────────────
-  const scenarios = [sc1, sc2, sc3, sc4, sc5, sc6, sc7, sc8, sc9, sc10, sc11, sc12, sc13]
+  const scenarios = [sc1, sc2, sc3, sc4, sc5, sc6, sc7, sc8, sc9, sc10, sc11, sc12, sc13, sc14, sc15, sc16]
   if (PARALLEL) {
     await runScenariosParallel(scenarios)
   } else {
