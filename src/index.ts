@@ -1987,7 +1987,10 @@ const shardusSetup = (): void => {
             if (typeof value === 'object' && !Array.isArray(value)) {
               await patchAndUpdate(existingObject[key], value, parentPath === '' ? key : parentPath + '.' + key)
             } else {
-              if (key === 'activeVersion') {
+              // Only the top-level network/app version triggers onActiveVersionChange — nested
+              // "activeVersion" fields (e.g. network.current.archiver.activeVersion) are a
+              // different version namespace and must not fire the app-version hook.
+              if (key === 'activeVersion' && parentPath === '') {
                 await onActiveVersionChange(value as string)
               }
               existingObject[key] = value

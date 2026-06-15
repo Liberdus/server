@@ -9,6 +9,8 @@ import { isUserAccount, isDaoProposalAccount } from '../@types/accountTypeGuards
 import { LiberdusFlags } from '../config'
 import { Utils } from '@shardus/lib-types'
 import { getApplyEligibleAt } from '../accounts/daoProposalAccount'
+import { resolveParamPathForProposalType, buildNestedChange, mergeNestedChange, pathsOverlap } from '../utils/daoParamResolver'
+import type { ResolvedParam } from '../utils/daoParamResolver'
 
 
 export const validate_fields = (tx: Tx.DaoApplyParameters, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
@@ -78,44 +80,39 @@ export const validate = (
     return response
   }
 
-  // Validate that every proposed change key actually exists in the target parameter set
-  // and that the supplied value is coercible to the same type as the existing field.
-  // This prevents unknown keys and type mismatches from reaching apply() where they would
-  // throw unhandled exceptions and cause a consensus failure.
+  // Resolve each change key to its actual path and validate the value type before apply().
   const changes = getChanges(proposal)
+  const resolvedPaths: string[][] = []
   for (const change of changes) {
-    let existing: unknown
-    if (proposal.proposalType === 'governance') {
-      existing = (network.current.dao as any)[change.key]
-    } else if (proposal.proposalType === 'economic') {
-      existing = (network.current as any)[change.key]
-    } else {
-      // protocol: Shardus server config (p2p, debug, etc.) — accessible via dapp.config
-      existing = (dapp.config as any)[change.key]
-    }
-    if (existing === undefined) {
+    const resolved = resolveParamPathForProposalType(proposal.proposalType, network, dapp, change.key)
+    if (!resolved) {
       response.reason = `Key "${change.key}" does not exist in ${proposal.proposalType} parameters`
       return response
     }
-    // Economic proposals may only modify scalar fields in network.current; the nested "dao"
-    // sub-object is governed exclusively by governance proposals.
-    if (proposal.proposalType === 'economic' && typeof existing === 'object' && existing !== null && !Array.isArray(existing)) {
-      response.reason = `Key "${change.key}" is an object parameter; economic proposals can only modify scalar fields`
+    // Economic proposals cannot touch the dao subtree — only governance proposals can.
+    if (proposal.proposalType === 'economic' && resolved.path.length === 1 && resolved.path[0] === 'dao') {
+      response.reason = `Key "${change.key}" is the "dao" parameters object; economic proposals cannot modify it`
       return response
     }
-    // Try-coerce: confirm the value is parsable before we reach apply()
+    resolvedPaths.push(resolved.path)
     try {
-      const coerced = coerce(existing, change.value)
-      // committeeAddresses gets extra structural validation beyond "is an array": the policy
-      // requires 4-10 members, and a malformed/empty/oversized list would silently break
-      // dao_committee_vote's quorum math and the emergency-proposal committee gate (see
-      // Phase 1 review finding #20). Catch it here, before the change can ever be applied.
-      if (change.key === 'committeeAddresses') {
+      const coerced = coerce(resolved.existing, change.value)
+      // committeeAddresses needs size/format checks beyond type-checking since quorum math depends on it.
+      if (resolved.path[resolved.path.length - 1] === 'committeeAddresses') {
         validateCommitteeAddresses(coerced)
       }
     } catch (err: any) {
-      response.reason = `Value "${change.value}" is not valid for key "${change.key}": ${err.message}`
+      response.reason = `Value "${change.value}" is not valid for key "${change.key}" (resolved to "${resolved.path.join('.')}"): ${err.message}`
       return response
+    }
+  }
+  // Reject if two changes resolve to the same path or one is a prefix of the other.
+  for (let i = 0; i < resolvedPaths.length; i++) {
+    for (let j = i + 1; j < resolvedPaths.length; j++) {
+      if (pathsOverlap(resolvedPaths[i], resolvedPaths[j])) {
+        response.reason = `changes contain overlapping targets: "${resolvedPaths[i].join('.')}" and "${resolvedPaths[j].join('.')}"`
+        return response
+      }
     }
   }
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
@@ -145,14 +142,16 @@ export const apply = (
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
 
   const changes = getChanges(proposal)
+  const resolvedChanges = resolveChanges(proposal.proposalType, network, dapp, changes)
+  const resolvedPaths = resolvedChanges.map(rc => rc.path.join('.'))
   const when = txTimestamp + config.ONE_SECOND * 10
+  console.log('Global tx timestamp', txId, when, txTimestamp, dapp.shardusGetTime(), dapp.shardusGetTime() > when, dapp.shardusGetTime() - when)
   const changeCycle = getChangeCycle(dapp)
 
   let value: Tx.ApplyChangeNetworkParam | Tx.ApplyChangeConfig
   if (proposal.proposalType === 'protocol') {
-    // Protocol proposals modify Shardus server config (p2p, debug, etc.) — dispatched as
-    // apply_change_config so nodes apply the change via patchConfig on the next cycle.
-    const configChange = buildConfigChange(dapp, changes)
+    // Protocol proposals update Shardus server config via apply_change_config.
+    const configChange = buildConfigChange(resolvedChanges)
     value = {
       type: TXTypes.apply_change_config,
       networkId: network.networkId,
@@ -161,9 +160,8 @@ export const apply = (
       change: { cycle: changeCycle, change: configChange },
     } as Tx.ApplyChangeConfig
   } else {
-    // Governance / economic proposals modify network.current — dispatched as
-    // apply_change_network_param so nodes apply the change at runtime via patchAndUpdate.
-    const appData = buildAppData(network, proposal.proposalType, changes)
+    // Governance and economic proposals update network.current via apply_change_network_param.
+    const appData = buildAppData(proposal.proposalType, resolvedChanges)
     value = {
       type: TXTypes.apply_change_network_param,
       networkId: network.networkId,
@@ -194,7 +192,7 @@ export const apply = (
     to: tx.proposalId,
     type: tx.type,
     transactionFee: txFeeWei,
-    additionalInfo: { proposalType: proposal.proposalType, appliedChanges: changes.length },
+    additionalInfo: { proposalType: proposal.proposalType, appliedChanges: changes.length, resolvedPaths },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
@@ -214,26 +212,53 @@ function getChanges(proposal: DaoProposalAccount): Array<{ key: string; value: s
   return []
 }
 
-function buildConfigChange(dapp: Shardus, changes: Array<{ key: string; value: string }>): Record<string, unknown> {
+interface ResolvedChange {
+  key: string
+  value: string
+  path: string[]
+  existing: unknown
+}
+
+// Resolves every change to its target path and existing value.
+// A failure here means validate() and apply() diverged — should never happen.
+function resolveChanges(
+  proposalType: DaoProposalAccount['proposalType'],
+  network: NetworkAccount,
+  dapp: Shardus,
+  changes: Array<{ key: string; value: string }>,
+): ResolvedChange[] {
+  return changes.map(change => {
+    const resolved: ResolvedParam | undefined = resolveParamPathForProposalType(proposalType, network, dapp, change.key)
+    if (!resolved) {
+      throw new Error(`key "${change.key}" does not exist in ${proposalType} parameters`)
+    }
+    return { key: change.key, value: change.value, path: resolved.path, existing: resolved.existing }
+  })
+}
+
+function buildConfigChange(resolvedChanges: ResolvedChange[]): Record<string, unknown> {
   const configChange: Record<string, unknown> = {}
-  for (const change of changes) {
-    const existing = (dapp.config as any)[change.key]
-    configChange[change.key] = coerce(existing, change.value)
+  for (const rc of resolvedChanges) {
+    const coerced = coerce(rc.existing, rc.value)
+    mergeNestedChange(configChange, buildNestedChange(rc.path, coerced))
   }
   return configChange
 }
 
-function buildAppData(network: NetworkAccount, proposalType: string, changes: Array<{ key: string; value: string }>): Record<string, unknown> {
-  const appData: Record<string, unknown> = proposalType === 'governance' ? { dao: {} } : {}
-  for (const change of changes) {
-    if (proposalType === 'governance') {
-      const dao = network.current.dao
-      const existing = (dao as any)[change.key]
-      ;(appData.dao as Record<string, unknown>)[change.key] = coerce(existing, change.value)
-    } else {
-      const existing = (network.current as any)[change.key]
-      appData[change.key] = coerce(existing, change.value)
+function buildAppData(proposalType: DaoProposalAccount['proposalType'], resolvedChanges: ResolvedChange[]): Record<string, unknown> {
+  if (proposalType === 'governance') {
+    // Governance changes are scoped to network.current.dao, so nest them under a dao key.
+    const dao: Record<string, unknown> = {}
+    for (const rc of resolvedChanges) {
+      const coerced = coerce(rc.existing, rc.value)
+      mergeNestedChange(dao, buildNestedChange(rc.path, coerced))
     }
+    return { dao }
+  }
+  const appData: Record<string, unknown> = {}
+  for (const rc of resolvedChanges) {
+    const coerced = coerce(rc.existing, rc.value)
+    mergeNestedChange(appData, buildNestedChange(rc.path, coerced))
   }
   return appData
 }
