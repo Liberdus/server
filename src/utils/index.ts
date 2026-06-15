@@ -20,6 +20,7 @@ import * as configs from '../config'
 import { LiberdusFlags } from '../config'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import { shardusPostToNode } from './request'
+import { patchDeepOwn } from './daoParamResolver'
 import { Utils } from '@shardus/lib-types'
 import { ethers } from 'ethers'
 
@@ -187,18 +188,7 @@ export function patchConfig(existingConfig: ShardusTypes.ShardusConfiguration, c
   if (LiberdusFlags.VerboseLogs) console.log(`TESTING existingObject: ${JSON.stringify(existingConfig, null, 2)}`)
   /* prettier-ignore */
   if (LiberdusFlags.VerboseLogs) console.log(`TESTING changeObj: ${JSON.stringify(changeObj, null, 2)}`)
-  for (const changeKey in changeObj) {
-    if (changeObj[changeKey] && existingConfig.server[changeKey]) {
-      const targetObject = existingConfig.server[changeKey]
-      const changeProperties = changeObj[changeKey]
-
-      for (const propKey in changeProperties) {
-        if (changeProperties[propKey] && targetObject[propKey]) {
-          targetObject[propKey] = changeProperties[propKey]
-        }
-      }
-    }
-  }
+  patchDeepOwn(existingConfig.server as unknown as Record<string, unknown>, changeObj)
 }
 
 export function comparePropertiesTypes(A: any, B: any): boolean {

@@ -9,6 +9,7 @@ import * as AccountsStorage from '../storage/accountStorage'
 import { isUserAccount } from '../@types/accountTypeGuards'
 import { LiberdusFlags } from '../config'
 import { DAO_PROPOSALS_META_ID_STRING } from '../accounts/daoProposalsMetaAccount'
+import { resolveParamPath, resolveParamPathForProposalType, pathsOverlap } from '../utils/daoParamResolver'
 
 // dao_vote_result.apply hard-codes the convention that options[0] is the affirmative
 // ("apply this change") choice: `status = winnerIndex === 0 ? 'accepted' : 'rejected'`.
@@ -105,17 +106,26 @@ export const validate_fields = (tx: Tx.DaoProposalCreate, response: ShardusTypes
       return response
     }
     seenKeys.add(change.key)
-    // Early key-existence check against the cached network account for governance/economic.
-    // Protocol key-existence (against dapp.config) is deferred to validate() where dapp is available.
+    // Early key check against cached network account; protocol deferred to validate() where dapp is available.
     const cachedNetwork = AccountsStorage.cachedNetworkAccount
     if (cachedNetwork) {
-      if (tx.proposalType === 'governance' && (cachedNetwork.current.dao as any)[change.key] === undefined) {
-        response.reason = `key "${change.key}" does not exist in governance parameters`
-        return response
+      if (tx.proposalType === 'governance') {
+        const resolved = resolveParamPath(cachedNetwork.current.dao as unknown as Record<string, unknown>, change.key)
+        if (!resolved) {
+          response.reason = `key "${change.key}" does not exist in governance parameters`
+          return response
+        }
       }
-      if (tx.proposalType === 'economic' && (cachedNetwork.current as any)[change.key] === undefined) {
-        response.reason = `key "${change.key}" does not exist in economic parameters`
-        return response
+      if (tx.proposalType === 'economic') {
+        const resolved = resolveParamPath(cachedNetwork.current as unknown as Record<string, unknown>, change.key, { skipSubtrees: ['dao'] })
+        if (!resolved) {
+          response.reason = `key "${change.key}" does not exist in economic parameters`
+          return response
+        }
+        if (resolved.path.length === 1 && resolved.path[0] === 'dao') {
+          response.reason = `key "${change.key}" is the "dao" parameters object; economic proposals cannot modify it`
+          return response
+        }
       }
     }
   }
@@ -179,30 +189,32 @@ export const validate = (
     return response
   }
 
-  // Double-guard: confirm every change key exists in the authoritative account state.
-  // For governance/economic this is a second check (first was in validate_fields against the
-  // cached account); for protocol it is the only check since dapp is not available in validate_fields.
+  // Authoritative key-existence and overlap check against live account state.
+  // For governance/economic this is a second pass (validate_fields checked the cached account);
+  // for protocol it is the only check since dapp is not available in validate_fields.
   const payload = tx[tx.proposalType as 'governance' | 'economic' | 'protocol']
   if (payload) {
+    const resolvedPaths: string[][] = []
     for (const change of payload.changes) {
-      let existing: unknown
-      if (tx.proposalType === 'governance') {
-        existing = (network.current.dao as any)[change.key]
-      } else if (tx.proposalType === 'economic') {
-        existing = (network.current as any)[change.key]
-      } else {
-        existing = (dapp.config as any)[change.key]
-      }
-      if (existing === undefined) {
+      const resolved = resolveParamPathForProposalType(tx.proposalType, network, dapp, change.key)
+      if (!resolved) {
         response.reason = `key "${change.key}" does not exist in ${tx.proposalType} parameters`
         return response
       }
-      // Economic proposals may only modify scalar fields; the nested "dao" sub-object is governed
-      // exclusively by governance proposals. Mirror the guard in dao_apply_parameters.validate()
-      // so an invalid proposal is caught at creation time, not only at apply time.
-      if (tx.proposalType === 'economic' && typeof existing === 'object' && existing !== null && !Array.isArray(existing)) {
-        response.reason = `key "${change.key}" is an object parameter; economic proposals can only modify scalar fields`
+      // Economic proposals cannot touch the dao subtree — only governance proposals can.
+      if (tx.proposalType === 'economic' && resolved.path.length === 1 && resolved.path[0] === 'dao') {
+        response.reason = `key "${change.key}" is the "dao" parameters object; economic proposals cannot modify it`
         return response
+      }
+      resolvedPaths.push(resolved.path)
+    }
+    // Reject if two changes resolve to the same path or one is a prefix of the other.
+    for (let i = 0; i < resolvedPaths.length; i++) {
+      for (let j = i + 1; j < resolvedPaths.length; j++) {
+        if (pathsOverlap(resolvedPaths[i], resolvedPaths[j])) {
+          response.reason = `changes contain overlapping targets: "${resolvedPaths[i].join('.')}" and "${resolvedPaths[j].join('.')}"`
+          return response
+        }
       }
     }
   }
