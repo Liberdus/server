@@ -1418,6 +1418,8 @@ async function main(): Promise<void> {
   let sc7ProposalN = getProposalN('sc7')
   let sc8EconomicProposalN = getProposalN('sc8Economic')
   let sc8ProtocolProposalN = getProposalN('sc8Protocol')
+  let sc8LeafKeyProposalN = getProposalN('sc8LeafKey')
+  let sc8ArchiverProposalN = getProposalN('sc8Archiver')
   let sc9ProposalN = getProposalN('sc9')
   let sc10ProposalN = getProposalN('sc10')
   let sc11ProposalN = getProposalN('sc11')
@@ -1470,6 +1472,8 @@ async function main(): Promise<void> {
         sc7: sc7ProposalN,
         sc8Economic: sc8EconomicProposalN,
         sc8Protocol: sc8ProtocolProposalN,
+        sc8LeafKey: sc8LeafKeyProposalN,
+        sc8Archiver: sc8ArchiverProposalN,
         sc9: sc9ProposalN,
         sc10: sc10ProposalN,
         sc11: sc11ProposalN,
@@ -2648,6 +2652,95 @@ async function main(): Promise<void> {
           'change.debug.countEndpointStart=-1',
           c => c?.change?.debug?.countEndpointStart === -1,
           applyParamsPollMs,
+        )
+      },
+    ],
+    [
+      '8.6  Protocol proposal with leaf keys: sibling merge under p2p + nested debug leaf',
+      async () => {
+        sc8LeafKeyProposalN = setProposalN('sc8LeafKey', await createDaoProposal({
+          proposer: proposer6,
+          proposalType: 'protocol',
+          description: 'Protocol proposal via leaf keys (p2p.minNodes, p2p.maxNodes, debug.countEndpointStart)',
+          changes: [
+            { key: 'minNodes', value: '12', current: '10' },
+            { key: 'maxNodes', value: '1150', current: '1100' },
+            { key: 'countEndpointStart', value: '-2', current: '-1' },
+          ],
+          gracePeriodMs: graceDurationMs,
+        }))
+        saveCurrentRunState()
+        await committeeAcceptToVoting(sc8LeafKeyProposalN, proposer6, committee, SLEEP_BUFFER_MS, [0, 1, 2])
+        await castVote(sc8LeafKeyProposalN, voter7, [1, 0], minVoteSpendLib)
+        await finalizeVote(sc8LeafKeyProposalN, proposer6, SLEEP_BUFFER_MS)
+        const { receipt } = await applyAcceptedProposal(sc8LeafKeyProposalN, proposer6, SLEEP_BUFFER_MS)
+        const resolvedPaths: string[] = receipt.additionalInfo?.resolvedPaths ?? []
+        assert(
+          resolvedPaths.includes('p2p.minNodes') && resolvedPaths.includes('p2p.maxNodes') && resolvedPaths.includes('debug.countEndpointStart'),
+          `Expected resolvedPaths to include p2p.minNodes, p2p.maxNodes, debug.countEndpointStart, got ${JSON.stringify(resolvedPaths)}`,
+        )
+        // The two p2p.* leaves must deep-merge into a single change.p2p object (sibling merge),
+        // alongside the unrelated change.debug leaf.
+        await waitForListOfChanges(
+          'change.p2p.{minNodes:12,maxNodes:1150} & change.debug.countEndpointStart=-2',
+          c => c?.change?.p2p?.minNodes === 12 && c?.change?.p2p?.maxNodes === 1150 && c?.change?.debug?.countEndpointStart === -2,
+          applyParamsPollMs,
+        )
+      },
+    ],
+    [
+      '8.7  Reject proposal with overlapping resolved-path changes (section + leaf under it)',
+      async () => {
+        const n = await nextProposalNumber()
+        await injectExpectReject(
+          {
+            type: 'dao_proposal_create',
+            networkId: currentNetworkId,
+            from: proposer7.address,
+            proposalId: daoProposalId(n),
+            metaId: daoMetaId(),
+            proposalType: 'protocol',
+            emergency: false,
+            description: 'Overlapping resolved-path test: debug section + debug.countEndpointStart leaf',
+            options: ['yes', 'no'],
+            gracePeriod: graceDurationMs,
+            protocol: {
+              changes: [
+                { key: 'debug', value: '{"countEndpointStart":-3}', current: '{"countEndpointStart":-1}' },
+                { key: 'countEndpointStart', value: '-3', current: '-1' },
+              ],
+            },
+            timestamp: Date.now(),
+          },
+          proposer7,
+          'overlapping targets',
+        )
+      },
+    ],
+    [
+      '8.8  Economic proposal updates network.current.archiver via object key, leaving top-level version untouched',
+      async () => {
+        const topLevelActiveVersionBefore = String(await getCurrentNetworkValue('activeVersion'))
+        const currentArchiver = await getCurrentNetworkValue('archiver')
+        sc8ArchiverProposalN = setProposalN('sc8Archiver', await createDaoProposal({
+          proposer: proposer7,
+          proposalType: 'economic',
+          description: 'Economic proposal updates network.current.archiver.activeVersion',
+          changes: [{ key: 'archiver', value: '{"activeVersion":"3.7.10","minVersion":"3.7.9","latestVersion":"3.7.10"}', current: Utils.safeStringify(currentArchiver) }],
+          gracePeriodMs: graceDurationMs,
+        }))
+        saveCurrentRunState()
+        await committeeAcceptToVoting(sc8ArchiverProposalN, proposer7, committee, SLEEP_BUFFER_MS, [0, 1, 2])
+        await castVote(sc8ArchiverProposalN, voter8, [1, 0], minVoteSpendLib)
+        await finalizeVote(sc8ArchiverProposalN, proposer7, SLEEP_BUFFER_MS)
+        const { receipt } = await applyAcceptedProposal(sc8ArchiverProposalN, proposer7, SLEEP_BUFFER_MS)
+        const resolvedPaths: string[] = receipt.additionalInfo?.resolvedPaths ?? []
+        assert(resolvedPaths.includes('archiver'), `Expected resolvedPaths to include "archiver", got ${JSON.stringify(resolvedPaths)}`)
+        await waitForNetworkParameter(['current', 'archiver', 'activeVersion'], '3.7.10', applyParamsPollMs)
+        const topLevelActiveVersionAfter = String(await getCurrentNetworkValue('activeVersion'))
+        assert(
+          topLevelActiveVersionAfter === topLevelActiveVersionBefore,
+          `Expected top-level activeVersion to remain ${topLevelActiveVersionBefore}, got ${topLevelActiveVersionAfter}`,
         )
       },
     ],
