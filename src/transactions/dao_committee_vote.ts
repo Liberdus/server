@@ -25,14 +25,13 @@ export const validate_fields = (tx: Tx.DaoCommitteeVote, response: ShardusTypes.
     response.reason = 'tx "vote" must be "accept" or "withhold"'
     return response
   }
-  // withheldReason is required (non-empty) when voting to withhold.
   if (tx.vote === 'withhold') {
-    if (typeof tx.withheldReason !== 'string' || tx.withheldReason.trim().length === 0) {
-      response.reason = 'tx "withheldReason" is required and must be a non-empty string when vote is "withhold"'
+    if (typeof tx.withheldReason !== 'string' || tx.withheldReason.trim().length === 0 || tx.withheldReason.length > 1000) {
+      response.reason = 'tx "withheldReason" is required and must be a non-empty string of at most 1000 characters when vote is "withhold"'
       return response
     }
-  } else if (tx.withheldReason !== undefined && typeof tx.withheldReason !== 'string') {
-    response.reason = 'tx "withheldReason" must be a string if provided'
+  } else if (tx.withheldReason !== undefined) {
+    response.reason = 'tx "withheldReason" must not be provided when vote is "accept"'
     return response
   }
   if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
@@ -53,8 +52,8 @@ export const validate = (
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
-  const from: UserAccount = wrappedStates[tx.from] && (wrappedStates[tx.from].data as unknown as UserAccount)
-  const proposal: DaoProposalAccount = wrappedStates[tx.proposalId] && (wrappedStates[tx.proposalId].data as unknown as DaoProposalAccount)
+  const from = wrappedStates[tx.from]?.data as UserAccount
+  const proposal = wrappedStates[tx.proposalId]?.data as DaoProposalAccount
 
   if (!from || !isUserAccount(from)) {
     response.reason = 'from account not found or is not a UserAccount'
@@ -68,10 +67,7 @@ export const validate = (
     response.reason = `Proposal is not in review status (current: ${proposal.status})`
     return response
   }
-  // Lower bound: startTime gives the committee lead time before review actually opens
-  // ("there can be some time before the committee can vote on the proposal" — policy).
-  // Without this check a committee member could vote during that lead-time gap, before
-  // the nominal review window (and therefore the derived votingStart) has even begun.
+  // startTime is when review opens; votes before it (during the lead-time gap before review) are rejected.
   if (tx.timestamp < proposal.startTime) {
     response.reason = 'Committee review period has not started yet'
     return response
@@ -103,55 +99,42 @@ export const apply = (
   dapp: Shardus,
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
-  const from: UserAccount = wrappedStates[tx.from].data as unknown as UserAccount
-  const proposal: DaoProposalAccount = wrappedStates[tx.proposalId].data as unknown as DaoProposalAccount
+  const from = wrappedStates[tx.from].data as UserAccount
+  const proposal = wrappedStates[tx.proposalId].data as DaoProposalAccount
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
 
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
 
-  // Replace this member's current vote (rather than append) — a member can change their mind
-  // during review; keying by memberAddress means withheldReason always stays attributed to
-  // their *current* vote, with no stale/orphaned reasons left behind from a prior selection.
+  // Replace any existing vote from this member — they can change their mind during review.
   proposal.committeeVotes = proposal.committeeVotes.filter((v) => v.memberAddress !== tx.from)
   proposal.committeeVotes.push({
     memberAddress: tx.from,
     vote: tx.vote,
-    withheldReason: tx.vote === 'withhold' ? tx.withheldReason : undefined,
+    withheldReason: tx.vote === 'withhold' ? tx.withheldReason.trim() : undefined,
   })
 
-  // Use the committee snapshot taken at proposal creation (proposal.committeeAddresses), not
-  // the live network committee — the committee authoritative for this proposal's quorum/
-  // decisiveness math is the one in effect when the proposal was created, even if a governance
-  // proposal changes committeeAddresses mid-review.
-  // Votes from members who are not part of that snapshot are excluded — otherwise stale/foreign
-  // votes could produce phantom decisiveness.
+  // Use the committee snapshot from proposal creation, not the live network committee —
+  // a governance proposal could change committeeAddresses mid-review.
   const snapshotCommittee = new Set(proposal.committeeAddresses)
   const committeeSize = proposal.committeeAddresses.length
   const acceptCount = proposal.committeeVotes.filter((v) => v.vote === 'accept' && snapshotCommittee.has(v.memberAddress)).length
   const withholdCount = proposal.committeeVotes.filter((v) => v.vote === 'withhold' && snapshotCommittee.has(v.memberAddress)).length
 
-  // Decisive means the result cannot change even if all remaining members vote the other way
+  // Decisive: result can't change even if all remaining members vote the other way.
   const remainingVotes = committeeSize - acceptCount - withholdCount
   const acceptDecisive = acceptCount > withholdCount + remainingVotes
   const withholdDecisive = withholdCount > acceptCount + remainingVotes
 
-  // Only emergency proposals transition early on a decisive committee vote. Regular
-  // proposals never change status mid-review — per policy, "the user voting does not start
-  // until the review period is over" even once a result is decisive — so dao_committee_result
-  // (after reviewEnd) is the sole place a regular proposal's status is decided.
+  // Only emergency proposals change status early on a decisive vote; regular proposals
+  // wait until reviewEnd (handled by dao_committee_result).
   if (proposal.emergency) {
     if (withholdDecisive) {
       proposal.status = 'withheld'
-      // Proposal fee (seeded into voterRewardPool at creation) is burned on withhold.
+      // Burn the voter reward pool on withhold (it was seeded from the proposal fee at creation).
       proposal.initialBurnedReward = proposal.voterRewardPool
       proposal.voterRewardPool = 0n
     } else if (acceptDecisive) {
-      // Emergency proposals skip community voting and are accepted immediately on a decisive
-      // accept. All phase boundaries (votingStart/votingEnd/claimEnd) remain fully derived
-      // from startTime (see getVotingEnd/getClaimEnd) — "emergency" speeds up the *decision*,
-      // not the nominal voting schedule. Emergency proposals are exempt from the proposal fee,
-      // so voterRewardPool stays 0; with no community voters, claimedReward stays 0 too, and
-      // dao_burn_reward after claimEnd has nothing to burn ("Nothing left to burn").
+      // Emergency proposals skip community voting and go straight to accepted.
       proposal.status = 'accepted'
     }
   }
@@ -167,7 +150,7 @@ export const apply = (
     to: tx.proposalId,
     type: tx.type,
     transactionFee: txFeeWei,
-    additionalInfo: { vote: tx.vote, newStatus: proposal.status },
+    additionalInfo: { vote: tx.vote, proposalStatus: proposal.status },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
@@ -183,7 +166,7 @@ export const createFailedAppReceiptData = (
   applyResponse: ShardusTypes.ApplyResponse,
   reason: string,
 ): void => {
-  const from: UserAccount = wrappedStates[tx.from] && (wrappedStates[tx.from].data as unknown as UserAccount)
+  const from = wrappedStates[tx.from]?.data as UserAccount
   let transactionFee = BigInt(0)
   if (from) {
     const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
