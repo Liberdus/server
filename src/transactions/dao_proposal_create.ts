@@ -6,20 +6,20 @@ import * as config from '../config'
 import { UserAccount, NetworkAccount, WrappedStates, Tx, AppReceiptData, DaoProposalsMeta, DaoProposalAccount } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
-import { isUserAccount } from '../@types/accountTypeGuards'
+import { isUserAccount, isDaoProposalsMeta, isDaoProposalAccount } from '../@types/accountTypeGuards'
 import { LiberdusFlags } from '../config'
 import { DAO_PROPOSALS_META_ID_STRING } from '../accounts/daoProposalsMetaAccount'
-import { resolveParamPath, resolveParamPathForProposalType, pathsOverlap } from '../utils/daoParamResolver'
+import { resolveParamPathForProposalType, pathsOverlap } from '../utils/daoParamResolver'
 
-// dao_vote_result.apply hard-codes the convention that options[0] is the affirmative
-// ("apply this change") choice: `status = winnerIndex === 0 ? 'accepted' : 'rejected'`.
-// The policy describes ballots as "usually [yes, no]" — enforce that options[0] is one of
-// these recognized affirmative strings (case-insensitive) so a governance/economic/protocol
-// proposal can never be created with inverted semantics (e.g. options: ['no', 'yes']) that
-// would silently flip the on-chain outcome of a community vote (review finding #10).
+// options[0] must be an affirmative string — dao_vote_result treats winnerIndex === 0 as "accepted".
+// Without this guard, inverted options (e.g. ['no', 'yes']) would silently flip the vote outcome.
 export const AFFIRMATIVE_OPTION_STRINGS = ['yes', 'accept', 'approve']
 
-export const validate_fields = (tx: Tx.DaoProposalCreate, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
+export const validate_fields = (
+  tx: Tx.DaoProposalCreate,
+  response: ShardusTypes.IncomingTransactionResult,
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
   if (!LiberdusFlags.enableNewDAOTransactions) {
     response.reason = 'New DAO transactions are not enabled'
     return response
@@ -44,8 +44,8 @@ export const validate_fields = (tx: Tx.DaoProposalCreate, response: ShardusTypes
     response.reason = 'tx "proposalType" must be one of: governance, economic, protocol'
     return response
   }
-  if (typeof tx.gracePeriod !== 'number' || tx.gracePeriod < 0) {
-    response.reason = 'tx "gracePeriod" must be a non-negative number'
+  if (tx.gracePeriod !== undefined && (typeof tx.gracePeriod !== 'number' || tx.gracePeriod < 0)) {
+    response.reason = 'tx "gracePeriod" must be a non-negative number if provided'
     return response
   }
   if (typeof tx.description !== 'string' || tx.description.length === 0 || tx.description.length > 10000) {
@@ -62,9 +62,6 @@ export const validate_fields = (tx: Tx.DaoProposalCreate, response: ShardusTypes
       return response
     }
   }
-  // governance/economic/protocol proposals are the only types this handler supports (checked
-  // above), and dao_vote_result.apply unconditionally treats winnerIndex === 0 as "accepted"
-  // for all of them — so options[0] must always be the recognized affirmative choice.
   if (!AFFIRMATIVE_OPTION_STRINGS.includes(tx.options[0].trim().toLowerCase())) {
     response.reason = `tx "options[0]" must be a recognized affirmative choice (one of: ${AFFIRMATIVE_OPTION_STRINGS.join(
       ', ',
@@ -75,13 +72,11 @@ export const validate_fields = (tx: Tx.DaoProposalCreate, response: ShardusTypes
     response.reason = 'tx "startTime" must be a non-negative number if provided'
     return response
   }
-  // startTime gives the committee some lead time before review begins; it cannot be in the past
-  // relative to creation (tx.timestamp). If omitted, it defaults to creationTime in apply().
+  // startTime can be set in the future so the committee has time to review before voting begins; defaults to creation time.
   if (tx.startTime !== undefined && tx.startTime < tx.timestamp) {
     response.reason = `tx "startTime" (${tx.startTime}) cannot be earlier than the creation time (${tx.timestamp})`
     return response
   }
-  // Validate the type-specific changes payload
   const payload = tx[tx.proposalType as 'governance' | 'economic' | 'protocol']
   if (!payload || !Array.isArray(payload.changes) || payload.changes.length === 0) {
     response.reason = `tx "${tx.proposalType}" payload must include a non-empty "changes" array`
@@ -106,28 +101,12 @@ export const validate_fields = (tx: Tx.DaoProposalCreate, response: ShardusTypes
       return response
     }
     seenKeys.add(change.key)
-    // Early key check against cached network account; protocol deferred to validate() where dapp is available.
-    const cachedNetwork = AccountsStorage.cachedNetworkAccount
-    if (cachedNetwork) {
-      if (tx.proposalType === 'governance') {
-        const resolved = resolveParamPath(cachedNetwork.current.dao as unknown as Record<string, unknown>, change.key)
-        if (!resolved) {
-          response.reason = `key "${change.key}" does not exist in governance parameters`
-          return response
-        }
-      }
-      if (tx.proposalType === 'economic') {
-        const resolved = resolveParamPath(cachedNetwork.current as unknown as Record<string, unknown>, change.key, { skipSubtrees: ['dao'] })
-        if (!resolved) {
-          response.reason = `key "${change.key}" does not exist in economic parameters`
-          return response
-        }
-        if (resolved.path.length === 1 && resolved.path[0] === 'dao') {
-          response.reason = `key "${change.key}" is the "dao" parameters object; economic proposals cannot modify it`
-          return response
-        }
-      }
-    }
+  }
+  // Quick check using cached network account.
+  const changesError = validateChangesPayload(tx, AccountsStorage.cachedNetworkAccount, dapp)
+  if (changesError) {
+    response.reason = changesError
+    return response
   }
   if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
     response.reason = 'tx must be signed by the from account'
@@ -141,15 +120,52 @@ export const validate_fields = (tx: Tx.DaoProposalCreate, response: ShardusTypes
   return response
 }
 
+// Resolves each change key against the appropriate parameter source and checks for path overlap.
+// Returns an error reason on failure, undefined on success.
+function validateChangesPayload(
+  tx: Tx.DaoProposalCreate,
+  network: NetworkAccount,
+  dapp: Shardus,
+): string | undefined {
+  const payload = tx[tx.proposalType as 'governance' | 'economic' | 'protocol']
+  if (!payload) return undefined
+
+  const resolvedPaths: string[][] = []
+
+  for (const change of payload.changes) {
+    const resolved = resolveParamPathForProposalType(tx.proposalType, network, dapp, change.key)
+    if (!resolved) return `key "${change.key}" does not exist in ${tx.proposalType} parameters`
+
+    // Economic proposals cannot touch the dao subtree — only governance proposals can.
+    if (tx.proposalType === 'economic' && resolved.path.length === 1 && resolved.path[0] === 'dao') {
+      return `key "${change.key}" is the "dao" parameters object; economic proposals cannot modify it`
+    }
+
+    resolvedPaths.push(resolved.path)
+  }
+
+  // Reject if two changes resolve to the same path or one is a prefix of the other.
+  for (let i = 0; i < resolvedPaths.length; i++) {
+    for (let j = i + 1; j < resolvedPaths.length; j++) {
+      if (pathsOverlap(resolvedPaths[i], resolvedPaths[j])) {
+        return `changes contain overlapping targets: "${resolvedPaths[i].join('.')}" and "${resolvedPaths[j].join('.')}"`
+      }
+    }
+  }
+
+  return undefined
+}
+
 export const validate = (
   tx: Tx.DaoProposalCreate,
   wrappedStates: WrappedStates,
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
-  const network: NetworkAccount = wrappedStates[config.networkAccount] && (wrappedStates[config.networkAccount].data as unknown as NetworkAccount)
-  const from: UserAccount = wrappedStates[tx.from] && (wrappedStates[tx.from].data as unknown as UserAccount)
-  const meta: DaoProposalsMeta = wrappedStates[tx.metaId] && (wrappedStates[tx.metaId].data as unknown as DaoProposalsMeta)
+  const network = wrappedStates[config.networkAccount]?.data as NetworkAccount
+  const from = wrappedStates[tx.from]?.data as UserAccount
+  const meta = wrappedStates[tx.metaId]?.data as DaoProposalsMeta
+  const proposal = wrappedStates[tx.proposalId]?.data as DaoProposalAccount
 
   if (!network) {
     response.reason = 'Network account not found'
@@ -159,8 +175,13 @@ export const validate = (
     response.reason = 'from account not found or is not a UserAccount'
     return response
   }
-  if (!meta) {
-    response.reason = 'DAO proposals meta account not found'
+  if (meta && !isDaoProposalsMeta(meta)) {
+    response.reason = 'Not a DaoProposalsMeta account'
+    return response
+  }
+
+  if (proposal && !isDaoProposalAccount(proposal)) {
+    response.reason = 'Not a DaoProposalAccount'
     return response
   }
 
@@ -170,7 +191,7 @@ export const validate = (
     return response
   }
 
-  const nextCount = meta.count + 1
+  const nextCount = (meta?.count ?? 0) + 1
   const expectedProposalId = crypto.hash(`dao proposal #${nextCount}`)
   if (tx.proposalId !== expectedProposalId) {
     response.reason = `tx "proposalId" does not match the expected next proposal id (expected ${expectedProposalId})`
@@ -184,39 +205,17 @@ export const validate = (
     return response
   }
 
-  if (tx.gracePeriod > daoParams.graceDuration) {
-    response.reason = `tx "gracePeriod" (${tx.gracePeriod}ms) exceeds the maximum allowed grace duration (${daoParams.graceDuration}ms)`
+  const gracePeriod = tx.gracePeriod ?? 0
+  if (gracePeriod > daoParams.graceDuration) {
+    response.reason = `tx "gracePeriod" (${gracePeriod}ms) exceeds the maximum allowed grace duration (${daoParams.graceDuration}ms)`
     return response
   }
 
-  // Authoritative key-existence and overlap check against live account state.
-  // For governance/economic this is a second pass (validate_fields checked the cached account);
-  // for protocol it is the only check since dapp is not available in validate_fields.
-  const payload = tx[tx.proposalType as 'governance' | 'economic' | 'protocol']
-  if (payload) {
-    const resolvedPaths: string[][] = []
-    for (const change of payload.changes) {
-      const resolved = resolveParamPathForProposalType(tx.proposalType, network, dapp, change.key)
-      if (!resolved) {
-        response.reason = `key "${change.key}" does not exist in ${tx.proposalType} parameters`
-        return response
-      }
-      // Economic proposals cannot touch the dao subtree — only governance proposals can.
-      if (tx.proposalType === 'economic' && resolved.path.length === 1 && resolved.path[0] === 'dao') {
-        response.reason = `key "${change.key}" is the "dao" parameters object; economic proposals cannot modify it`
-        return response
-      }
-      resolvedPaths.push(resolved.path)
-    }
-    // Reject if two changes resolve to the same path or one is a prefix of the other.
-    for (let i = 0; i < resolvedPaths.length; i++) {
-      for (let j = i + 1; j < resolvedPaths.length; j++) {
-        if (pathsOverlap(resolvedPaths[i], resolvedPaths[j])) {
-          response.reason = `changes contain overlapping targets: "${resolvedPaths[i].join('.')}" and "${resolvedPaths[j].join('.')}"`
-          return response
-        }
-      }
-    }
+  // Recheck with live wrappedStates — validate_fields ran against the cached network account.
+  const changesError = validateChangesPayload(tx, network, dapp)
+  if (changesError) {
+    response.reason = changesError
+    return response
   }
 
   // Emergency proposals do not require a proposal fee.
@@ -242,10 +241,10 @@ export const apply = (
   dapp: Shardus,
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data as unknown as NetworkAccount
-  const from: UserAccount = wrappedStates[tx.from].data as unknown as UserAccount
-  const meta: DaoProposalsMeta = wrappedStates[tx.metaId].data as unknown as DaoProposalsMeta
-  const proposal: DaoProposalAccount = wrappedStates[tx.proposalId].data as unknown as DaoProposalAccount
+  const network = wrappedStates[config.networkAccount].data as NetworkAccount
+  const from = wrappedStates[tx.from].data as UserAccount
+  const meta = wrappedStates[tx.metaId].data as DaoProposalsMeta
+  const proposal = wrappedStates[tx.proposalId].data as DaoProposalAccount
 
   const daoParams = network.current.dao
   // Emergency proposals do not require a proposal fee.
@@ -255,7 +254,6 @@ export const apply = (
   // Deduct fees
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, proposalFeeWei)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
-  from.data.balance = SafeBigIntMath.subtract(from.data.balance, utils.maintenanceAmount(txTimestamp, from, network))
 
   // Increment proposal counter
   meta.count += 1
@@ -265,25 +263,21 @@ export const apply = (
   proposal.emergency = tx.emergency
   proposal.proposalType = tx.proposalType
   proposal.creationTime = txTimestamp
-  // startTime defaults to creationTime when omitted. All phase boundaries (reviewEnd,
-  // votingStart, votingEnd, claimEnd, applyEligibleAt) are derived from startTime + the
-  // duration snapshots below; see getReviewEnd/getVotingStart/etc in daoProposalAccount.ts.
+  // Defaults to creation time if omitted; reviewEnd, votingStart, votingEnd, claimEnd, and applyEligibleAt all derive from startTime.
   proposal.startTime = tx.startTime ?? txTimestamp
   proposal.description = tx.description
   proposal.options = tx.options
   proposal.totalVote = tx.options.map(() => 0n)
-  // The proposal fee is added to the voter reward pool at creation time. It is burned (zeroed)
-  // if the proposal is later withheld by the committee; otherwise it is kept to incentivize
-  // voting (see dao_committee_vote/dao_committee_result withheld branches).
+  // The proposal fee seeds the voter reward pool; burned (zeroed) if the committee withholds, otherwise kept to incentivize voters.
   proposal.voterRewardPool = proposalFeeWei
   proposal.initialBurnedReward = 0n
   proposal.finalBurnedReward = 0n
   proposal.committeeVotes = []
   proposal.voterList = []
   proposal.claimList = []
-  proposal.gracePeriod = tx.gracePeriod
+  proposal.gracePeriod = tx.gracePeriod ?? 0
 
-  // Snapshot DAO params as USD strings (see DaoProposalAccount field comments)
+  // Snapshot current DAO params so the proposal is evaluated against the rules in effect at creation time, not at apply time.
   proposal.proposalFeeUsdStr = daoParams.proposalFeeUsdStr
   proposal.voteThresholdUsdStr = daoParams.voteThresholdUsdStr
   proposal.minimumSpendUsdStr = daoParams.minimumSpendUsdStr
@@ -295,7 +289,6 @@ export const apply = (
   proposal.claimDuration = daoParams.claimDuration
   proposal.committeeAddresses = [...daoParams.committeeAddresses]
 
-  // Set type-specific payload
   if (tx.governance) proposal.governance = tx.governance
   if (tx.economic) proposal.economic = tx.economic
   if (tx.protocol) proposal.protocol = tx.protocol
@@ -314,7 +307,11 @@ export const apply = (
     to: tx.proposalId,
     type: tx.type,
     transactionFee: txFeeWei,
-    additionalInfo: { proposalNumber: meta.count, emergency: tx.emergency },
+    additionalInfo: {
+      proposalNumber: meta.count,
+      emergency: tx.emergency,
+      proposalFee: proposalFeeWei,
+    },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
@@ -330,7 +327,7 @@ export const createFailedAppReceiptData = (
   applyResponse: ShardusTypes.ApplyResponse,
   reason: string,
 ): void => {
-  const from: UserAccount = wrappedStates[tx.from] && (wrappedStates[tx.from].data as unknown as UserAccount)
+  const from = wrappedStates[tx.from]?.data as UserAccount
   let transactionFee = BigInt(0)
   if (from) {
     const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
