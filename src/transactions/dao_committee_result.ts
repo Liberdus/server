@@ -1,6 +1,5 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
-import * as config from '../config'
 import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
@@ -40,8 +39,8 @@ export const validate = (
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
-  const from: UserAccount = wrappedStates[tx.from] && (wrappedStates[tx.from].data as unknown as UserAccount)
-  const proposal: DaoProposalAccount = wrappedStates[tx.proposalId] && (wrappedStates[tx.proposalId].data as unknown as DaoProposalAccount)
+  const from = wrappedStates[tx.from]?.data as UserAccount
+  const proposal = wrappedStates[tx.proposalId]?.data as DaoProposalAccount
 
   if (!from || !isUserAccount(from)) {
     response.reason = 'from account not found or is not a UserAccount'
@@ -78,38 +77,31 @@ export const apply = (
   dapp: Shardus,
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
-  const from: UserAccount = wrappedStates[tx.from].data as unknown as UserAccount
-  const proposal: DaoProposalAccount = wrappedStates[tx.proposalId].data as unknown as DaoProposalAccount
+  const from = wrappedStates[tx.from].data as UserAccount
+  const proposal = wrappedStates[tx.proposalId].data as DaoProposalAccount
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
 
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
 
   if (proposal.emergency) {
-    // Emergency proposals: dao_committee_vote already flips status to 'accepted' the moment a
-    // decisive accept is reached (and 'withheld' on a decisive withhold), so reaching this point
-    // with status still 'review' means the committee never reached a decisive result before the
-    // (nominal) review window elapsed — per policy, an emergency proposal that does not meet
-    // the +50% requirement is withheld after the review period is over.
+    // Still in 'review' means dao_committee_vote never reached a decisive result — withheld by default.
     proposal.status = 'withheld'
-    // Proposal fee (seeded into voterRewardPool at creation) is burned on withhold.
+    // Burn the voter reward pool on withhold (seeded from the proposal fee at creation).
     proposal.initialBurnedReward = proposal.voterRewardPool
     proposal.voterRewardPool = 0n
   } else {
-    // Sole path from 'review' → 'voting'/'withheld' for regular proposals; dao_committee_vote
-    // never flips status early regardless of outcome — the result is decided here, once, at
-    // reviewEnd. Per policy: >50% of committee members voting "withhold" -> withheld; otherwise
-    // (accept-majority, tie, or insufficient turnout) -> automatically accepted into voting.
+    // Regular proposals: decided here at reviewEnd — >50% withhold → withheld; otherwise → voting.
     const snapshotCommittee = new Set(proposal.committeeAddresses)
     const committeeSize = proposal.committeeAddresses.length
     const withholdCount = proposal.committeeVotes.filter((v) => v.vote === 'withhold' && snapshotCommittee.has(v.memberAddress)).length
 
     if (withholdCount > committeeSize / 2) {
       proposal.status = 'withheld'
-      // Proposal fee (seeded into voterRewardPool at creation) is burned on withhold.
+      // Burn the voter reward pool on withhold (seeded from the proposal fee at creation).
       proposal.initialBurnedReward = proposal.voterRewardPool
       proposal.voterRewardPool = 0n
     } else {
-      // voterRewardPool already seeded with the proposal fee at creation; kept as-is.
+      // voterRewardPool stays as seeded — distributed to voters after the voting phase.
       proposal.status = 'voting'
     }
   }
@@ -125,7 +117,7 @@ export const apply = (
     to: tx.proposalId,
     type: tx.type,
     transactionFee: txFeeWei,
-    additionalInfo: { newStatus: proposal.status },
+    additionalInfo: { proposalStatus: proposal.status },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
@@ -141,7 +133,7 @@ export const createFailedAppReceiptData = (
   applyResponse: ShardusTypes.ApplyResponse,
   reason: string,
 ): void => {
-  const from: UserAccount = wrappedStates[tx.from] && (wrappedStates[tx.from].data as unknown as UserAccount)
+  const from = wrappedStates[tx.from]?.data as UserAccount
   let transactionFee = BigInt(0)
   if (from) {
     const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
