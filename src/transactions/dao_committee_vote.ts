@@ -110,7 +110,7 @@ export const apply = (
   proposal.committeeVotes.push({
     memberAddress: tx.from,
     vote: tx.vote,
-    withheldReason: tx.vote === 'withhold' ? tx.withheldReason.trim() : undefined,
+    withheldReason: tx.vote === 'withhold' ? tx.withheldReason!.trim() : undefined,
   })
 
   // Use the committee snapshot from proposal creation, not the live network committee —

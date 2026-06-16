@@ -1,7 +1,6 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
-import * as config from '../config'
-import { NetworkAccount, UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } from '../@types'
+import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 import * as utils from '../utils'
@@ -57,8 +56,8 @@ export const validate = (
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
-  const from: UserAccount = wrappedStates[tx.from] && (wrappedStates[tx.from].data as unknown as UserAccount)
-  const proposal: DaoProposalAccount = wrappedStates[tx.proposalId] && (wrappedStates[tx.proposalId].data as unknown as DaoProposalAccount)
+  const from = wrappedStates[tx.from]?.data as UserAccount
+  const proposal = wrappedStates[tx.proposalId]?.data as DaoProposalAccount
 
   if (!from || !isUserAccount(from)) {
     response.reason = 'from account not found or is not a UserAccount'
@@ -129,8 +128,8 @@ export const apply = (
   dapp: Shardus,
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
-  const from: UserAccount = wrappedStates[tx.from].data as unknown as UserAccount
-  const proposal: DaoProposalAccount = wrappedStates[tx.proposalId].data as unknown as DaoProposalAccount
+  const from = wrappedStates[tx.from].data as UserAccount
+  const proposal = wrappedStates[tx.proposalId].data as DaoProposalAccount
 
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
 
@@ -161,7 +160,7 @@ export const apply = (
   // Add spend to reward pool
   proposal.voterRewardPool = (proposal.voterRewardPool ?? 0n) + tx.spend
 
-  // Add voter to voterList on their first vote (minimum-spend votes only)
+  // Add voter to voterList on their first vote.
   const alreadyListed = proposal.voterList.some((v) => v.address === tx.from)
   if (!alreadyListed) {
     proposal.voterList.push({ address: tx.from, timestamp: txTimestamp })
@@ -180,13 +179,19 @@ export const apply = (
     transactionFee: txFeeWei,
     additionalInfo: {
       weights: tx.weights,
-      spend: tx.spend.toString(),
-      optionWeights: optionWeights.map((w) => w.toString()),
+      spend: tx.spend,
+      optionWeights,
     },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
-  dapp.log('Applied dao_vote tx', tx.from, tx.proposalId, tx.weights, optionWeights.map((w) => w.toString()))
+  dapp.log(
+    'Applied dao_vote tx',
+    tx.from,
+    tx.proposalId,
+    tx.weights,
+    optionWeights.map((w) => w.toString()),
+  )
 }
 
 export const createFailedAppReceiptData = (

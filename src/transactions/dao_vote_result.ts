@@ -1,6 +1,5 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
-import * as config from '../config'
 import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
@@ -40,8 +39,8 @@ export const validate = (
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
-  const from: UserAccount = wrappedStates[tx.from] && (wrappedStates[tx.from].data as unknown as UserAccount)
-  const proposal: DaoProposalAccount = wrappedStates[tx.proposalId] && (wrappedStates[tx.proposalId].data as unknown as DaoProposalAccount)
+  const from = wrappedStates[tx.from]?.data as UserAccount
+  const proposal = wrappedStates[tx.proposalId]?.data as DaoProposalAccount
 
   if (!from || !isUserAccount(from)) {
     response.reason = 'from account not found or is not a UserAccount'
@@ -78,8 +77,8 @@ export const apply = (
   dapp: Shardus,
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
-  const from: UserAccount = wrappedStates[tx.from].data as unknown as UserAccount
-  const proposal: DaoProposalAccount = wrappedStates[tx.proposalId].data as unknown as DaoProposalAccount
+  const from = wrappedStates[tx.from].data as UserAccount
+  const proposal = wrappedStates[tx.proposalId].data as DaoProposalAccount
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
 
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
@@ -100,9 +99,7 @@ export const apply = (
   // Math.round guards against non-integer pctBurned values that could arise if a governance
   // proposal sets it to a decimal (e.g. 50.5) — BigInt() throws on non-integer inputs.
   const burnAmount = (proposal.voterRewardPool * BigInt(Math.round(proposal.pctBurned))) / 100n
-  // voterRewardPool becomes the fixed, immutable post-burn pool from this point on — every
-  // dao_claim_reward computes its share from this value, and claimedReward (still 0 here)
-  // tracks the running total paid out.
+  // Pool is fixed from this point — dao_claim_reward distributes it proportionally among voters.
   proposal.voterRewardPool = proposal.voterRewardPool - burnAmount
   // This burn happens before the claim period, so it counts toward initialBurnedReward.
   proposal.initialBurnedReward = SafeBigIntMath.add(proposal.initialBurnedReward, burnAmount)
@@ -120,9 +117,9 @@ export const apply = (
     transactionFee: txFeeWei,
     additionalInfo: {
       winningOption,
-      status: proposal.status,
-      burnAmount: burnAmount.toString(),
-      remainingPool: proposal.voterRewardPool.toString(),
+      proposalStatus: proposal.status,
+      burnAmount,
+      voterRewardPool: proposal.voterRewardPool,
     },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
@@ -139,7 +136,7 @@ export const createFailedAppReceiptData = (
   applyResponse: ShardusTypes.ApplyResponse,
   reason: string,
 ): void => {
-  const from: UserAccount = wrappedStates[tx.from] && (wrappedStates[tx.from].data as unknown as UserAccount)
+  const from = wrappedStates[tx.from]?.data as UserAccount
   let transactionFee = BigInt(0)
   if (from) {
     const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
