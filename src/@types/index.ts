@@ -510,7 +510,7 @@ export namespace Tx {
     metaId: string
     emergency: boolean
     proposalType: DaoProposalType
-    gracePeriod: number
+    gracePeriod?: number
     description: string
     options: string[]
     governance?: DaoGovernanceData
@@ -796,7 +796,7 @@ export interface DaoProtocolData {
 
 export interface DaoProposalsMeta {
   id: string
-  type: 'DaoProposalsMeta'
+  type: string
   count: number
   hash: string
   timestamp: number
@@ -804,7 +804,7 @@ export interface DaoProposalsMeta {
 
 export interface DaoProposalAccount {
   id: string
-  type: 'DaoProposalAccount'
+  type: string
   status: DaoProposalStatus
   emergency: boolean
   proposalType: DaoProposalType
@@ -862,7 +862,10 @@ export type Accounts = NetworkAccount &
   ProposalAccount &
   DevProposalAccount &
   NodeAccount &
-  ChatAccount
+  ChatAccount &
+  DaoProposalsMeta &
+  DaoProposalAccount
+
 export type AccountVariant =
   | NetworkAccount
   | IssueAccount
