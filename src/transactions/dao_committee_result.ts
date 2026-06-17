@@ -85,10 +85,8 @@ export const apply = (
 
   if (proposal.emergency) {
     // Still in 'review' means dao_committee_vote never reached a decisive result — withheld by default.
+    // Emergency proposals carry no proposal fee so voterRewardPool is already 0n — nothing to burn.
     proposal.status = 'withheld'
-    // Burn the voter reward pool on withhold (seeded from the proposal fee at creation).
-    proposal.initialBurnedReward = proposal.voterRewardPool
-    proposal.voterRewardPool = 0n
   } else {
     // Regular proposals: decided here at reviewEnd — >50% withhold → withheld; otherwise → voting.
     const snapshotCommittee = new Set(proposal.committeeAddresses)
@@ -109,6 +107,11 @@ export const apply = (
   from.timestamp = txTimestamp
   proposal.timestamp = txTimestamp
 
+  const additionalInfo: Record<string, unknown> = { proposalStatus: proposal.status }
+  // Only non-emergency proposals have a voterRewardPool seeded from the proposal fee — expose the burn amount when withheld.
+  if (!proposal.emergency && proposal.status === 'withheld') {
+    additionalInfo.burned = proposal.initialBurnedReward
+  }
   const appReceiptData: AppReceiptData = {
     txId,
     timestamp: txTimestamp,
@@ -117,7 +120,7 @@ export const apply = (
     to: tx.proposalId,
     type: tx.type,
     transactionFee: txFeeWei,
-    additionalInfo: { proposalStatus: proposal.status },
+    additionalInfo,
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)

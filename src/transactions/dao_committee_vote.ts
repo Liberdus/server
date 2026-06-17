@@ -129,10 +129,8 @@ export const apply = (
   // wait until reviewEnd (handled by dao_committee_result).
   if (proposal.emergency) {
     if (withholdDecisive) {
+      // Emergency proposals carry no proposal fee so voterRewardPool is already 0n — nothing to burn.
       proposal.status = 'withheld'
-      // Burn the voter reward pool on withhold (it was seeded from the proposal fee at creation).
-      proposal.initialBurnedReward = proposal.voterRewardPool
-      proposal.voterRewardPool = 0n
     } else if (acceptDecisive) {
       // Emergency proposals skip community voting and go straight to accepted.
       proposal.status = 'accepted'
