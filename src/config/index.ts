@@ -618,6 +618,7 @@ config = merge(config, {
 
       awaitingDataCanBailOnReceipt: true,
       reduceTimeFromTxTimestamp,
+      fallbackToCurrentCycleFortxGroup: false,
     },
   },
 })

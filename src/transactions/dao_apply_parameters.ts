@@ -115,7 +115,11 @@ export const apply = (
   const changes = getChanges(proposal)
   const resolvedChanges = resolveChanges(proposal.proposalType, network, dapp, changes)
   const when = txTimestamp + config.ONE_SECOND * 10
-  console.log('Global tx timestamp', txId, when, txTimestamp, dapp.shardusGetTime(), dapp.shardusGetTime() > when, dapp.shardusGetTime() - when)
+  const now = dapp.shardusGetTime()
+  console.log(
+    `dao_apply_parameters global tx timing: txId=${txId} txTimestamp=${txTimestamp} globalTimestamp=${when} currentTime=${now} ` +
+      `isCurrentTimePastGlobalTimestamp=${now > when} deltaMs=${now - when}`,
+  )
   const changeCycle = getChangeCycle(dapp)
 
   let value: Tx.ApplyChangeNetworkParam | Tx.ApplyChangeConfig
