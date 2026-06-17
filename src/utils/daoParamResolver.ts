@@ -2,8 +2,13 @@ import type { Shardus } from '@shardus/core'
 import type { NetworkAccount, DaoProposalType } from '../@types'
 
 export interface ResolvedParam {
+  key: string
   path: string[]
   existing: unknown
+}
+
+export interface ResolvedChange extends ResolvedParam {
+  value: string
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -14,7 +19,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 // Top-level subtrees named in `skip` are excluded from the search.
 // "First match wins" is deterministic because network.current and dapp.config
 // are built identically on every node.
-function searchNested(node: Record<string, unknown>, key: string, ancestors: string[], skip: Set<string>): ResolvedParam | undefined {
+function searchNested(node: Record<string, unknown>, key: string, ancestors: string[], skip: Set<string>): { path: string[]; existing: unknown } | undefined {
   for (const childKey of Object.keys(node)) {
     if (ancestors.length === 0 && skip.has(childKey)) continue
     const childVal = node[childKey]
@@ -34,10 +39,11 @@ function searchNested(node: Record<string, unknown>, key: string, ancestors: str
 // - returns undefined if the key is not found
 export function resolveParamPath(target: Record<string, unknown>, key: string, opts?: { skipSubtrees?: string[] }): ResolvedParam | undefined {
   if (Object.prototype.hasOwnProperty.call(target, key)) {
-    return { path: [key], existing: target[key] }
+    return { key, path: [key], existing: target[key] }
   }
   const skip = new Set(opts?.skipSubtrees ?? [])
-  return searchNested(target, key, [], skip)
+  const found = searchNested(target, key, [], skip)
+  return found ? { key, ...found } : undefined
 }
 
 // Returns the resolved path/value for a change key based on proposal type:
@@ -60,6 +66,23 @@ export function resolveParamPathForProposalType(
   // path under .server when applying.
   if (!dapp) return undefined
   return resolveParamPath(dapp.config as unknown as Record<string, unknown>, key)
+}
+
+// Resolves every change to its target path and existing value.
+// A failure here means validate() and apply() diverged — should never happen.
+export function resolveChanges(
+  proposalType: DaoProposalType,
+  network: NetworkAccount,
+  dapp: Shardus,
+  changes: Array<{ key: string; value: string }>,
+): ResolvedChange[] {
+  return changes.map(change => {
+    const resolved = resolveParamPathForProposalType(proposalType, network, dapp, change.key)
+    if (!resolved) {
+      throw new Error(`key "${change.key}" does not exist in ${proposalType} parameters`)
+    }
+    return { ...resolved, value: change.value }
+  })
 }
 
 // Turns (['p2p', 'minNodes'], 10) into { p2p: { minNodes: 10 } }.

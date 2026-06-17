@@ -9,7 +9,7 @@ import * as AccountsStorage from '../storage/accountStorage'
 import { isUserAccount, isDaoProposalsMeta, isDaoProposalAccount } from '../@types/accountTypeGuards'
 import { LiberdusFlags } from '../config'
 import { DAO_PROPOSALS_META_ID_STRING } from '../accounts/daoProposalsMetaAccount'
-import { resolveParamPathForProposalType, pathsOverlap } from '../utils/daoParamResolver'
+import { validateChangesPayload } from '../utils/daoParamValidation'
 
 // options[0] must be an affirmative string — dao_vote_result treats winnerIndex === 0 as "accepted".
 // Without this guard, inverted options (e.g. ['no', 'yes']) would silently flip the vote outcome.
@@ -103,7 +103,7 @@ export const validate_fields = (
     seenKeys.add(change.key)
   }
   // Quick check using cached network account.
-  const changesError = validateChangesPayload(tx, AccountsStorage.cachedNetworkAccount, dapp)
+  const changesError = validateChangesPayload(tx.proposalType, payload.changes, AccountsStorage.cachedNetworkAccount, dapp)
   if (changesError) {
     response.reason = changesError
     return response
@@ -118,42 +118,6 @@ export const validate_fields = (
   }
   response.success = true
   return response
-}
-
-// Resolves each change key against the appropriate parameter source and checks for path overlap.
-// Returns an error reason on failure, undefined on success.
-function validateChangesPayload(
-  tx: Tx.DaoProposalCreate,
-  network: NetworkAccount,
-  dapp: Shardus,
-): string | undefined {
-  const payload = tx[tx.proposalType as 'governance' | 'economic' | 'protocol']
-  if (!payload) return undefined
-
-  const resolvedPaths: string[][] = []
-
-  for (const change of payload.changes) {
-    const resolved = resolveParamPathForProposalType(tx.proposalType, network, dapp, change.key)
-    if (!resolved) return `key "${change.key}" does not exist in ${tx.proposalType} parameters`
-
-    // Economic proposals cannot touch the dao subtree — only governance proposals can.
-    if (tx.proposalType === 'economic' && resolved.path.length === 1 && resolved.path[0] === 'dao') {
-      return `key "${change.key}" is the "dao" parameters object; economic proposals cannot modify it`
-    }
-
-    resolvedPaths.push(resolved.path)
-  }
-
-  // Reject if two changes resolve to the same path or one is a prefix of the other.
-  for (let i = 0; i < resolvedPaths.length; i++) {
-    for (let j = i + 1; j < resolvedPaths.length; j++) {
-      if (pathsOverlap(resolvedPaths[i], resolvedPaths[j])) {
-        return `changes contain overlapping targets: "${resolvedPaths[i].join('.')}" and "${resolvedPaths[j].join('.')}"`
-      }
-    }
-  }
-
-  return undefined
 }
 
 export const validate = (
@@ -212,7 +176,8 @@ export const validate = (
   }
 
   // Recheck with live wrappedStates — validate_fields ran against the cached network account.
-  const changesError = validateChangesPayload(tx, network, dapp)
+  const txPayload = tx[tx.proposalType as 'governance' | 'economic' | 'protocol']
+  const changesError = validateChangesPayload(tx.proposalType, txPayload?.changes ?? [], network, dapp)
   if (changesError) {
     response.reason = changesError
     return response

@@ -9,8 +9,8 @@ import { isUserAccount, isDaoProposalAccount } from '../@types/accountTypeGuards
 import { LiberdusFlags } from '../config'
 import { Utils } from '@shardus/lib-types'
 import { getApplyEligibleAt } from '../accounts/daoProposalAccount'
-import { resolveParamPathForProposalType, buildNestedChange, mergeNestedChange, pathsOverlap } from '../utils/daoParamResolver'
-import type { ResolvedParam } from '../utils/daoParamResolver'
+import { buildNestedChange, mergeNestedChange, resolveChanges, ResolvedChange } from '../utils/daoParamResolver'
+import { coerce, validateCommitteeAddresses, validateChangesPayload } from '../utils/daoParamValidation'
 
 
 export const validate_fields = (tx: Tx.DaoApplyParameters, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
@@ -80,40 +80,12 @@ export const validate = (
     return response
   }
 
-  // Resolve each change key to its actual path and validate the value type before apply().
+  // Re-validate change keys and values against the live network state before applying.
   const changes = getChanges(proposal)
-  const resolvedPaths: string[][] = []
-  for (const change of changes) {
-    const resolved = resolveParamPathForProposalType(proposal.proposalType, network, dapp, change.key)
-    if (!resolved) {
-      response.reason = `Key "${change.key}" does not exist in ${proposal.proposalType} parameters`
-      return response
-    }
-    // Economic proposals cannot touch the dao subtree — only governance proposals can.
-    if (proposal.proposalType === 'economic' && resolved.path.length === 1 && resolved.path[0] === 'dao') {
-      response.reason = `Key "${change.key}" is the "dao" parameters object; economic proposals cannot modify it`
-      return response
-    }
-    resolvedPaths.push(resolved.path)
-    try {
-      const coerced = coerce(resolved.existing, change.value)
-      // committeeAddresses needs size/format checks beyond type-checking since quorum math depends on it.
-      if (resolved.path[resolved.path.length - 1] === 'committeeAddresses') {
-        validateCommitteeAddresses(coerced)
-      }
-    } catch (err: any) {
-      response.reason = `Value "${change.value}" is not valid for key "${change.key}" (resolved to "${resolved.path.join('.')}"): ${err.message}`
-      return response
-    }
-  }
-  // Reject if two changes resolve to the same path or one is a prefix of the other.
-  for (let i = 0; i < resolvedPaths.length; i++) {
-    for (let j = i + 1; j < resolvedPaths.length; j++) {
-      if (pathsOverlap(resolvedPaths[i], resolvedPaths[j])) {
-        response.reason = `changes contain overlapping targets: "${resolvedPaths[i].join('.')}" and "${resolvedPaths[j].join('.')}"`
-        return response
-      }
-    }
+  const changesError = validateChangesPayload(proposal.proposalType, changes, network, dapp)
+  if (changesError) {
+    response.reason = changesError
+    return response
   }
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   if (from.data.balance < txFeeWei) {
@@ -212,30 +184,6 @@ function getChanges(proposal: DaoProposalAccount): Array<{ key: string; value: s
   return []
 }
 
-interface ResolvedChange {
-  key: string
-  value: string
-  path: string[]
-  existing: unknown
-}
-
-// Resolves every change to its target path and existing value.
-// A failure here means validate() and apply() diverged — should never happen.
-function resolveChanges(
-  proposalType: DaoProposalAccount['proposalType'],
-  network: NetworkAccount,
-  dapp: Shardus,
-  changes: Array<{ key: string; value: string }>,
-): ResolvedChange[] {
-  return changes.map(change => {
-    const resolved: ResolvedParam | undefined = resolveParamPathForProposalType(proposalType, network, dapp, change.key)
-    if (!resolved) {
-      throw new Error(`key "${change.key}" does not exist in ${proposalType} parameters`)
-    }
-    return { key: change.key, value: change.value, path: resolved.path, existing: resolved.existing }
-  })
-}
-
 function buildConfigChange(resolvedChanges: ResolvedChange[]): Record<string, unknown> {
   const configChange: Record<string, unknown> = {}
   for (const rc of resolvedChanges) {
@@ -271,58 +219,6 @@ function getChangeCycle(dapp: Shardus): number {
   throw new Error('Unable to determine change cycle: no cycle data available from dapp.getLatestCycles()')
 }
 
-function validateCommitteeAddresses(coerced: unknown): void {
-  if (!Array.isArray(coerced)) {
-    throw new Error('committeeAddresses must be an array')
-  }
-  const min = LiberdusFlags.minCommitteeMembers
-  const max = LiberdusFlags.maxCommitteeMembers
-  if (coerced.length < min || coerced.length > max) {
-    throw new Error(`committeeAddresses must contain between ${min} and ${max} members (got ${coerced.length})`)
-  }
-  for (const addr of coerced) {
-    if (typeof addr !== 'string' || !utils.isValidAddress(addr)) {
-      throw new Error(`committeeAddresses contains an invalid address: "${addr}"`)
-    }
-  }
-  if (new Set(coerced).size !== coerced.length) {
-    throw new Error('committeeAddresses contains duplicate addresses')
-  }
-}
-
-function coerce(existing: unknown, value: string): unknown {
-  if (typeof existing === 'number') {
-    const n = Number(value)
-    if (!Number.isFinite(n)) throw new Error(`"${value}" is not a valid finite number for this field`)
-    return n
-  }
-  if (typeof existing === 'boolean') {
-    if (value !== 'true' && value !== 'false') throw new Error(`"${value}" is not a valid boolean — must be exactly "true" or "false"`)
-    return value === 'true'
-  }
-  if (typeof existing === 'bigint') {
-    if (!/^-?\d+$/.test(value)) throw new Error(`"${value}" is not a valid integer string for this field`)
-    return BigInt(value)
-  }
-  if (Array.isArray(existing)) {
-    const parsed = JSON.parse(value)
-    if (!Array.isArray(parsed)) throw new Error(`"${value}" does not parse to an array`)
-    return parsed
-  }
-  if (typeof existing === 'object' && existing !== null) {
-    const parsed = JSON.parse(value)
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      throw new Error(`"${value}" does not parse to an object`)
-    }
-    // Every key in the proposed patch must exist in the target object with a matching type.
-    // comparePropertiesTypes checks this recursively, preventing unknown keys or type mismatches.
-    if (!utils.comparePropertiesTypes(parsed, existing)) {
-      throw new Error(`"${value}" contains keys or types not present in the existing object`)
-    }
-    return parsed
-  }
-  return value
-}
 
 export const transactionReceiptPass = (
   tx: Tx.DaoApplyParameters,
