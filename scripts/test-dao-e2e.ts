@@ -1249,10 +1249,17 @@ async function apiPost(urlPath: string, body: unknown, config?: Parameters<typeo
  * - Reads DAO phase durations from /network/parameters
  */
 async function waitForNetwork(): Promise<NetworkTiming> {
-  console.log('Waiting for network to reach processing mode (polling archiver cycleinfo)...')
+  const configuredCycleSeconds = Number(process.env.CYCLE_DURATION || E2E_DAO_DURATION_DEFAULTS.CYCLE_DURATION || 60)
+  const waitCycles = Number(process.env.DAO_E2E_PROCESSING_WAIT_CYCLES || 20)
+  const processingWaitMs = Number(process.env.DAO_E2E_PROCESSING_WAIT_MS || Math.max(10 * 60 * 1000, configuredCycleSeconds * waitCycles * 1000 + 60_000))
+  console.log(
+    `Waiting for network to reach processing mode (polling archiver cycleinfo; timeout ${(processingWaitMs / 60000).toFixed(1)}m / ~${waitCycles} cycles)...`,
+  )
 
   let cycleDurationMs = 0
   let networkId = ''
+  let lastProgressLog = 0
+  let lastCycle = ''
   await pollUntil(
     async () => {
       try {
@@ -1260,19 +1267,25 @@ async function waitForNetwork(): Promise<NetworkTiming> {
         const cycleInfo: any[] = res.data?.cycleInfo ?? []
         if (cycleInfo.length === 0) return false
         const record = cycleInfo[0]
+        const currentCycle = record.counter
         if (record.mode === 'processing') {
           cycleDurationMs = record.duration * 1000
           networkId = record.networkId ?? ''
-          console.log(`Network in processing mode. cycleDuration=${record.duration}s  networkId=${networkId}`)
+          console.log(`Network in processing mode. cycle=${currentCycle}  cycleDuration=${record.duration}s  networkId=${networkId}`)
           return true
         }
-        if (VERBOSE) console.log(`  cycle mode: ${record.mode} (waiting for 'processing')`)
+        const now = Date.now()
+        if (currentCycle !== lastCycle || now - lastProgressLog >= 30_000) {
+          lastCycle = currentCycle
+          lastProgressLog = now
+          console.log(`  cycle=${currentCycle} mode=${record.mode ?? 'unknown'} (waiting for 'processing')`)
+        }
         return false
       } catch {
         return false
       }
     },
-    10 * 60 * 1000,
+    processingWaitMs,
     3_000,
   )
 
@@ -1445,12 +1458,36 @@ async function main(): Promise<void> {
   } = timing
   currentNetworkId = networkId
 
+  const savedNetworkMismatch = Boolean(savedState && savedState.networkId !== networkId)
+
   // Warn if the saved network ID doesn't match — proposal numbers from a previous network are invalid.
-  if (savedState && savedState.networkId !== networkId) {
+  if (savedNetworkMismatch) {
     console.log(`  ⚠️  Run-state networkId mismatch!`)
-    console.log(`  ⚠️  Saved: ${savedState.networkId}`)
+    console.log(`  ⚠️  Saved: ${savedState?.networkId}`)
     console.log(`  ⚠️  Current: ${networkId}`)
-    console.log(`  ⚠️  Restored accounts and proposal numbers may not match this network.`)
+    console.log(`  ⚠️  Restored accounts will be reused, but stale proposal numbers will be reset.`)
+    for (const key of Object.keys(proposalNumbers)) delete proposalNumbers[key]
+    sc1ProposalN = 0
+    sc2ProposalN = 0
+    sc3ProposalN = 0
+    sc4ProposalN = 0
+    sc5ProposalN = 0
+    sc6ProposalN = 0
+    sc7ProposalN = 0
+    sc8EconomicProposalN = 0
+    sc8ProtocolProposalN = 0
+    sc8LeafKeyProposalN = 0
+    sc8ArchiverProposalN = 0
+    sc9ProposalN = 0
+    sc10ProposalN = 0
+    sc11ProposalN = 0
+    sc12ProposalN = 0
+    sc13ProposalN = 0
+    sc14ProposalN = 0
+    sc15ProposalAN = 0
+    sc15ProposalBN = 0
+    sc15CommitteeAddressesProposalN = 0
+    sc16ProposalN = 0
   }
 
   // Snapshot all mutable run-state variables and persist to disk.
@@ -1488,9 +1525,11 @@ async function main(): Promise<void> {
     })
   }
 
-  // On a fresh run, immediately persist the account keys so they're available
-  // for --step retries even if the run is interrupted before any proposals are created.
-  if (!NO_START) saveCurrentRunState()
+  const shouldFundAccounts = !NO_START || !savedState || savedNetworkMismatch
+
+  // Persist account keys before funding whenever this run owns account setup, so
+  // retries keep targeting the same accounts even if funding is interrupted.
+  if (shouldFundAccounts) saveCurrentRunState()
 
   // Derived timing constants
   const applyParamsPollMs = cycleDurationMs * 5   // global message fires at cycle+3
@@ -1507,7 +1546,7 @@ async function main(): Promise<void> {
   const minVoteSpendLib = usdStrToLibCeil(minimumSpendUsdStr, stabilityFactorStr)
   console.log(`Funding: ${TEST_ACCOUNT_FUND_LIB} LIB per account; min dao_vote spend≈${minVoteSpendLib} LIB`)
 
-  if (!NO_START) {
+  if (shouldFundAccounts) {
     await step('0.1  Fund all DAO E2E accounts', async () => {
       await Promise.all([
         ...proposers.map(a => fundAccount(a, TEST_ACCOUNT_FUND_LIB)),
@@ -1722,10 +1761,10 @@ async function main(): Promise<void> {
       '1.8  Non-voter (proposer) tries dao_claim_reward on accepted proposal → rejected',
       async () => {
         // Run immediately after 1.7 (right at votingEnd, while the full claimDuration window is
-        // still ahead) rather than after the grace-period sleep in 1.9. claimEnd is now strictly
+        // still ahead) rather than after the grace-period sleep in 1.11. claimEnd is now strictly
         // derived (= votingEnd + claimDuration, independent of when dao_vote_result actually
         // executes), so any extra delay eats directly into the claim window margin — running the
-        // "did not vote" check here (instead of after 1.9's ~88s grace-period sleep) keeps us
+        // "did not vote" check here (instead of after the apply/global-message wait in 1.11) keeps us
         // comfortably inside the window. Validation order is intentional: the time-window check
         // in dao_claim_reward.validate() runs before the voter-membership check, so a
         // late-arriving tx correctly reports "Claim period has ended" rather than "did not vote" —
@@ -1746,39 +1785,7 @@ async function main(): Promise<void> {
     ],
 
     [
-      '1.9  Sleep past graceDuration, dao_apply_parameters → applied + network param updated',
-      async () => {
-        const proposalBefore = await getProposal(sc1ProposalN)
-        await sleepUntilTimestamp(proposalBefore.applyEligibleAt, 'applyEligibleAt (grace period end)', SLEEP_BUFFER_MS)
-        await injectAndAssert(
-          {
-            type: 'dao_apply_parameters',
-            networkId: currentNetworkId,
-            from: proposer.address,
-            proposalId: daoProposalId(sc1ProposalN),
-            timestamp: Date.now(),
-          },
-          proposer,
-        )
-        const proposal = await getProposal(sc1ProposalN)
-        assert(proposal.status === 'applied', `Expected status 'applied', got '${proposal.status}'`)
-
-        // Global message fires at cycle+3 — poll up to 5 cycles for param to update
-        console.log(
-          `    Polling up to ${applyParamsPollMs / 1000}s for network.current.dao.voteExponent === 1.2` +
-            ` (global msg at cycle+3 ≈ ${(cycleDurationMs * 3) / 1000}s)...`,
-        )
-        await waitForNetworkParameter(['current', 'dao', 'voteExponent'], 1.2, applyParamsPollMs)
-        await waitForListOfChanges(
-          'appData.dao.voteExponent=1.2',
-          c => String(c?.appData?.dao?.voteExponent) === '1.2',
-          applyParamsPollMs,
-        )
-      },
-    ],
-
-    [
-      '1.10 dao_claim_reward (voter1 + voter2)',
+      '1.9 dao_claim_reward (voter1 + voter2)',
       async () => {
         // NOTE: dao_claim_reward's payout is explicitly *time-weighted* — see apply():
         //   previousTimestamp = (first voter) ? getVotingStart(proposal) : prior voter's timestamp
@@ -1798,6 +1805,10 @@ async function main(): Promise<void> {
         // dao_vote_result has run) and independently recompute each voter's *exact* expected
         // reward via the same formula — then assert the actual claimed amount matches exactly.
         // This verifies the distribution mechanism precisely, with zero sensitivity to timing.
+        //
+        // Keep claims before dao_apply_parameters/global-message polling. claimEnd is fixed at
+        // votingEnd + claimDuration, while apply_parameters can wait several cycles for its
+        // global message; with 60s cycles that wait can consume the entire claim window.
         const proposalForReward = await getProposal(sc1ProposalN)
         const expectedVoter1Reward = computeExpectedClaimReward(proposalForReward, voter1.address, 0n)
         const expectedVoter2Reward = computeExpectedClaimReward(proposalForReward, voter2.address, expectedVoter1Reward)
@@ -1847,7 +1858,7 @@ async function main(): Promise<void> {
     ],
 
     [
-      '1.11 Double-claim rejected (voter1 claims again)',
+      '1.10 Double-claim rejected (voter1 claims again)',
       async () => {
         await injectExpectReject(
           {
@@ -1859,6 +1870,37 @@ async function main(): Promise<void> {
           },
           voter1,
           'already claimed',
+        )
+      },
+    ],
+    [
+      '1.11 Sleep past graceDuration, dao_apply_parameters → applied + network param updated',
+      async () => {
+        const proposalBefore = await getProposal(sc1ProposalN)
+        await sleepUntilTimestamp(proposalBefore.applyEligibleAt, 'applyEligibleAt (grace period end)', SLEEP_BUFFER_MS)
+        await injectAndAssert(
+          {
+            type: 'dao_apply_parameters',
+            networkId: currentNetworkId,
+            from: proposer.address,
+            proposalId: daoProposalId(sc1ProposalN),
+            timestamp: Date.now(),
+          },
+          proposer,
+        )
+        const proposal = await getProposal(sc1ProposalN)
+        assert(proposal.status === 'applied', `Expected status 'applied', got '${proposal.status}'`)
+
+        // Global message fires at cycle+3 — poll up to 5 cycles for param to update
+        console.log(
+          `    Polling up to ${applyParamsPollMs / 1000}s for network.current.dao.voteExponent === 1.2` +
+            ` (global msg at cycle+3 ≈ ${(cycleDurationMs * 3) / 1000}s)...`,
+        )
+        await waitForNetworkParameter(['current', 'dao', 'voteExponent'], 1.2, applyParamsPollMs)
+        await waitForListOfChanges(
+          'appData.dao.voteExponent=1.2',
+          c => String(c?.appData?.dao?.voteExponent) === '1.2',
+          applyParamsPollMs,
         )
       },
     ],
@@ -3489,34 +3531,30 @@ async function main(): Promise<void> {
       },
     ],
     [
-      '15.7 Invalid committeeAddresses apply is rejected without global change',
+      '15.7 Invalid committeeAddresses proposal creation is rejected',
       async () => {
         const daoParams = await getDaoParameters()
         const invalidCommitteeAddresses = [committee[0].address]
-        sc15CommitteeAddressesProposalN = setProposalN('sc15CommitteeAddresses', await createDaoProposal({
-          proposer: proposer3,
-          description: 'Invalid committeeAddresses apply validation proposal',
-          changes: [{ key: 'committeeAddresses', value: JSON.stringify(invalidCommitteeAddresses), current: JSON.stringify(daoParams.committeeAddresses) }],
-          gracePeriodMs: graceDurationMs,
-        }))
-        saveCurrentRunState()
-        await committeeAcceptToVoting(sc15CommitteeAddressesProposalN, proposer3, committee, SLEEP_BUFFER_MS, [1, 2, 3])
-        await castVote(sc15CommitteeAddressesProposalN, voter15, [1, 0], minVoteSpendLib)
-        await finalizeVote(sc15CommitteeAddressesProposalN, proposer3, SLEEP_BUFFER_MS)
-        const proposalBeforeApply = await getProposal(sc15CommitteeAddressesProposalN)
-        await sleepUntilTimestamp(proposalBeforeApply.applyEligibleAt, 'applyEligibleAt', SLEEP_BUFFER_MS)
-        await expectApplyRejectNoGlobalChange(
+        const proposalNumber = await nextProposalNumber()
+        await injectExpectReject(
           {
-            type: 'dao_apply_parameters',
+            type: 'dao_proposal_create',
             networkId: currentNetworkId,
             from: proposer3.address,
-            proposalId: daoProposalId(sc15CommitteeAddressesProposalN),
+            proposalId: daoProposalId(proposalNumber),
+            metaId: daoMetaId(),
+            proposalType: 'governance',
+            emergency: false,
+            description: 'Invalid committeeAddresses validation proposal',
+            options: ['yes', 'no'],
+            gracePeriod: graceDurationMs,
+            governance: {
+              changes: [{ key: 'committeeAddresses', value: JSON.stringify(invalidCommitteeAddresses), current: JSON.stringify(daoParams.committeeAddresses) }],
+            },
             timestamp: Date.now(),
           },
           proposer3,
           'committeeAddresses must contain between',
-          sc15CommitteeAddressesProposalN,
-          c => Array.isArray(c?.appData?.dao?.committeeAddresses) && c.appData.dao.committeeAddresses.length === 1,
         )
       },
     ],
