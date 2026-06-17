@@ -8,8 +8,7 @@ import * as utils from '../utils'
 import { isUserAccount, isDaoProposalAccount } from '../@types/accountTypeGuards'
 import { LiberdusFlags } from '../config'
 import { getClaimEnd, getVotingStart } from '../accounts/daoProposalAccount'
-
-const PRECISION = BigInt(10 ** 18)
+import { computeClaimReward } from '../utils/daoClaimRewardMath'
 
 export const validate_fields = (tx: Tx.DaoClaimReward, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (!LiberdusFlags.enableNewDAOTransactions) {
@@ -113,22 +112,15 @@ export const apply = (
   const previousTimestamp = voterIndex === 0 ? getVotingStart(proposal) : proposal.voterList[voterIndex - 1].timestamp
   let timeDelta = BigInt(voterEntry.timestamp - previousTimestamp)
   // Clamp to zero: out-of-order landing (rare) should not produce a negative timeDelta
-  // and silently reduce the claimant's balance via the reward formula.
+  // and silently distort the computed reward.
   if (timeDelta < 0n) {
     timeDelta = 0n
   }
 
   const votingDuration = BigInt(proposal.votingDuration)
-  const N = BigInt(proposal.voterList.length)
+  const voterCount = BigInt(proposal.voterList.length)
 
-  // Reward formula (bigint fixed-point with PRECISION = 10^18):
-  // reward = pool * (timeDelta / votingDuration / 2 + 1 / voterCount / 2)
-  // Uses voterRewardPool (fixed post-burn pool, immutable since dao_vote_result) so all
-  // claimants get the same base regardless of order.
-  const timePart = (timeDelta * PRECISION) / votingDuration
-  const equalPart = PRECISION / N
-  const rewardNumerator = proposal.voterRewardPool * (timePart + equalPart)
-  let reward = rewardNumerator / (2n * PRECISION)
+  let reward = computeClaimReward(proposal.voterRewardPool, timeDelta, votingDuration, voterCount)
 
   // Cap at remaining unclaimed pool to prevent rounding over-distribution
   const remainingPool = SafeBigIntMath.subtract(proposal.voterRewardPool, proposal.claimedReward)

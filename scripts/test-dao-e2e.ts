@@ -45,6 +45,7 @@ import path from 'path'
 import * as ShardusCrypto from '@shardus/lib-crypto-utils'
 import { Utils } from '@shardus/lib-types'
 import { DaoProposalAccount } from '../src/@types'
+import { computeClaimReward } from '../src/utils/daoClaimRewardMath'
 
 // Set custom stringifier so hashObj handles bigints correctly.
 // Mirrors what src/index.ts does at startup.
@@ -1138,17 +1139,14 @@ function computeExpectedClaimReward(proposal: DaoProposalWithTiming, voterAddres
   const previousTimestamp = voterIndex === 0 ? proposal.votingStart : proposal.voterList[voterIndex - 1].timestamp
   let timeDelta = BigInt(voterEntry.timestamp - previousTimestamp)
   if (timeDelta < 0n) timeDelta = 0n
-
-  const rewardPrecision = 10n ** 18n
-  const votingDuration = BigInt(proposal.votingDuration)
-  const voterCount = BigInt(proposal.voterList.length)
-  const timePart = (timeDelta * rewardPrecision) / votingDuration
-  const equalPart = rewardPrecision / voterCount
-  const rewardNumerator = asBigInt(proposal.voterRewardPool) * (timePart + equalPart)
-  let reward = rewardNumerator / (2n * rewardPrecision)
+  const reward = computeClaimReward(
+    asBigInt(proposal.voterRewardPool),
+    timeDelta,
+    BigInt(proposal.votingDuration),
+    BigInt(proposal.voterList.length),
+  )
   const remainingPool = asBigInt(proposal.voterRewardPool) - claimedSoFar
-  if (reward > remainingPool) reward = remainingPool
-  return reward
+  return reward > remainingPool ? remainingPool : reward
 }
 
 type BurnExpectation = bigint | 'zero' | 'positive'
