@@ -44,9 +44,9 @@ export const validate = (
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
-  const from: UserAccount = wrappedStates[tx.from] && (wrappedStates[tx.from].data as unknown as UserAccount)
-  const proposal: DaoProposalAccount = wrappedStates[tx.proposalId] && (wrappedStates[tx.proposalId].data as unknown as DaoProposalAccount)
-  const network: NetworkAccount = wrappedStates[config.networkAccount] && (wrappedStates[config.networkAccount].data as unknown as NetworkAccount)
+  const from = wrappedStates[tx.from]?.data as UserAccount
+  const proposal = wrappedStates[tx.proposalId]?.data as DaoProposalAccount
+  const network = wrappedStates[config.networkAccount]?.data as NetworkAccount
 
   if (!from || !isUserAccount(from)) {
     response.reason = 'from account not found or is not a UserAccount'
@@ -106,16 +106,15 @@ export const apply = (
   dapp: Shardus,
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
-  const from: UserAccount = wrappedStates[tx.from].data as unknown as UserAccount
-  const proposal: DaoProposalAccount = wrappedStates[tx.proposalId].data as unknown as DaoProposalAccount
-  const network: NetworkAccount = wrappedStates[config.networkAccount].data as unknown as NetworkAccount
+  const from = wrappedStates[tx.from].data as UserAccount
+  const proposal = wrappedStates[tx.proposalId].data as DaoProposalAccount
+  const network = wrappedStates[config.networkAccount].data as NetworkAccount
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
 
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
 
   const changes = getChanges(proposal)
   const resolvedChanges = resolveChanges(proposal.proposalType, network, dapp, changes)
-  const resolvedPaths = resolvedChanges.map(rc => rc.path.join('.'))
   const when = txTimestamp + config.ONE_SECOND * 10
   console.log('Global tx timestamp', txId, when, txTimestamp, dapp.shardusGetTime(), dapp.shardusGetTime() > when, dapp.shardusGetTime() - when)
   const changeCycle = getChangeCycle(dapp)
@@ -164,7 +163,7 @@ export const apply = (
     to: tx.proposalId,
     type: tx.type,
     transactionFee: txFeeWei,
-    additionalInfo: { proposalType: proposal.proposalType, appliedChanges: changes.length, resolvedPaths },
+    additionalInfo: { proposalType: proposal.proposalType, changes },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
@@ -219,7 +218,6 @@ function getChangeCycle(dapp: Shardus): number {
   throw new Error('Unable to determine change cycle: no cycle data available from dapp.getLatestCycles()')
 }
 
-
 export const transactionReceiptPass = (
   tx: Tx.DaoApplyParameters,
   txId: string,
@@ -241,7 +239,7 @@ export const createFailedAppReceiptData = (
   applyResponse: ShardusTypes.ApplyResponse,
   reason: string,
 ): void => {
-  const from: UserAccount = wrappedStates[tx.from] && (wrappedStates[tx.from].data as unknown as UserAccount)
+  const from = wrappedStates[tx.from]?.data as UserAccount
   let transactionFee = BigInt(0)
   if (from) {
     const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
