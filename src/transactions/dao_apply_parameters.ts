@@ -10,8 +10,7 @@ import { LiberdusFlags } from '../config'
 import { Utils } from '@shardus/lib-types'
 import { getApplyEligibleAt } from '../accounts/daoProposalAccount'
 import { buildNestedChange, mergeNestedChange, resolveChanges, ResolvedChange } from '../utils/daoParamResolver'
-import { coerce, validateCommitteeAddresses, validateChangesPayload } from '../utils/daoParamValidation'
-
+import { coerce, validateChangesPayload } from '../utils/daoParamValidation'
 
 export const validate_fields = (tx: Tx.DaoApplyParameters, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (!LiberdusFlags.enableNewDAOTransactions) {
@@ -163,7 +162,7 @@ export const apply = (
     to: tx.proposalId,
     type: tx.type,
     transactionFee: txFeeWei,
-    additionalInfo: { proposalType: proposal.proposalType, changes },
+    additionalInfo: { proposalType: proposal.proposalType, change: value.change },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)

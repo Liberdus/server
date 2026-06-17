@@ -1881,7 +1881,8 @@ async function main(): Promise<void> {
         assert(asBigInt(receipt.additionalInfo.burned) === remainingBeforeBurn, `Expected burned ${remainingBeforeBurn}, got ${receipt.additionalInfo.burned}`)
         const proposal = await getProposal(sc1ProposalN)
         assertBurnFields(proposal, { final: 'positive' })
-        assert(asBigInt(proposal.voterRewardPool) === asBigInt(proposal.claimedReward), `Expected voterRewardPool === claimedReward after final burn, got ${proposal.voterRewardPool} vs ${proposal.claimedReward}`)
+        assert(asBigInt(proposal.claimedReward) === asBigInt(proposalBefore.claimedReward), `Expected claimedReward to remain ${proposalBefore.claimedReward} after final burn, got ${proposal.claimedReward}`)
+        assert(asBigInt(proposal.voterRewardPool) === 0n, `Expected voterRewardPool === 0 after final burn, got ${proposal.voterRewardPool}`)
         await injectExpectReject(
           {
             type: 'dao_burn_reward',
@@ -2454,7 +2455,8 @@ async function main(): Promise<void> {
         assert(asBigInt(receipt.additionalInfo.burned) === remainingBeforeBurn, `Expected burned ${remainingBeforeBurn}, got ${receipt.additionalInfo.burned}`)
         const proposal = await getProposal(sc6ProposalN)
         assertBurnFields(proposal, { final: 'positive' })
-        assert(asBigInt(proposal.voterRewardPool) === asBigInt(proposal.claimedReward), `Expected voterRewardPool === claimedReward after final burn, got ${proposal.voterRewardPool} vs ${proposal.claimedReward}`)
+        assert(asBigInt(proposal.claimedReward) === asBigInt(proposalBefore.claimedReward), `Expected claimedReward to remain ${proposalBefore.claimedReward} after final burn, got ${proposal.claimedReward}`)
+        assert(asBigInt(proposal.voterRewardPool) === 0n, `Expected voterRewardPool === 0 after final burn, got ${proposal.voterRewardPool}`)
       },
     ],
     [
@@ -2674,10 +2676,10 @@ async function main(): Promise<void> {
         await castVote(sc8LeafKeyProposalN, voter7, [1, 0], minVoteSpendLib)
         await finalizeVote(sc8LeafKeyProposalN, proposer6, SLEEP_BUFFER_MS)
         const { receipt } = await applyAcceptedProposal(sc8LeafKeyProposalN, proposer6, SLEEP_BUFFER_MS)
-        const resolvedPaths: string[] = receipt.additionalInfo?.resolvedPaths ?? []
+        const receiptChange = (receipt.additionalInfo?.change ?? {}) as any
         assert(
-          resolvedPaths.includes('p2p.minNodes') && resolvedPaths.includes('p2p.maxNodes') && resolvedPaths.includes('debug.countEndpointStart'),
-          `Expected resolvedPaths to include p2p.minNodes, p2p.maxNodes, debug.countEndpointStart, got ${JSON.stringify(resolvedPaths)}`,
+          receiptChange?.change?.p2p?.minNodes === 12 && receiptChange?.change?.p2p?.maxNodes === 1150 && receiptChange?.change?.debug?.countEndpointStart === -2,
+          `Expected receipt change to include p2p.minNodes, p2p.maxNodes, debug.countEndpointStart, got ${JSON.stringify(receiptChange)}`,
         )
         // The two p2p.* leaves must deep-merge into a single change.p2p object (sibling merge),
         // alongside the unrelated change.debug leaf.
@@ -2734,8 +2736,8 @@ async function main(): Promise<void> {
         await castVote(sc8ArchiverProposalN, voter8, [1, 0], minVoteSpendLib)
         await finalizeVote(sc8ArchiverProposalN, proposer7, SLEEP_BUFFER_MS)
         const { receipt } = await applyAcceptedProposal(sc8ArchiverProposalN, proposer7, SLEEP_BUFFER_MS)
-        const resolvedPaths: string[] = receipt.additionalInfo?.resolvedPaths ?? []
-        assert(resolvedPaths.includes('archiver'), `Expected resolvedPaths to include "archiver", got ${JSON.stringify(resolvedPaths)}`)
+        const receiptChange = (receipt.additionalInfo?.change ?? {}) as any
+        assert(receiptChange?.appData?.archiver?.activeVersion === '3.7.10', `Expected receipt change to include appData.archiver.activeVersion, got ${JSON.stringify(receiptChange)}`)
         await waitForNetworkParameter(['current', 'archiver', 'activeVersion'], '3.7.10', applyParamsPollMs)
         const topLevelActiveVersionAfter = String(await getCurrentNetworkValue('activeVersion'))
         assert(
