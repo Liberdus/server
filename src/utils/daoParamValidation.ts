@@ -11,9 +11,13 @@ import { resolveParamPathForProposalType, pathsOverlap } from './daoParamResolve
 export function validateChangesPayload(
   proposalType: DaoProposalType,
   changes: Array<{ key: string; value: string }>,
-  network: NetworkAccount,
+  network: NetworkAccount | undefined,
   dapp: Shardus | undefined,
 ): string | undefined {
+  if (!network) {
+    return 'Network account not available for DAO parameter validation'
+  }
+
   const resolvedPaths: string[][] = []
 
   for (const change of changes) {

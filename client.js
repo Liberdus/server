@@ -3035,10 +3035,15 @@ vorpal.command('dao proposal <number>', 'show details of a single DAO proposal')
       // Voting state
       this.log(`Options:      ${p.options.join(', ')}`)
       this.log(`Total weight: ${p.totalVote.map((w) => asBigIntForDisplay(w).toString()).join(', ')}`)
-      this.log(`Reward pool:  ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
-      this.log(`Burned:       initial: ${weiToLibStr(asBigIntForDisplay(p.initialBurnedReward))} LIB | final: ${weiToLibStr(asBigIntForDisplay(p.finalBurnedReward))} LIB`)
+      const voterRewardPool = asBigIntForDisplay(p.voterRewardPool)
+      const claimedReward = asBigIntForDisplay(p.claimedReward)
+      const initialBurnedReward = asBigIntForDisplay(p.initialBurnedReward)
+      const finalBurnedReward = asBigIntForDisplay(p.finalBurnedReward)
+      const claimableTotal = voterRewardPool > 0n ? voterRewardPool : claimedReward + finalBurnedReward
+      this.log(`Reward pool:  ${weiToLibStr(voterRewardPool)} LIB`)
+      this.log(`Burned:       initialBurnedReward: ${weiToLibStr(initialBurnedReward)} LIB | finalBurnedReward: ${weiToLibStr(finalBurnedReward)} LIB`)
       if (p.status === 'accepted' || p.status === 'rejected' || p.status === 'applied')
-        this.log(`Claimed:      ${weiToLibStr(asBigIntForDisplay(p.claimedReward))} / ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
+        this.log(`Claimed:      ${weiToLibStr(claimedReward)} / ${weiToLibStr(claimableTotal)} LIB`)
       this.log(`Voters:       ${p.voterList.length} | Claims: ${p.claimList.length}`)
       // Committee votes
       const committeeSize = Array.isArray(p.committeeAddresses) ? p.committeeAddresses.length : 0
