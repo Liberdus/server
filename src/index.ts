@@ -1051,7 +1051,8 @@ const shardusSetup = (): void => {
         }
       } catch (e) {
         console.error('Error in txPreCrackData', e)
-        return { status: false, reason: 'Error in txPreCrackData - ' + e.message }
+        const errorMessage = e instanceof Error ? e.message : String(e)
+        return { status: false, reason: 'Error in txPreCrackData - ' + errorMessage }
       }
     },
     calculateTxId(tx: ShardusTypes.OpaqueTransaction) {
