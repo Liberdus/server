@@ -837,7 +837,6 @@ async function injectExpectReject<T extends object>(
     assert(result?.success !== true, `Expected TX to be rejected during injection, got: ${JSON.stringify(result)}`)
     assert(!result?.txId, `Pre-crack rejection unexpectedly returned txId ${result.txId}`)
     const reason = result?.reason ?? ''
-    verboseStepLog('← Rejected at inject/pre-crack:', JSON.stringify(result))
 
     if (reasonIncludes) {
       assert(
@@ -1359,6 +1358,8 @@ async function stopNetwork(): Promise<void> {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
+  const runStartedAt = Date.now()
+
   // Load committee keypairs from dao-committee-keys.json
   // File format: [{ index, privateKey, ethAddress, shardusAddress }]
   const committeeKeysPath = path.resolve(__dirname, '../dao-committee-keys.json')
@@ -3652,9 +3653,11 @@ async function main(): Promise<void> {
   }
   console.log('═'.repeat(64))
   const totalSec = (totalMs / 1000).toFixed(0)
+  const wallSec = ((Date.now() - runStartedAt) / 1000).toFixed(0)
   console.log(
-    `  Passed: ${passed} / ${results.length}   Failed: ${failed}   Skipped: ${skipped}   Total: ~${totalSec}s`,
+    `  Passed: ${passed} / ${results.length}   Failed: ${failed}   Skipped: ${skipped}`,
   )
+  console.log(`  Step time: ~${totalSec}s cumulative   Wall time: ~${wallSec}s`)
   console.log('═'.repeat(64))
   console.log(`Logs saved:\n  App:      ${logFile}\n  Terminal: ${terminalLogFile}`)
 
