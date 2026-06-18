@@ -7,7 +7,6 @@ import { UserAccount, NetworkAccount, WrappedStates, Tx, AppReceiptData, DaoProp
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 import { isUserAccount, isDaoProposalsMeta, isDaoProposalAccount } from '../@types/accountTypeGuards'
-import { LiberdusFlags } from '../config'
 import { DAO_PROPOSALS_META_ID_STRING } from '../accounts/daoProposalsMetaAccount'
 import { validateChangesPayload } from '../utils/daoParamValidation'
 
@@ -20,10 +19,6 @@ export const validate_fields = (
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
-  if (!LiberdusFlags.enableNewDAOTransactions) {
-    response.reason = 'New DAO transactions are not enabled'
-    return response
-  }
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address'
     return response

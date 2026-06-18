@@ -6,17 +6,12 @@ import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 import * as utils from '../utils'
 import { isUserAccount, isDaoProposalAccount } from '../@types/accountTypeGuards'
-import { LiberdusFlags } from '../config'
 import { Utils } from '@shardus/lib-types'
 import { getApplyEligibleAt } from '../accounts/daoProposalAccount'
 import { buildNestedChange, mergeNestedChange, resolveChanges, ResolvedChange } from '../utils/daoParamResolver'
 import { coerce, validateChangesPayload } from '../utils/daoParamValidation'
 
 export const validate_fields = (tx: Tx.DaoApplyParameters, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
-  if (!LiberdusFlags.enableNewDAOTransactions) {
-    response.reason = 'New DAO transactions are not enabled'
-    return response
-  }
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address'
     return response

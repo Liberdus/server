@@ -5,15 +5,10 @@ import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 import * as utils from '../utils'
 import { isUserAccount, isDaoProposalAccount } from '../@types/accountTypeGuards'
-import { LiberdusFlags } from '../config'
 import { getVotingStart, getVotingEnd } from '../accounts/daoProposalAccount'
 import { getTimeMultiplier, calculateOptionWeights } from '../utils/daoVoteMath'
 
 export const validate_fields = (tx: Tx.DaoVote, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
-  if (!LiberdusFlags.enableNewDAOTransactions) {
-    response.reason = 'New DAO transactions are not enabled'
-    return response
-  }
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address'
     return response

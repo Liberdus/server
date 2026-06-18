@@ -31,6 +31,12 @@ export const apply = (
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.listOfChanges.push(tx.change)
   network.timestamp = txTimestamp
+  if (config.LiberdusFlags.enableNewDAOTransactions === true) {
+    if (network.current.dao == null) {
+      network.current.dao = config.INITIAL_PARAMETERS.dao
+    }
+  }
+
   if (config.LiberdusFlags.versionFlags.addNewNetworkParameters === true) {
     if (network.current.nodeRewardAmountUsdStr === undefined || network.current.nodeRewardAmountUsdStr === null) {
       network.current.nodeRewardAmountUsdStr = '1.0'

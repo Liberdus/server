@@ -266,6 +266,12 @@ const shardusSetup = (): void => {
           }
         }
 
+        // 3.6. Reject DAO transaction types when the DAO feature is not yet active
+        if (!LiberdusFlags.enableNewDAOTransactions && daoPreCrackTxTypes.has(tx.type)) {
+          validationResult.reason = 'New DAO transactions are not enabled on this network yet'
+          return validationResult
+        }
+
         // 4. Validate the tx fields
         if (LiberdusFlags.enableAJVValidation) {
           const errors = verifyPayload(tx.type, tx)
