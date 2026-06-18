@@ -64,6 +64,17 @@ const statsDebugLogs = false
 let lastCertTimeTxTimestamp = 0
 let lastCertTimeTxCycle: number | null = null
 
+const daoPreCrackTxTypes = new Set([
+  TXTypes.dao_proposal_create,
+  TXTypes.dao_committee_vote,
+  TXTypes.dao_committee_result,
+  TXTypes.dao_vote,
+  TXTypes.dao_vote_result,
+  TXTypes.dao_apply_parameters,
+  TXTypes.dao_claim_reward,
+  TXTypes.dao_burn_reward,
+])
+
 let isReadyToJoinLatestValue = false
 let mustUseAdminCert = false
 
@@ -865,6 +876,7 @@ const shardusSetup = (): void => {
         TXTypes.init_reward,
         TXTypes.claim_reward,
         TXTypes.apply_penalty,
+        ...(LiberdusFlags.enableNewDAOTransactions ? daoPreCrackTxTypes : []),
       ]
       if (preCrackableTxTypes.includes(tx.type) === false) {
         return { status: true, reason: 'Tx PreCrack Skipped' }
@@ -880,6 +892,12 @@ const shardusSetup = (): void => {
         const promises = []
         let from = tx.from
         let to = tx.to
+        const isDaoPreCrack = daoPreCrackTxTypes.has(tx.type)
+
+        if (isDaoPreCrack) {
+          from = undefined
+          to = undefined
+        }
 
         if (
           tx.type === TXTypes.deposit_stake ||
@@ -944,16 +962,49 @@ const shardusSetup = (): void => {
           )
         }
 
+        if (isDaoPreCrack) {
+          if (!AccountsStorage.cachedNetworkAccount) {
+            return { status: false, reason: 'Network account not available for DAO transaction validation' }
+          }
+
+          const { keys } = this.crack({ tx }, appData) as LiberdusTypes.KeyResult
+          const accountIds = [...new Set(keys.allKeys.filter((accountId) => accountId !== networkAccount))]
+          const accountResults = await Promise.allSettled(
+            accountIds.map(async (accountId) => ({
+              accountId,
+              wrappedState: await dapp.getLocalOrRemoteAccount(accountId, { useRICache: false, canThrowException: true }),
+            })),
+          )
+
+          for (const accountResult of accountResults) {
+            if (accountResult.status === 'rejected') {
+              throw accountResult.reason
+            }
+            const { accountId, wrappedState } = accountResult.value
+            if (!wrappedState) continue
+            wrappedStates[accountId] = {
+              accountId: wrappedState.accountId,
+              stateId: wrappedState.stateId,
+              data: wrappedState.data as LiberdusTypes.Accounts,
+              timestamp: wrappedState.timestamp,
+              accountCreated: false,
+              isPartial: false,
+            }
+          }
+        }
+
         await Promise.allSettled(promises)
 
         // For the txs that may require the network account from the wrappedStates
-        wrappedStates[networkAccount] = {
-          accountId: networkAccount,
-          stateId: AccountsStorage?.cachedNetworkAccount?.hash,
-          data: AccountsStorage?.cachedNetworkAccount as LiberdusTypes.Accounts,
-          timestamp: AccountsStorage?.cachedNetworkAccount?.timestamp,
-          accountCreated: false,
-          isPartial: false,
+        if (AccountsStorage.cachedNetworkAccount) {
+          wrappedStates[networkAccount] = {
+            accountId: networkAccount,
+            stateId: AccountsStorage.cachedNetworkAccount.hash,
+            data: AccountsStorage.cachedNetworkAccount as LiberdusTypes.Accounts,
+            timestamp: AccountsStorage.cachedNetworkAccount.timestamp,
+            accountCreated: false,
+            isPartial: false,
+          }
         }
 
         if (

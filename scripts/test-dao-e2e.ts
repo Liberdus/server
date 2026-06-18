@@ -807,15 +807,16 @@ async function injectAndAssert<T extends object>(tx: T, account: TestAccount): P
 }
 
 /**
- * Sign and inject a TX expected to be rejected.
- * Rejection may occur at inject (validate_fields) or at apply (validate) — check both.
+ * Sign and inject a DAO TX expected to be rejected before queue admission.
  */
 async function injectExpectReject<T extends object>(
   tx: T,
   account: TestAccount,
   reasonIncludes?: string,
-): Promise<{ reason: string; receipt?: TxReceipt; result?: any }> {
+): Promise<{ reason: string; result: any }> {
   return withSenderLock(account.address, async () => {
+    const balanceBefore = await getBalance(account.address)
+    assert(balanceBefore !== null, `Expected ${account.address} to exist before rejected DAO transaction`)
     refreshTxTimestamp(tx)
     await signTx(tx, account)
     verboseStepLog('→ TX (expect reject):', Utils.safeStringify(tx))
@@ -833,17 +834,10 @@ async function injectExpectReject<T extends object>(
       }
     }
 
-    let reason: string
-    let receipt: TxReceipt | undefined
-    if (result?.success === true && result.txId) {
-      receipt = await waitForTxReceipt(result.txId)
-      verboseStepLog('← Receipt:', JSON.stringify(receipt))
-      assert(receipt.success !== true, `Expected TX to be rejected at apply but receipt succeeded`)
-      reason = receipt.reason ?? ''
-    } else {
-      assert(result?.success !== true, `Expected TX to be rejected but inject succeeded without failure`)
-      reason = result?.reason ?? ''
-    }
+    assert(result?.success !== true, `Expected TX to be rejected during injection, got: ${JSON.stringify(result)}`)
+    assert(!result?.txId, `Pre-crack rejection unexpectedly returned txId ${result.txId}`)
+    const reason = result?.reason ?? ''
+    verboseStepLog('← Rejected at inject/pre-crack:', JSON.stringify(result))
 
     if (reasonIncludes) {
       assert(
@@ -851,7 +845,10 @@ async function injectExpectReject<T extends object>(
         `Expected rejection reason to include "${reasonIncludes}", got: "${reason}"`,
       )
     }
-    return { reason, receipt, result }
+    const balanceAfter = await getBalance(account.address)
+    assert(balanceAfter !== null, `Expected ${account.address} to exist after rejected DAO transaction`)
+    assert(balanceAfter === balanceBefore, `Pre-crack rejection charged a fee: balance changed from ${balanceBefore} to ${balanceAfter}`)
+    return { reason, result }
   })
 }
 
@@ -1107,14 +1104,6 @@ async function applyAcceptedProposal(proposalNumber: number, actor: TestAccount,
   return result
 }
 
-function assertReceiptTargetsProposal(receipt: TxReceipt, proposalNumber: number): void {
-  assert((receipt as any).to === daoProposalId(proposalNumber), `Expected receipt.to to be proposal id for #${proposalNumber}, got ${(receipt as any).to}`)
-}
-
-function assertFailedReceiptCharged(receipt: TxReceipt): void {
-  assert(asBigInt(receipt.transactionFee ?? 0n) > 0n, `Expected failed DAO receipt to charge a tx fee, got ${String(receipt.transactionFee ?? 0)}`)
-}
-
 function assertDerivedTimingAndSnapshots(proposal: DaoProposalWithTiming, daoParams: any): void {
   const reviewEnd = proposal.startTime + proposal.reviewDuration
   const votingStart = reviewEnd
@@ -1165,7 +1154,7 @@ function assertBurnFields(proposal: DaoProposalWithTiming, expected: { initial?:
   if (expected.final !== undefined) check('finalBurnedReward', asBigInt(proposal.finalBurnedReward), expected.final)
 }
 
-async function expectApplyRejectNoGlobalChange(
+async function expectPreCrackRejectNoGlobalChange(
   tx: any,
   account: TestAccount,
   reasonIncludes: string,
@@ -1173,10 +1162,7 @@ async function expectApplyRejectNoGlobalChange(
   changeMatcher: (change: any) => boolean,
 ): Promise<void> {
   const proposalBefore = await getProposal(proposalNumber)
-  const rejected = await injectExpectReject(tx, account, reasonIncludes)
-  assert(rejected.receipt != null, 'Expected rejected dao_apply_parameters to produce a receipt')
-  assertReceiptTargetsProposal(rejected.receipt, proposalNumber)
-  assertFailedReceiptCharged(rejected.receipt)
+  await injectExpectReject(tx, account, reasonIncludes)
   const proposalAfter = await getProposal(proposalNumber)
   assert(proposalAfter.status === proposalBefore.status, `Rejected apply changed proposal status from ${proposalBefore.status} to ${proposalAfter.status}`)
   const changesAfter = await getProposalListOfChanges()
@@ -2502,7 +2488,7 @@ async function main(): Promise<void> {
     [
       '6.5  dao_apply_parameters rejected for rejected proposal',
       async () => {
-        await expectApplyRejectNoGlobalChange(
+        await expectPreCrackRejectNoGlobalChange(
           {
             type: 'dao_apply_parameters',
             networkId: currentNetworkId,
@@ -3165,7 +3151,7 @@ async function main(): Promise<void> {
           { name: 'spend upper bound', weights: [1, 0], spend: voter12Balance + 1n, reason: 'exceeds account balance' },
         ]
         for (const c of cases) {
-          const rejected = await injectExpectReject(
+          await injectExpectReject(
             {
               type: 'dao_vote',
               networkId: currentNetworkId,
@@ -3178,10 +3164,6 @@ async function main(): Promise<void> {
             voter12,
             c.reason,
           )
-          if (rejected.receipt) {
-            assertReceiptTargetsProposal(rejected.receipt, sc13ProposalN)
-            assertFailedReceiptCharged(rejected.receipt)
-          }
         }
       },
     ],
@@ -3190,14 +3172,11 @@ async function main(): Promise<void> {
       async () => {
         await castVote(sc13ProposalN, voter11, [1, 0], minVoteSpendLib)
         await finalizeVote(sc13ProposalN, proposer10, SLEEP_BUFFER_MS)
-        const beforeGrace = await injectExpectReject(
+        await injectExpectReject(
           { type: 'dao_apply_parameters', networkId: currentNetworkId, from: proposer10.address, proposalId: daoProposalId(sc13ProposalN), timestamp: Date.now() },
           proposer10,
           'Grace period',
         )
-        assert(beforeGrace.receipt != null, 'Expected early dao_apply_parameters rejection to produce a receipt')
-        assertReceiptTargetsProposal(beforeGrace.receipt, sc13ProposalN)
-        assertFailedReceiptCharged(beforeGrace.receipt)
         const proposalAfter = await getProposal(sc13ProposalN)
         const changesAfter = await getProposalListOfChanges()
         assert(proposalAfter.status === 'accepted', `Early apply attempt changed proposal status to ${proposalAfter.status}`)
