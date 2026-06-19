@@ -2987,20 +2987,47 @@ vorpal.command('dao burn reward', "burn the unclaimed voter reward for a proposa
 })
 
 // ---------------------------------------------------------------------------
-// dao proposals  (query)
+// dao proposals  (query — fetches meta for count, then each proposal by number)
 // ---------------------------------------------------------------------------
-vorpal.command('dao proposals [status]', 'list DAO proposals, optionally filtered by status').action(async function (args, callback) {
+const VALID_DAO_STATUSES = ['review', 'withheld', 'voting', 'rejected', 'accepted', 'applied']
+
+vorpal.command('dao proposals [status]', `list DAO proposals, optionally filtered by status (${VALID_DAO_STATUSES.join('/')})`).action(async function (args, callback) {
+  if (args.status && !VALID_DAO_STATUSES.includes(args.status)) {
+    this.log(`Unknown status "${args.status}". Valid values: ${VALID_DAO_STATUSES.join(', ')}`)
+    callback()
+    return
+  }
   try {
-    const url = args.status
-      ? `${PROTOCOL}://${HOST}/dao/proposals?status=${args.status}`
-      : `${PROTOCOL}://${HOST}/dao/proposals`
-    const res = await axios.get(url)
-    const body = parseDaoApiBody(res.data)
-    const proposals = body?.proposals || []
-    if (proposals.length === 0) {
+    const metaRes = await axios.get(`${PROTOCOL}://${HOST}/dao/proposals/meta`)
+    const metaBody = parseDaoApiBody(metaRes.data)
+    const count = metaBody?.meta?.count ?? 0
+    if (count === 0) {
+      this.log('No proposals found.')
+      callback()
+      return
+    }
+    const BATCH = 10
+    const proposals = []
+    for (let start = 1; start <= count; start += BATCH) {
+      const end = Math.min(start + BATCH - 1, count)
+      const batch = await Promise.all(
+        Array.from({ length: end - start + 1 }, (_, k) => start + k).map(async i => {
+          try {
+            const res = await axios.get(`${PROTOCOL}://${HOST}/dao/proposals/${i}`)
+            return parseDaoApiBody(res.data)?.proposal ?? null
+          } catch (err) {
+            if (err.response?.status === 404) return null  // not yet visible on this node
+            throw err  // network failure or server error — propagate
+          }
+        })
+      )
+      proposals.push(...batch.filter(Boolean))
+    }
+    const filtered = args.status ? proposals.filter(p => p.status === args.status) : proposals
+    if (filtered.length === 0) {
       this.log('No proposals found.')
     } else {
-      for (const p of proposals) {
+      for (const p of filtered) {
         this.log(`#${p.number} [${p.status}] ${p.proposalType} | options: ${p.options.join('/')} | pool: ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
         this.log(`  "${p.description.slice(0, 80)}${p.description.length > 80 ? '...' : ''}"`)
       }
@@ -3014,6 +3041,15 @@ vorpal.command('dao proposals [status]', 'list DAO proposals, optionally filtere
 // ---------------------------------------------------------------------------
 // dao proposal <n>  (query single)
 // ---------------------------------------------------------------------------
+function deriveTiming(p) {
+  const reviewEnd = p.startTime + p.reviewDuration
+  const votingStart = reviewEnd
+  const votingEnd = p.emergency ? votingStart : votingStart + p.votingDuration
+  const claimEnd = votingEnd + p.claimDuration
+  const applyEligibleAt = votingEnd + p.gracePeriod
+  return { reviewEnd, votingStart, votingEnd, claimEnd, applyEligibleAt }
+}
+
 vorpal.command('dao proposal <number>', 'show details of a single DAO proposal').action(async function (args, callback) {
   try {
     const res = await axios.get(`${PROTOCOL}://${HOST}/dao/proposals/${args.number}`)
@@ -3058,14 +3094,15 @@ vorpal.command('dao proposal <number>', 'show details of a single DAO proposal')
           this.log(`  ${addr}  ${label}`)
         }
       }
-      // Timeline
+      // Timeline (derived locally from stored duration snapshots)
+      const timing = deriveTiming(p)
       this.log(`Current time: ${new Date().toISOString()}`)
       if (p.creationTime) this.log(`Created:      ${new Date(p.creationTime).toISOString()}`)
-      if (p.startTime)   this.log(`Starts:       ${new Date(p.startTime).toISOString()}`)
-      this.log(`Review ends:  ${new Date(p.reviewEnd).toISOString()}`)
-      if (p.votingEnd)   this.log(`Voting ends:  ${new Date(p.votingEnd).toISOString()}`)
-      if (p.applyEligibleAt) this.log(`Apply after:  ${new Date(p.applyEligibleAt).toISOString()}`)
-      if (p.claimEnd)    this.log(`Claim ends:   ${new Date(p.claimEnd).toISOString()}`)
+      if (p.startTime)    this.log(`Starts:       ${new Date(p.startTime).toISOString()}`)
+      this.log(`Review ends:  ${new Date(timing.reviewEnd).toISOString()}`)
+      if (!p.emergency)   this.log(`Voting ends:  ${new Date(timing.votingEnd).toISOString()}`)
+      this.log(`Apply after:  ${new Date(timing.applyEligibleAt).toISOString()}`)
+      this.log(`Claim ends:   ${new Date(timing.claimEnd).toISOString()}`)
       // Content
       this.log(`Description:  ${p.description}`)
       if (p.governance) this.log(`Changes:      ${JSON.stringify(p.governance.changes)}`)

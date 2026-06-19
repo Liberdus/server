@@ -46,6 +46,7 @@ import * as ShardusCrypto from '@shardus/lib-crypto-utils'
 import { Utils } from '@shardus/lib-types'
 import { DaoProposalAccount } from '../src/@types'
 import { computeClaimReward } from '../src/utils/daoClaimRewardMath'
+import { getReviewEnd, getVotingStart, getVotingEnd, getClaimEnd, getApplyEligibleAt } from '../src/accounts/daoProposalAccount'
 
 // Set custom stringifier so hashObj handles bigints correctly.
 // Mirrors what src/index.ts does at startup.
@@ -853,10 +854,8 @@ async function injectExpectReject<T extends object>(
 
 /**
  * DaoProposalAccount only stores `creationTime`/`startTime` — every other phase-boundary
- * timestamp (reviewEnd, votingStart, votingEnd, claimEnd, applyEligibleAt) is derived from
- * those plus the duration snapshots (see src/accounts/daoProposalAccount.ts) and decorated
- * onto the API response by `withDerivedTiming` in src/api/dao/proposals.ts. This local type
- * mirrors that decorated shape so assertions below can read the derived fields directly.
+ * timestamp is derived from those plus the duration snapshots. Clients compute these locally;
+ * the API returns raw proposal data only.
  */
 type DaoProposalWithTiming = DaoProposalAccount & {
   reviewEnd: number
@@ -864,6 +863,17 @@ type DaoProposalWithTiming = DaoProposalAccount & {
   votingEnd: number
   claimEnd: number
   applyEligibleAt: number
+}
+
+function addDerivedTiming(proposal: DaoProposalAccount): DaoProposalWithTiming {
+  return {
+    ...proposal,
+    reviewEnd: getReviewEnd(proposal),
+    votingStart: getVotingStart(proposal),
+    votingEnd: getVotingEnd(proposal),
+    claimEnd: getClaimEnd(proposal),
+    applyEligibleAt: getApplyEligibleAt(proposal),
+  }
 }
 
 /**
@@ -877,7 +887,7 @@ async function getProposal(n: number): Promise<DaoProposalWithTiming> {
         const res = await apiGet(`/dao/proposals/${n}`)
         const body = safeParse(res.data)
         if (body?.proposal != null) {
-          proposal = body.proposal as DaoProposalWithTiming
+          proposal = addDerivedTiming(body.proposal as DaoProposalAccount)
           return true
         }
         return false
@@ -1104,20 +1114,22 @@ async function applyAcceptedProposal(proposalNumber: number, actor: TestAccount,
 }
 
 function assertDerivedTimingAndSnapshots(proposal: DaoProposalWithTiming, daoParams: any): void {
-  const reviewEnd = proposal.startTime + proposal.reviewDuration
-  const votingStart = reviewEnd
-  const votingEnd = proposal.emergency ? votingStart : votingStart + proposal.votingDuration
-  const claimEnd = votingEnd + proposal.claimDuration
-  const applyEligibleAt = votingEnd + proposal.gracePeriod
-
-  assert(proposal.reviewEnd === reviewEnd, `Expected reviewEnd ${reviewEnd}, got ${proposal.reviewEnd}`)
-  assert(proposal.votingStart === votingStart, `Expected votingStart ${votingStart}, got ${proposal.votingStart}`)
-  assert(proposal.votingEnd === votingEnd, `Expected votingEnd ${votingEnd}, got ${proposal.votingEnd}`)
-  assert(proposal.claimEnd === claimEnd, `Expected claimEnd ${claimEnd}, got ${proposal.claimEnd}`)
-  assert(proposal.applyEligibleAt === applyEligibleAt, `Expected applyEligibleAt ${applyEligibleAt}, got ${proposal.applyEligibleAt}`)
+  // Verify the proposal snapshotted the network's duration params correctly at creation time.
+  // The derived timing fields (reviewEnd, votingEnd, etc.) are computed locally by addDerivedTiming
+  // from these snapshots, so checking the snapshots themselves is the meaningful assertion.
+  assert(proposal.reviewDuration === daoParams.reviewDuration, `reviewDuration snapshot mismatch: ${proposal.reviewDuration} vs daoParams ${daoParams.reviewDuration}`)
+  assert(proposal.votingDuration === daoParams.votingDuration, `votingDuration snapshot mismatch: ${proposal.votingDuration} vs daoParams ${daoParams.votingDuration}`)
+  assert(proposal.claimDuration === daoParams.claimDuration, `claimDuration snapshot mismatch: ${proposal.claimDuration} vs daoParams ${daoParams.claimDuration}`)
+  assert(proposal.graceDuration === daoParams.graceDuration, `graceDuration snapshot mismatch: ${proposal.graceDuration} vs daoParams ${daoParams.graceDuration}`)
   assert(proposal.proposalFeeUsdStr === daoParams.proposalFeeUsdStr, `proposalFeeUsdStr snapshot mismatch: ${proposal.proposalFeeUsdStr} vs ${daoParams.proposalFeeUsdStr}`)
   assert(proposal.voteThresholdUsdStr === daoParams.voteThresholdUsdStr, `voteThresholdUsdStr snapshot mismatch: ${proposal.voteThresholdUsdStr} vs ${daoParams.voteThresholdUsdStr}`)
   assert(proposal.minimumSpendUsdStr === daoParams.minimumSpendUsdStr, `minimumSpendUsdStr snapshot mismatch: ${proposal.minimumSpendUsdStr} vs ${daoParams.minimumSpendUsdStr}`)
+  assert(proposal.voteExponent === daoParams.voteExponent, `voteExponent snapshot mismatch: ${proposal.voteExponent} vs ${daoParams.voteExponent}`)
+  assert(proposal.pctBurned === daoParams.pctBurned, `pctBurned snapshot mismatch: ${proposal.pctBurned} vs ${daoParams.pctBurned}`)
+  assert(
+    JSON.stringify(proposal.committeeAddresses) === JSON.stringify(daoParams.committeeAddresses),
+    `committeeAddresses snapshot mismatch`,
+  )
 }
 
 function computeExpectedClaimReward(proposal: DaoProposalWithTiming, voterAddress: string, claimedSoFar: bigint): bigint {
@@ -3188,10 +3200,17 @@ async function main(): Promise<void> {
       },
     ],
     [
-      '13.6 API validation failures are rejected',
+      '13.6 GET /dao/proposals/:id rejects non-integer, zero, and unsafe-integer IDs',
       async () => {
-        const badStatus = await apiGet('/dao/proposals?status=bogus', { validateStatus: () => true })
-        assert(badStatus.status === 400, `Expected invalid status filter HTTP 400, got ${badStatus.status}`)
+        const opts = { validateStatus: () => true }
+        const badStr    = await apiGet('/dao/proposals/abc',                opts)
+        assert(badStr.status === 400,    `Expected /dao/proposals/abc → 400, got ${badStr.status}`)
+        const badMix    = await apiGet('/dao/proposals/1abc',               opts)
+        assert(badMix.status === 400,    `Expected /dao/proposals/1abc → 400, got ${badMix.status}`)
+        const badZero   = await apiGet('/dao/proposals/0',                  opts)
+        assert(badZero.status === 400,   `Expected /dao/proposals/0 → 400, got ${badZero.status}`)
+        const badBig    = await apiGet('/dao/proposals/9007199254740992',   opts)
+        assert(badBig.status === 400,    `Expected /dao/proposals/9007199254740992 → 400, got ${badBig.status}`)
       },
     ],
     ],
