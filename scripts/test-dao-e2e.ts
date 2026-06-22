@@ -2759,15 +2759,29 @@ async function main(): Promise<void> {
       },
     ],
     [
-      '8.8  Economic proposal updates network.current.archiver via object key, leaving top-level version untouched',
+      '8.8  Economic proposal partially updates network.current.archiver, leaving unspecified fields and top-level version untouched',
       async () => {
         const topLevelActiveVersionBefore = String(await getCurrentNetworkValue('activeVersion'))
-        const currentArchiver = await getCurrentNetworkValue('archiver')
+        const archiverBefore = (await getCurrentNetworkValue('archiver')) as any
+
+        // Increment the patch segment so every rerun produces a real change regardless of current state.
+        const [maj, min, patch] = String(archiverBefore?.activeVersion ?? '3.7.9').split('.').map(Number)
+        const archiverVersionTarget = `${maj}.${min}.${patch + 1}`
+
+        // The value intentionally includes only two of the three archiver fields (activeVersion +
+        // latestVersion). patchAndUpdate in index.ts is a deep recursive merge — it only touches
+        // keys present in the payload, so minVersion must survive unchanged. This demonstrates that
+        // a partial object change can update one field, some fields, or all fields without
+        // clobbering the rest of the object.
         sc8ArchiverProposalN = setProposalN('sc8Archiver', await createDaoProposal({
           proposer: proposer7,
           proposalType: 'economic',
-          description: 'Economic proposal updates network.current.archiver.activeVersion',
-          changes: [{ key: 'archiver', value: '{"activeVersion":"3.7.10","minVersion":"3.7.9","latestVersion":"3.7.10"}', current: Utils.safeStringify(currentArchiver) }],
+          description: `Economic proposal bumps archiver activeVersion and latestVersion to ${archiverVersionTarget}`,
+          changes: [{
+            key: 'archiver',
+            value: `{"activeVersion":"${archiverVersionTarget}","latestVersion":"${archiverVersionTarget}"}`,
+            current: `{"activeVersion":"${archiverBefore?.activeVersion}","latestVersion":"${archiverBefore?.latestVersion}"}`,
+          }],
           gracePeriodMs: graceDurationMs,
         }))
         saveCurrentRunState()
@@ -2776,8 +2790,15 @@ async function main(): Promise<void> {
         await finalizeVote(sc8ArchiverProposalN, proposer7, SLEEP_BUFFER_MS)
         const { receipt } = await applyAcceptedProposal(sc8ArchiverProposalN, proposer7, SLEEP_BUFFER_MS)
         const receiptChange = (receipt.additionalInfo?.change ?? {}) as any
-        assert(receiptChange?.appData?.archiver?.activeVersion === '3.7.10', `Expected receipt change to include appData.archiver.activeVersion, got ${JSON.stringify(receiptChange)}`)
-        await waitForNetworkParameter(['current', 'archiver', 'activeVersion'], '3.7.10', applyParamsPollMs)
+        assert(receiptChange?.appData?.archiver?.activeVersion === archiverVersionTarget, `Expected receipt appData.archiver.activeVersion=${archiverVersionTarget}, got ${JSON.stringify(receiptChange)}`)
+        assert(receiptChange?.appData?.archiver?.latestVersion === archiverVersionTarget, `Expected receipt appData.archiver.latestVersion=${archiverVersionTarget}, got ${JSON.stringify(receiptChange)}`)
+        await waitForNetworkParameter(['current', 'archiver', 'activeVersion'], archiverVersionTarget, applyParamsPollMs)
+        // Verify both changed fields updated and the omitted field (minVersion) was deep-merged, not overwritten.
+        const archiverAfter = (await getCurrentNetworkValue('archiver')) as any
+        assert(archiverAfter?.activeVersion === archiverVersionTarget, `Expected archiver.activeVersion=${archiverVersionTarget}, got ${archiverAfter?.activeVersion}`)
+        assert(archiverAfter?.latestVersion === archiverVersionTarget, `Expected archiver.latestVersion=${archiverVersionTarget}, got ${archiverAfter?.latestVersion}`)
+        assert(archiverAfter?.minVersion === archiverBefore?.minVersion, `Expected archiver.minVersion to remain ${archiverBefore?.minVersion} (not in payload), got ${archiverAfter?.minVersion}`)
+        // Verify the top-level network activeVersion (a different field) was not touched.
         const topLevelActiveVersionAfter = String(await getCurrentNetworkValue('activeVersion'))
         assert(
           topLevelActiveVersionAfter === topLevelActiveVersionBefore,
