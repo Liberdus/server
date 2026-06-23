@@ -167,6 +167,18 @@ export const apply = (
   // Update timestamps
   chat.timestamp = txTimestamp
   from.timestamp = txTimestamp
+  to.timestamp = txTimestamp
+
+  from.data.chats[tx.to] = {
+    receivedTimestamp: txTimestamp,
+    chatId: tx.chatId,
+  }
+  from.data.chatTimestamp = txTimestamp
+  to.data.chats[tx.from] = {
+    receivedTimestamp: txTimestamp,
+    chatId: tx.chatId,
+  }
+  to.data.chatTimestamp = txTimestamp
 
   if (config.LiberdusFlags.versionFlags.updateTollRequiredTxInChatHistory) {
     chat.messages.push(tx)
