@@ -717,6 +717,10 @@ function usdStrToLibCeil(usdStr: string, stabilityFactorStr: string): number {
   return Math.ceil(Number(ethers.formatEther(libWei)))
 }
 
+function usdStrToWei(usdStr: string, stabilityFactorStr: string): bigint {
+  return ethers.parseEther(usdStr) * 10n ** 18n / ethers.parseEther(stabilityFactorStr)
+}
+
 /** Parse a numeric string that may be decimal or hex (safeStringify bi values are often hex). */
 function parseBiString(s: string): bigint {
   if (s.startsWith('0x')) return BigInt(s)
@@ -824,9 +828,14 @@ interface TxReceipt {
   reason?: string
   txId: string
   type: string
+  from?: string
   to?: string
   transactionFee?: bigint | string | number | { dataType?: string; value?: string }
   additionalInfo?: any
+}
+
+interface InjectAssertOptions {
+  expectedBalanceDelta?: (receipt: TxReceipt) => bigint
 }
 
 /**
@@ -873,8 +882,10 @@ async function waitForTxReceipt(txId: string): Promise<TxReceipt> {
  * Sign, inject, wait for receipt, and assert apply succeeded.
  * Posts { tx: Utils.safeStringify(tx) } — /inject reads req.body.tx via safeJsonParse.
  */
-async function injectAndAssert<T extends object>(tx: T, account: TestAccount): Promise<any> {
+async function injectAndAssert<T extends object>(tx: T, account: TestAccount, opts: InjectAssertOptions = {}): Promise<any> {
   return withSenderLock(account.address, async () => {
+    const balanceBefore = opts.expectedBalanceDelta ? await getBalance(account.address) : null
+    if (opts.expectedBalanceDelta) assert(balanceBefore !== null, `Expected ${account.address} to exist before balance-delta assertion`)
     refreshTxTimestamp(tx)
     await signTx(tx, account)
     verboseStepLog('→ TX:', Utils.safeStringify(tx))
@@ -892,7 +903,17 @@ async function injectAndAssert<T extends object>(tx: T, account: TestAccount): P
 
     const receipt = await waitForTxReceipt(txId)
     verboseStepLog('← Receipt:', JSON.stringify(receipt))
+    assert(receipt.txId === txId, `Receipt txId mismatch: expected ${txId}, got ${receipt.txId}`)
+    assert(receipt.type === (tx as any).type, `Receipt type mismatch: expected ${(tx as any).type}, got ${receipt.type}`)
+    if (receipt.from != null) assert(receipt.from === account.address, `Receipt from mismatch: expected ${account.address}, got ${receipt.from}`)
+    if (receipt.transactionFee != null) assert(asBigInt(receipt.transactionFee) >= 0n, `Receipt transactionFee was negative: ${receipt.transactionFee}`)
     assert(receipt.success === true, `TX failed at apply: ${JSON.stringify(receipt)}`)
+    if (opts.expectedBalanceDelta) {
+      const balanceAfter = await getBalance(account.address)
+      assert(balanceAfter !== null, `Expected ${account.address} to exist after balance-delta assertion`)
+      const expectedAfter = balanceBefore! + opts.expectedBalanceDelta(receipt)
+      assert(balanceAfter === expectedAfter, `Unexpected balance delta for ${(tx as any).type}: expected ${expectedAfter}, got ${balanceAfter}`)
+    }
     return { ...res.data, receipt }
   })
 }
@@ -1073,11 +1094,15 @@ async function waitForListOfChanges(description: string, matches: (change: any) 
   }
 }
 
-async function getTransactionFeeWei(): Promise<bigint> {
-  const current = (await getNetworkParameters())?.current
-  if (!current?.transactionFee) return 0n
-  const stabilityFactorStr = current.stabilityFactorStr ?? '1'
-  return ethers.parseEther(String(current.transactionFee)) * ethers.parseEther(String(stabilityFactorStr)) / 10n ** 18n
+async function waitForListOfChangesFromReceipt(description: string, receipt: TxReceipt, matches: (change: any) => boolean, timeoutMs: number): Promise<void> {
+  const receiptChange = receipt.additionalInfo?.change
+  const expectedCycle = receiptChange?.cycle
+  assert(expectedCycle != null, `dao_apply_parameters receipt missing additionalInfo.change.cycle for ${description}: ${JSON.stringify(receipt.additionalInfo)}`)
+  await waitForListOfChanges(
+    `${description} at cycle ${expectedCycle}`,
+    change => String(change?.cycle) === String(expectedCycle) && matches(change),
+    timeoutMs,
+  )
 }
 
 type ProposalType = 'governance' | 'economic' | 'protocol'
@@ -1091,6 +1116,7 @@ interface ProposalCreateOptions {
   changes: Array<{ key: string; value: string; current: string }>
   gracePeriodMs: number
   startTime?: number
+  expectedBalanceDelta?: (receipt: TxReceipt) => bigint
 }
 
 function proposalPayloadKey(type: ProposalType): 'governance' | 'economic' | 'protocol' {
@@ -1116,7 +1142,7 @@ async function createDaoProposal(opts: ProposalCreateOptions): Promise<number> {
       timestamp: Date.now(),
     }
     if (opts.startTime !== undefined) tx.startTime = opts.startTime
-    await injectAndAssert(tx, opts.proposer)
+    await injectAndAssert(tx, opts.proposer, { expectedBalanceDelta: opts.expectedBalanceDelta })
     return proposalNumber
   })
 }
@@ -1168,7 +1194,13 @@ async function committeeAcceptToVoting(
   assert(proposal.status === 'voting', `Expected proposal ${proposalNumber} to be voting, got ${proposal.status}`)
 }
 
-async function castVote(proposalNumber: number, voter: TestAccount, weights: number[], spendLib: number): Promise<any> {
+async function castVote(
+  proposalNumber: number,
+  voter: TestAccount,
+  weights: number[],
+  spendLib: number,
+  expectedBalanceDelta?: (receipt: TxReceipt) => bigint,
+): Promise<any> {
   return injectAndAssert(
     {
       type: 'dao_vote',
@@ -1180,6 +1212,7 @@ async function castVote(proposalNumber: number, voter: TestAccount, weights: num
       timestamp: Date.now(),
     },
     voter,
+    { expectedBalanceDelta },
   )
 }
 
@@ -1278,6 +1311,7 @@ async function claimAndAssertRewards(proposalNumber: number, claimers: TestAccou
         timestamp: Date.now(),
       },
       claimant,
+      { expectedBalanceDelta: receipt => asBigInt(receipt.additionalInfo.reward) - asBigInt(receipt.transactionFee ?? 0n) },
     )
     const actualReward = asBigInt(receipt.additionalInfo.reward)
     assert(actualReward > 0n, `${claimant.address} received a zero reward`)
@@ -1701,6 +1735,11 @@ async function main(): Promise<void> {
   const minVoteSpendLib = usdStrToLibCeil(minimumSpendUsdStr, stabilityFactorStr)
   console.log(`Funding: ${TEST_ACCOUNT_FUND_LIB} LIB per account; min dao_vote spend≈${minVoteSpendLib} LIB`)
 
+  let sc1VoteExponentTarget = 1.2
+  let sc4PctBurnedTarget = 70
+  let sc8NodeRewardTarget = '1.25'
+  let sc8ArchiverActiveVersionTarget = '3.7.10'
+
   if (shouldFundAccounts) {
     await step('0.1  Fund all DAO E2E accounts', async () => {
       await Promise.all([
@@ -1721,11 +1760,16 @@ async function main(): Promise<void> {
     [
       '1.2  dao_proposal_create (governance: voteExponent 1.1 → 1.2)',
       async () => {
+        const daoParams = await getDaoParameters()
+        const currentVoteExponent = Number(daoParams.voteExponent)
+        sc1VoteExponentTarget = currentVoteExponent === 1.2 ? 1.1 : 1.2
+        const proposalFeeWei = usdStrToWei(daoParams.proposalFeeUsdStr, stabilityFactorStr)
         setProposalN('sc1', await createDaoProposal({
           proposer,
-          description: 'Increase voteExponent from 1.1 to 1.2 to reward larger votes more',
-          changes: [{ key: 'voteExponent', value: '1.2', current: '1.1' }],
+          description: `Toggle voteExponent from ${currentVoteExponent} to ${sc1VoteExponentTarget}`,
+          changes: [{ key: 'voteExponent', value: String(sc1VoteExponentTarget), current: String(currentVoteExponent) }],
           gracePeriodMs: graceDurationMs,
+          expectedBalanceDelta: receipt => -(proposalFeeWei + asBigInt(receipt.transactionFee ?? 0n)),
         }))
         saveCurrentRunState()
         const proposal = await getProposal(proposalN.sc1)
@@ -1834,7 +1878,7 @@ async function main(): Promise<void> {
       async () => {
         // weights[i] maps 1:1 by index onto proposal.options[i] — [1, 0] puts the vote's
         // entire weight on options[0] ('yes'), mirroring the old optionIndex: 0 behavior.
-        await castVote(proposalN.sc1, voter1, [1, 0], minVoteSpendLib)
+        await castVote(proposalN.sc1, voter1, [1, 0], minVoteSpendLib, receipt => -(libToWei(minVoteSpendLib) + asBigInt(receipt.transactionFee ?? 0n)))
         await castVote(proposalN.sc1, voter2, [1, 0], minVoteSpendLib)
         const proposal = await getProposal(proposalN.sc1)
         assert(asBigInt(proposal.totalVote[0]) > 0n, 'Expected totalVote[0] > 0 after votes')
@@ -1936,7 +1980,7 @@ async function main(): Promise<void> {
       async () => {
         const proposalBefore = await getProposal(proposalN.sc1)
         await sleepUntilTimestamp(proposalBefore.applyEligibleAt, 'applyEligibleAt (grace period end)', SLEEP_BUFFER_MS)
-        await injectAndAssert(
+        const { receipt } = await injectAndAssert(
           {
             type: 'dao_apply_parameters',
             networkId: currentNetworkId,
@@ -1951,13 +1995,14 @@ async function main(): Promise<void> {
 
         // Global message fires at cycle+3 — poll up to 5 cycles for param to update
         console.log(
-          `    Polling up to ${applyParamsPollMs / 1000}s for network.current.dao.voteExponent === 1.2` +
+          `    Polling up to ${applyParamsPollMs / 1000}s for network.current.dao.voteExponent === ${sc1VoteExponentTarget}` +
             ` (global msg at cycle+3 ≈ ${(cycleDurationMs * 3) / 1000}s)...`,
         )
-        await waitForNetworkParameter(['current', 'dao', 'voteExponent'], 1.2, applyParamsPollMs)
-        await waitForListOfChanges(
-          'appData.dao.voteExponent=1.2',
-          c => String(c?.appData?.dao?.voteExponent) === '1.2',
+        await waitForNetworkParameter(['current', 'dao', 'voteExponent'], sc1VoteExponentTarget, applyParamsPollMs)
+        await waitForListOfChangesFromReceipt(
+          `appData.dao.voteExponent=${sc1VoteExponentTarget}`,
+          receipt,
+          c => String(c?.appData?.dao?.voteExponent) === String(sc1VoteExponentTarget),
           applyParamsPollMs,
         )
       },
@@ -1977,6 +2022,7 @@ async function main(): Promise<void> {
             timestamp: Date.now(),
           },
           voter3,
+          { expectedBalanceDelta: receipt => -asBigInt(receipt.transactionFee ?? 0n) },
         )
         assert(asBigInt(receipt.additionalInfo.burned) === remainingBeforeBurn, `Expected burned ${remainingBeforeBurn}, got ${receipt.additionalInfo.burned}`)
         const proposal = await getProposal(proposalN.sc1)
@@ -2187,11 +2233,14 @@ async function main(): Promise<void> {
     [
       '4.2  committee[0] creates emergency proposal (status review)',
       async () => {
+        const daoParams = await getDaoParameters()
+        const currentPctBurned = Number(daoParams.pctBurned)
+        sc4PctBurnedTarget = currentPctBurned === 70 ? 65 : 70
         setProposalN('sc4', await createDaoProposal({
           proposer: committee[0],
           emergency: true,
-          description: 'Emergency governance proposal by committee member',
-          changes: [{ key: 'pctBurned', value: '70', current: '50' }],
+          description: `Emergency governance proposal toggles pctBurned from ${currentPctBurned} to ${sc4PctBurnedTarget}`,
+          changes: [{ key: 'pctBurned', value: String(sc4PctBurnedTarget), current: String(currentPctBurned) }],
           gracePeriodMs: graceDurationMs,
         }))
         saveCurrentRunState()
@@ -2281,7 +2330,7 @@ async function main(): Promise<void> {
       async () => {
         // Emergency proposals can be applied immediately after acceptance — no need to wait
         // for applyEligibleAt/gracePeriod (R20).
-        await injectAndAssert(
+        const { receipt } = await injectAndAssert(
           {
             type: 'dao_apply_parameters',
             networkId: currentNetworkId,
@@ -2293,10 +2342,11 @@ async function main(): Promise<void> {
         )
         const proposal = await getProposal(proposalN.sc4)
         assert(proposal.status === 'applied', `Expected status 'applied', got '${proposal.status}'`)
-        await waitForNetworkParameter(['current', 'dao', 'pctBurned'], 70, applyParamsPollMs)
-        await waitForListOfChanges(
-          'appData.dao.pctBurned=70',
-          c => String(c?.appData?.dao?.pctBurned) === '70',
+        await waitForNetworkParameter(['current', 'dao', 'pctBurned'], sc4PctBurnedTarget, applyParamsPollMs)
+        await waitForListOfChangesFromReceipt(
+          `appData.dao.pctBurned=${sc4PctBurnedTarget}`,
+          receipt,
+          c => String(c?.appData?.dao?.pctBurned) === String(sc4PctBurnedTarget),
           applyParamsPollMs,
         )
       },
@@ -2589,11 +2639,12 @@ async function main(): Promise<void> {
       '8.1  Create economic proposal for top-level network.current key',
       async () => {
         const currentValue = String(await getCurrentNetworkValue('nodeRewardAmountUsdStr'))
+        sc8NodeRewardTarget = currentValue === '1.25' ? '1.35' : '1.25'
         setProposalN('sc8Economic', await createDaoProposal({
           proposer: proposer6,
           proposalType: 'economic',
-          description: 'Economic proposal updates nodeRewardAmountUsdStr',
-          changes: [{ key: 'nodeRewardAmountUsdStr', value: '1.25', current: currentValue }],
+          description: `Economic proposal updates nodeRewardAmountUsdStr from ${currentValue} to ${sc8NodeRewardTarget}`,
+          changes: [{ key: 'nodeRewardAmountUsdStr', value: sc8NodeRewardTarget, current: currentValue }],
           gracePeriodMs: graceDurationMs,
         }))
         saveCurrentRunState()
@@ -2653,11 +2704,12 @@ async function main(): Promise<void> {
         await committeeAcceptToVoting(proposalN.sc8Economic, proposer6, committee, SLEEP_BUFFER_MS, [1, 2, 3])
         await castVote(proposalN.sc8Economic, voter7, [1, 0], minVoteSpendLib)
         await finalizeVote(proposalN.sc8Economic, proposer6, SLEEP_BUFFER_MS)
-        await applyAcceptedProposal(proposalN.sc8Economic, proposer6, SLEEP_BUFFER_MS)
-        await waitForNetworkParameter(['current', 'nodeRewardAmountUsdStr'], '1.25', applyParamsPollMs)
-        await waitForListOfChanges(
-          'appData.nodeRewardAmountUsdStr=1.25',
-          c => String(c?.appData?.nodeRewardAmountUsdStr) === '1.25',
+        const { receipt } = await applyAcceptedProposal(proposalN.sc8Economic, proposer6, SLEEP_BUFFER_MS)
+        await waitForNetworkParameter(['current', 'nodeRewardAmountUsdStr'], sc8NodeRewardTarget, applyParamsPollMs)
+        await waitForListOfChangesFromReceipt(
+          `appData.nodeRewardAmountUsdStr=${sc8NodeRewardTarget}`,
+          receipt,
+          c => String(c?.appData?.nodeRewardAmountUsdStr) === sc8NodeRewardTarget,
           applyParamsPollMs,
         )
       },
@@ -2676,9 +2728,10 @@ async function main(): Promise<void> {
         await committeeAcceptToVoting(proposalN.sc8Protocol, proposer7, committee, SLEEP_BUFFER_MS, [0, 2, 4])
         await castVote(proposalN.sc8Protocol, voter8, [1, 0], minVoteSpendLib)
         await finalizeVote(proposalN.sc8Protocol, proposer7, SLEEP_BUFFER_MS)
-        await applyAcceptedProposal(proposalN.sc8Protocol, proposer7, SLEEP_BUFFER_MS)
-        await waitForListOfChanges(
+        const { receipt } = await applyAcceptedProposal(proposalN.sc8Protocol, proposer7, SLEEP_BUFFER_MS)
+        await waitForListOfChangesFromReceipt(
           'change.debug.countEndpointStart=-1',
+          receipt,
           c => c?.change?.debug?.countEndpointStart === -1,
           applyParamsPollMs,
         )
@@ -2710,8 +2763,9 @@ async function main(): Promise<void> {
         )
         // The two p2p.* leaves must deep-merge into a single change.p2p object (sibling merge),
         // alongside the unrelated change.debug leaf.
-        await waitForListOfChanges(
+        await waitForListOfChangesFromReceipt(
           'change.p2p.{minNodes:12,maxNodes:1150} & change.debug.countEndpointStart=-2',
+          receipt,
           c => c?.change?.p2p?.minNodes === 12 && c?.change?.p2p?.maxNodes === 1150 && c?.change?.debug?.countEndpointStart === -2,
           applyParamsPollMs,
         )
@@ -2753,7 +2807,7 @@ async function main(): Promise<void> {
 
         // Increment the patch segment so every rerun produces a real change regardless of current state.
         const [maj, min, patch] = String(archiverBefore?.activeVersion ?? '3.7.9').split('.').map(Number)
-        const archiverVersionTarget = `${maj}.${min}.${patch + 1}`
+        sc8ArchiverActiveVersionTarget = `${maj}.${min}.${patch + 1}`
 
         // The value intentionally includes only two of the three archiver fields (activeVersion +
         // latestVersion). patchAndUpdate in index.ts is a deep recursive merge — it only touches
@@ -2763,10 +2817,10 @@ async function main(): Promise<void> {
         setProposalN('sc8Archiver', await createDaoProposal({
           proposer: proposer7,
           proposalType: 'economic',
-          description: `Economic proposal bumps archiver activeVersion and latestVersion to ${archiverVersionTarget}`,
+          description: `Economic proposal bumps archiver activeVersion and latestVersion to ${sc8ArchiverActiveVersionTarget}`,
           changes: [{
             key: 'archiver',
-            value: `{"activeVersion":"${archiverVersionTarget}","latestVersion":"${archiverVersionTarget}"}`,
+            value: `{"activeVersion":"${sc8ArchiverActiveVersionTarget}","latestVersion":"${sc8ArchiverActiveVersionTarget}"}`,
             current: `{"activeVersion":"${archiverBefore?.activeVersion}","latestVersion":"${archiverBefore?.latestVersion}"}`,
           }],
           gracePeriodMs: graceDurationMs,
@@ -2777,13 +2831,19 @@ async function main(): Promise<void> {
         await finalizeVote(proposalN.sc8Archiver, proposer7, SLEEP_BUFFER_MS)
         const { receipt } = await applyAcceptedProposal(proposalN.sc8Archiver, proposer7, SLEEP_BUFFER_MS)
         const receiptChange = (receipt.additionalInfo?.change ?? {}) as any
-        assert(receiptChange?.appData?.archiver?.activeVersion === archiverVersionTarget, `Expected receipt appData.archiver.activeVersion=${archiverVersionTarget}, got ${JSON.stringify(receiptChange)}`)
-        assert(receiptChange?.appData?.archiver?.latestVersion === archiverVersionTarget, `Expected receipt appData.archiver.latestVersion=${archiverVersionTarget}, got ${JSON.stringify(receiptChange)}`)
-        await waitForNetworkParameter(['current', 'archiver', 'activeVersion'], archiverVersionTarget, applyParamsPollMs)
+        assert(receiptChange?.appData?.archiver?.activeVersion === sc8ArchiverActiveVersionTarget, `Expected receipt appData.archiver.activeVersion=${sc8ArchiverActiveVersionTarget}, got ${JSON.stringify(receiptChange)}`)
+        assert(receiptChange?.appData?.archiver?.latestVersion === sc8ArchiverActiveVersionTarget, `Expected receipt appData.archiver.latestVersion=${sc8ArchiverActiveVersionTarget}, got ${JSON.stringify(receiptChange)}`)
+        await waitForListOfChangesFromReceipt(
+          `appData.archiver.activeVersion=${sc8ArchiverActiveVersionTarget}`,
+          receipt,
+          c => c?.appData?.archiver?.activeVersion === sc8ArchiverActiveVersionTarget,
+          applyParamsPollMs,
+        )
+        await waitForNetworkParameter(['current', 'archiver', 'activeVersion'], sc8ArchiverActiveVersionTarget, applyParamsPollMs)
         // Verify both changed fields updated and the omitted field (minVersion) was deep-merged, not overwritten.
         const archiverAfter = (await getCurrentNetworkValue('archiver')) as any
-        assert(archiverAfter?.activeVersion === archiverVersionTarget, `Expected archiver.activeVersion=${archiverVersionTarget}, got ${archiverAfter?.activeVersion}`)
-        assert(archiverAfter?.latestVersion === archiverVersionTarget, `Expected archiver.latestVersion=${archiverVersionTarget}, got ${archiverAfter?.latestVersion}`)
+        assert(archiverAfter?.activeVersion === sc8ArchiverActiveVersionTarget, `Expected archiver.activeVersion=${sc8ArchiverActiveVersionTarget}, got ${archiverAfter?.activeVersion}`)
+        assert(archiverAfter?.latestVersion === sc8ArchiverActiveVersionTarget, `Expected archiver.latestVersion=${sc8ArchiverActiveVersionTarget}, got ${archiverAfter?.latestVersion}`)
         assert(archiverAfter?.minVersion === archiverBefore?.minVersion, `Expected archiver.minVersion to remain ${archiverBefore?.minVersion} (not in payload), got ${archiverAfter?.minVersion}`)
         // Verify the top-level network activeVersion (a different field) was not touched.
         const topLevelActiveVersionAfter = String(await getCurrentNetworkValue('activeVersion'))
@@ -3173,18 +3233,17 @@ async function main(): Promise<void> {
       async () => {
         await castVote(proposalN.sc13, voter11, [1, 0], minVoteSpendLib)
         await finalizeVote(proposalN.sc13, proposer10, SLEEP_BUFFER_MS)
+        const matchesRejectedChange = (change: any) => String(change?.appData?.dao?.pctBurned) === '58'
+        const matchingChangesBefore = (await getProposalListOfChanges()).filter(matchesRejectedChange).length
         await injectExpectReject(
           { type: 'dao_apply_parameters', networkId: currentNetworkId, from: proposer10.address, proposalId: daoProposalId(proposalN.sc13), timestamp: Date.now() },
           proposer10,
           'Grace period',
         )
         const proposalAfter = await getProposal(proposalN.sc13)
-        const changesAfter = await getProposalListOfChanges()
+        const matchingChangesAfter = (await getProposalListOfChanges()).filter(matchesRejectedChange).length
         assert(proposalAfter.status === 'accepted', `Early apply attempt changed proposal status to ${proposalAfter.status}`)
-        assert(
-          !changesAfter.some(c => String(c?.appData?.dao?.pctBurned) === '58'),
-          'Early apply attempt unexpectedly queued pctBurned=58',
-        )
+        assert(matchingChangesAfter === matchingChangesBefore, 'Early apply attempt unexpectedly queued pctBurned=58')
       },
     ],
     [
