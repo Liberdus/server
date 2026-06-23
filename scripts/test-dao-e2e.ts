@@ -176,6 +176,7 @@ function newLogStamp(): string {
 
 const logStamp = process.env.DAO_E2E_LOG_STAMP ?? newLogStamp()
 const logFile = path.join(logDir, `dao-e2e-${logStamp}.log`)
+const summaryFile = path.join(logDir, `dao-e2e-summary-${logStamp}.json`)
 const terminalLogFile =
   process.env.DAO_E2E_TERMINAL_LOG ?? path.join(logDir, `dao-e2e-terminal-${logStamp}.log`)
 const shellTeeActive = Boolean(process.env.DAO_E2E_TERMINAL_LOG)
@@ -216,6 +217,41 @@ function writeLog(line: string): void {
   if (!logClosed) logStream.write(line + '\n')
 }
 
+function writeSummary(status: 'pass' | 'fail' | 'fatal' | 'interrupted', error?: unknown): void {
+  const passed = results.filter(r => r.status === 'pass').length
+  const failed = results.filter(r => r.status === 'fail').length
+  const skipped = results.filter(r => r.status === 'skip').length
+  const cumulativeStepMs = results.reduce((sum, r) => sum + r.ms, 0)
+  const summary = {
+    status,
+    error: error instanceof Error ? error.message : error == null ? undefined : String(error),
+    args: cliArgs,
+    networkId: currentNetworkId,
+    mode: PARALLEL ? 'parallel' : 'sequential',
+    logFile,
+    terminalLogFile,
+    timing: {
+      startedAt: new Date(runStartedAt).toISOString(),
+      finishedAt: new Date().toISOString(),
+      wallMs: Date.now() - runStartedAt,
+      cumulativeStepMs,
+    },
+    totals: {
+      passed,
+      failed,
+      skipped,
+      total: results.length,
+    },
+    scenarios: [...scenarioTimings].sort((a, b) => a.num - b.num),
+    steps: [...results].sort(compareStepResults),
+  }
+  try {
+    fs.writeFileSync(summaryFile, JSON.stringify(summary, null, 2))
+  } catch (err) {
+    console.warn(`Warning: failed to save summary to ${summaryFile}: ${err}`)
+  }
+}
+
 setupDirectTerminalCapture()
 
 // Intercept console.log so every line goes to both stdout and the app log file.
@@ -235,6 +271,7 @@ console.error = (...args: any[]) => {
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
     writeLog(`[${signal}] Run interrupted`)
+    writeSummary('interrupted', signal)
     closeLog()
     _origLog(`\nLogs saved:\n  App:      ${logFile}\n  Terminal: ${terminalLogFile}`)
     process.exit(130)
@@ -311,6 +348,12 @@ interface StepResult {
   error?: string
 }
 
+interface ScenarioTiming {
+  num: number
+  name: string
+  ms: number
+}
+
 interface StepSortKey {
   scenario: number
   step: number
@@ -331,6 +374,8 @@ interface ScenarioDef {
   name: string
   setupSteps: Array<[string, () => Promise<void>]>
   bodySteps: Array<[string, () => Promise<void>]>
+  /** Steps in this scenario's body are independent and may run concurrently in --parallel mode. */
+  parallelBodySteps?: boolean
   /** Timing- or account-contention-sensitive scenarios stay sequential even when --parallel is used. */
   sequentialOnly?: boolean
 }
@@ -361,6 +406,9 @@ interface NetworkTiming {
 // ─── Global state ─────────────────────────────────────────────────────────────
 
 const results: StepResult[] = []
+const scenarioTimings: ScenarioTiming[] = []
+const scenarioStarts = new Map<number, number>()
+const runStartedAt = Date.now()
 
 /**
  * Network ID from the cycle record — set once the network reaches 'processing'
@@ -370,6 +418,16 @@ let currentNetworkId = ''
 
 /** Max wait for a queued TX to produce a receipt or for a proposal account to appear. */
 let txSettleTimeoutMs = 45_000
+
+function startScenarioTimer(def: ScenarioDef): void {
+  if (!scenarioStarts.has(def.num)) scenarioStarts.set(def.num, Date.now())
+}
+
+function finishScenarioTimer(def: ScenarioDef): void {
+  const startedAt = scenarioStarts.get(def.num)
+  if (startedAt == null || scenarioTimings.some(timing => timing.num === def.num)) return
+  scenarioTimings.push({ num: def.num, name: def.name, ms: Date.now() - startedAt })
+}
 
 /**
  * Per-sender queue used only by the test harness. In parallel mode several scenarios can
@@ -523,6 +581,7 @@ async function scenario(def: ScenarioDef): Promise<void> {
     return
   }
 
+  startScenarioTimer(def)
   console.log(`\n── ${def.name} ──`)
   let failed = false
   for (const [stepName, fn] of allSteps) {
@@ -541,6 +600,7 @@ async function scenario(def: ScenarioDef): Promise<void> {
       failed = true
     }
   }
+  finishScenarioTimer(def)
 }
 
 /**
@@ -548,7 +608,28 @@ async function scenario(def: ScenarioDef): Promise<void> {
  * prefix is printed before each step result, e.g. "[S1]".
  */
 async function runScenarioBody(def: ScenarioDef, prefix: string): Promise<void> {
+  startScenarioTimer(def)
   console.log(`\n${prefix} ── ${def.name} ──`)
+  if (def.parallelBodySteps) {
+    try {
+      await Promise.allSettled(
+        def.bodySteps.map(async ([stepName, fn]) => {
+          const stepId = stepName.trim().split(/\s+/)[0]
+          const stepFiltered = STEP_FILTER && !STEP_FILTER.has(stepId)
+          if (stepFiltered) {
+            results.push({ name: stepName, status: 'skip', ms: 0 })
+            console.log(`${prefix}  ⏭   ${stepName} (skipped — not in --step filter)`)
+            return
+          }
+          await step(stepName, fn, prefix)
+        }),
+      )
+    } finally {
+      finishScenarioTimer(def)
+    }
+    return
+  }
+
   let failed = false
   for (const [stepName, fn] of def.bodySteps) {
     const stepId = stepName.trim().split(/\s+/)[0]
@@ -565,6 +646,7 @@ async function runScenarioBody(def: ScenarioDef, prefix: string): Promise<void> 
       failed = true
     }
   }
+  finishScenarioTimer(def)
 }
 
 /**
@@ -597,6 +679,7 @@ async function runScenariosParallel(defs: ScenarioDef[]): Promise<void> {
   const failedSetupNums = new Set<number>()
   for (const def of parallelDefs) {
     if (def.setupSteps.length === 0) continue
+    startScenarioTimer(def)
     console.log(`\n── ${def.name} — setup ──`)
     let failed = false
     for (const [stepName, fn] of def.setupSteps) {
@@ -627,6 +710,7 @@ async function runScenariosParallel(defs: ScenarioDef[]): Promise<void> {
       results.push({ name: stepName, status: 'skip', ms: 0 })
       console.log(`  ⏭   ${stepName} (skipped — setup failed)`)
     }
+    finishScenarioTimer(def)
   }
   await Promise.allSettled(
     parallelDefs
@@ -709,7 +793,7 @@ function libToWei(lib: number): bigint {
   return BigInt(lib) * 10n ** 18n
 }
 
-/** Convert a USD string to whole LIB (ceil), matching server usdStrToWei + stabilityFactor. */
+/** Convert a USD string to whole LIB (ceil), matching server USD-to-LIB conversion. */
 function usdStrToLibCeil(usdStr: string, stabilityFactorStr: string): number {
   const stabilityWei = ethers.parseEther(stabilityFactorStr)
   const usdWei = ethers.parseEther(usdStr)
@@ -717,7 +801,8 @@ function usdStrToLibCeil(usdStr: string, stabilityFactorStr: string): number {
   return Math.ceil(Number(ethers.formatEther(libWei)))
 }
 
-function usdStrToWei(usdStr: string, stabilityFactorStr: string): bigint {
+/** Convert a USD string to LIB wei using the network stability factor. */
+function usdStrToLibWei(usdStr: string, stabilityFactorStr: string): bigint {
   return ethers.parseEther(usdStr) * 10n ** 18n / ethers.parseEther(stabilityFactorStr)
 }
 
@@ -1011,6 +1096,13 @@ async function getProposal(n: number): Promise<DaoProposalWithTiming> {
     2_000,
   )
   return proposal!
+}
+
+function archiverActiveVersionFromProposal(proposal: DaoProposalAccount): string | null {
+  const change = proposal.economic?.changes?.find(c => c.key === 'archiver')
+  if (!change) return null
+  const value = safeParse(change.value)
+  return value?.activeVersion == null ? null : String(value.activeVersion)
 }
 
 /**
@@ -1603,8 +1695,6 @@ async function stopNetwork(): Promise<void> {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const runStartedAt = Date.now()
-
   // Load committee keypairs from dao-committee-keys.json
   // File format: [{ index, privateKey, ethAddress, shardusAddress }]
   const committeeKeysPath = path.resolve(__dirname, '../dao-committee-keys.json')
@@ -1739,6 +1829,8 @@ async function main(): Promise<void> {
   let sc4PctBurnedTarget = 70
   let sc8NodeRewardTarget = '1.25'
   let sc8ArchiverActiveVersionTarget = '3.7.10'
+  let sc8TopLevelActiveVersionBefore = ''
+  let sc8ArchiverMinVersionBefore = ''
 
   if (shouldFundAccounts) {
     await step('0.1  Fund all DAO E2E accounts', async () => {
@@ -1763,7 +1855,7 @@ async function main(): Promise<void> {
         const daoParams = await getDaoParameters()
         const currentVoteExponent = Number(daoParams.voteExponent)
         sc1VoteExponentTarget = currentVoteExponent === 1.2 ? 1.1 : 1.2
-        const proposalFeeWei = usdStrToWei(daoParams.proposalFeeUsdStr, stabilityFactorStr)
+        const proposalFeeWei = usdStrToLibWei(daoParams.proposalFeeUsdStr, stabilityFactorStr)
         setProposalN('sc1', await createDaoProposal({
           proposer,
           description: `Toggle voteExponent from ${currentVoteExponent} to ${sc1VoteExponentTarget}`,
@@ -2127,6 +2219,22 @@ async function main(): Promise<void> {
         assert(asBigInt(proposal.initialBurnedReward) > 0n, 'Expected initialBurnedReward > 0 (non-emergency proposal fee was burned)')
       },
     ],
+    [
+      '2.4  dao_burn_reward rejected for regular withheld proposal',
+      async () => {
+        await injectExpectReject(
+          {
+            type: 'dao_burn_reward',
+            networkId: currentNetworkId,
+            from: proposer.address,
+            proposalId: daoProposalId(proposalN.sc2),
+            timestamp: Date.now(),
+          },
+          proposer,
+          'withheld',
+        )
+      },
+    ],
     ],
   }
 
@@ -2192,6 +2300,27 @@ async function main(): Promise<void> {
           proposer,
           'not in review status',
         )
+      },
+    ],
+    [
+      '3.5  Sleep past votingEnd then dao_vote_result accepts zero-vote proposal via option 0',
+      async () => {
+        const proposalBefore = await getProposal(proposalN.sc3)
+        await sleepUntilTimestamp(proposalBefore.votingEnd, 'votingEnd', SLEEP_BUFFER_MS)
+        const { receipt } = await injectAndAssert(
+          {
+            type: 'dao_vote_result',
+            networkId: currentNetworkId,
+            from: proposer.address,
+            proposalId: daoProposalId(proposalN.sc3),
+            timestamp: Date.now(),
+          },
+          proposer,
+        )
+        const proposal = await getProposal(proposalN.sc3)
+        assert(proposal.status === 'accepted', `Expected zero-vote proposal to be accepted by option 0 tie-break, got ${proposal.status}`)
+        assert(receipt.additionalInfo?.winningOption === proposal.options[0], `Expected zero-vote tie to pick option 0, got ${JSON.stringify(receipt.additionalInfo)}`)
+        assert(proposal.totalVote.every(vote => asBigInt(vote) === 0n), `Expected every totalVote entry to stay zero, got ${proposal.totalVote}`)
       },
     ],
     ],
@@ -2696,7 +2825,65 @@ async function main(): Promise<void> {
         )
       },
     ],
+    [
+      '8.3b Create protocol section-object proposal',
+      async () => {
+        setProposalN('sc8Protocol', await createDaoProposal({
+          proposer: proposer7,
+          proposalType: 'protocol',
+          description: 'Protocol proposal patches debug.countEndpointStart',
+          changes: [{ key: 'debug', value: '{"countEndpointStart":0}', current: '{"countEndpointStart":-1}' }],
+          gracePeriodMs: graceDurationMs,
+        }))
+        saveCurrentRunState()
+      },
     ],
+    [
+      '8.3c Create protocol leaf-key proposal',
+      async () => {
+        setProposalN('sc8LeafKey', await createDaoProposal({
+          proposer: proposer6,
+          proposalType: 'protocol',
+          description: 'Protocol proposal via leaf keys (p2p.minNodes, p2p.maxNodes, debug.countEndpointStart)',
+          changes: [
+            { key: 'minNodes', value: '12', current: '10' },
+            { key: 'maxNodes', value: '1150', current: '1100' },
+            { key: 'countEndpointStart', value: '-2', current: '-1' },
+          ],
+          gracePeriodMs: graceDurationMs,
+        }))
+        saveCurrentRunState()
+      },
+    ],
+    [
+      '8.3d Create archiver economic proposal',
+      async () => {
+        sc8TopLevelActiveVersionBefore = String(await getCurrentNetworkValue('activeVersion'))
+        const archiverBefore = (await getCurrentNetworkValue('archiver')) as any
+        sc8ArchiverMinVersionBefore = String(archiverBefore?.minVersion)
+        const [maj, min, patch] = String(archiverBefore?.activeVersion ?? '3.7.9').split('.').map(Number)
+        sc8ArchiverActiveVersionTarget = `${maj}.${min}.${patch + 1}`
+        // Send only two of the three archiver fields. updateNetworkChangeQueue
+        // deep-merges object payloads, so omitted fields such as minVersion must
+        // survive unchanged instead of being lost to a shallow replacement.
+        setProposalN('sc8Archiver', await createDaoProposal({
+          proposer: proposer7,
+          proposalType: 'economic',
+          description: `Economic proposal bumps archiver activeVersion and latestVersion to ${sc8ArchiverActiveVersionTarget}`,
+          changes: [{
+            key: 'archiver',
+            value: Utils.safeStringify({ activeVersion: sc8ArchiverActiveVersionTarget, latestVersion: sc8ArchiverActiveVersionTarget }),
+            current: Utils.safeStringify({ activeVersion: archiverBefore?.activeVersion, latestVersion: archiverBefore?.latestVersion }),
+          }],
+          gracePeriodMs: graceDurationMs,
+        }))
+        saveCurrentRunState()
+      },
+    ],
+    ],
+    parallelBodySteps: true,
+    // 8.5 and 8.6 both touch debug.countEndpointStart. Their assertions are
+    // receipt-correlated, and no later step depends on the final runtime value.
     bodySteps: [
     [
       '8.4  Economic proposal applies via apply_change_network_param',
@@ -2715,24 +2902,16 @@ async function main(): Promise<void> {
       },
     ],
     [
-      '8.5  Create and apply protocol proposal via apply_change_config',
+      '8.5  Protocol section-object proposal applies via apply_change_config',
       async () => {
-        setProposalN('sc8Protocol', await createDaoProposal({
-          proposer: proposer7,
-          proposalType: 'protocol',
-          description: 'Protocol proposal patches debug.countEndpointStart',
-          changes: [{ key: 'debug', value: '{"countEndpointStart":-1}', current: '{"countEndpointStart":-1}' }],
-          gracePeriodMs: graceDurationMs,
-        }))
-        saveCurrentRunState()
         await committeeAcceptToVoting(proposalN.sc8Protocol, proposer7, committee, SLEEP_BUFFER_MS, [0, 2, 4])
         await castVote(proposalN.sc8Protocol, voter8, [1, 0], minVoteSpendLib)
         await finalizeVote(proposalN.sc8Protocol, proposer7, SLEEP_BUFFER_MS)
         const { receipt } = await applyAcceptedProposal(proposalN.sc8Protocol, proposer7, SLEEP_BUFFER_MS)
         await waitForListOfChangesFromReceipt(
-          'change.debug.countEndpointStart=-1',
+          'change.debug.countEndpointStart=0',
           receipt,
-          c => c?.change?.debug?.countEndpointStart === -1,
+          c => c?.change?.debug?.countEndpointStart === 0,
           applyParamsPollMs,
         )
       },
@@ -2740,18 +2919,6 @@ async function main(): Promise<void> {
     [
       '8.6  Protocol proposal with leaf keys: sibling merge under p2p + nested debug leaf',
       async () => {
-        setProposalN('sc8LeafKey', await createDaoProposal({
-          proposer: proposer6,
-          proposalType: 'protocol',
-          description: 'Protocol proposal via leaf keys (p2p.minNodes, p2p.maxNodes, debug.countEndpointStart)',
-          changes: [
-            { key: 'minNodes', value: '12', current: '10' },
-            { key: 'maxNodes', value: '1150', current: '1100' },
-            { key: 'countEndpointStart', value: '-2', current: '-1' },
-          ],
-          gracePeriodMs: graceDurationMs,
-        }))
-        saveCurrentRunState()
         await committeeAcceptToVoting(proposalN.sc8LeafKey, proposer6, committee, SLEEP_BUFFER_MS, [0, 1, 2])
         await castVote(proposalN.sc8LeafKey, voter7, [1, 0], minVoteSpendLib)
         await finalizeVote(proposalN.sc8LeafKey, proposer6, SLEEP_BUFFER_MS)
@@ -2802,30 +2969,14 @@ async function main(): Promise<void> {
     [
       '8.8  Economic proposal partially updates network.current.archiver, leaving unspecified fields and top-level version untouched',
       async () => {
-        const topLevelActiveVersionBefore = String(await getCurrentNetworkValue('activeVersion'))
-        const archiverBefore = (await getCurrentNetworkValue('archiver')) as any
-
-        // Increment the patch segment so every rerun produces a real change regardless of current state.
-        const [maj, min, patch] = String(archiverBefore?.activeVersion ?? '3.7.9').split('.').map(Number)
-        sc8ArchiverActiveVersionTarget = `${maj}.${min}.${patch + 1}`
-
-        // The value intentionally includes only two of the three archiver fields (activeVersion +
-        // latestVersion). patchAndUpdate in index.ts is a deep recursive merge — it only touches
-        // keys present in the payload, so minVersion must survive unchanged. This demonstrates that
-        // a partial object change can update one field, some fields, or all fields without
-        // clobbering the rest of the object.
-        setProposalN('sc8Archiver', await createDaoProposal({
-          proposer: proposer7,
-          proposalType: 'economic',
-          description: `Economic proposal bumps archiver activeVersion and latestVersion to ${sc8ArchiverActiveVersionTarget}`,
-          changes: [{
-            key: 'archiver',
-            value: `{"activeVersion":"${sc8ArchiverActiveVersionTarget}","latestVersion":"${sc8ArchiverActiveVersionTarget}"}`,
-            current: `{"activeVersion":"${archiverBefore?.activeVersion}","latestVersion":"${archiverBefore?.latestVersion}"}`,
-          }],
-          gracePeriodMs: graceDurationMs,
-        }))
-        saveCurrentRunState()
+        assert(proposalN.sc8Archiver > 0, 'sc8Archiver proposal number is missing; run setup step 8.3d before 8.8')
+        {
+          const proposal = await getProposal(proposalN.sc8Archiver)
+          sc8ArchiverActiveVersionTarget = archiverActiveVersionFromProposal(proposal) ?? sc8ArchiverActiveVersionTarget
+        }
+        const archiverBeforeApply = (await getCurrentNetworkValue('archiver')) as any
+        const expectedMinVersion = sc8ArchiverMinVersionBefore || String(archiverBeforeApply?.minVersion)
+        const expectedTopLevelActiveVersion = sc8TopLevelActiveVersionBefore || String(await getCurrentNetworkValue('activeVersion'))
         await committeeAcceptToVoting(proposalN.sc8Archiver, proposer7, committee, SLEEP_BUFFER_MS, [0, 1, 2])
         await castVote(proposalN.sc8Archiver, voter8, [1, 0], minVoteSpendLib)
         await finalizeVote(proposalN.sc8Archiver, proposer7, SLEEP_BUFFER_MS)
@@ -2844,12 +2995,12 @@ async function main(): Promise<void> {
         const archiverAfter = (await getCurrentNetworkValue('archiver')) as any
         assert(archiverAfter?.activeVersion === sc8ArchiverActiveVersionTarget, `Expected archiver.activeVersion=${sc8ArchiverActiveVersionTarget}, got ${archiverAfter?.activeVersion}`)
         assert(archiverAfter?.latestVersion === sc8ArchiverActiveVersionTarget, `Expected archiver.latestVersion=${sc8ArchiverActiveVersionTarget}, got ${archiverAfter?.latestVersion}`)
-        assert(archiverAfter?.minVersion === archiverBefore?.minVersion, `Expected archiver.minVersion to remain ${archiverBefore?.minVersion} (not in payload), got ${archiverAfter?.minVersion}`)
+        assert(archiverAfter?.minVersion === expectedMinVersion, `Expected archiver.minVersion to remain ${expectedMinVersion} (not in payload), got ${archiverAfter?.minVersion}`)
         // Verify the top-level network activeVersion (a different field) was not touched.
         const topLevelActiveVersionAfter = String(await getCurrentNetworkValue('activeVersion'))
         assert(
-          topLevelActiveVersionAfter === topLevelActiveVersionBefore,
-          `Expected top-level activeVersion to remain ${topLevelActiveVersionBefore}, got ${topLevelActiveVersionAfter}`,
+          topLevelActiveVersionAfter === expectedTopLevelActiveVersion,
+          `Expected top-level activeVersion to remain ${expectedTopLevelActiveVersion}, got ${topLevelActiveVersionAfter}`,
         )
       },
     ],
@@ -3155,7 +3306,6 @@ async function main(): Promise<void> {
   const sc13: ScenarioDef = {
     num: 13,
     name: 'Scenario 13 — Targeted validation/rejection sweep',
-    sequentialOnly: true,
     setupSteps: [
     [
       '13.1 Create live voting proposal for rejection checks',
@@ -3362,7 +3512,6 @@ async function main(): Promise<void> {
   const sc15: ScenarioDef = {
     num: 15,
     name: 'Scenario 15 — Extended validation/rejection sweep',
-    sequentialOnly: true,
     setupSteps: [
     [
       '15.1 Future startTime proposal rejects early committee vote',
@@ -3689,6 +3838,12 @@ async function main(): Promise<void> {
     const errStr = r.error ? `  [${r.error}]` : ''
     console.log(`  ${icon}  ${r.name.padEnd(50)} ${timeStr.padStart(7)}${errStr}`)
   }
+  if (scenarioTimings.length > 0) {
+    console.log('─'.repeat(64))
+    for (const timing of [...scenarioTimings].sort((a, b) => a.num - b.num)) {
+      console.log(`  S${String(timing.num).padEnd(2)} ${timing.name.padEnd(58)} ${(timing.ms / 1000).toFixed(1)}s`)
+    }
+  }
   console.log('═'.repeat(64))
   const totalSec = (totalMs / 1000).toFixed(0)
   const wallSec = ((Date.now() - runStartedAt) / 1000).toFixed(0)
@@ -3697,7 +3852,8 @@ async function main(): Promise<void> {
   )
   console.log(`  Step time: ~${totalSec}s cumulative   Wall time: ~${wallSec}s`)
   console.log('═'.repeat(64))
-  console.log(`Logs saved:\n  App:      ${logFile}\n  Terminal: ${terminalLogFile}`)
+  writeSummary(failed > 0 ? 'fail' : 'pass')
+  console.log(`Logs saved:\n  App:      ${logFile}\n  Terminal: ${terminalLogFile}\n  Summary:  ${summaryFile}`)
 
   writeLog(`Finished: ${new Date().toISOString()}`)
   writeLog(`Terminal log: ${terminalLogFile}`)
@@ -3719,7 +3875,8 @@ async function main(): Promise<void> {
 main().catch(err => {
   console.error('Fatal error:', err)
   writeLog(`Fatal error: ${err?.message ?? err}`)
+  writeSummary('fatal', err)
   closeLog()
-  _origLog(`Logs saved:\n  App:      ${logFile}\n  Terminal: ${terminalLogFile}`)
+  _origLog(`Logs saved:\n  App:      ${logFile}\n  Terminal: ${terminalLogFile}\n  Summary:  ${summaryFile}`)
   process.exit(1)
 })
