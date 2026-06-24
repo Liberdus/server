@@ -77,22 +77,28 @@ export const validate_fields = (
     response.reason = `tx "${tx.proposalType}" payload must include a non-empty "changes" array`
     return response
   }
+  // Structural check: validate field types and reject duplicate raw keys before the
+  // heavier path-resolution and coerce pass in validateChangesPayload below.
   const seenKeys = new Set<string>()
-  for (const change of payload.changes) {
+  for (const [i, change] of payload.changes.entries()) {
+    if (change === null || typeof change !== 'object') {
+      response.reason = `each change must be an object { key: string; value: string; current: string } - got ${change === null ? 'null' : typeof change} at changes[${i}]`
+      return response
+    }
     if (typeof change.key !== 'string' || change.key.length === 0) {
-      response.reason = 'each change must have a non-empty string "key"'
+      response.reason = `each change must have a non-empty string "key" - got ${change.key === '' ? 'an empty string' : typeof change.key} at changes[${i}].key`
       return response
     }
     if (typeof change.value !== 'string') {
-      response.reason = 'each change must have a string "value"'
+      response.reason = `each change must have a string "value" - got ${typeof change.value} at the "value" for key '${change.key}'`
       return response
     }
     if (typeof change.current !== 'string') {
-      response.reason = 'each change must have a string "current"'
+      response.reason = `each change must have a string "current" - got ${typeof change.current} at the "current" for key '${change.key}'`
       return response
     }
     if (seenKeys.has(change.key)) {
-      response.reason = `duplicate key "${change.key}" in changes array`
+      response.reason = `each change must have a unique "key" - got duplicate "${change.key}"`
       return response
     }
     seenKeys.add(change.key)
