@@ -31,6 +31,31 @@ export const apply = (
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
   network.listOfChanges.push(tx.change)
   network.timestamp = txTimestamp
+  backfillNetworkAccount(network)
+
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: true,
+    from: tx.from,
+    to: config.networkAccount,
+    type: tx.type,
+    transactionFee: BigInt(0),
+    additionalInfo: {
+      change: tx.change,
+    },
+  }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
+  dapp.log(`=== APPLIED CHANGE_NETWORK_PARAM GLOBAL ${Utils.safeStringify(network)} ===`)
+}
+
+/**
+ * Backfills missing fields on a NetworkAccount so that both change_network_param
+ * (afterStateHash calculation) and apply_change_network_param (actual apply) produce
+ * identical state when the archiver verifies the global message.
+ */
+export function backfillNetworkAccount(network: NetworkAccount): void {
   if (config.LiberdusFlags.enableNewDAOTransactions === true) {
     if (network.current.dao == null) {
       network.current.dao = config.INITIAL_PARAMETERS.dao
@@ -61,22 +86,6 @@ export const apply = (
       network.current.messageMaxLength = 500
     }
   }
-
-  const appReceiptData: AppReceiptData = {
-    txId,
-    timestamp: txTimestamp,
-    success: true,
-    from: tx.from,
-    to: config.networkAccount,
-    type: tx.type,
-    transactionFee: BigInt(0),
-    additionalInfo: {
-      change: tx.change,
-    },
-  }
-  const appReceiptDataHash = crypto.hashObj(appReceiptData)
-  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
-  dapp.log(`=== APPLIED CHANGE_NETWORK_PARAM GLOBAL ${Utils.safeStringify(network)} ===`)
 }
 
 export const createFailedAppReceiptData = (
