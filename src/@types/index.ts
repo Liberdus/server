@@ -274,6 +274,7 @@ export namespace Tx {
     required: number // 1 if toll required, 0 if not nd 2 to block other party
     previousRequired?: number
     timestamp: number // timestamp up to which messages are considered read
+    chatTimestamp?: number // server-applied chat timestamp for chat history/discovery
     fee?: bigint // Optional fee for the update toll transaction
   }
 
