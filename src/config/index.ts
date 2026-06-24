@@ -310,7 +310,7 @@ export const LiberdusFlags: LiberdusFlags = {
   fetchNetworkAccountFromArchiver: true,
   enableArchiverNetworkAccountValidation: false,
   enableDAOTransactions: false,
-  enableNewDAOTransactions: true, // TODO: set to false before release; currently true for local testing only — turned on by migration 2.5.1
+  enableNewDAOTransactions: false, // turned on by migration 2.5.1
   minCommitteeMembers: 4,
   maxCommitteeMembers: 10,
   enableAJVValidation: false,
