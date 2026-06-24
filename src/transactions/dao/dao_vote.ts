@@ -1,12 +1,12 @@
-import * as crypto from '../crypto'
+import * as crypto from '../../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
-import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } from '../@types'
-import { SafeBigIntMath } from '../utils/safeBigIntMath'
-import * as AccountsStorage from '../storage/accountStorage'
-import * as utils from '../utils'
-import { isUserAccount, isDaoProposalAccount } from '../@types/accountTypeGuards'
-import { getVotingStart, getVotingEnd } from '../accounts/daoProposalAccount'
-import { getTimeMultiplier, calculateOptionWeights } from '../utils/daoVoteMath'
+import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } from '../../@types'
+import { SafeBigIntMath } from '../../utils/safeBigIntMath'
+import * as AccountsStorage from '../../storage/accountStorage'
+import * as utils from '../../utils'
+import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
+import { getVotingStart, getVotingEnd } from '../../accounts/daoProposalAccount'
+import { getTimeMultiplier, calculateOptionWeights } from '../../utils/daoVoteMath'
 
 export const validate_fields = (tx: Tx.DaoVote, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {

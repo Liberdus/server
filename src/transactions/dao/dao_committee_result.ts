@@ -1,13 +1,13 @@
-import * as crypto from '../crypto'
+import * as crypto from '../../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
-import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } from '../@types'
-import { SafeBigIntMath } from '../utils/safeBigIntMath'
-import * as AccountsStorage from '../storage/accountStorage'
-import * as utils from '../utils'
-import { isUserAccount, isDaoProposalAccount } from '../@types/accountTypeGuards'
-import { getVotingEnd } from '../accounts/daoProposalAccount'
+import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } from '../../@types'
+import { SafeBigIntMath } from '../../utils/safeBigIntMath'
+import * as AccountsStorage from '../../storage/accountStorage'
+import * as utils from '../../utils'
+import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
+import { getReviewEnd } from '../../accounts/daoProposalAccount'
 
-export const validate_fields = (tx: Tx.DaoVoteResult, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
+export const validate_fields = (tx: Tx.DaoCommitteeResult, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address'
     return response
@@ -29,7 +29,7 @@ export const validate_fields = (tx: Tx.DaoVoteResult, response: ShardusTypes.Inc
 }
 
 export const validate = (
-  tx: Tx.DaoVoteResult,
+  tx: Tx.DaoCommitteeResult,
   wrappedStates: WrappedStates,
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
@@ -45,12 +45,12 @@ export const validate = (
     response.reason = 'Proposal account not found or is not a DaoProposalAccount'
     return response
   }
-  if (proposal.status !== 'voting') {
-    response.reason = `Proposal is not in voting status (current: ${proposal.status})`
+  if (proposal.status !== 'review') {
+    response.reason = `Proposal is not in review status (current: ${proposal.status})`
     return response
   }
-  if (tx.timestamp <= getVotingEnd(proposal)) {
-    response.reason = 'Voting period has not ended yet'
+  if (tx.timestamp <= getReviewEnd(proposal)) {
+    response.reason = 'Committee review period has not ended yet'
     return response
   }
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
@@ -65,7 +65,7 @@ export const validate = (
 }
 
 export const apply = (
-  tx: Tx.DaoVoteResult,
+  tx: Tx.DaoCommitteeResult,
   txTimestamp: number,
   txId: string,
   wrappedStates: WrappedStates,
@@ -78,30 +78,35 @@ export const apply = (
 
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
 
-  // Find the winning option: highest weight wins; lower index wins on tie
-  let winnerIndex = 0
-  for (let i = 1; i < proposal.totalVote.length; i++) {
-    if ((proposal.totalVote[i] ?? 0n) > (proposal.totalVote[winnerIndex] ?? 0n)) {
-      winnerIndex = i
+  if (proposal.emergency) {
+    // Still in 'review' means dao_committee_vote never reached a decisive result — withheld by default.
+    // Emergency proposals carry no proposal fee so voterRewardPool is already 0n — nothing to burn.
+    proposal.status = 'withheld'
+  } else {
+    // Regular proposals: decided here at reviewEnd — >50% withhold → withheld; otherwise → voting.
+    const snapshotCommittee = new Set(proposal.committeeAddresses)
+    const committeeSize = proposal.committeeAddresses.length
+    const withholdCount = proposal.committeeVotes.filter((v) => v.vote === 'withhold' && snapshotCommittee.has(v.memberAddress)).length
+
+    if (withholdCount > committeeSize / 2) {
+      proposal.status = 'withheld'
+      // Burn the voter reward pool on withhold (seeded from the proposal fee at creation).
+      proposal.initialBurnedReward = proposal.voterRewardPool
+      proposal.voterRewardPool = 0n
+    } else {
+      // voterRewardPool stays as seeded — distributed to voters after the voting phase.
+      proposal.status = 'voting'
     }
   }
-
-  const winningOption = proposal.options[winnerIndex]
-  // Convention: index 0 is the affirmative option ('yes' or equivalent)
-  proposal.status = winnerIndex === 0 ? 'accepted' : 'rejected'
-
-  // Burn pctBurned% of the voter reward pool (reduce pool; coins leave circulation).
-  // Math.round guards against non-integer pctBurned values that could arise if a governance
-  // proposal sets it to a decimal (e.g. 50.5) — BigInt() throws on non-integer inputs.
-  const burnAmount = (proposal.voterRewardPool * BigInt(Math.round(proposal.pctBurned))) / 100n
-  // Pool is fixed from this point — dao_claim_reward distributes it proportionally among voters.
-  proposal.voterRewardPool = proposal.voterRewardPool - burnAmount
-  // This burn happens before the claim period, so it counts toward initialBurnedReward.
-  proposal.initialBurnedReward = SafeBigIntMath.add(proposal.initialBurnedReward, burnAmount)
 
   from.timestamp = txTimestamp
   proposal.timestamp = txTimestamp
 
+  const additionalInfo: Record<string, unknown> = { proposalStatus: proposal.status }
+  // Only non-emergency proposals have a voterRewardPool seeded from the proposal fee — expose the burn amount when withheld.
+  if (!proposal.emergency && proposal.status === 'withheld') {
+    additionalInfo.burned = proposal.initialBurnedReward
+  }
   const appReceiptData: AppReceiptData = {
     txId,
     timestamp: txTimestamp,
@@ -110,20 +115,15 @@ export const apply = (
     to: tx.proposalId,
     type: tx.type,
     transactionFee: txFeeWei,
-    additionalInfo: {
-      winningOption,
-      proposalStatus: proposal.status,
-      burnAmount,
-      voterRewardPool: proposal.voterRewardPool,
-    },
+    additionalInfo,
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
-  dapp.log('Applied dao_vote_result tx', tx.proposalId, proposal.status, 'winner:', winningOption)
+  dapp.log('Applied dao_committee_result tx', tx.proposalId, proposal.status)
 }
 
 export const createFailedAppReceiptData = (
-  tx: Tx.DaoVoteResult,
+  tx: Tx.DaoCommitteeResult,
   txTimestamp: number,
   txId: string,
   wrappedStates: WrappedStates,
@@ -159,14 +159,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.DaoVoteResult, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
+export const keys = (tx: Tx.DaoCommitteeResult, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [tx.proposalId]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.DaoVoteResult, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.DaoCommitteeResult, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from, tx.proposalId],
     wo: [],
@@ -180,11 +180,11 @@ export const createRelevantAccount = (
   dapp: Shardus,
   account: UserAccount | DaoProposalAccount,
   accountId: string,
-  tx: Tx.DaoVoteResult,
+  tx: Tx.DaoCommitteeResult,
   accountCreated = false,
 ): ShardusTypes.WrappedResponse => {
   if (!account) {
-    throw new Error(`dao_vote_result.createRelevantAccount: account ${accountId} does not exist`)
+    throw new Error(`dao_committee_result.createRelevantAccount: account ${accountId} does not exist`)
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }

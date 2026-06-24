@@ -1,7 +1,7 @@
 /**
  * Non-interactive dao_vote weight simulator.
  *
- * Reuses the exact same math as src/transactions/dao_vote.ts (via daoVoteMath.ts) and the
+ * Reuses the exact same math as src/transactions/dao/dao_vote.ts (via daoVoteMath.ts) and the
  * derived-timing helpers from src/accounts/daoProposalAccount.ts, so results match the
  * production handler precisely.
  *

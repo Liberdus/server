@@ -1,11 +1,11 @@
-import * as crypto from '../crypto'
+import * as crypto from '../../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
-import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } from '../@types'
-import { SafeBigIntMath } from '../utils/safeBigIntMath'
-import * as AccountsStorage from '../storage/accountStorage'
-import * as utils from '../utils'
-import { isUserAccount, isDaoProposalAccount } from '../@types/accountTypeGuards'
-import { getReviewEnd } from '../accounts/daoProposalAccount'
+import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } from '../../@types'
+import { SafeBigIntMath } from '../../utils/safeBigIntMath'
+import * as AccountsStorage from '../../storage/accountStorage'
+import * as utils from '../../utils'
+import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
+import { getReviewEnd } from '../../accounts/daoProposalAccount'
 
 export const validate_fields = (tx: Tx.DaoCommitteeVote, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
