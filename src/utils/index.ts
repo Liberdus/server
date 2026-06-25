@@ -188,6 +188,12 @@ export function patchConfig(existingConfig: ShardusTypes.ShardusConfiguration, c
   if (LiberdusFlags.VerboseLogs) console.log(`TESTING existingObject: ${JSON.stringify(existingConfig, null, 2)}`)
   /* prettier-ignore */
   if (LiberdusFlags.VerboseLogs) console.log(`TESTING changeObj: ${JSON.stringify(changeObj, null, 2)}`)
+  // Do not replay historical shutdown requests from the network account into the live config.
+  // Reapplying p2p.initShutdown can cause the validator to create shutdown mode again.
+  if (changeObj?.p2p?.initShutdown === true) {
+    console.log('Skip updating p2p.initShutdown')
+    return
+  }
   patchDeepOwn(existingConfig.server as unknown as Record<string, unknown>, changeObj)
 }
 
