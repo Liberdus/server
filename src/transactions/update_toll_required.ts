@@ -181,10 +181,7 @@ export const apply = (
   to.data.chatTimestamp = txTimestamp
 
   if (config.LiberdusFlags.versionFlags.updateTollRequiredTxInChatHistory) {
-    chat.messages.push({
-      ...tx,
-      chatTimestamp: txTimestamp,
-    })
+    chat.messages.push(tx)
   }
 
   const appReceiptData: AppReceiptData = {
