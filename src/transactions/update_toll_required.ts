@@ -167,21 +167,17 @@ export const apply = (
   // Update timestamps
   chat.timestamp = txTimestamp
   from.timestamp = txTimestamp
-  to.timestamp = txTimestamp
-
-  from.data.chats[tx.to] = {
-    receivedTimestamp: txTimestamp,
-    chatId: tx.chatId,
-  }
-  from.data.chatTimestamp = txTimestamp
-  to.data.chats[tx.from] = {
-    receivedTimestamp: txTimestamp,
-    chatId: tx.chatId,
-  }
-  to.data.chatTimestamp = txTimestamp
 
   if (config.LiberdusFlags.versionFlags.updateTollRequiredTxInChatHistory) {
     chat.messages.push(tx)
+
+    // Update both participants' chat indexes so the toll status change is immediately
+    // discoverable via /account/:id/chats/:timestamp without waiting for a subsequent message
+    from.data.chats[tx.to] = { receivedTimestamp: txTimestamp, chatId: tx.chatId }
+    from.data.chatTimestamp = txTimestamp
+    to.data.chats[tx.from] = { receivedTimestamp: txTimestamp, chatId: tx.chatId }
+    to.data.chatTimestamp = txTimestamp
+    to.timestamp = txTimestamp
   }
 
   const appReceiptData: AppReceiptData = {
