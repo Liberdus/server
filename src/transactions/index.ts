@@ -53,6 +53,7 @@ import * as dao_committee_result from './dao/dao_committee_result'
 import * as dao_vote from './dao/dao_vote'
 import * as dao_vote_result from './dao/dao_vote_result'
 import * as dao_apply_parameters from './dao/dao_apply_parameters'
+import * as dao_unapply_parameters from './dao/dao_unapply_parameters'
 import * as dao_claim_reward from './dao/dao_claim_reward'
 import * as dao_burn_reward from './dao/dao_burn_reward'
 
@@ -112,6 +113,7 @@ export default {
   dao_vote,
   dao_vote_result,
   dao_apply_parameters,
+  dao_unapply_parameters,
   dao_claim_reward,
   dao_burn_reward,
 }

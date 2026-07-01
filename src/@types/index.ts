@@ -82,6 +82,7 @@ export enum AJVSchemaEnum {
   dao_vote = 'dao_vote',
   dao_vote_result = 'dao_vote_result',
   dao_apply_parameters = 'dao_apply_parameters',
+  dao_unapply_parameters = 'dao_unapply_parameters',
   dao_claim_reward = 'dao_claim_reward',
   dao_burn_reward = 'dao_burn_reward',
 }
@@ -148,6 +149,7 @@ export enum TXTypes {
   dao_vote = 'dao_vote',
   dao_vote_result = 'dao_vote_result',
   dao_apply_parameters = 'dao_apply_parameters',
+  dao_unapply_parameters = 'dao_unapply_parameters',
   dao_claim_reward = 'dao_claim_reward',
   dao_burn_reward = 'dao_burn_reward',
 }
@@ -556,6 +558,11 @@ export namespace Tx {
     proposalId: string
   }
 
+  export interface DaoUnapplyParameters extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+  }
+
   export interface DaoClaimReward extends BaseLiberdusTx {
     from: string
     proposalId: string
@@ -831,6 +838,10 @@ export interface DaoProposalAccount {
   // Committee review tracking — one entry per member; switching a vote replaces (not appends)
   // that member's entry, so withheldReason always stays attributed to the member's current vote.
   committeeVotes: Array<{ memberAddress: string; vote: 'accept' | 'withhold'; withheldReason?: string }>
+  // Committee addresses that have submitted dao_unapply_parameters for this proposal. Only
+  // meaningful once status is 'applied'; created lazily on first use (not defaulted), and reset
+  // to [] once the threshold flips status back to accepted. Read defensively — usually absent.
+  unapplyVotes?: string[]
   // Voting state
   options: string[]
   totalVote: bigint[]
