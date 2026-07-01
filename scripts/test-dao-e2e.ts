@@ -1147,6 +1147,18 @@ async function getDaoParameters(): Promise<any> {
   return (await getNetworkParameters())?.current?.dao
 }
 
+/**
+ * Query the live daoUnapplyCommitteeThreshold and clamp it the same way
+ * dao_unapply_parameters.apply() does, so the scenario stays correct even if the flag was
+ * changed via /debug-set-liberdus-flag before a --no-start rerun.
+ */
+async function getEffectiveUnapplyThreshold(committeeSize: number): Promise<number> {
+  const res = await apiGet('/debug-liberdus-flags')
+  const configured = safeParse(res.data)?.LiberdusFlags?.daoUnapplyCommitteeThreshold
+  const base = Number.isSafeInteger(configured) && configured > 0 ? configured : 3
+  return Math.min(base, committeeSize)
+}
+
 async function getProposalListOfChanges(): Promise<any[]> {
   return (await getNetworkParameters())?.listOfChanges ?? []
 }
@@ -1757,6 +1769,7 @@ async function main(): Promise<void> {
     sc15A: getProposalN('sc15A'),
     sc15B: getProposalN('sc15B'),
     sc16EmergencyTimeout: getProposalN('sc16EmergencyTimeout'),
+    sc17EmergencyRecovery: getProposalN('sc17EmergencyRecovery'),
   }
   const setProposalN = (key: string, value: number): number => {
     proposalNumbers[key] = value
@@ -1827,6 +1840,8 @@ async function main(): Promise<void> {
 
   let sc1VoteExponentTarget = 1.2
   let sc4PctBurnedTarget = 70
+  let sc17VoteThresholdUsdTarget = '150.0'
+  let sc17UnapplyThreshold = 3
   let sc8NodeRewardTarget = '1.25'
   let sc8ArchiverActiveVersionTarget = '3.7.10'
   let sc8TopLevelActiveVersionBefore = ''
@@ -3809,9 +3824,218 @@ async function main(): Promise<void> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Scenario 17 — dao_unapply_parameters committee recovery
+  // ─────────────────────────────────────────────────────────────────────────
+  const sc17: ScenarioDef = {
+    num: 17,
+    name: 'Scenario 17 — dao_unapply_parameters committee recovery',
+    setupSteps: [
+    [
+      '17.1 Create emergency proposal for unapply recovery test',
+      async () => {
+        // Query rather than assume 3 — the flag may have been changed on this network.
+        sc17UnapplyThreshold = await getEffectiveUnapplyThreshold(committee.length)
+        assert(
+          Number.isInteger(sc17UnapplyThreshold) && sc17UnapplyThreshold >= 1 && sc17UnapplyThreshold <= committee.length,
+          `Expected effective unapply threshold in [1, ${committee.length}], got ${sc17UnapplyThreshold}`,
+        )
+        const daoParams = await getDaoParameters()
+        const currentVoteThresholdUsd = String(daoParams.voteThresholdUsdStr)
+        sc17VoteThresholdUsdTarget = currentVoteThresholdUsd === '150.0' ? '100.0' : '150.0'
+        setProposalN('sc17EmergencyRecovery', await createDaoProposal({
+          proposer: committee[3],
+          emergency: true,
+          description: `Emergency unapply-recovery test toggles voteThresholdUsdStr from ${currentVoteThresholdUsd} to ${sc17VoteThresholdUsdTarget}`,
+          changes: [{ key: 'voteThresholdUsdStr', value: sc17VoteThresholdUsdTarget, current: currentVoteThresholdUsd }],
+          gracePeriodMs: 0,
+        }))
+        saveCurrentRunState()
+        const proposal = await getProposal(proposalN.sc17EmergencyRecovery)
+        assert(proposal.status === 'review', `Expected status 'review', got '${proposal.status}'`)
+        assert(proposal.emergency === true, 'Expected emergency === true')
+      },
+    ],
+    ],
+    bodySteps: [
+    [
+      '17.2 committee_vote accept x3 → accepted (emergency skips community voting)',
+      async () => {
+        for (const i of [3, 4, 0]) {
+          await injectAndAssert(
+            {
+              type: 'dao_committee_vote',
+              networkId: currentNetworkId,
+              from: committee[i].address,
+              proposalId: daoProposalId(proposalN.sc17EmergencyRecovery),
+              vote: 'accept',
+              timestamp: Date.now(),
+            },
+            committee[i],
+          )
+        }
+        const proposal = await getProposal(proposalN.sc17EmergencyRecovery)
+        assert(proposal.status === 'accepted', `Expected status 'accepted' for emergency, got '${proposal.status}'`)
+      },
+    ],
+    [
+      '17.3 dao_apply_parameters from committee member → applied immediately (no grace period)',
+      async () => {
+        const { receipt } = await injectAndAssert(
+          {
+            type: 'dao_apply_parameters',
+            networkId: currentNetworkId,
+            from: committee[0].address,
+            proposalId: daoProposalId(proposalN.sc17EmergencyRecovery),
+            timestamp: Date.now(),
+          },
+          committee[0],
+        )
+        const proposal = await getProposal(proposalN.sc17EmergencyRecovery)
+        assert(proposal.status === 'applied', `Expected status 'applied', got '${proposal.status}'`)
+        await waitForNetworkParameter(['current', 'dao', 'voteThresholdUsdStr'], sc17VoteThresholdUsdTarget, applyParamsPollMs)
+        // Deep-equality match the exact queued change object (not just one field) against
+        // listOfChanges — proves what was queued is what actually landed.
+        const receiptChange = receipt.additionalInfo.change
+        await waitForListOfChangesFromReceipt(
+          `exact receipt.additionalInfo.change at cycle ${receiptChange?.cycle}`,
+          receipt,
+          c => Utils.safeStringify(c) === Utils.safeStringify(receiptChange),
+          applyParamsPollMs,
+        )
+      },
+    ],
+    [
+      '17.4 dao_unapply_parameters rejected from a non-committee sender',
+      async () => {
+        await injectExpectReject(
+          {
+            type: 'dao_unapply_parameters',
+            networkId: currentNetworkId,
+            from: voter5.address,
+            proposalId: daoProposalId(proposalN.sc17EmergencyRecovery),
+            timestamp: Date.now(),
+          },
+          voter5,
+          'committee member',
+        )
+        const proposal = await getProposal(proposalN.sc17EmergencyRecovery)
+        assert(proposal.status === 'applied', `Expected status still 'applied' after rejected sender, got '${proposal.status}'`)
+      },
+    ],
+    [
+      '17.5 dao_unapply_parameters votes accumulate to the live threshold, status flips to accepted',
+      async () => {
+        // Drives exactly sc17UnapplyThreshold votes (queried in 17.1), not a hardcoded 3.
+        for (let i = 0; i < sc17UnapplyThreshold; i++) {
+          const isLastVote = i === sc17UnapplyThreshold - 1
+          const { receipt } = await injectAndAssert(
+            {
+              type: 'dao_unapply_parameters',
+              networkId: currentNetworkId,
+              from: committee[i].address,
+              proposalId: daoProposalId(proposalN.sc17EmergencyRecovery),
+              timestamp: Date.now(),
+            },
+            committee[i],
+            { expectedBalanceDelta: receipt => -asBigInt(receipt.transactionFee ?? 0n) },
+          )
+          assert(receipt.additionalInfo.unapplyVoteCount === i + 1, `Expected unapplyVoteCount ${i + 1}, got ${receipt.additionalInfo.unapplyVoteCount}`)
+          assert(receipt.additionalInfo.thresholdReached === isLastVote, `Expected thresholdReached ${isLastVote}, got ${receipt.additionalInfo.thresholdReached}`)
+          // Checked on every vote, including the threshold-reaching one: unlike
+          // dao_apply_parameters, this receipt literal never has a "change" key.
+          assert(receipt.additionalInfo.change === undefined, `dao_unapply_parameters must not queue a global change, got ${JSON.stringify(receipt.additionalInfo.change)}`)
+
+          const proposal = await getProposal(proposalN.sc17EmergencyRecovery)
+          if (isLastVote) {
+            assert(receipt.additionalInfo.proposalStatus === 'accepted', `Expected receipt proposalStatus 'accepted', got '${receipt.additionalInfo.proposalStatus}'`)
+            assert(proposal.status === 'accepted', `Expected status 'accepted' after threshold reached, got '${proposal.status}'`)
+            assert(
+              !Array.isArray(proposal.unapplyVotes) || proposal.unapplyVotes.length === 0,
+              `Expected unapplyVotes reset to empty after threshold, got ${JSON.stringify(proposal.unapplyVotes)}`,
+            )
+          } else {
+            assert(proposal.status === 'applied', `Expected status still 'applied' after vote #${i + 1}, got '${proposal.status}'`)
+          }
+
+          // No param drift: checked unconditionally, including after the threshold-reaching
+          // vote — the one that changes proposal status is the most important to verify here.
+          const daoParams = await getDaoParameters()
+          assert(
+            String(daoParams?.voteThresholdUsdStr) === String(sc17VoteThresholdUsdTarget),
+            `Expected voteThresholdUsdStr to remain ${sc17VoteThresholdUsdTarget} during unapply, got ${daoParams?.voteThresholdUsdStr}`,
+          )
+
+          // Tested right after vote #1, while status is still 'applied', so the rejection is
+          // unambiguously about the duplicate and not the wrong-status path (17.6). Skipped if
+          // threshold is 1, since there's no 'applied' window left to test it in isolation.
+          if (i === 0 && !isLastVote) {
+            await injectExpectReject(
+              {
+                type: 'dao_unapply_parameters',
+                networkId: currentNetworkId,
+                from: committee[0].address,
+                proposalId: daoProposalId(proposalN.sc17EmergencyRecovery),
+                timestamp: Date.now(),
+              },
+              committee[0],
+              'already submitted',
+            )
+            const proposalAfterDuplicate = await getProposal(proposalN.sc17EmergencyRecovery)
+            assert(proposalAfterDuplicate.status === 'applied', `Expected status still 'applied' after duplicate reject, got '${proposalAfterDuplicate.status}'`)
+          }
+        }
+      },
+    ],
+    [
+      '17.6 dao_unapply_parameters rejected once proposal is no longer applied',
+      async () => {
+        await injectExpectReject(
+          {
+            type: 'dao_unapply_parameters',
+            networkId: currentNetworkId,
+            from: committee[1].address,
+            proposalId: daoProposalId(proposalN.sc17EmergencyRecovery),
+            timestamp: Date.now(),
+          },
+          committee[1],
+          'not in applied status',
+        )
+      },
+    ],
+    [
+      '17.7 Re-apply dao_apply_parameters after recovery — status returns to applied',
+      async () => {
+        const { receipt } = await injectAndAssert(
+          {
+            type: 'dao_apply_parameters',
+            networkId: currentNetworkId,
+            from: committee[0].address,
+            proposalId: daoProposalId(proposalN.sc17EmergencyRecovery),
+            timestamp: Date.now(),
+          },
+          committee[0],
+        )
+        const proposal = await getProposal(proposalN.sc17EmergencyRecovery)
+        assert(proposal.status === 'applied', `Expected status 'applied' after re-apply, got '${proposal.status}'`)
+
+        // Proves the loop closes: the re-apply gets its own fresh cycle, so this can't
+        // accidentally match the first apply's already-landed entry from 17.3.
+        const receiptChange = receipt.additionalInfo.change
+        await waitForListOfChangesFromReceipt(
+          `exact receipt.additionalInfo.change at cycle ${receiptChange?.cycle} (re-apply)`,
+          receipt,
+          c => Utils.safeStringify(c) === Utils.safeStringify(receiptChange),
+          applyParamsPollMs,
+        )
+      },
+    ],
+    ],
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Run scenarios — sequential (default) or parallel (--parallel flag)
   // ─────────────────────────────────────────────────────────────────────────
-  const scenarios = [sc1, sc2, sc3, sc4, sc5, sc6, sc7, sc8, sc9, sc10, sc11, sc12, sc13, sc14, sc15, sc16]
+  const scenarios = [sc1, sc2, sc3, sc4, sc5, sc6, sc7, sc8, sc9, sc10, sc11, sc12, sc13, sc14, sc15, sc16, sc17]
   validateScenarioCatalog(scenarios)
   if (PARALLEL) {
     await runScenariosParallel(scenarios)
