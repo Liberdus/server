@@ -262,6 +262,9 @@ interface LiberdusFlags {
   enableArchiverNetworkAccountValidation: boolean
   enableDAOTransactions: boolean
   enableNewDAOTransactions: boolean
+  // Committee votes needed for dao_unapply_parameters to flip applied -> accepted. Consensus-
+  // relevant: must stay identical across all nodes.
+  daoUnapplyCommitteeThreshold: number
   minCommitteeMembers: number
   maxCommitteeMembers: number
   enableAJVValidation: boolean
@@ -311,6 +314,7 @@ export const LiberdusFlags: LiberdusFlags = {
   enableArchiverNetworkAccountValidation: false,
   enableDAOTransactions: false,
   enableNewDAOTransactions: true, // turned on by migration 2.5.1
+  daoUnapplyCommitteeThreshold: 3,
   minCommitteeMembers: 4,
   maxCommitteeMembers: 10,
   enableAJVValidation: false,

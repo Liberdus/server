@@ -2929,6 +2929,37 @@ vorpal.command('dao apply parameters', 'apply an accepted proposal after the gra
 })
 
 // ---------------------------------------------------------------------------
+// dao unapply parameters
+// ---------------------------------------------------------------------------
+vorpal
+  .command('dao unapply parameters', 'submit a committee vote to revert an applied proposal back to accepted')
+  .action(async function (args, callback) {
+    const answers = await this.prompt([
+      {
+        type: 'number',
+        name: 'proposalNumber',
+        message: 'Enter proposal number:',
+      },
+    ])
+
+    try {
+      const proposalId = daoProposalId(answers.proposalNumber)
+      const tx = {
+        type: 'dao_unapply_parameters',
+        from: USER.address,
+        proposalId,
+        timestamp: Date.now(),
+      }
+      signTransaction(tx)
+      const res = await injectTx(tx)
+      this.log(res)
+    } catch (err) {
+      this.log('Error:', err.message)
+    }
+    callback()
+  })
+
+// ---------------------------------------------------------------------------
 // dao claim reward
 // ---------------------------------------------------------------------------
 vorpal.command('dao claim reward', 'claim your voter reward for a proposal').action(async function (args, callback) {
@@ -3093,6 +3124,12 @@ vorpal.command('dao proposal <number>', 'show details of a single DAO proposal')
           const label = v.vote === 'withhold' ? `withhold — ${v.withheldReason || ''}` : v.vote
           this.log(`  ${addr}  ${label}`)
         }
+      }
+      // Threshold is live-configurable per network, so show the count alone — a hardcoded
+      // "/N" could go stale after an operator changes it.
+      if (p.status === 'applied') {
+        const unapplyVotes = Array.isArray(p.unapplyVotes) ? p.unapplyVotes : []
+        this.log(`Unapply:      ${unapplyVotes.length} committee approval(s) submitted`)
       }
       // Timeline (derived locally from stored duration snapshots)
       const timing = deriveTiming(p)

@@ -855,6 +855,18 @@ export const schemaDaoApplyParametersTX = {
   additionalProperties: false,
 }
 
+export const schemaDaoUnapplyParametersTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId'],
+  additionalProperties: false,
+}
+
 export const schemaDaoClaimRewardTX = {
   type: 'object',
   properties: {
@@ -954,6 +966,7 @@ function addSchemas(): void {
     [TXTypes.dao_vote]: schemaDaoVoteTX,
     [TXTypes.dao_vote_result]: schemaDaoVoteResultTX,
     [TXTypes.dao_apply_parameters]: schemaDaoApplyParametersTX,
+    [TXTypes.dao_unapply_parameters]: schemaDaoUnapplyParametersTX,
     [TXTypes.dao_claim_reward]: schemaDaoClaimRewardTX,
     [TXTypes.dao_burn_reward]: schemaDaoBurnRewardTX,
   }

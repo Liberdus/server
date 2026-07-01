@@ -26,6 +26,8 @@ export function daoProposalAccount(id: string): DaoProposalAccount {
     claimDuration: 0,
     committeeAddresses: [],
     committeeVotes: [],
+    // unapplyVotes intentionally omitted — created lazily by the handler on first
+    // dao_unapply_parameters submission, not carried by every proposal from creation.
     options: [],
     totalVote: [],
     voterRewardPool: 0n,

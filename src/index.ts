@@ -71,6 +71,7 @@ const daoPreCrackTxTypes = new Set([
   TXTypes.dao_vote,
   TXTypes.dao_vote_result,
   TXTypes.dao_apply_parameters,
+  TXTypes.dao_unapply_parameters,
   TXTypes.dao_claim_reward,
   TXTypes.dao_burn_reward,
 ])
