@@ -23,7 +23,7 @@
  *
  * --parallel splits each scenario into a setup phase (proposal creation, run sequentially
  * to avoid meta.count races) and a body phase (all remaining steps run concurrently).
- * Output lines are prefixed with [S1]…[S16] to distinguish interleaved scenarios.
+ * Output lines are prefixed with [S1]…[S17] to distinguish interleaved scenarios.
  * Note: --step is not designed to combine with --parallel.
  *
  * By default the network is left running when any step fails so you can iterate on
@@ -86,13 +86,16 @@ function parseCommaList(value: string, label: string): string[] {
   return parts
 }
 
+/** Bumped whenever a new scenario is added — keeps --scenario and --step validation in sync. */
+const MAX_SCENARIO_NUMBER = 17
+
 function parseScenarioFilter(value: string | null): Set<number> | null {
   if (value == null) return null
   const scenarios = new Set<number>()
   for (const raw of parseCommaList(value, '--scenario')) {
     if (!/^\d+$/.test(raw)) throw new Error(`Invalid scenario "${raw}"`)
     const scenarioNumber = Number(raw)
-    if (scenarioNumber < 1 || scenarioNumber > 16) throw new Error(`Scenario ${scenarioNumber} is outside the supported range 1-16`)
+    if (scenarioNumber < 1 || scenarioNumber > MAX_SCENARIO_NUMBER) throw new Error(`Scenario ${scenarioNumber} is outside the supported range 1-${MAX_SCENARIO_NUMBER}`)
     scenarios.add(scenarioNumber)
   }
   return scenarios
@@ -104,7 +107,7 @@ function parseStepFilter(value: string | null): Set<string> | null {
   for (const raw of parseCommaList(value, '--step')) {
     if (!/^\d+\.\d+[a-z]*$/i.test(raw)) throw new Error(`Invalid step id "${raw}"`)
     const scenarioNumber = Number(raw.split('.')[0])
-    if (scenarioNumber < 1 || scenarioNumber > 16) throw new Error(`Step ${raw} references unsupported scenario ${scenarioNumber}`)
+    if (scenarioNumber < 1 || scenarioNumber > MAX_SCENARIO_NUMBER) throw new Error(`Step ${raw} references unsupported scenario ${scenarioNumber}`)
     steps.add(raw)
   }
   return steps
@@ -1337,7 +1340,11 @@ async function finalizeVote(proposalNumber: number, actor: TestAccount, sleepBuf
 
 async function applyAcceptedProposal(proposalNumber: number, actor: TestAccount, sleepBufferMs: number): Promise<any> {
   const proposalBeforeApply = await getProposal(proposalNumber)
-  await sleepUntilTimestamp(proposalBeforeApply.applyEligibleAt, 'applyEligibleAt', sleepBufferMs)
+  // dao_apply_parameters.validate() skips the applyEligibleAt check entirely for emergency
+  // proposals (no grace period) — only regular proposals need to wait for it here.
+  if (!proposalBeforeApply.emergency) {
+    await sleepUntilTimestamp(proposalBeforeApply.applyEligibleAt, 'applyEligibleAt', sleepBufferMs)
+  }
   const result = await injectAndAssert(
     {
       type: 'dao_apply_parameters',
@@ -3624,7 +3631,7 @@ async function main(): Promise<void> {
             options: ['yes', 'no'],
             gracePeriod: graceDurationMs,
             changes: [{ key: 'pctBurned', value: '63', current: '50' }, { key: 'pctBurned', value: '64', current: '50' }],
-            reason: 'duplicate key',
+            reason: 'duplicate "pctBurned"',
           },
           {
             description: 'Excessive grace period test',
@@ -3880,18 +3887,9 @@ async function main(): Promise<void> {
     [
       '17.3 dao_apply_parameters from committee member → applied immediately (no grace period)',
       async () => {
-        const { receipt } = await injectAndAssert(
-          {
-            type: 'dao_apply_parameters',
-            networkId: currentNetworkId,
-            from: committee[0].address,
-            proposalId: daoProposalId(proposalN.sc17EmergencyRecovery),
-            timestamp: Date.now(),
-          },
-          committee[0],
-        )
-        const proposal = await getProposal(proposalN.sc17EmergencyRecovery)
-        assert(proposal.status === 'applied', `Expected status 'applied', got '${proposal.status}'`)
+        // Routed through applyAcceptedProposal (not injectAndAssert directly) so this emergency
+        // proposal actually exercises the applyEligibleAt-skip branch in that shared helper.
+        const { receipt } = await applyAcceptedProposal(proposalN.sc17EmergencyRecovery, committee[0], SLEEP_BUFFER_MS)
         await waitForNetworkParameter(['current', 'dao', 'voteThresholdUsdStr'], sc17VoteThresholdUsdTarget, applyParamsPollMs)
         // Deep-equality match the exact queued change object (not just one field) against
         // listOfChanges — proves what was queued is what actually landed.
