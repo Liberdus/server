@@ -72,9 +72,9 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   minToll: utils.libToWei(1),
   tollNetworkTaxPercent: 1, // 1%
   tollTimeout: 7 * ONE_DAY,
-  minVersion: '2.4.9',
-  activeVersion: '2.4.9',
-  latestVersion: '2.4.9',
+  minVersion: '2.5.1',
+  activeVersion: '2.5.1',
+  latestVersion: '2.5.1',
   archiver: {
     minVersion: '3.7.9',
     activeVersion: '3.7.9',
@@ -310,7 +310,7 @@ export const LiberdusFlags: LiberdusFlags = {
   fetchNetworkAccountFromArchiver: true,
   enableArchiverNetworkAccountValidation: false,
   enableDAOTransactions: false,
-  enableNewDAOTransactions: false, // turned on by migration 2.5.1
+  enableNewDAOTransactions: true, // turned on by migration 2.5.1
   minCommitteeMembers: 4,
   maxCommitteeMembers: 10,
   enableAJVValidation: false,
