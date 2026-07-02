@@ -2659,6 +2659,18 @@ vorpal.command('dao proposal create', 'create a new DAO governance/economic/prot
     },
     {
       type: 'input',
+      name: 'title',
+      message: 'Enter a title for the proposal:',
+      validate: (value) => {
+        const title = value.trim()
+        if (title.length === 0) return 'Title must not be empty.'
+        if (title.length > 100) return 'Title must be at most 100 characters.'
+        return true
+      },
+      filter: (value) => value.trim(),
+    },
+    {
+      type: 'input',
       name: 'description',
       message: 'Enter a description for the proposal:',
     },
@@ -2709,6 +2721,7 @@ vorpal.command('dao proposal create', 'create a new DAO governance/economic/prot
       emergency: answers.emergency,
       proposalType: answers.proposalType,
       gracePeriod,
+      title: answers.title,
       description: answers.description,
       options,
       ...typePayload,
@@ -3059,8 +3072,8 @@ vorpal.command('dao proposals [status]', `list DAO proposals, optionally filtere
       this.log('No proposals found.')
     } else {
       for (const p of filtered) {
-        this.log(`#${p.number} [${p.status}] ${p.proposalType} | options: ${p.options.join('/')} | pool: ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
-        this.log(`  "${p.description.slice(0, 80)}${p.description.length > 80 ? '...' : ''}"`)
+        const title = p.title.length > 80 ? `${p.title.slice(0, 80)}...` : p.title
+        this.log(`#${p.number} [${p.status}] ${p.proposalType} | ${title} | options: ${p.options.join('/')} | pool: ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
       }
     }
   } catch (err) {
@@ -3090,6 +3103,7 @@ vorpal.command('dao proposal <number>', 'show details of a single DAO proposal')
       this.log(`Proposal #${args.number} not found.`)
     } else {
       this.log(`\n--- Proposal #${p.number} ---`)
+      this.log(`Title:        ${p.title}`)
       this.log(`ID:           ${p.id}`)
       this.log(`Status:       ${p.status}`)
       this.log(`Type:         ${p.proposalType}${p.emergency ? ' (EMERGENCY)' : ''}`)
