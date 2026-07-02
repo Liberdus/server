@@ -36,6 +36,7 @@ export function daoProposalAccount(id: string): DaoProposalAccount {
     finalBurnedReward: 0n,
     voterList: [],
     claimList: [],
+    title: '',
     description: '',
     hash: '',
     timestamp: 0,

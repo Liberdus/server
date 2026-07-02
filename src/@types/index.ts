@@ -513,6 +513,7 @@ export namespace Tx {
     emergency: boolean
     proposalType: DaoProposalType
     gracePeriod?: number
+    title: string
     description: string
     options: string[]
     governance?: DaoGovernanceData
@@ -857,6 +858,7 @@ export interface DaoProposalAccount {
   voterList: Array<{ address: string; timestamp: number }>
   claimList: string[]
   // Proposal content
+  title: string
   description: string
   governance?: DaoGovernanceData
   economic?: DaoEconomicData

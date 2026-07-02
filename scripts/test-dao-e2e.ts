@@ -1218,6 +1218,7 @@ interface ProposalCreateOptions {
   proposer: TestAccount
   proposalType?: ProposalType
   emergency?: boolean
+  title: string
   description: string
   options?: string[]
   changes: Array<{ key: string; value: string; current: string }>
@@ -1242,6 +1243,7 @@ async function createDaoProposal(opts: ProposalCreateOptions): Promise<number> {
       metaId: daoMetaId(),
       proposalType,
       emergency: opts.emergency ?? false,
+      title: opts.title,
       description: opts.description,
       options: opts.options ?? ['yes', 'no'],
       gracePeriod: opts.gracePeriodMs,
@@ -1880,6 +1882,7 @@ async function main(): Promise<void> {
         const proposalFeeWei = usdStrToLibWei(daoParams.proposalFeeUsdStr, stabilityFactorStr)
         setProposalN('sc1', await createDaoProposal({
           proposer,
+          title: 'Vote exponent adjustment',
           description: `Toggle voteExponent from ${currentVoteExponent} to ${sc1VoteExponentTarget}`,
           changes: [{ key: 'voteExponent', value: String(sc1VoteExponentTarget), current: String(currentVoteExponent) }],
           gracePeriodMs: graceDurationMs,
@@ -1888,6 +1891,7 @@ async function main(): Promise<void> {
         saveCurrentRunState()
         const proposal = await getProposal(proposalN.sc1)
         assert(proposal.status === 'review', `Expected status 'review', got '${proposal.status}'`)
+        assert(proposal.title === 'Vote exponent adjustment', `Expected proposal title to persist, got '${proposal.title}'`)
         assert(Array.isArray(proposal.committeeAddresses) && proposal.committeeAddresses.length > 0, 'Expected committeeAddresses snapshot to be non-empty')
       },
     ],
@@ -2171,6 +2175,7 @@ async function main(): Promise<void> {
       async () => {
         setProposalN('sc2', await createDaoProposal({
           proposer,
+          title: 'Committee withhold',
           description: 'Withheld test — increase pctBurned to 60',
           changes: [{ key: 'pctBurned', value: '60', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -2272,6 +2277,7 @@ async function main(): Promise<void> {
       async () => {
         setProposalN('sc3', await createDaoProposal({
           proposer,
+          title: 'Zero-vote acceptance',
           description: 'Auto-accept test — committee_result will advance this after reviewEnd',
           changes: [{ key: 'pctBurned', value: '55', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -2367,6 +2373,7 @@ async function main(): Promise<void> {
             metaId: ShardusCrypto.hash('dao proposals meta'),
             proposalType: 'governance',
             emergency: true,
+            title: 'Unauthorized emergency proposal',
             description: 'Emergency proposal from non-committee — must be rejected',
             options: ['yes', 'no'],
             gracePeriod: graceDurationMs,
@@ -2390,6 +2397,7 @@ async function main(): Promise<void> {
         setProposalN('sc4', await createDaoProposal({
           proposer: committee[0],
           emergency: true,
+          title: 'Emergency burn adjustment',
           description: `Emergency governance proposal toggles pctBurned from ${currentPctBurned} to ${sc4PctBurnedTarget}`,
           changes: [{ key: 'pctBurned', value: String(sc4PctBurnedTarget), current: String(currentPctBurned) }],
           gracePeriodMs: graceDurationMs,
@@ -2540,6 +2548,7 @@ async function main(): Promise<void> {
       async () => {
         setProposalN('sc5', await createDaoProposal({
           proposer,
+          title: 'Committee access control',
           description: 'Access control test proposal — stays in review',
           changes: [{ key: 'pctBurned', value: '45', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -2612,6 +2621,7 @@ async function main(): Promise<void> {
       async () => {
         setProposalN('sc6', await createDaoProposal({
           proposer: proposer4,
+          title: 'Rejected proposal branch',
           description: 'Rejected branch test proposal',
           changes: [{ key: 'pctBurned', value: '55', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -2722,6 +2732,7 @@ async function main(): Promise<void> {
       async () => {
         setProposalN('sc7', await createDaoProposal({
           proposer: proposer5,
+          title: 'Weighted multi-option vote',
           description: 'Multi-option weighted vote test proposal',
           options: ['yes', 'no', 'abstain'],
           changes: [{ key: 'voteExponent', value: '1.2', current: '1.5' }],
@@ -2794,6 +2805,7 @@ async function main(): Promise<void> {
         setProposalN('sc8Economic', await createDaoProposal({
           proposer: proposer6,
           proposalType: 'economic',
+          title: 'Node reward adjustment',
           description: `Economic proposal updates nodeRewardAmountUsdStr from ${currentValue} to ${sc8NodeRewardTarget}`,
           changes: [{ key: 'nodeRewardAmountUsdStr', value: sc8NodeRewardTarget, current: currentValue }],
           gracePeriodMs: graceDurationMs,
@@ -2813,6 +2825,7 @@ async function main(): Promise<void> {
             metaId: daoMetaId(),
             proposalType: 'governance',
             emergency: false,
+            title: 'Invalid governance namespace',
             description: 'Invalid governance namespace test',
             options: ['yes', 'no'],
             gracePeriod: graceDurationMs,
@@ -2836,6 +2849,7 @@ async function main(): Promise<void> {
             metaId: daoMetaId(),
             proposalType: 'protocol',
             emergency: false,
+            title: 'Invalid protocol namespace',
             description: 'Invalid protocol namespace test',
             options: ['yes', 'no'],
             gracePeriod: graceDurationMs,
@@ -2853,6 +2867,7 @@ async function main(): Promise<void> {
         setProposalN('sc8Protocol', await createDaoProposal({
           proposer: proposer7,
           proposalType: 'protocol',
+          title: 'Debug configuration update',
           description: 'Protocol proposal patches debug.countEndpointStart',
           changes: [{ key: 'debug', value: '{"countEndpointStart":0}', current: '{"countEndpointStart":-1}' }],
           gracePeriodMs: graceDurationMs,
@@ -2866,6 +2881,7 @@ async function main(): Promise<void> {
         setProposalN('sc8LeafKey', await createDaoProposal({
           proposer: proposer6,
           proposalType: 'protocol',
+          title: 'Protocol leaf-key update',
           description: 'Protocol proposal via leaf keys (p2p.minNodes, p2p.maxNodes, debug.countEndpointStart)',
           changes: [
             { key: 'minNodes', value: '12', current: '10' },
@@ -2891,6 +2907,7 @@ async function main(): Promise<void> {
         setProposalN('sc8Archiver', await createDaoProposal({
           proposer: proposer7,
           proposalType: 'economic',
+          title: 'Archiver version update',
           description: `Economic proposal bumps archiver activeVersion and latestVersion to ${sc8ArchiverActiveVersionTarget}`,
           changes: [{
             key: 'archiver',
@@ -2972,6 +2989,7 @@ async function main(): Promise<void> {
             metaId: daoMetaId(),
             proposalType: 'protocol',
             emergency: false,
+            title: 'Overlapping protocol paths',
             description: 'Overlapping resolved-path test: debug section + debug.countEndpointStart leaf',
             options: ['yes', 'no'],
             gracePeriod: graceDurationMs,
@@ -3049,6 +3067,7 @@ async function main(): Promise<void> {
             metaId: daoMetaId(),
             proposalType: 'governance',
             emergency: false,
+            title: 'Past start time',
             description: 'Past startTime rejection test',
             options: ['yes', 'no'],
             gracePeriod: graceDurationMs,
@@ -3066,6 +3085,7 @@ async function main(): Promise<void> {
       async () => {
         setProposalN('sc9', await createDaoProposal({
           proposer: proposer2,
+          title: 'Scheduled proposal start',
           description: 'Future startTime scheduling test',
           changes: [{ key: 'pctBurned', value: '53', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -3130,6 +3150,7 @@ async function main(): Promise<void> {
       async () => {
         setProposalN('sc10', await createDaoProposal({
           proposer: proposer8,
+          title: 'Committee vote switch',
           description: 'Committee vote switch test',
           changes: [{ key: 'pctBurned', value: '54', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -3215,6 +3236,7 @@ async function main(): Promise<void> {
       async () => {
         setProposalN('sc11', await createDaoProposal({
           proposer: proposer9,
+          title: 'Non-decisive committee split',
           description: 'Non-decisive committee split test',
           changes: [{ key: 'pctBurned', value: '56', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -3279,6 +3301,7 @@ async function main(): Promise<void> {
       async () => {
         setProposalN('sc12', await createDaoProposal({
           proposer: proposer5,
+          title: 'Vote timing and spend boost',
           description: 'Time decay and spend boost test',
           changes: [{ key: 'pctBurned', value: '57', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -3334,6 +3357,7 @@ async function main(): Promise<void> {
       async () => {
         setProposalN('sc13', await createDaoProposal({
           proposer: proposer10,
+          title: 'Validation rejection sweep',
           description: 'Validation sweep proposal',
           changes: [{ key: 'pctBurned', value: '58', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -3353,6 +3377,7 @@ async function main(): Promise<void> {
             metaId: daoMetaId(),
             proposalType: 'governance',
             emergency: false,
+            title: 'Too many options',
             description: 'Too many options rejection',
             options: ['yes', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
             gracePeriod: graceDurationMs,
@@ -3448,6 +3473,7 @@ async function main(): Promise<void> {
         setProposalN('sc14EmergencyWithhold', await createDaoProposal({
           proposer: committee[1],
           emergency: true,
+          title: 'Emergency committee withhold',
           description: 'Emergency decisive withhold test',
           changes: [{ key: 'pctBurned', value: '61', current: '50' }],
           gracePeriodMs: 0,
@@ -3540,6 +3566,7 @@ async function main(): Promise<void> {
       async () => {
         setProposalN('sc15A', await createDaoProposal({
           proposer: proposer3,
+          title: 'Future-start validation',
           description: 'Extended validation future startTime proposal',
           changes: [{ key: 'pctBurned', value: '62', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -3618,6 +3645,7 @@ async function main(): Promise<void> {
         await fundAccount(lowBalanceAccount, 1)
         const cases = [
           {
+            title: 'Invalid affirmative option',
             description: 'Invalid affirmative option test',
             account: proposer3,
             options: ['no', 'yes'],
@@ -3626,6 +3654,25 @@ async function main(): Promise<void> {
             reason: 'options[0]',
           },
           {
+            title: '   ',
+            description: 'Whitespace-only title test',
+            account: proposer3,
+            options: ['yes', 'no'],
+            gracePeriod: graceDurationMs,
+            changes: [{ key: 'pctBurned', value: '63', current: '50' }],
+            reason: 'title',
+          },
+          {
+            title: 'x'.repeat(101),
+            description: 'Excessive title length test',
+            account: proposer3,
+            options: ['yes', 'no'],
+            gracePeriod: graceDurationMs,
+            changes: [{ key: 'pctBurned', value: '63', current: '50' }],
+            reason: 'title',
+          },
+          {
+            title: 'Duplicate parameter change',
             description: 'Duplicate changes key test',
             account: proposer3,
             options: ['yes', 'no'],
@@ -3634,6 +3681,7 @@ async function main(): Promise<void> {
             reason: 'duplicate "pctBurned"',
           },
           {
+            title: 'Excessive grace period',
             description: 'Excessive grace period test',
             account: proposer3,
             options: ['yes', 'no'],
@@ -3642,6 +3690,7 @@ async function main(): Promise<void> {
             reason: 'exceeds the maximum',
           },
           {
+            title: 'Insufficient proposal balance',
             description: 'Insufficient proposal fee balance test',
             account: lowBalanceAccount,
             options: ['yes', 'no'],
@@ -3661,6 +3710,7 @@ async function main(): Promise<void> {
               metaId: daoMetaId(),
               proposalType: 'governance',
               emergency: false,
+              title: c.title,
               description: c.description,
               options: c.options,
               gracePeriod: c.gracePeriod,
@@ -3678,6 +3728,7 @@ async function main(): Promise<void> {
       async () => {
         setProposalN('sc15B', await createDaoProposal({
           proposer: proposer3,
+          title: 'Early burn validation',
           description: 'Extended validation burn before claimEnd proposal',
           changes: [{ key: 'pctBurned', value: '64', current: '50' }],
           gracePeriodMs: graceDurationMs,
@@ -3731,6 +3782,7 @@ async function main(): Promise<void> {
             metaId: daoMetaId(),
             proposalType: 'governance',
             emergency: false,
+            title: 'Invalid committee addresses',
             description: 'Invalid committeeAddresses validation proposal',
             options: ['yes', 'no'],
             gracePeriod: graceDurationMs,
@@ -3760,6 +3812,7 @@ async function main(): Promise<void> {
         setProposalN('sc16EmergencyTimeout', await createDaoProposal({
           proposer: committee[4],
           emergency: true,
+          title: 'Emergency review timeout',
           description: 'Emergency non-decisive committee result test',
           changes: [{ key: 'pctBurned', value: '65', current: '50' }],
           gracePeriodMs: 0,
@@ -3852,6 +3905,7 @@ async function main(): Promise<void> {
         setProposalN('sc17EmergencyRecovery', await createDaoProposal({
           proposer: committee[3],
           emergency: true,
+          title: 'Emergency parameter recovery',
           description: `Emergency unapply-recovery test toggles voteThresholdUsdStr from ${currentVoteThresholdUsd} to ${sc17VoteThresholdUsdTarget}`,
           changes: [{ key: 'voteThresholdUsdStr', value: sc17VoteThresholdUsdTarget, current: currentVoteThresholdUsd }],
           gracePeriodMs: 0,

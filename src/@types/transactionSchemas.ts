@@ -766,6 +766,7 @@ export const schemaDaoProposalCreateTX = {
     emergency: { type: 'boolean' },
     proposalType: { enum: ['governance', 'economic', 'protocol'] },
     gracePeriod: { type: 'number', minimum: 0 },
+    title: { type: 'string', minLength: 1, maxLength: 100 },
     description: { type: 'string', maxLength: 10000 },
     options: {
       type: 'array',
@@ -779,7 +780,7 @@ export const schemaDaoProposalCreateTX = {
     startTime: { type: 'number', minimum: 0 },
     networkId: { type: 'string' },
   },
-  required: [...baseTxRequired, 'from', 'proposalId', 'metaId', 'emergency', 'proposalType', 'gracePeriod', 'description', 'options'],
+  required: [...baseTxRequired, 'from', 'proposalId', 'metaId', 'emergency', 'proposalType', 'gracePeriod', 'title', 'description', 'options'],
   additionalProperties: false,
 }
 

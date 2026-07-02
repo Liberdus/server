@@ -43,6 +43,10 @@ export const validate_fields = (
     response.reason = 'tx "gracePeriod" must be a non-negative number if provided'
     return response
   }
+  if (typeof tx.title !== 'string' || tx.title.trim().length === 0 || tx.title.length > 100) {
+    response.reason = 'tx "title" must be a non-empty string of at most 100 characters'
+    return response
+  }
   if (typeof tx.description !== 'string' || tx.description.length === 0 || tx.description.length > 10000) {
     response.reason = 'tx "description" must be a non-empty string of at most 10000 characters'
     return response
@@ -231,6 +235,7 @@ export const apply = (
   proposal.creationTime = txTimestamp
   // Defaults to creation time if omitted; reviewEnd, votingStart, votingEnd, claimEnd, and applyEligibleAt all derive from startTime.
   proposal.startTime = tx.startTime ?? txTimestamp
+  proposal.title = tx.title.trim()
   proposal.description = tx.description
   proposal.options = tx.options
   proposal.totalVote = tx.options.map(() => 0n)
