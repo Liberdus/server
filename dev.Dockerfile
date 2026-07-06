@@ -6,7 +6,7 @@
 # However, the resulting image size is very large (~1.25GB).
 #
 # Useful for development, but don't ship it. Use 'Dockerfile' instead.
-FROM node:18.16.1
+FROM node:20.19.3
 
 # Link this Dockerfile to the image in the GHCR
 LABEL "org.opencontainers.image.source"="https://github.com/liberdus/server"
@@ -21,8 +21,8 @@ COPY . .
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl
-RUN curl https://sh.rustup.rs -sSf | bash -s -- -RUN curl https://sh.rustup.rs -sSf | bash -s -- -y \
-    --default-toolchain 1.74.1y
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y \
+    --default-toolchain 1.82
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install node_modules
