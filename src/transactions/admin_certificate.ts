@@ -22,6 +22,13 @@ export interface AdminCertResponse {
   cached?: boolean
 }
 
+export interface GoldenTicketFetchResult {
+  ticket?: AdminCert
+  error?: string
+  retryable: boolean
+  terminal: boolean
+}
+
 export type PutAdminCertRequest = AdminCert
 
 export interface PutAdminCertResult {
