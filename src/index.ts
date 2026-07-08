@@ -79,6 +79,7 @@ const daoPreCrackTxTypes = new Set([
 
 let isReadyToJoinLatestValue = false
 let mustUseAdminCert = false
+let nextGoldenTicketRetryAt = 0
 
 const shardusSetup = (): void => {
   // SDK SETUP FUNCTIONS
