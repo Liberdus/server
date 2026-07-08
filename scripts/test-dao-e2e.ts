@@ -16,6 +16,11 @@
  *   npm run test:dao:e2e -- --step 1.8             (run only step 1.8)
  *   npm run test:dao:e2e -- --step 1.8,1.9         (run steps 1.8 and 1.9)
  *
+ * dao_apply_parameters auto-recovers from a missing/failed global-tx receipt by driving
+ * committee dao_unapply_parameters votes and retrying once (see applyAcceptedProposal). On by
+ * default; set DAO_E2E_DISABLE_AUTO_RECOVERY=true to fail immediately instead — useful for
+ * regression runs that want to catch a global-tx delivery bug directly, not self-healed.
+ *
  * --step implies --no-start (assumes the network is already running).
  * Account keys and proposal numbers are restored from test-logs/dao-e2e-run-state.json,
  * which is written automatically on every fresh run and updated after each proposal creation.
@@ -48,6 +53,7 @@ import { Utils } from '@shardus/lib-types'
 import { DaoProposalAccount } from '../src/@types'
 import { computeClaimReward } from '../src/utils/daoClaimRewardMath'
 import { getReviewEnd, getVotingStart, getVotingEnd, getClaimEnd, getApplyEligibleAt } from '../src/accounts/daoProposalAccount'
+import { generateTxId } from '../src/utils'
 
 // Set custom stringifier so hashObj handles bigints correctly.
 // Mirrors what src/index.ts does at startup.
@@ -247,6 +253,7 @@ function writeSummary(status: 'pass' | 'fail' | 'fatal' | 'interrupted', error?:
     },
     scenarios: [...scenarioTimings].sort((a, b) => a.num - b.num),
     steps: [...results].sort(compareStepResults),
+    recoveryEvents, // dao_unapply_parameters auto-recovery activity — see applyAcceptedProposal
   }
   try {
     fs.writeFileSync(summaryFile, JSON.stringify(summary, null, 2))
@@ -421,6 +428,17 @@ let currentNetworkId = ''
 
 /** Max wait for a queued TX to produce a receipt or for a proposal account to appear. */
 let txSettleTimeoutMs = 45_000
+
+/**
+ * Timeout for the recovery-polling calls and shared apiGet/apiPost. Older polling
+ * (tryWaitForTxReceipt, waitForNetwork) still makes unbounded direct axios calls.
+ */
+const HTTP_REQUEST_TIMEOUT_MS = 10_000
+
+const AUTO_RECOVERY_DISABLED = process.env.DAO_E2E_DISABLE_AUTO_RECOVERY === 'true'
+if (AUTO_RECOVERY_DISABLED) {
+  console.log('⚙️  DAO_E2E_DISABLE_AUTO_RECOVERY=true — dao_unapply_parameters auto-recovery is off; a missing/failed global-tx receipt will fail its step immediately.')
+}
 
 function startScenarioTimer(def: ScenarioDef): void {
   if (!scenarioStarts.has(def.num)) scenarioStarts.set(def.num, Date.now())
@@ -851,6 +869,9 @@ function toShardusAddress(ethAddress: string): string {
   return stripped.toLowerCase() + '0'.repeat(24)
 }
 
+/** Thrown only by pollUntil's own deadline expiry — lets callers distinguish it from a bug rethrown out of check(). */
+class PollTimeoutError extends Error {}
+
 /** Poll `check()` every `intervalMs` until it returns true or `timeoutMs` elapses */
 async function pollUntil(check: () => Promise<boolean>, timeoutMs: number, intervalMs = 3_000): Promise<void> {
   const deadline = Date.now() + timeoutMs
@@ -858,7 +879,7 @@ async function pollUntil(check: () => Promise<boolean>, timeoutMs: number, inter
     if (await check()) return
     await sleep(intervalMs)
   }
-  throw new Error(`pollUntil timed out after ${timeoutMs}ms`)
+  throw new PollTimeoutError(`pollUntil timed out after ${timeoutMs}ms`)
 }
 
 function daoMetaId(): string {
@@ -916,6 +937,7 @@ interface TxReceipt {
   reason?: string
   txId: string
   type: string
+  timestamp: number
   from?: string
   to?: string
   transactionFee?: bigint | string | number | { dataType?: string; value?: string }
@@ -964,6 +986,98 @@ async function waitForTxReceipt(txId: string): Promise<TxReceipt> {
   const receipt = await tryWaitForTxReceipt(txId)
   assert(receipt !== null, `Timed out waiting for receipt ${txId} after ${txSettleTimeoutMs}ms`)
   return receipt
+}
+
+type GlobalTxWaitResult =
+  | { status: 'found'; receipt: TxReceipt }
+  | { status: 'timed-out' }
+  | { status: 'stalled' }
+  | { status: 'query-failed'; error: unknown }
+  | { status: 'malformed'; raw: unknown }
+
+/** Reuses the archiver endpoint already polled in waitForNetwork(). */
+async function getCurrentCycleCounter(): Promise<number> {
+  const res = await axios.get(`http://${ARCHIVER_HOST}/cycleinfo/1`, { timeout: HTTP_REQUEST_TIMEOUT_MS })
+  const cycleInfo: any[] = res.data?.cycleInfo ?? []
+  if (cycleInfo.length === 0) throw new Error('No cycle info available from archiver')
+  return cycleInfo[0].counter
+}
+
+/**
+ * Polls for the deferred global tx's receipt, exiting on real cycle advancement — safetyDeadline
+ * is just a wall-clock cap, not the real exit condition. 'stalled' means the cycle counter itself
+ * is stuck. A missing/failed result reflects only the last query, so a late outage isn't masked
+ * by an earlier success.
+ */
+async function waitForGlobalTxReceipt(txId: string, cycleDurationMs: number, maxCycleAdvances = 3): Promise<GlobalTxWaitResult> {
+  const startCycle = await getCurrentCycleCounter()
+  const stallDeadlineMs = cycleDurationMs * 2
+  const checkIntervalMs = Math.min(cycleDurationMs / 3, 10_000)
+  const safetyDeadline = Date.now() + cycleDurationMs * maxCycleAdvances * 2
+  let lastAdvanceAt = Date.now()
+  let lastSeenCycle = startCycle
+  let lastIterationQueried = false
+  let lastError: unknown
+  let targetReached = false
+
+  while (Date.now() < safetyDeadline) {
+    lastIterationQueried = false
+    let hosts: string[] = []
+    try {
+      hosts = await getActiveHosts()
+    } catch (err) {
+      lastError = err
+    }
+    if (hosts.length > 0) {
+      const results = await Promise.allSettled(
+        hosts.map(host => axios.get(`http://${host}/transaction/${txId}`, { timeout: HTTP_REQUEST_TIMEOUT_MS })),
+      )
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          lastIterationQueried = true
+          const tx = result.value.data?.transaction
+          if (tx == null) continue
+          if (typeof tx.success !== 'boolean' || tx.txId !== txId) return { status: 'malformed', raw: tx }
+          return { status: 'found', receipt: tx as TxReceipt }
+        } else {
+          lastError = result.reason
+        }
+      }
+    }
+
+    if (targetReached) break // just did the one extra check past the target cycle
+
+    try {
+      const current = await getCurrentCycleCounter()
+      if (current > lastSeenCycle) {
+        lastSeenCycle = current
+        lastAdvanceAt = Date.now()
+      }
+      if (current >= startCycle + maxCycleAdvances) targetReached = true
+    } catch (err) {
+      lastError = err
+    }
+    if (Date.now() - lastAdvanceAt > stallDeadlineMs) return { status: 'stalled' }
+
+    await sleep(checkIntervalMs)
+  }
+  if (!lastIterationQueried) return { status: 'query-failed', error: lastError }
+  return { status: 'timed-out' }
+}
+
+/**
+ * Reconstructs the deferred global tx payload from dao_apply_parameters.apply()
+ * (src/transactions/dao/dao_apply_parameters.ts). Must stay in sync with that handler — no
+ * compiler-enforced link, so a change to `value`'s shape there silently breaks this.
+ */
+function buildExpectedGlobalTx(applyReceipt: TxReceipt): Record<string, unknown> {
+  return {
+    type: applyReceipt.additionalInfo.proposalType === 'protocol' ? 'apply_change_config' : 'apply_change_network_param',
+    networkId: currentNetworkId,
+    timestamp: applyReceipt.timestamp + 10_000, // matches `when = txTimestamp + config.ONE_SECOND * 10`
+    from: applyReceipt.from,
+    change: applyReceipt.additionalInfo.change,
+  }
 }
 
 /**
@@ -1082,18 +1196,19 @@ async function getProposal(n: number): Promise<DaoProposalWithTiming> {
   let proposal: DaoProposalWithTiming | null = null
   await pollUntil(
     async () => {
+      let res
       try {
-        const res = await apiGet(`/dao/proposals/${n}`)
-        const body = safeParse(res.data)
-        if (body?.proposal != null) {
-          proposal = addDerivedTiming(body.proposal as DaoProposalAccount)
-          return true
-        }
-        return false
-      } catch (err: any) {
-        if (err.response?.status === 404) return false
+        res = await apiGet(`/dao/proposals/${n}`)
+      } catch (err) {
+        if (isRetryablePollError(err)) return false
         throw err
       }
+      const body = safeParse(res.data)
+      if (body?.proposal != null) {
+        proposal = addDerivedTiming(body.proposal as DaoProposalAccount)
+        return true
+      }
+      return false
     },
     txSettleTimeoutMs,
     2_000,
@@ -1151,9 +1266,8 @@ async function getDaoParameters(): Promise<any> {
 }
 
 /**
- * Query the live daoUnapplyCommitteeThreshold and clamp it the same way
- * dao_unapply_parameters.apply() does, so the scenario stays correct even if the flag was
- * changed via /debug-set-liberdus-flag before a --no-start rerun.
+ * Queries and clamps the live threshold exactly like dao_unapply_parameters.apply() does, so
+ * a --no-start rerun stays correct even if /debug-set-liberdus-flag changed it since.
  */
 async function getEffectiveUnapplyThreshold(committeeSize: number): Promise<number> {
   const res = await apiGet('/debug-liberdus-flags')
@@ -1174,15 +1288,28 @@ function getPathValue(value: any, path: string[]): unknown {
   return path.reduce((current, key) => current?.[key], value)
 }
 
+/** Retryable = transient (network hiccup, 404 "not yet created", 5xx). Anything else is a real bug — surface it immediately. */
+function isRetryablePollError(err: unknown): boolean {
+  if (!axios.isAxiosError(err)) return false
+  return err.response == null || err.response.status === 404 || err.response.status >= 500
+}
+
 async function waitForNetworkParameter(path: string[], expected: unknown, timeoutMs: number): Promise<void> {
   let lastValue: unknown
   try {
     await pollUntil(async () => {
-      const parameters = await getNetworkParameters()
+      let parameters
+      try {
+        parameters = await getNetworkParameters()
+      } catch (err) {
+        if (isRetryablePollError(err)) return false
+        throw err
+      }
       lastValue = getPathValue(parameters, path)
       return String(lastValue) === String(expected)
     }, timeoutMs)
-  } catch {
+  } catch (err) {
+    if (!(err instanceof PollTimeoutError)) throw err
     throw new Error(
       `Timed out waiting for /network/parameters.${path.join('.')} === ${JSON.stringify(expected)}; last value was ${JSON.stringify(lastValue)}`,
     )
@@ -1193,10 +1320,18 @@ async function waitForListOfChanges(description: string, matches: (change: any) 
   let lastChanges: any[] = []
   try {
     await pollUntil(async () => {
-      lastChanges = await getProposalListOfChanges()
+      let changes
+      try {
+        changes = await getProposalListOfChanges()
+      } catch (err) {
+        if (isRetryablePollError(err)) return false
+        throw err
+      }
+      lastChanges = changes
       return lastChanges.some(matches)
     }, timeoutMs)
-  } catch {
+  } catch (err) {
+    if (!(err instanceof PollTimeoutError)) throw err
     throw new Error(`Timed out waiting for listOfChanges to contain ${description}; last listOfChanges was ${JSON.stringify(lastChanges)}`)
   }
 }
@@ -1340,26 +1475,151 @@ async function finalizeVote(proposalNumber: number, actor: TestAccount, sleepBuf
   )
 }
 
-async function applyAcceptedProposal(proposalNumber: number, actor: TestAccount, sleepBufferMs: number): Promise<any> {
+type ApplyAttempt =
+  | { outcome: 'success'; result: any; globalTxId: string }
+  | { outcome: 'global-tx-failure'; result: any; globalTxId: string; pollStatus: 'timed-out' | 'failed'; reason: string }
+
+/**
+ * Applies a proposal and confirms both the deferred global tx's own receipt and its resulting
+ * parameter effect landed, in that order — a global-tx receipt only proves listOfChanges was
+ * queued, not that network.current has settled yet.
+ */
+async function attemptApplyAndVerify(
+  proposalNumber: number,
+  actor: TestAccount,
+  cycleDurationMs: number,
+  verifyParameterEffect: (receipt: any) => Promise<void>,
+): Promise<ApplyAttempt> {
+  const result = await injectAndAssert(
+    { type: 'dao_apply_parameters', networkId: currentNetworkId, from: actor.address, proposalId: daoProposalId(proposalNumber), timestamp: Date.now() },
+    actor,
+  )
+  assert((await getProposal(proposalNumber)).status === 'applied', `Expected proposal #${proposalNumber} status 'applied'`)
+
+  const globalTxId = generateTxId(buildExpectedGlobalTx(result.receipt))
+  const wait = await waitForGlobalTxReceipt(globalTxId, cycleDurationMs)
+
+  if (wait.status === 'stalled') {
+    throw new Error(`Cycle counter stalled while waiting on proposal #${proposalNumber}'s global tx (${globalTxId}) — infrastructure problem, not DAO flakiness`)
+  }
+  if (wait.status === 'query-failed') {
+    throw new Error(`Unable to query global tx receipt for proposal #${proposalNumber} (${globalTxId}): ${wait.error} — infrastructure problem, not DAO flakiness`)
+  }
+  if (wait.status === 'malformed') {
+    throw new Error(`Malformed global tx receipt for proposal #${proposalNumber} (${globalTxId}): ${JSON.stringify(wait.raw)} — harness/reconstruction bug, not DAO flakiness`)
+  }
+
+  if (wait.status === 'found' && wait.receipt.success === true) {
+    // Catches a globalTxId reconstruction bug directly instead of trusting an unrelated receipt.
+    const expectedType = result.receipt.additionalInfo.proposalType === 'protocol' ? 'apply_change_config' : 'apply_change_network_param'
+    assert(wait.receipt.type === expectedType, `Global receipt type mismatch for proposal #${proposalNumber}: expected ${expectedType}, got ${wait.receipt.type}`)
+    assert(
+      Utils.safeStringify(wait.receipt.additionalInfo?.change) === Utils.safeStringify(result.receipt.additionalInfo.change),
+      `Global receipt change payload mismatch for proposal #${proposalNumber} — possible globalTxId reconstruction bug`,
+    )
+    await verifyParameterEffect(result.receipt)
+    return { outcome: 'success', result, globalTxId }
+  }
+
+  // wait.status is 'timed-out' or 'found' with success:false — a missing/failed receipt isn't
+  // absolute proof the global tx never landed, but it's the signal recovery acts on.
+  const reason = wait.status === 'timed-out'
+    ? `no global tx receipt for ${globalTxId}`
+    : `global tx ${globalTxId} failed: ${(wait as { status: 'found'; receipt: TxReceipt }).receipt.reason}`
+  return { outcome: 'global-tx-failure', result, globalTxId, pollStatus: wait.status === 'timed-out' ? 'timed-out' : 'failed', reason }
+}
+
+interface RecoveryEvent {
+  proposalNumber: number
+  scenario: string
+  phase: 'detected' | 'retry-failed' | 'recovered'
+  outerTxId?: string
+  globalTxId?: string
+  pollStatus?: 'timed-out' | 'failed'
+  reason?: string
+  retryOuterTxId?: string
+  retryGlobalTxId?: string
+}
+const recoveryEvents: RecoveryEvent[] = []
+
+/** proposalNumber -> "Scenario N" label, registered as each scenario creates its proposal (see setProposalN). */
+const proposalScenarioLabels = new Map<number, string>()
+
+function scenarioLabelForProposal(proposalNumber: number): string {
+  return proposalScenarioLabels.get(proposalNumber) ?? 'unknown scenario'
+}
+
+/**
+ * Waits until a regular proposal's applyEligibleAt grace period has passed (emergency proposals
+ * skip this — dao_apply_parameters.validate() has no grace period for them), then applies it.
+ * If the deferred global tx doesn't land, auto-recovers by driving committee
+ * dao_unapply_parameters votes to the live threshold and retrying the apply once. A second
+ * failure is a hard stop, not a second recovery cycle. Set DAO_E2E_DISABLE_AUTO_RECOVERY to skip
+ * recovery entirely and fail immediately on the first missing/failed receipt instead.
+ */
+async function applyAcceptedProposal(
+  proposalNumber: number,
+  actor: TestAccount,
+  sleepBufferMs: number,
+  committee: TestAccount[],
+  cycleDurationMs: number,
+  verifyParameterEffect: (receipt: any) => Promise<void>,
+): Promise<any> {
   const proposalBeforeApply = await getProposal(proposalNumber)
-  // dao_apply_parameters.validate() skips the applyEligibleAt check entirely for emergency
-  // proposals (no grace period) — only regular proposals need to wait for it here.
   if (!proposalBeforeApply.emergency) {
     await sleepUntilTimestamp(proposalBeforeApply.applyEligibleAt, 'applyEligibleAt', sleepBufferMs)
   }
-  const result = await injectAndAssert(
-    {
-      type: 'dao_apply_parameters',
-      networkId: currentNetworkId,
-      from: actor.address,
-      proposalId: daoProposalId(proposalNumber),
-      timestamp: Date.now(),
-    },
-    actor,
-  )
+
+  const first = await attemptApplyAndVerify(proposalNumber, actor, cycleDurationMs, verifyParameterEffect)
+  if (first.outcome === 'success') return first.result
+
+  const scenario = scenarioLabelForProposal(proposalNumber)
+  if (AUTO_RECOVERY_DISABLED) {
+    throw new Error(`Proposal #${proposalNumber} (${scenario}): ${first.reason}`)
+  }
+  console.log(`  ⚠️  Proposal #${proposalNumber} (${scenario}): ${first.reason} — recovering via dao_unapply_parameters`)
+  recoveryEvents.push({
+    proposalNumber, scenario, phase: 'detected',
+    outerTxId: first.result.receipt.txId, globalTxId: first.globalTxId,
+    pollStatus: first.pollStatus, reason: first.reason,
+  })
+
   const proposal = await getProposal(proposalNumber)
-  assert(proposal.status === 'applied', `Expected proposal #${proposalNumber} status 'applied', got '${proposal.status}'`)
-  return result
+  const snapshotCommittee = new Set(proposal.committeeAddresses)
+  // Mirrors dao_unapply_parameters.ts's own count: unique unapplyVotes filtered against this
+  // proposal's committeeAddresses snapshot, not the harness's full committee array.
+  const alreadyVoted = new Set(
+    (Array.isArray(proposal.unapplyVotes) ? proposal.unapplyVotes : []).filter(a => snapshotCommittee.has(a)),
+  )
+  const threshold = await getEffectiveUnapplyThreshold(proposal.committeeAddresses.length)
+  const eligibleVoters = committee.filter(c => snapshotCommittee.has(c.address) && !alreadyVoted.has(c.address))
+  // A fresh vote is required to re-evaluate a threshold lowered mid-run.
+  const votesNeeded = Math.max(1, threshold - alreadyVoted.size)
+  assert(eligibleVoters.length >= votesNeeded, `Need ${votesNeeded} more unapply votes for proposal #${proposalNumber} but only ${eligibleVoters.length} eligible committee keys available`)
+
+  for (const voter of eligibleVoters.slice(0, votesNeeded)) {
+    await injectAndAssert(
+      { type: 'dao_unapply_parameters', networkId: currentNetworkId, from: voter.address, proposalId: daoProposalId(proposalNumber), timestamp: Date.now() },
+      voter,
+    )
+  }
+  assert((await getProposal(proposalNumber)).status === 'accepted', `Expected proposal #${proposalNumber} status 'accepted' after unapply recovery`)
+
+  const retry = await attemptApplyAndVerify(proposalNumber, actor, cycleDurationMs, verifyParameterEffect)
+  if (retry.outcome === 'global-tx-failure') {
+    recoveryEvents.push({
+      proposalNumber, scenario, phase: 'retry-failed',
+      retryOuterTxId: retry.result.receipt.txId, retryGlobalTxId: retry.globalTxId,
+      pollStatus: retry.pollStatus, reason: retry.reason,
+    })
+    throw new Error(`Proposal #${proposalNumber} (${scenario}) recovery retry also failed: ${retry.reason} — not attempting a third apply`)
+  }
+  recoveryEvents.push({
+    proposalNumber, scenario, phase: 'recovered',
+    outerTxId: first.result.receipt.txId, globalTxId: first.globalTxId,
+    retryOuterTxId: retry.result.receipt.txId, retryGlobalTxId: retry.globalTxId,
+  })
+  return retry.result
 }
 
 function assertDerivedTimingAndSnapshots(proposal: DaoProposalWithTiming, daoParams: any): void {
@@ -1504,7 +1764,7 @@ async function pickActiveHost(): Promise<string> {
 }
 
 async function getActiveHosts(): Promise<string[]> {
-  const res = await axios.get(`http://${ARCHIVER_HOST}/nodelist`)
+  const res = await axios.get(`http://${ARCHIVER_HOST}/nodelist`, { timeout: HTTP_REQUEST_TIMEOUT_MS })
   const nodeList: Array<{ ip: string; port: number }> = res.data?.nodeList ?? []
   assert(nodeList.length > 0, 'Archiver returned an empty nodelist')
   return nodeList.map(node => `${node.ip}:${node.port}`)
@@ -1513,13 +1773,13 @@ async function getActiveHosts(): Promise<string[]> {
 /** GET against a freshly-picked node from the archiver's /nodelist. */
 async function apiGet(urlPath: string, config?: Parameters<typeof axios.get>[1]) {
   const host = await pickActiveHost()
-  return axios.get(`http://${host}${urlPath}`, config)
+  return axios.get(`http://${host}${urlPath}`, { timeout: HTTP_REQUEST_TIMEOUT_MS, ...config })
 }
 
 /** POST against a freshly-picked node from the archiver's /nodelist. */
 async function apiPost(urlPath: string, body: unknown, config?: Parameters<typeof axios.post>[2]) {
   const host = await pickActiveHost()
-  return axios.post(`http://${host}${urlPath}`, body, config)
+  return axios.post(`http://${host}${urlPath}`, body, { timeout: HTTP_REQUEST_TIMEOUT_MS, ...config })
 }
 
 /**
@@ -1780,9 +2040,15 @@ async function main(): Promise<void> {
     sc16EmergencyTimeout: getProposalN('sc16EmergencyTimeout'),
     sc17EmergencyRecovery: getProposalN('sc17EmergencyRecovery'),
   }
+  // Register scenario labels for proposals restored from saved state (--no-start/--step reruns),
+  // not just freshly-created ones (those go through setProposalN below).
+  for (const [key, value] of Object.entries(proposalN)) {
+    if (value > 0) proposalScenarioLabels.set(value, `Scenario ${key.match(/^sc(\d+)/)?.[1] ?? key}`)
+  }
   const setProposalN = (key: string, value: number): number => {
     proposalNumbers[key] = value
     proposalN[key] = value
+    proposalScenarioLabels.set(value, `Scenario ${key.match(/^sc(\d+)/)?.[1] ?? key}`)
     return value
   }
   let sc2PoolBeforeWithhold = 0n
@@ -2096,33 +2362,16 @@ async function main(): Promise<void> {
     [
       '1.11 Sleep past graceDuration, dao_apply_parameters → applied + network param updated',
       async () => {
-        const proposalBefore = await getProposal(proposalN.sc1)
-        await sleepUntilTimestamp(proposalBefore.applyEligibleAt, 'applyEligibleAt (grace period end)', SLEEP_BUFFER_MS)
-        const { receipt } = await injectAndAssert(
-          {
-            type: 'dao_apply_parameters',
-            networkId: currentNetworkId,
-            from: proposer.address,
-            proposalId: daoProposalId(proposalN.sc1),
-            timestamp: Date.now(),
-          },
-          proposer,
-        )
-        const proposal = await getProposal(proposalN.sc1)
-        assert(proposal.status === 'applied', `Expected status 'applied', got '${proposal.status}'`)
-
-        // Global message fires at cycle+3 — poll up to 5 cycles for param to update
-        console.log(
-          `    Polling up to ${applyParamsPollMs / 1000}s for network.current.dao.voteExponent === ${sc1VoteExponentTarget}` +
-            ` (global msg at cycle+3 ≈ ${(cycleDurationMs * 3) / 1000}s)...`,
-        )
-        await waitForNetworkParameter(['current', 'dao', 'voteExponent'], sc1VoteExponentTarget, applyParamsPollMs)
-        await waitForListOfChangesFromReceipt(
-          `appData.dao.voteExponent=${sc1VoteExponentTarget}`,
-          receipt,
-          c => String(c?.appData?.dao?.voteExponent) === String(sc1VoteExponentTarget),
-          applyParamsPollMs,
-        )
+        await applyAcceptedProposal(proposalN.sc1, proposer, SLEEP_BUFFER_MS, committee, cycleDurationMs, async receipt => {
+          console.log(`    Polling up to ${applyParamsPollMs / 1000}s for network.current.dao.voteExponent === ${sc1VoteExponentTarget}...`)
+          await waitForNetworkParameter(['current', 'dao', 'voteExponent'], sc1VoteExponentTarget, applyParamsPollMs)
+          await waitForListOfChangesFromReceipt(
+            `appData.dao.voteExponent=${sc1VoteExponentTarget}`,
+            receipt,
+            c => String(c?.appData?.dao?.voteExponent) === String(sc1VoteExponentTarget),
+            applyParamsPollMs,
+          )
+        })
       },
     ],
     [
@@ -2487,27 +2736,15 @@ async function main(): Promise<void> {
     [
       '4.7  dao_apply_parameters from committee member → applied immediately (no grace period)',
       async () => {
-        // Emergency proposals can be applied immediately after acceptance — no need to wait
-        // for applyEligibleAt/gracePeriod (R20).
-        const { receipt } = await injectAndAssert(
-          {
-            type: 'dao_apply_parameters',
-            networkId: currentNetworkId,
-            from: committee[0].address,
-            proposalId: daoProposalId(proposalN.sc4),
-            timestamp: Date.now(),
-          },
-          committee[0],
-        )
-        const proposal = await getProposal(proposalN.sc4)
-        assert(proposal.status === 'applied', `Expected status 'applied', got '${proposal.status}'`)
-        await waitForNetworkParameter(['current', 'dao', 'pctBurned'], sc4PctBurnedTarget, applyParamsPollMs)
-        await waitForListOfChangesFromReceipt(
-          `appData.dao.pctBurned=${sc4PctBurnedTarget}`,
-          receipt,
-          c => String(c?.appData?.dao?.pctBurned) === String(sc4PctBurnedTarget),
-          applyParamsPollMs,
-        )
+        await applyAcceptedProposal(proposalN.sc4, committee[0], SLEEP_BUFFER_MS, committee, cycleDurationMs, async receipt => {
+          await waitForNetworkParameter(['current', 'dao', 'pctBurned'], sc4PctBurnedTarget, applyParamsPollMs)
+          await waitForListOfChangesFromReceipt(
+            `appData.dao.pctBurned=${sc4PctBurnedTarget}`,
+            receipt,
+            c => String(c?.appData?.dao?.pctBurned) === String(sc4PctBurnedTarget),
+            applyParamsPollMs,
+          )
+        })
       },
     ],
 
@@ -2930,14 +3167,15 @@ async function main(): Promise<void> {
         await committeeAcceptToVoting(proposalN.sc8Economic, proposer6, committee, SLEEP_BUFFER_MS, [1, 2, 3])
         await castVote(proposalN.sc8Economic, voter7, [1, 0], minVoteSpendLib)
         await finalizeVote(proposalN.sc8Economic, proposer6, SLEEP_BUFFER_MS)
-        const { receipt } = await applyAcceptedProposal(proposalN.sc8Economic, proposer6, SLEEP_BUFFER_MS)
-        await waitForNetworkParameter(['current', 'nodeRewardAmountUsdStr'], sc8NodeRewardTarget, applyParamsPollMs)
-        await waitForListOfChangesFromReceipt(
-          `appData.nodeRewardAmountUsdStr=${sc8NodeRewardTarget}`,
-          receipt,
-          c => String(c?.appData?.nodeRewardAmountUsdStr) === sc8NodeRewardTarget,
-          applyParamsPollMs,
-        )
+        await applyAcceptedProposal(proposalN.sc8Economic, proposer6, SLEEP_BUFFER_MS, committee, cycleDurationMs, async receipt => {
+          await waitForNetworkParameter(['current', 'nodeRewardAmountUsdStr'], sc8NodeRewardTarget, applyParamsPollMs)
+          await waitForListOfChangesFromReceipt(
+            `appData.nodeRewardAmountUsdStr=${sc8NodeRewardTarget}`,
+            receipt,
+            c => String(c?.appData?.nodeRewardAmountUsdStr) === sc8NodeRewardTarget,
+            applyParamsPollMs,
+          )
+        })
       },
     ],
     [
@@ -2946,13 +3184,14 @@ async function main(): Promise<void> {
         await committeeAcceptToVoting(proposalN.sc8Protocol, proposer7, committee, SLEEP_BUFFER_MS, [0, 2, 4])
         await castVote(proposalN.sc8Protocol, voter8, [1, 0], minVoteSpendLib)
         await finalizeVote(proposalN.sc8Protocol, proposer7, SLEEP_BUFFER_MS)
-        const { receipt } = await applyAcceptedProposal(proposalN.sc8Protocol, proposer7, SLEEP_BUFFER_MS)
-        await waitForListOfChangesFromReceipt(
-          'change.debug.countEndpointStart=0',
-          receipt,
-          c => c?.change?.debug?.countEndpointStart === 0,
-          applyParamsPollMs,
-        )
+        await applyAcceptedProposal(proposalN.sc8Protocol, proposer7, SLEEP_BUFFER_MS, committee, cycleDurationMs, async receipt => {
+          await waitForListOfChangesFromReceipt(
+            'change.debug.countEndpointStart=0',
+            receipt,
+            c => c?.change?.debug?.countEndpointStart === 0,
+            applyParamsPollMs,
+          )
+        })
       },
     ],
     [
@@ -2961,20 +3200,21 @@ async function main(): Promise<void> {
         await committeeAcceptToVoting(proposalN.sc8LeafKey, proposer6, committee, SLEEP_BUFFER_MS, [0, 1, 2])
         await castVote(proposalN.sc8LeafKey, voter7, [1, 0], minVoteSpendLib)
         await finalizeVote(proposalN.sc8LeafKey, proposer6, SLEEP_BUFFER_MS)
-        const { receipt } = await applyAcceptedProposal(proposalN.sc8LeafKey, proposer6, SLEEP_BUFFER_MS)
-        const receiptChange = (receipt.additionalInfo?.change ?? {}) as any
-        assert(
-          receiptChange?.change?.p2p?.minNodes === 12 && receiptChange?.change?.p2p?.maxNodes === 1150 && receiptChange?.change?.debug?.countEndpointStart === -2,
-          `Expected receipt change to include p2p.minNodes, p2p.maxNodes, debug.countEndpointStart, got ${JSON.stringify(receiptChange)}`,
-        )
-        // The two p2p.* leaves must deep-merge into a single change.p2p object (sibling merge),
-        // alongside the unrelated change.debug leaf.
-        await waitForListOfChangesFromReceipt(
-          'change.p2p.{minNodes:12,maxNodes:1150} & change.debug.countEndpointStart=-2',
-          receipt,
-          c => c?.change?.p2p?.minNodes === 12 && c?.change?.p2p?.maxNodes === 1150 && c?.change?.debug?.countEndpointStart === -2,
-          applyParamsPollMs,
-        )
+        await applyAcceptedProposal(proposalN.sc8LeafKey, proposer6, SLEEP_BUFFER_MS, committee, cycleDurationMs, async receipt => {
+          const receiptChange = (receipt.additionalInfo?.change ?? {}) as any
+          assert(
+            receiptChange?.change?.p2p?.minNodes === 12 && receiptChange?.change?.p2p?.maxNodes === 1150 && receiptChange?.change?.debug?.countEndpointStart === -2,
+            `Expected receipt change to include p2p.minNodes, p2p.maxNodes, debug.countEndpointStart, got ${JSON.stringify(receiptChange)}`,
+          )
+          // The two p2p.* leaves must deep-merge into a single change.p2p object (sibling merge),
+          // alongside the unrelated change.debug leaf.
+          await waitForListOfChangesFromReceipt(
+            'change.p2p.{minNodes:12,maxNodes:1150} & change.debug.countEndpointStart=-2',
+            receipt,
+            c => c?.change?.p2p?.minNodes === 12 && c?.change?.p2p?.maxNodes === 1150 && c?.change?.debug?.countEndpointStart === -2,
+            applyParamsPollMs,
+          )
+        })
       },
     ],
     [
@@ -3020,17 +3260,18 @@ async function main(): Promise<void> {
         await committeeAcceptToVoting(proposalN.sc8Archiver, proposer7, committee, SLEEP_BUFFER_MS, [0, 1, 2])
         await castVote(proposalN.sc8Archiver, voter8, [1, 0], minVoteSpendLib)
         await finalizeVote(proposalN.sc8Archiver, proposer7, SLEEP_BUFFER_MS)
-        const { receipt } = await applyAcceptedProposal(proposalN.sc8Archiver, proposer7, SLEEP_BUFFER_MS)
-        const receiptChange = (receipt.additionalInfo?.change ?? {}) as any
-        assert(receiptChange?.appData?.archiver?.activeVersion === sc8ArchiverActiveVersionTarget, `Expected receipt appData.archiver.activeVersion=${sc8ArchiverActiveVersionTarget}, got ${JSON.stringify(receiptChange)}`)
-        assert(receiptChange?.appData?.archiver?.latestVersion === sc8ArchiverActiveVersionTarget, `Expected receipt appData.archiver.latestVersion=${sc8ArchiverActiveVersionTarget}, got ${JSON.stringify(receiptChange)}`)
-        await waitForListOfChangesFromReceipt(
-          `appData.archiver.activeVersion=${sc8ArchiverActiveVersionTarget}`,
-          receipt,
-          c => c?.appData?.archiver?.activeVersion === sc8ArchiverActiveVersionTarget,
-          applyParamsPollMs,
-        )
-        await waitForNetworkParameter(['current', 'archiver', 'activeVersion'], sc8ArchiverActiveVersionTarget, applyParamsPollMs)
+        await applyAcceptedProposal(proposalN.sc8Archiver, proposer7, SLEEP_BUFFER_MS, committee, cycleDurationMs, async receipt => {
+          const receiptChange = (receipt.additionalInfo?.change ?? {}) as any
+          assert(receiptChange?.appData?.archiver?.activeVersion === sc8ArchiverActiveVersionTarget, `Expected receipt appData.archiver.activeVersion=${sc8ArchiverActiveVersionTarget}, got ${JSON.stringify(receiptChange)}`)
+          assert(receiptChange?.appData?.archiver?.latestVersion === sc8ArchiverActiveVersionTarget, `Expected receipt appData.archiver.latestVersion=${sc8ArchiverActiveVersionTarget}, got ${JSON.stringify(receiptChange)}`)
+          await waitForListOfChangesFromReceipt(
+            `appData.archiver.activeVersion=${sc8ArchiverActiveVersionTarget}`,
+            receipt,
+            c => c?.appData?.archiver?.activeVersion === sc8ArchiverActiveVersionTarget,
+            applyParamsPollMs,
+          )
+          await waitForNetworkParameter(['current', 'archiver', 'activeVersion'], sc8ArchiverActiveVersionTarget, applyParamsPollMs)
+        })
         // Verify both changed fields updated and the omitted field (minVersion) was deep-merged, not overwritten.
         const archiverAfter = (await getCurrentNetworkValue('archiver')) as any
         assert(archiverAfter?.activeVersion === sc8ArchiverActiveVersionTarget, `Expected archiver.activeVersion=${sc8ArchiverActiveVersionTarget}, got ${archiverAfter?.activeVersion}`)
@@ -3941,19 +4182,18 @@ async function main(): Promise<void> {
     [
       '17.3 dao_apply_parameters from committee member → applied immediately (no grace period)',
       async () => {
-        // Routed through applyAcceptedProposal (not injectAndAssert directly) so this emergency
-        // proposal actually exercises the applyEligibleAt-skip branch in that shared helper.
-        const { receipt } = await applyAcceptedProposal(proposalN.sc17EmergencyRecovery, committee[0], SLEEP_BUFFER_MS)
-        await waitForNetworkParameter(['current', 'dao', 'voteThresholdUsdStr'], sc17VoteThresholdUsdTarget, applyParamsPollMs)
-        // Deep-equality match the exact queued change object (not just one field) against
-        // listOfChanges — proves what was queued is what actually landed.
-        const receiptChange = receipt.additionalInfo.change
-        await waitForListOfChangesFromReceipt(
-          `exact receipt.additionalInfo.change at cycle ${receiptChange?.cycle}`,
-          receipt,
-          c => Utils.safeStringify(c) === Utils.safeStringify(receiptChange),
-          applyParamsPollMs,
-        )
+        await applyAcceptedProposal(proposalN.sc17EmergencyRecovery, committee[0], SLEEP_BUFFER_MS, committee, cycleDurationMs, async receipt => {
+          await waitForNetworkParameter(['current', 'dao', 'voteThresholdUsdStr'], sc17VoteThresholdUsdTarget, applyParamsPollMs)
+          // Deep-equality match the exact queued change object (not just one field) against
+          // listOfChanges — proves what was queued is what actually landed.
+          const receiptChange = receipt.additionalInfo.change
+          await waitForListOfChangesFromReceipt(
+            `exact receipt.additionalInfo.change at cycle ${receiptChange?.cycle}`,
+            receipt,
+            c => Utils.safeStringify(c) === Utils.safeStringify(receiptChange),
+            applyParamsPollMs,
+          )
+        })
       },
     ],
     [
@@ -4017,9 +4257,9 @@ async function main(): Promise<void> {
             `Expected voteThresholdUsdStr to remain ${sc17VoteThresholdUsdTarget} during unapply, got ${daoParams?.voteThresholdUsdStr}`,
           )
 
-          // Tested right after vote #1, while status is still 'applied', so the rejection is
-          // unambiguously about the duplicate and not the wrong-status path (17.6). Skipped if
-          // threshold is 1, since there's no 'applied' window left to test it in isolation.
+          // Runs right after vote #1 (status still 'applied') so the rejection is unambiguously
+          // about the duplicate, not the wrong-status path (17.6). Skipped when threshold is 1 —
+          // no 'applied' window is left to test it in isolation.
           if (i === 0 && !isLastVote) {
             await injectExpectReject(
               {
@@ -4057,28 +4297,17 @@ async function main(): Promise<void> {
     [
       '17.7 Re-apply dao_apply_parameters after recovery — status returns to applied',
       async () => {
-        const { receipt } = await injectAndAssert(
-          {
-            type: 'dao_apply_parameters',
-            networkId: currentNetworkId,
-            from: committee[0].address,
-            proposalId: daoProposalId(proposalN.sc17EmergencyRecovery),
-            timestamp: Date.now(),
-          },
-          committee[0],
-        )
-        const proposal = await getProposal(proposalN.sc17EmergencyRecovery)
-        assert(proposal.status === 'applied', `Expected status 'applied' after re-apply, got '${proposal.status}'`)
-
-        // Proves the loop closes: the re-apply gets its own fresh cycle, so this can't
-        // accidentally match the first apply's already-landed entry from 17.3.
-        const receiptChange = receipt.additionalInfo.change
-        await waitForListOfChangesFromReceipt(
-          `exact receipt.additionalInfo.change at cycle ${receiptChange?.cycle} (re-apply)`,
-          receipt,
-          c => Utils.safeStringify(c) === Utils.safeStringify(receiptChange),
-          applyParamsPollMs,
-        )
+        await applyAcceptedProposal(proposalN.sc17EmergencyRecovery, committee[0], SLEEP_BUFFER_MS, committee, cycleDurationMs, async receipt => {
+          // Proves the loop closes: the re-apply gets its own fresh cycle, so this can't
+          // accidentally match the first apply's already-landed entry from 17.3.
+          const receiptChange = receipt.additionalInfo.change
+          await waitForListOfChangesFromReceipt(
+            `exact receipt.additionalInfo.change at cycle ${receiptChange?.cycle} (re-apply)`,
+            receipt,
+            c => Utils.safeStringify(c) === Utils.safeStringify(receiptChange),
+            applyParamsPollMs,
+          )
+        })
       },
     ],
     ],
@@ -4127,6 +4356,16 @@ async function main(): Promise<void> {
     `  Passed: ${passed} / ${results.length}   Failed: ${failed}   Skipped: ${skipped}`,
   )
   console.log(`  Step time: ~${totalSec}s cumulative   Wall time: ~${wallSec}s`)
+  const recoveryCount = recoveryEvents.filter(event => event.phase === 'detected').length
+  if (recoveryCount > 0) {
+    // Recovery succeeding still means every first-attempt apply below actually failed once —
+    // surface that here so a fully-green run doesn't silently hide it.
+    console.log('═'.repeat(64))
+    console.log(`  ⚠️  dao_unapply_parameters auto-recovery triggered ${recoveryCount} time(s):`)
+    for (const event of recoveryEvents) {
+      console.log(`    proposal #${event.proposalNumber} (${event.scenario}) — ${event.phase}${event.reason ? `: ${event.reason}` : ''}`)
+    }
+  }
   console.log('═'.repeat(64))
   writeSummary(failed > 0 ? 'fail' : 'pass')
   console.log(`Logs saved:\n  App:      ${logFile}\n  Terminal: ${terminalLogFile}\n  Summary:  ${summaryFile}`)
