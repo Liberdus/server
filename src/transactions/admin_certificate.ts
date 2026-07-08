@@ -121,15 +121,23 @@ export async function tryAndFetchGoldenTicket(publicKey: string, network: Networ
     if (LiberdusFlags.VerboseLogs) console.log('Golden Ticket request', signedGoldenTicketRequest)
     const response = await shardusPost<AdminCertResponse>(network.current.goldenTicketServerUrl, signedGoldenTicketRequest, { timeout: 5000 })
     if (LiberdusFlags.VerboseLogs) console.log('Golden Ticket response', response.data)
-    if (response.data && response.data.success) {
-      return response.data.ticket
+    if (response.data && response.data.success && response.data.ticket) {
+      return {
+        ticket: response.data.ticket,
+        retryable: false,
+        terminal: false,
+      }
     } else {
-      console.error('No golden ticket received')
-      return null
+      const error = response.data?.error || 'No golden ticket received'
+      console.error(error)
+      return createGoldenTicketFetchResult(error)
     }
   } catch (error) {
-    console.error(`Error fetching golden ticket from - ${(error as Error).message}`)
-    return null
+    const axiosError = error as { message?: string; response?: { data?: AdminCertResponse; status?: number } }
+    const responseError = axiosError.response?.data?.error
+    const errorMessage = responseError || axiosError.message || 'Unknown Golden Ticket fetch error'
+    console.error(`Error fetching golden ticket from - ${errorMessage}`)
+    return createGoldenTicketFetchResult(errorMessage)
   }
 }
 export function setAdminCertificate(cert: AdminCert): void {
