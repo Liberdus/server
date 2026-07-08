@@ -107,7 +107,7 @@ export async function putAdminCertificateHandler(req: Request, shardus: Shardus)
   return { success: true }
 }
 
-export async function tryAndFetchGoldenTicket(publicKey: string, network: NetworkAccount, dapp: Shardus): Promise<AdminCert> {
+export async function tryAndFetchGoldenTicket(publicKey: string, network: NetworkAccount, dapp: Shardus): Promise<GoldenTicketFetchResult> {
   try {
     if (LiberdusFlags.VerboseLogs) console.log('Fetching golden ticket from', network.current.goldenTicketServerUrl, 'for publicKey', publicKey, 'node')
     const goldenTicketRequest: any = {
