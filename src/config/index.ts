@@ -104,6 +104,7 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   minTollUsdStr: '0.2',
   defaultTollUsdStr: '0.2',
   goldenTicketServerUrl: 'http://localhost:3456/golden/ticket',
+  goldenTicketRetryInterval: 10 * ONE_MINUTE,
   messageRetentionDays: 7,
   messageMaxLength: 500,
   dao: {
