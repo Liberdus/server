@@ -39,6 +39,27 @@ export interface PutAdminCertResult {
 export let adminCert: AdminCert = null
 export let isRequestedAdminCert: boolean = false
 
+export function isTerminalGoldenTicketError(error?: string): boolean {
+  if (!error) return false
+  const normalizedError = error.toLowerCase()
+  return (
+    normalizedError.includes('public key not registered') ||
+    normalizedError.includes('inactive') ||
+    normalizedError.includes('signature owner does not match registered public key') ||
+    normalizedError.includes('invalid signature') ||
+    normalizedError.includes('signature validation failed')
+  )
+}
+
+function createGoldenTicketFetchResult(error?: string): GoldenTicketFetchResult {
+  const terminal = isTerminalGoldenTicketError(error)
+  return {
+    error,
+    retryable: !terminal,
+    terminal,
+  }
+}
+
 function validatePutAdminCertRequest(req: PutAdminCertRequest, shardus: Shardus): PutAdminCertResult {
   const publicKey = shardus.crypto.getPublicKey()
 
