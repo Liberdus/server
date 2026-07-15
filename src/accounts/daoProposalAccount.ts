@@ -14,6 +14,8 @@ export function daoProposalAccount(id: string): DaoProposalAccount {
     number: 0,
     creationTime: 0,
     startTime: 0,
+    // votingStartedAt/votingEndedAt intentionally omitted — written lazily on transition,
+    // permanently absent for emergency proposals.
     gracePeriod: 0,
     proposalFeeUsdStr: '0',
     voteThresholdUsdStr: '0',
@@ -59,37 +61,45 @@ export function deserializeDaoProposalAccount(stream: VectorBufferStream): DaoPr
 /**
  * Derived proposal-timeline helpers — single source of truth for every phase boundary.
  *
- * Only `creationTime` and `startTime` are stored on the account; every other phase-boundary
- * timestamp (reviewEnd, votingStart, votingEnd, claimEnd, applyEligibleAt) is a pure function
- * of `startTime` plus the duration fields snapshotted on the proposal at creation time.
+ * creationTime just records when the proposal was created. startTime feeds into reviewEnd.
  *
- * Schedule (identical shape for regular and emergency proposals — emergency proposals simply
- * have a zero-length nominal voting phase, so votingEnd collapses onto votingStart/reviewEnd):
+ * votingStartedAt is the real time dao_committee_result ran — the moment the proposal actually
+ * moved to 'voting'. votingEndedAt is the real time dao_vote_result ran, finishing the vote.
+ * Anyone can submit these transactions for a fee, so they can run late. Before that happens —
+ * and always, for emergency proposals — votingStart uses reviewEnd instead, and
+ * claimEnd/applyEligible use votingEnd instead. So a late transaction only delays later phases.
+ * It never makes them shorter.
+ *
+ * Schedule:
  *   reviewEnd     = startTime + reviewDuration
- *   votingStart   = reviewEnd                                  (fixed; community voting never
- *                                                               starts early, even on a decisive
- *                                                               committee accept)
+ *   votingStart   = votingStartedAt ?? reviewEnd
  *   votingEnd     = emergency ? votingStart : votingStart + votingDuration
- *   claimEnd      = votingEnd + claimDuration
- *   applyEligible = votingEnd + gracePeriod
+ *   claimEnd      = (votingEndedAt ?? votingEnd) + claimDuration
+ *   applyEligible = (votingEndedAt ?? votingEnd) + gracePeriod
  */
 export function getReviewEnd(proposal: DaoProposalAccount): number {
   return proposal.startTime + proposal.reviewDuration
 }
 
 export function getVotingStart(proposal: DaoProposalAccount): number {
-  return getReviewEnd(proposal)
+  return proposal.votingStartedAt ?? getReviewEnd(proposal)
 }
 
 export function getVotingEnd(proposal: DaoProposalAccount): number {
   const votingStart = getVotingStart(proposal)
+  // votingEnd is a deadline voters need to know in advance, so it never depends on when
+  // dao_vote_result actually runs.
   return proposal.emergency ? votingStart : votingStart + proposal.votingDuration
 }
 
 export function getClaimEnd(proposal: DaoProposalAccount): number {
-  return getVotingEnd(proposal) + proposal.claimDuration
+  // The claim window is measured from votingEndedAt (the real dao_vote_result time) once it's
+  // set, or from the scheduled votingEnd until then.
+  const votingEndedAt = proposal.votingEndedAt ?? getVotingEnd(proposal)
+  return votingEndedAt + proposal.claimDuration
 }
 
 export function getApplyEligibleAt(proposal: DaoProposalAccount): number {
-  return getVotingEnd(proposal) + proposal.gracePeriod
+  const votingEndedAt = proposal.votingEndedAt ?? getVotingEnd(proposal)
+  return votingEndedAt + proposal.gracePeriod
 }

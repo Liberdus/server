@@ -95,7 +95,9 @@ export const apply = (
       proposal.voterRewardPool = 0n
     } else {
       // voterRewardPool stays as seeded — distributed to voters after the voting phase.
+      // The community voting period starts now — record it so votingStart reflects it.
       proposal.status = 'voting'
+      proposal.votingStartedAt = txTimestamp
     }
   }
 
