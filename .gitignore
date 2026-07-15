@@ -18,3 +18,4 @@ stakedNodeLists.json
 dao-committee-keys.json
 test-logs/*.log
 test-logs/dao-e2e-run-state.json
+test-logs/dao-e2e-summary-*.json

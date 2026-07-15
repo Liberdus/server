@@ -28,7 +28,7 @@
  *
  * --parallel splits each scenario into a setup phase (proposal creation, run sequentially
  * to avoid meta.count races) and a body phase (all remaining steps run concurrently).
- * Output lines are prefixed with [S1]…[S17] to distinguish interleaved scenarios.
+ * Output lines are prefixed with [S1]…[S18] to distinguish interleaved scenarios.
  * Note: --step is not designed to combine with --parallel.
  *
  * By default the network is left running when any step fails so you can iterate on
@@ -93,7 +93,7 @@ function parseCommaList(value: string, label: string): string[] {
 }
 
 /** Bumped whenever a new scenario is added — keeps --scenario and --step validation in sync. */
-const MAX_SCENARIO_NUMBER = 17
+const MAX_SCENARIO_NUMBER = 18
 
 function parseScenarioFilter(value: string | null): Set<number> | null {
   if (value == null) return null
@@ -777,9 +777,9 @@ function sleep(ms: number): Promise<void> {
  * `votingEnd`/`applyEligibleAt`) has passed, plus a small buffer — rather than sleeping a fixed
  * duration measured from "now".
  *
- * Why this matters: in the v2 timing model, phase boundaries are strictly derived from the
- * proposal's `startTime` (fixed at creation) and are NOT elastic — they don't shift based on when
- * transition transactions actually execute. A fixed "sleep `phaseDuration + buffer` from now"
+ * Why this matters: `votingEnd`/`claimEnd`/`applyEligibleAt` depend on when
+ * `dao_committee_result`/`dao_vote_result` actually run (see daoProposalAccount.ts), so they can
+ * shift later than scheduled. A fixed "sleep `phaseDuration + buffer` from now"
  * implicitly assumes "now ≈ the start of this phase", which only holds when steps run back-to-back
  * with near-constant latency (i.e. sequential mode). Under `--parallel` contention, the gap
  * between proposal creation and when a scenario's body actually gets to run can grow large *and
@@ -1166,9 +1166,8 @@ async function injectExpectReject<T extends object>(
 }
 
 /**
- * DaoProposalAccount only stores `creationTime`/`startTime` — every other phase-boundary
- * timestamp is derived from those plus the duration snapshots. Clients compute these locally;
- * the API returns raw proposal data only.
+ * Every field below is derived — see daoProposalAccount.ts for the formulas. Clients compute
+ * these locally; the API only returns the raw proposal data.
  */
 type DaoProposalWithTiming = DaoProposalAccount & {
   reviewEnd: number
@@ -2039,6 +2038,7 @@ async function main(): Promise<void> {
     sc15B: getProposalN('sc15B'),
     sc16EmergencyTimeout: getProposalN('sc16EmergencyTimeout'),
     sc17EmergencyRecovery: getProposalN('sc17EmergencyRecovery'),
+    sc18LateTransition: getProposalN('sc18LateTransition'),
   }
   // Register scenario labels for proposals restored from saved state (--no-start/--step reruns),
   // not just freshly-created ones (those go through setProposalN below).
@@ -2101,6 +2101,16 @@ async function main(): Promise<void> {
   // Derived timing constants
   const applyParamsPollMs = cycleDurationMs * 5   // global message fires at cycle+3
   const SLEEP_BUFFER_MS = 5_000
+  // Extra delay Scenario 18 adds on top of SLEEP_BUFFER_MS to simulate dao_committee_result/
+  // dao_vote_result being submitted late by whoever happens to call them.
+  const LATE_TRANSITION_DELAY_MS = 20_000
+  // Sleeps well past targetMs, then injects tx — used by Scenario 18 to submit
+  // dao_committee_result/dao_vote_result deliberately late. Takes a builder, not a pre-built tx,
+  // so `timestamp: Date.now()` inside it is captured after the sleep, not before.
+  async function injectLate<T extends object>(targetMs: number, label: string, buildTx: () => T, actor: TestAccount): Promise<any> {
+    await sleepUntilTimestamp(targetMs, `${label} (deliberately late)`, SLEEP_BUFFER_MS + LATE_TRANSITION_DELAY_MS)
+    return injectAndAssert(buildTx(), actor)
+  }
   const futureStartDelayMs = PARALLEL ? 120_000 : reviewDurationMs + 60_000
   // In --parallel mode, multiple scenario bodies submit overlapping transactions onto the same
   // network concurrently, which measurably increases per-tx queue/confirmation latency (we saw a
@@ -2305,16 +2315,10 @@ async function main(): Promise<void> {
     [
       '1.8  Non-voter (proposer) tries dao_claim_reward on accepted proposal → rejected',
       async () => {
-        // Run immediately after 1.7 (right at votingEnd, while the full claimDuration window is
-        // still ahead) rather than after the grace-period sleep in 1.11. claimEnd is now strictly
-        // derived (= votingEnd + claimDuration, independent of when dao_vote_result actually
-        // executes), so any extra delay eats directly into the claim window margin — running the
-        // "did not vote" check here (instead of after the apply/global-message wait in 1.11) keeps us
-        // comfortably inside the window. Validation order is intentional: the time-window check
-        // in dao_claim_reward.validate() runs before the voter-membership check, so a
-        // late-arriving tx correctly reports "Claim period has ended" rather than "did not vote" —
-        // this step's whole point is to assert the *voter-membership* rejection, hence the need
-        // to run it well within the window.
+        // Run right after 1.7, not after 1.11's grace-period sleep — claimEnd is close behind
+        // us now, so waiting longer risks missing the window. Also, dao_claim_reward checks the
+        // time window before checking voter membership, so running late would report "Claim
+        // period has ended" instead of the "did not vote" rejection this step is testing.
         await injectExpectReject(
           {
             type: 'dao_claim_reward',
@@ -4314,9 +4318,97 @@ async function main(): Promise<void> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Scenario 18 — Late dao_committee_result/dao_vote_result don't compress phases
+  // ─────────────────────────────────────────────────────────────────────────
+  const sc18: ScenarioDef = {
+    num: 18,
+    name: 'Scenario 18 — A late committee/vote result still gets the full scheduled duration',
+    setupSteps: [
+    [
+      '18.1 Create regular proposal for late-transition timing test',
+      async () => {
+        setProposalN('sc18LateTransition', await createDaoProposal({
+          proposer: proposer5,
+          title: 'Late-transition timing test',
+          description: 'Verifies a deliberately-late dao_committee_result/dao_vote_result still gets the full scheduled phase duration',
+          changes: [{ key: 'pctBurned', value: '58', current: '50' }],
+          gracePeriodMs: graceDurationMs,
+        }))
+        saveCurrentRunState()
+      },
+    ],
+    ],
+    bodySteps: [
+    [
+      '18.2 Late dao_committee_result still gets the full votingDuration',
+      async () => {
+        for (const i of [0, 1, 2]) {
+          await injectAndAssert(
+            { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[i].address, proposalId: daoProposalId(proposalN.sc18LateTransition), vote: 'accept', timestamp: Date.now() },
+            committee[i],
+          )
+        }
+        const proposalBeforeResult = await getProposal(proposalN.sc18LateTransition)
+        const reviewEnd = proposalBeforeResult.reviewEnd
+        await injectLate(
+          reviewEnd,
+          'reviewEnd',
+          () => ({ type: 'dao_committee_result', networkId: currentNetworkId, from: proposer5.address, proposalId: daoProposalId(proposalN.sc18LateTransition), timestamp: Date.now() }),
+          proposer5,
+        )
+        const proposal = await getProposal(proposalN.sc18LateTransition)
+        assert(proposal.status === 'voting', `Expected status 'voting', got '${proposal.status}'`)
+        assert(typeof proposal.votingStartedAt === 'number', `Expected votingStartedAt to be set, got ${proposal.votingStartedAt}`)
+        assert(
+          proposal.votingStartedAt > reviewEnd,
+          `Expected votingStartedAt (${proposal.votingStartedAt}) later than reviewEnd (${reviewEnd}) — this is the whole point of the late submission`,
+        )
+        assert(proposal.votingStart === proposal.votingStartedAt, `Expected derived votingStart to equal votingStartedAt, got ${proposal.votingStart} vs ${proposal.votingStartedAt}`)
+        assert(
+          proposal.votingEnd - proposal.votingStart === proposal.votingDuration,
+          `Expected the full votingDuration (${proposal.votingDuration}), not compressed — got ${proposal.votingEnd - proposal.votingStart}`,
+        )
+      },
+    ],
+    [
+      '18.3 Late dao_vote_result still gets the full claimDuration/gracePeriod',
+      async () => {
+        await castVote(proposalN.sc18LateTransition, voter15, [1, 0], minVoteSpendLib)
+        // Re-fetch rather than reuse a variable from 18.2 — this step must also work standalone
+        // (e.g. `--step 18.3` against an already-progressed network), and votingEnd is stable
+        // once dao_committee_result has run, so re-deriving it here is equivalent.
+        const proposalBeforeVote = await getProposal(proposalN.sc18LateTransition)
+        const votingEnd = proposalBeforeVote.votingEnd
+        await injectLate(
+          votingEnd,
+          'votingEnd',
+          () => ({ type: 'dao_vote_result', networkId: currentNetworkId, from: proposer5.address, proposalId: daoProposalId(proposalN.sc18LateTransition), timestamp: Date.now() }),
+          proposer5,
+        )
+        const proposal = await getProposal(proposalN.sc18LateTransition)
+        assert(proposal.status === 'accepted' || proposal.status === 'rejected', `Expected a finalized outcome, got '${proposal.status}'`)
+        assert(typeof proposal.votingEndedAt === 'number', `Expected votingEndedAt to be set, got ${proposal.votingEndedAt}`)
+        assert(
+          proposal.votingEndedAt > votingEnd,
+          `Expected votingEndedAt (${proposal.votingEndedAt}) later than votingEnd (${votingEnd}) — this is the whole point of the late submission`,
+        )
+        assert(
+          proposal.claimEnd - proposal.votingEndedAt === proposal.claimDuration,
+          `Expected the full claimDuration (${proposal.claimDuration}), not compressed — got ${proposal.claimEnd - proposal.votingEndedAt}`,
+        )
+        assert(
+          proposal.applyEligibleAt - proposal.votingEndedAt === proposal.gracePeriod,
+          `Expected the full gracePeriod (${proposal.gracePeriod}), not compressed — got ${proposal.applyEligibleAt - proposal.votingEndedAt}`,
+        )
+      },
+    ],
+    ],
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Run scenarios — sequential (default) or parallel (--parallel flag)
   // ─────────────────────────────────────────────────────────────────────────
-  const scenarios = [sc1, sc2, sc3, sc4, sc5, sc6, sc7, sc8, sc9, sc10, sc11, sc12, sc13, sc14, sc15, sc16, sc17]
+  const scenarios = [sc1, sc2, sc3, sc4, sc5, sc6, sc7, sc8, sc9, sc10, sc11, sc12, sc13, sc14, sc15, sc16, sc17, sc18]
   validateScenarioCatalog(scenarios)
   if (PARALLEL) {
     await runScenariosParallel(scenarios)
