@@ -817,12 +817,18 @@ export interface DaoProposalAccount {
   emergency: boolean
   proposalType: DaoProposalType
   number: number
-  // Only these two timestamps are stored; reviewEnd/votingStart/votingEnd/claimEnd/
-  // applyEligibleAt are all derived from them + the duration fields below.
-  // See getReviewEnd/getVotingStart/getVotingEnd/getClaimEnd/getApplyEligibleAt
-  // in src/accounts/daoProposalAccount.ts (single source of truth for the formulas).
+  // creationTime/startTime always stored; every other timing field is derived — see
+  // getReviewEnd/getVotingStart/getVotingEnd/getClaimEnd/getApplyEligibleAt in
+  // src/accounts/daoProposalAccount.ts (single source of truth for the formulas).
   creationTime: number
   startTime: number
+  // Set once dao_committee_result/dao_vote_result actually runs for regular proposals —
+  // emergency proposals never enter community voting, so these stay absent there. Until set,
+  // daoProposalAccount.ts's getters use reviewEnd/votingEnd instead.
+  votingStartedAt?: number
+  // Not the same as votingEnd (the scheduled deadline) — this is the real time dao_vote_result
+  // ran, which can be later than votingEnd if it's submitted late.
+  votingEndedAt?: number
   gracePeriod: number
   // Snapshot of DAO network params captured at proposal creation time.
   // USD-string values, converted to Wei via utils.usdStrToWei(...) at each point of use, against the current exchange rate.

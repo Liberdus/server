@@ -89,6 +89,8 @@ export const apply = (
   const winningOption = proposal.options[winnerIndex]
   // Convention: index 0 is the affirmative option ('yes' or equivalent)
   proposal.status = winnerIndex === 0 ? 'accepted' : 'rejected'
+  // Record the real time this ran, so claimEnd/applyEligibleAt reflect it.
+  proposal.votingEndedAt = txTimestamp
 
   // Burn pctBurned% of the voter reward pool (reduce pool; coins leave circulation).
   // Math.round guards against non-integer pctBurned values that could arise if a governance
