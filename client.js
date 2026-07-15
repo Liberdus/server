@@ -3087,10 +3087,13 @@ vorpal.command('dao proposals [status]', `list DAO proposals, optionally filtere
 // ---------------------------------------------------------------------------
 function deriveTiming(p) {
   const reviewEnd = p.startTime + p.reviewDuration
-  const votingStart = reviewEnd
+  // Uses the real dao_committee_result time once it's run (see daoProposalAccount.ts);
+  // falls back to the scheduled time otherwise.
+  const votingStart = p.votingStartedAt ?? reviewEnd
   const votingEnd = p.emergency ? votingStart : votingStart + p.votingDuration
-  const claimEnd = votingEnd + p.claimDuration
-  const applyEligibleAt = votingEnd + p.gracePeriod
+  const votingEndedAt = p.votingEndedAt ?? votingEnd
+  const claimEnd = votingEndedAt + p.claimDuration
+  const applyEligibleAt = votingEndedAt + p.gracePeriod
   return { reviewEnd, votingStart, votingEnd, claimEnd, applyEligibleAt }
 }
 
