@@ -110,7 +110,7 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
     proposalFeeUsdStr: '50.0',
     voteThresholdUsdStr: '100.0',
     minimumSpendUsdStr: '1.0',
-    voteExponent: 1.1,
+    voteExponent: 0.1,
     pctBurned: 50,
     reviewDuration: daoReviewDurationMs,
     votingDuration: daoVotingDurationMs,

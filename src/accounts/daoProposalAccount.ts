@@ -20,7 +20,7 @@ export function daoProposalAccount(id: string): DaoProposalAccount {
     proposalFeeUsdStr: '0',
     voteThresholdUsdStr: '0',
     minimumSpendUsdStr: '0',
-    voteExponent: 1.1,
+    voteExponent: 0.1,
     pctBurned: 50,
     reviewDuration: 0,
     votingDuration: 0,

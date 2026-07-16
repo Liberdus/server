@@ -39,7 +39,7 @@ const SCENARIOS: Scenario[] = [
     votingDuration: 90,
     emergency: false,
     minimumSpendLib: 1,
-    voteExponent: 1.1,
+    voteExponent: 0.1,
     spendLib: 200,
     weights: [1, 2, 1],
     castAtOffsetFromVotingStart: 10, // well within first half (halfDuration = 45s)
@@ -51,7 +51,7 @@ const SCENARIOS: Scenario[] = [
     votingDuration: 90,
     emergency: false,
     minimumSpendLib: 1,
-    voteExponent: 1.1,
+    voteExponent: 0.1,
     spendLib: 200,
     weights: [1, 2, 1],
     castAtOffsetFromVotingStart: 45, // == halfDuration
@@ -63,7 +63,7 @@ const SCENARIOS: Scenario[] = [
     votingDuration: 90,
     emergency: false,
     minimumSpendLib: 1,
-    voteExponent: 1.1,
+    voteExponent: 0.1,
     spendLib: 200,
     weights: [1, 2, 1],
     castAtOffsetFromVotingStart: 67, // 45 + 22.5 -> ~half of the second half elapsed
@@ -75,7 +75,7 @@ const SCENARIOS: Scenario[] = [
     votingDuration: 90,
     emergency: false,
     minimumSpendLib: 1,
-    voteExponent: 1.1,
+    voteExponent: 0.1,
     spendLib: 200,
     weights: [1, 2, 1],
     castAtOffsetFromVotingStart: 90, // == votingDuration -> at votingEnd
@@ -87,7 +87,7 @@ const SCENARIOS: Scenario[] = [
     votingDuration: 90,
     emergency: false,
     minimumSpendLib: 1,
-    voteExponent: 1.1,
+    voteExponent: 0.1,
     spendLib: 1000,
     weights: [1, 1],
     castAtOffsetFromVotingStart: 0,
@@ -99,7 +99,7 @@ const SCENARIOS: Scenario[] = [
     votingDuration: 90,
     emergency: false,
     minimumSpendLib: 1,
-    voteExponent: 1.1,
+    voteExponent: 0.1,
     spendLib: 200,
     weights: [1, 0, 0],
     castAtOffsetFromVotingStart: 0,
