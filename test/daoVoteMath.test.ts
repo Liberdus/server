@@ -52,7 +52,7 @@ describe('getTimeMultiplier', () => {
 
 describe('calculateVoteWeightDetails', () => {
   const minimumSpendWei = 1n * LIB      // 1 LIB minimum
-  const voteExponent = 1.1
+  const voteExponent = 0.1
   const timeMultiplier = new DaoDecimal(1) // full weight (first half)
 
   test('spend equal to minimum gives spendBoost of 1', () => {
@@ -66,7 +66,7 @@ describe('calculateVoteWeightDetails', () => {
     expect(spendBoost.toNumber()).toBeCloseTo(1)
   })
 
-  test('spend 10x minimum gives spendBoost of 10^1.1', () => {
+  test('spend 10x minimum gives spendBoost of 10^0.1', () => {
     const { spendBoost } = calculateVoteWeightDetails({
       spend: 10n * LIB,
       minimumSpendWei,
@@ -74,7 +74,7 @@ describe('calculateVoteWeightDetails', () => {
       weights: [1],
       timeMultiplier,
     })
-    expect(spendBoost.toNumber()).toBeCloseTo(Math.pow(10, 1.1))
+    expect(spendBoost.toNumber()).toBeCloseTo(Math.pow(10, 0.1))
   })
 
   test('spendInLIB converts wei to LIB correctly', () => {
@@ -108,7 +108,7 @@ describe('calculateVoteWeightDetails', () => {
 
 describe('calculateOptionWeights', () => {
   const minimumSpendWei = 1n * LIB
-  const voteExponent = 1.1
+  const voteExponent = 0.1
   const timeMultiplier = new DaoDecimal(1)
   const spend = 1n * LIB // exactly minimum → spendBoost = 1
 
@@ -158,7 +158,9 @@ describe('calculateOptionWeights', () => {
   test('higher spend produces proportionally higher weights', () => {
     const base   = calculateOptionWeights({ spend: 1n * LIB,  minimumSpendWei, voteExponent, weights: [1], timeMultiplier })
     const double = calculateOptionWeights({ spend: 2n * LIB,  minimumSpendWei, voteExponent, weights: [1], timeMultiplier })
-    // spendBoost = (2/1)^1.1 > 2, and spendInLIB doubles → weight more than doubles
+    // baseWeight = spendInLIB * spendBoost ∝ spend^(1 + voteExponent); doubling spend always
+    // more than doubles the weight as long as voteExponent > 0 (here (2/1)^0.1 ≈ 1.07, on top
+    // of spendInLIB itself doubling)
     expect(double[0]).toBeGreaterThan(base[0] * 2n)
   })
 })

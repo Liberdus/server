@@ -2123,7 +2123,7 @@ async function main(): Promise<void> {
   const minVoteSpendLib = usdStrToLibCeil(minimumSpendUsdStr, stabilityFactorStr)
   console.log(`Funding: ${TEST_ACCOUNT_FUND_LIB} LIB per account; min dao_vote spend≈${minVoteSpendLib} LIB`)
 
-  let sc1VoteExponentTarget = 1.2
+  let sc1VoteExponentTarget = 0.2
   let sc4PctBurnedTarget = 70
   let sc17VoteThresholdUsdTarget = '150.0'
   let sc17UnapplyThreshold = 3
@@ -2150,11 +2150,11 @@ async function main(): Promise<void> {
     name: 'Scenario 1 — Happy path (governance → accepted → applied → claimed)',
     setupSteps: [
     [
-      '1.2  dao_proposal_create (governance: voteExponent 1.1 → 1.2)',
+      '1.2  dao_proposal_create (governance: toggle voteExponent)',
       async () => {
         const daoParams = await getDaoParameters()
         const currentVoteExponent = Number(daoParams.voteExponent)
-        sc1VoteExponentTarget = currentVoteExponent === 1.2 ? 1.1 : 1.2
+        sc1VoteExponentTarget = currentVoteExponent === 0.2 ? 0.1 : 0.2
         const proposalFeeWei = usdStrToLibWei(daoParams.proposalFeeUsdStr, stabilityFactorStr)
         setProposalN('sc1', await createDaoProposal({
           proposer,
@@ -2976,7 +2976,7 @@ async function main(): Promise<void> {
           title: 'Weighted multi-option vote',
           description: 'Multi-option weighted vote test proposal',
           options: ['yes', 'no', 'abstain'],
-          changes: [{ key: 'voteExponent', value: '1.2', current: '1.5' }],
+          changes: [{ key: 'voteExponent', value: '0.3', current: '0.1' }],
           gracePeriodMs: graceDurationMs,
         }))
         saveCurrentRunState()

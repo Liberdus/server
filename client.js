@@ -2683,7 +2683,7 @@ vorpal.command('dao proposal create', 'create a new DAO governance/economic/prot
     {
       type: 'input',
       name: 'changesJson',
-      message: 'Enter parameter changes as JSON array (e.g. [{"key":"voteExponent","value":"1.2","current":"1.1"}]):',
+      message: 'Enter parameter changes as JSON array (e.g. [{"key":"voteExponent","value":"0.2","current":"0.1"}]):',
       default: '[]',
     },
     {
