@@ -2677,8 +2677,8 @@ vorpal.command('dao proposal create', 'create a new DAO governance/economic/prot
     {
       type: 'input',
       name: 'options',
-      message: 'Enter ballot options as comma-separated list (e.g. yes,no):',
-      default: 'yes,no',
+      message: 'Enter ballot options as comma-separated list (e.g. no,yes):',
+      default: 'no,yes',
     },
     {
       type: 'input',

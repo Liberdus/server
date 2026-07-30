@@ -6,6 +6,7 @@ import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
 import { getVotingEnd } from '../../accounts/daoProposalAccount'
+import { isWinningOptionAccepted } from '../../utils/daoBallotOptions'
 
 export const validate_fields = (tx: Tx.DaoVoteResult, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -87,8 +88,7 @@ export const apply = (
   }
 
   const winningOption = proposal.options[winnerIndex]
-  // Convention: index 0 is the affirmative option ('yes' or equivalent)
-  proposal.status = winnerIndex === 0 ? 'accepted' : 'rejected'
+  proposal.status = isWinningOptionAccepted(proposal.options, winnerIndex) ? 'accepted' : 'rejected'
   // Record the real time this ran, so claimEnd/applyEligibleAt reflect it.
   proposal.votingEndedAt = txTimestamp
 
