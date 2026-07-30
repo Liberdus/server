@@ -74,6 +74,7 @@ const daoPreCrackTxTypes = new Set([
   TXTypes.dao_unapply_parameters,
   TXTypes.dao_claim_reward,
   TXTypes.dao_burn_reward,
+  TXTypes.dao_cancel,
 ])
 
 let isReadyToJoinLatestValue = false
@@ -270,6 +271,12 @@ const shardusSetup = (): void => {
         // 3.6. Reject DAO transaction types when the DAO feature is not yet active
         if (!LiberdusFlags.enableNewDAOTransactions && daoPreCrackTxTypes.has(tx.type)) {
           validationResult.reason = 'New DAO transactions are not enabled on this network yet'
+          return validationResult
+        }
+
+        // 3.7. Reject dao_cancel specifically when its own kill-switch flag is off
+        if (tx.type === TXTypes.dao_cancel && !LiberdusFlags.enableDaoCancel) {
+          validationResult.reason = 'dao_cancel is not enabled on this network'
           return validationResult
         }
 

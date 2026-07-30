@@ -892,6 +892,18 @@ export const schemaDaoBurnRewardTX = {
   additionalProperties: false,
 }
 
+export const schemaDaoCancelTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId'],
+  additionalProperties: false,
+}
+
 export function initSchemas(): void {
   try {
     addSchemas()
@@ -970,6 +982,7 @@ function addSchemas(): void {
     [TXTypes.dao_unapply_parameters]: schemaDaoUnapplyParametersTX,
     [TXTypes.dao_claim_reward]: schemaDaoClaimRewardTX,
     [TXTypes.dao_burn_reward]: schemaDaoBurnRewardTX,
+    [TXTypes.dao_cancel]: schemaDaoCancelTX,
   }
   // Loop through TXTypes and register corresponding schemas
   Object.entries(txSchemaMap).forEach(([txType, schema]) => {

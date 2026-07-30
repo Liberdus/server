@@ -2973,6 +2973,37 @@ vorpal
   })
 
 // ---------------------------------------------------------------------------
+// dao cancel
+// ---------------------------------------------------------------------------
+vorpal
+  .command('dao cancel', 'cancel a proposal that is in voting or accepted status (committee only)')
+  .action(async function (args, callback) {
+    const answers = await this.prompt([
+      {
+        type: 'number',
+        name: 'proposalNumber',
+        message: 'Enter proposal number:',
+      },
+    ])
+
+    try {
+      const proposalId = daoProposalId(answers.proposalNumber)
+      const tx = {
+        type: 'dao_cancel',
+        from: USER.address,
+        proposalId,
+        timestamp: Date.now(),
+      }
+      signTransaction(tx)
+      const res = await injectTx(tx)
+      this.log(res)
+    } catch (err) {
+      this.log('Error:', err.message)
+    }
+    callback()
+  })
+
+// ---------------------------------------------------------------------------
 // dao claim reward
 // ---------------------------------------------------------------------------
 vorpal.command('dao claim reward', 'claim your voter reward for a proposal').action(async function (args, callback) {
@@ -3033,7 +3064,7 @@ vorpal.command('dao burn reward', "burn the unclaimed voter reward for a proposa
 // ---------------------------------------------------------------------------
 // dao proposals  (query — fetches meta for count, then each proposal by number)
 // ---------------------------------------------------------------------------
-const VALID_DAO_STATUSES = ['review', 'withheld', 'voting', 'rejected', 'accepted', 'applied']
+const VALID_DAO_STATUSES = ['review', 'withheld', 'voting', 'rejected', 'accepted', 'applied', 'canceled']
 
 vorpal.command('dao proposals [status]', `list DAO proposals, optionally filtered by status (${VALID_DAO_STATUSES.join('/')})`).action(async function (args, callback) {
   if (args.status && !VALID_DAO_STATUSES.includes(args.status)) {
