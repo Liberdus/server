@@ -1379,7 +1379,7 @@ async function createDaoProposal(opts: ProposalCreateOptions): Promise<number> {
       emergency: opts.emergency ?? false,
       title: opts.title,
       description: opts.description,
-      options: opts.options ?? ['yes', 'no'],
+      options: opts.options ?? ['no', 'yes'],
       gracePeriod: opts.gracePeriodMs,
       [proposalPayloadKey(proposalType)]: { changes: opts.changes },
       timestamp: Date.now(),
@@ -2268,14 +2268,14 @@ async function main(): Promise<void> {
     ],
 
     [
-      '1.6  dao_vote x2 (voter1 + voter2, both vote option 0)',
+      '1.6  dao_vote x2 (voter1 + voter2, both vote option 1)',
       async () => {
-        // weights[i] maps 1:1 by index onto proposal.options[i] — [1, 0] puts the vote's
-        // entire weight on options[0] ('yes'), mirroring the old optionIndex: 0 behavior.
-        await castVote(proposalN.sc1, voter1, [1, 0], minVoteSpendLib, receipt => -(libToWei(minVoteSpendLib) + asBigInt(receipt.transactionFee ?? 0n)))
-        await castVote(proposalN.sc1, voter2, [1, 0], minVoteSpendLib)
+        // weights[i] maps 1:1 by index onto proposal.options[i] — [0, 1] puts the vote's
+        // entire weight on options[1] ('yes') for negative-first DAO ballots.
+        await castVote(proposalN.sc1, voter1, [0, 1], minVoteSpendLib, receipt => -(libToWei(minVoteSpendLib) + asBigInt(receipt.transactionFee ?? 0n)))
+        await castVote(proposalN.sc1, voter2, [0, 1], minVoteSpendLib)
         const proposal = await getProposal(proposalN.sc1)
-        assert(asBigInt(proposal.totalVote[0]) > 0n, 'Expected totalVote[0] > 0 after votes')
+        assert(asBigInt(proposal.totalVote[1]) > 0n, 'Expected totalVote[1] > 0 after votes')
         assert(asBigInt(proposal.voterRewardPool) > 0n, 'Expected voterRewardPool > 0 after vote spend')
       },
     ],
@@ -2584,7 +2584,7 @@ async function main(): Promise<void> {
       },
     ],
     [
-      '3.5  Sleep past votingEnd then dao_vote_result accepts zero-vote proposal via option 0',
+      '3.5  Sleep past votingEnd then dao_vote_result rejects zero-vote proposal via option 0',
       async () => {
         const proposalBefore = await getProposal(proposalN.sc3)
         await sleepUntilTimestamp(proposalBefore.votingEnd, 'votingEnd', SLEEP_BUFFER_MS)
@@ -2599,7 +2599,7 @@ async function main(): Promise<void> {
           proposer,
         )
         const proposal = await getProposal(proposalN.sc3)
-        assert(proposal.status === 'accepted', `Expected zero-vote proposal to be accepted by option 0 tie-break, got ${proposal.status}`)
+        assert(proposal.status === 'rejected', `Expected zero-vote proposal to be rejected by option 0 tie-break, got ${proposal.status}`)
         assert(receipt.additionalInfo?.winningOption === proposal.options[0], `Expected zero-vote tie to pick option 0, got ${JSON.stringify(receipt.additionalInfo)}`)
         assert(proposal.totalVote.every(vote => asBigInt(vote) === 0n), `Expected every totalVote entry to stay zero, got ${proposal.totalVote}`)
       },
@@ -2628,7 +2628,7 @@ async function main(): Promise<void> {
             emergency: true,
             title: 'Unauthorized emergency proposal',
             description: 'Emergency proposal from non-committee — must be rejected',
-            options: ['yes', 'no'],
+            options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             governance: {
               changes: [{ key: 'pctBurned', value: '70', current: '50' }],
@@ -2881,8 +2881,8 @@ async function main(): Promise<void> {
     [
       '6.3  Community votes no → dao_vote_result rejects and burns reward pool',
       async () => {
-        await castVote(proposalN.sc6, voter9, [0, 1], minVoteSpendLib)
-        await castVote(proposalN.sc6, voter10, [0, 1], minVoteSpendLib)
+        await castVote(proposalN.sc6, voter9, [1, 0], minVoteSpendLib)
+        await castVote(proposalN.sc6, voter10, [1, 0], minVoteSpendLib)
         const beforeResult = await getProposal(proposalN.sc6)
         const poolBeforeBurn = asBigInt(beforeResult.voterRewardPool)
         const { receipt } = await finalizeVote(proposalN.sc6, proposer4, SLEEP_BUFFER_MS)
@@ -2975,7 +2975,7 @@ async function main(): Promise<void> {
           proposer: proposer5,
           title: 'Weighted multi-option vote',
           description: 'Multi-option weighted vote test proposal',
-          options: ['yes', 'no', 'abstain'],
+          options: ['no', 'yes', 'abstain'],
           changes: [{ key: 'voteExponent', value: '0.3', current: '0.1' }],
           gracePeriodMs: graceDurationMs,
         }))
@@ -3068,7 +3068,7 @@ async function main(): Promise<void> {
             emergency: false,
             title: 'Invalid governance namespace',
             description: 'Invalid governance namespace test',
-            options: ['yes', 'no'],
+            options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             governance: { changes: [{ key: 'nodeRewardAmountUsdStr', value: '1.5', current: '1.0' }] },
             timestamp: Date.now(),
@@ -3092,7 +3092,7 @@ async function main(): Promise<void> {
             emergency: false,
             title: 'Invalid protocol namespace',
             description: 'Invalid protocol namespace test',
-            options: ['yes', 'no'],
+            options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             protocol: { changes: [{ key: 'nodeRewardAmountUsdStr', value: '1.5', current: '1.25' }] },
             timestamp: Date.now(),
@@ -3169,7 +3169,7 @@ async function main(): Promise<void> {
       '8.4  Economic proposal applies via apply_change_network_param',
       async () => {
         await committeeAcceptToVoting(proposalN.sc8Economic, proposer6, committee, SLEEP_BUFFER_MS, [1, 2, 3])
-        await castVote(proposalN.sc8Economic, voter7, [1, 0], minVoteSpendLib)
+        await castVote(proposalN.sc8Economic, voter7, [0, 1], minVoteSpendLib)
         await finalizeVote(proposalN.sc8Economic, proposer6, SLEEP_BUFFER_MS)
         await applyAcceptedProposal(proposalN.sc8Economic, proposer6, SLEEP_BUFFER_MS, committee, cycleDurationMs, async receipt => {
           await waitForNetworkParameter(['current', 'nodeRewardAmountUsdStr'], sc8NodeRewardTarget, applyParamsPollMs)
@@ -3186,7 +3186,7 @@ async function main(): Promise<void> {
       '8.5  Protocol section-object proposal applies via apply_change_config',
       async () => {
         await committeeAcceptToVoting(proposalN.sc8Protocol, proposer7, committee, SLEEP_BUFFER_MS, [0, 2, 4])
-        await castVote(proposalN.sc8Protocol, voter8, [1, 0], minVoteSpendLib)
+        await castVote(proposalN.sc8Protocol, voter8, [0, 1], minVoteSpendLib)
         await finalizeVote(proposalN.sc8Protocol, proposer7, SLEEP_BUFFER_MS)
         await applyAcceptedProposal(proposalN.sc8Protocol, proposer7, SLEEP_BUFFER_MS, committee, cycleDurationMs, async receipt => {
           await waitForListOfChangesFromReceipt(
@@ -3202,7 +3202,7 @@ async function main(): Promise<void> {
       '8.6  Protocol proposal with leaf keys: sibling merge under p2p + nested debug leaf',
       async () => {
         await committeeAcceptToVoting(proposalN.sc8LeafKey, proposer6, committee, SLEEP_BUFFER_MS, [0, 1, 2])
-        await castVote(proposalN.sc8LeafKey, voter7, [1, 0], minVoteSpendLib)
+        await castVote(proposalN.sc8LeafKey, voter7, [0, 1], minVoteSpendLib)
         await finalizeVote(proposalN.sc8LeafKey, proposer6, SLEEP_BUFFER_MS)
         await applyAcceptedProposal(proposalN.sc8LeafKey, proposer6, SLEEP_BUFFER_MS, committee, cycleDurationMs, async receipt => {
           const receiptChange = (receipt.additionalInfo?.change ?? {}) as any
@@ -3235,7 +3235,7 @@ async function main(): Promise<void> {
             emergency: false,
             title: 'Overlapping protocol paths',
             description: 'Overlapping resolved-path test: debug section + debug.countEndpointStart leaf',
-            options: ['yes', 'no'],
+            options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             protocol: {
               changes: [
@@ -3262,7 +3262,7 @@ async function main(): Promise<void> {
         const expectedMinVersion = sc8ArchiverMinVersionBefore || String(archiverBeforeApply?.minVersion)
         const expectedTopLevelActiveVersion = sc8TopLevelActiveVersionBefore || String(await getCurrentNetworkValue('activeVersion'))
         await committeeAcceptToVoting(proposalN.sc8Archiver, proposer7, committee, SLEEP_BUFFER_MS, [0, 1, 2])
-        await castVote(proposalN.sc8Archiver, voter8, [1, 0], minVoteSpendLib)
+        await castVote(proposalN.sc8Archiver, voter8, [0, 1], minVoteSpendLib)
         await finalizeVote(proposalN.sc8Archiver, proposer7, SLEEP_BUFFER_MS)
         await applyAcceptedProposal(proposalN.sc8Archiver, proposer7, SLEEP_BUFFER_MS, committee, cycleDurationMs, async receipt => {
           const receiptChange = (receipt.additionalInfo?.change ?? {}) as any
@@ -3314,7 +3314,7 @@ async function main(): Promise<void> {
             emergency: false,
             title: 'Past start time',
             description: 'Past startTime rejection test',
-            options: ['yes', 'no'],
+            options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             governance: { changes: [{ key: 'pctBurned', value: '52', current: '50' }] },
             startTime: timestamp - 1,
@@ -3565,14 +3565,14 @@ async function main(): Promise<void> {
     [
       '12.3 Early/min, early/high, and late/min votes show expected relative weights',
       async () => {
-        const earlyMin = await castVote(proposalN.sc12, voter9, [1, 0], minVoteSpendLib)
-        const earlyHigh = await castVote(proposalN.sc12, voter10, [1, 0], minVoteSpendLib * 3)
+        const earlyMin = await castVote(proposalN.sc12, voter9, [0, 1], minVoteSpendLib)
+        const earlyHigh = await castVote(proposalN.sc12, voter10, [0, 1], minVoteSpendLib * 3)
         const proposalBeforeLate = await getProposal(proposalN.sc12)
         await sleepUntilTimestamp(proposalBeforeLate.votingStart + Math.floor(proposalBeforeLate.votingDuration * 0.75), 'late second-half vote point', SLEEP_BUFFER_MS)
-        const lateMin = await castVote(proposalN.sc12, voter11, [1, 0], minVoteSpendLib)
-        const earlyMinWeight = asBigInt(earlyMin.receipt.additionalInfo.optionWeights[0])
-        const earlyHighWeight = asBigInt(earlyHigh.receipt.additionalInfo.optionWeights[0])
-        const lateMinWeight = asBigInt(lateMin.receipt.additionalInfo.optionWeights[0])
+        const lateMin = await castVote(proposalN.sc12, voter11, [0, 1], minVoteSpendLib)
+        const earlyMinWeight = asBigInt(earlyMin.receipt.additionalInfo.optionWeights[1])
+        const earlyHighWeight = asBigInt(earlyHigh.receipt.additionalInfo.optionWeights[1])
+        const lateMinWeight = asBigInt(lateMin.receipt.additionalInfo.optionWeights[1])
         assert(lateMinWeight < earlyMinWeight, `Expected late min vote ${lateMinWeight} < early min vote ${earlyMinWeight}`)
         assert(earlyHighWeight > earlyMinWeight * 3n, `Expected spend boost to be disproportionate: high=${earlyHighWeight}, min=${earlyMinWeight}`)
       },
@@ -3624,7 +3624,7 @@ async function main(): Promise<void> {
             emergency: false,
             title: 'Too many options',
             description: 'Too many options rejection',
-            options: ['yes', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+            options: ['no', 'yes', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
             gracePeriod: graceDurationMs,
             governance: { changes: [{ key: 'pctBurned', value: '59', current: '50' }] },
             timestamp: Date.now(),
@@ -3673,7 +3673,7 @@ async function main(): Promise<void> {
     [
       '13.5 Accepted proposal still rejects apply before grace period',
       async () => {
-        await castVote(proposalN.sc13, voter11, [1, 0], minVoteSpendLib)
+        await castVote(proposalN.sc13, voter11, [0, 1], minVoteSpendLib)
         await finalizeVote(proposalN.sc13, proposer10, SLEEP_BUFFER_MS)
         const matchesRejectedChange = (change: any) => String(change?.appData?.dao?.pctBurned) === '58'
         const matchingChangesBefore = (await getProposalListOfChanges()).filter(matchesRejectedChange).length
@@ -3890,19 +3890,37 @@ async function main(): Promise<void> {
         await fundAccount(lowBalanceAccount, 1)
         const cases = [
           {
-            title: 'Invalid affirmative option',
-            description: 'Invalid affirmative option test',
+            title: 'Invalid affirmative-first options',
+            description: 'Invalid affirmative-first options test',
             account: proposer3,
-            options: ['no', 'yes'],
+            options: ['yes', 'no'],
             gracePeriod: graceDurationMs,
             changes: [{ key: 'pctBurned', value: '63', current: '50' }],
             reason: 'options[0]',
           },
           {
+            title: 'Invalid first option',
+            description: 'Invalid non-negative first option test',
+            account: proposer3,
+            options: ['maybe', 'yes'],
+            gracePeriod: graceDurationMs,
+            changes: [{ key: 'pctBurned', value: '63', current: '50' }],
+            reason: 'options[0]',
+          },
+          {
+            title: 'Invalid second option',
+            description: 'Invalid non-affirmative second option test',
+            account: proposer3,
+            options: ['no', 'abstain'],
+            gracePeriod: graceDurationMs,
+            changes: [{ key: 'pctBurned', value: '63', current: '50' }],
+            reason: 'options[1]',
+          },
+          {
             title: '   ',
             description: 'Whitespace-only title test',
             account: proposer3,
-            options: ['yes', 'no'],
+            options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             changes: [{ key: 'pctBurned', value: '63', current: '50' }],
             reason: 'title',
@@ -3911,7 +3929,7 @@ async function main(): Promise<void> {
             title: 'x'.repeat(101),
             description: 'Excessive title length test',
             account: proposer3,
-            options: ['yes', 'no'],
+            options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             changes: [{ key: 'pctBurned', value: '63', current: '50' }],
             reason: 'title',
@@ -3920,7 +3938,7 @@ async function main(): Promise<void> {
             title: 'Duplicate parameter change',
             description: 'Duplicate changes key test',
             account: proposer3,
-            options: ['yes', 'no'],
+            options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             changes: [{ key: 'pctBurned', value: '63', current: '50' }, { key: 'pctBurned', value: '64', current: '50' }],
             reason: 'duplicate "pctBurned"',
@@ -3929,7 +3947,7 @@ async function main(): Promise<void> {
             title: 'Excessive grace period',
             description: 'Excessive grace period test',
             account: proposer3,
-            options: ['yes', 'no'],
+            options: ['no', 'yes'],
             gracePeriod: graceDurationMs + 1,
             changes: [{ key: 'pctBurned', value: '63', current: '50' }],
             reason: 'exceeds the maximum',
@@ -3938,7 +3956,7 @@ async function main(): Promise<void> {
             title: 'Insufficient proposal balance',
             description: 'Insufficient proposal fee balance test',
             account: lowBalanceAccount,
-            options: ['yes', 'no'],
+            options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             changes: [{ key: 'pctBurned', value: '63', current: '50' }],
             reason: 'Insufficient balance',
@@ -3980,7 +3998,7 @@ async function main(): Promise<void> {
         }))
         saveCurrentRunState()
         await committeeAcceptToVoting(proposalN.sc15B, proposer3, committee, SLEEP_BUFFER_MS, [0, 2, 4])
-        await castVote(proposalN.sc15B, voter13, [1, 0], minVoteSpendLib)
+        await castVote(proposalN.sc15B, voter13, [0, 1], minVoteSpendLib)
         await finalizeVote(proposalN.sc15B, proposer3, SLEEP_BUFFER_MS)
         await injectExpectReject(
           {
@@ -4029,7 +4047,7 @@ async function main(): Promise<void> {
             emergency: false,
             title: 'Invalid committee addresses',
             description: 'Invalid committeeAddresses validation proposal',
-            options: ['yes', 'no'],
+            options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             governance: {
               changes: [{ key: 'committeeAddresses', value: JSON.stringify(invalidCommitteeAddresses), current: JSON.stringify(daoParams.committeeAddresses) }],
@@ -4373,7 +4391,7 @@ async function main(): Promise<void> {
     [
       '18.3 Late dao_vote_result still gets the full claimDuration/gracePeriod',
       async () => {
-        await castVote(proposalN.sc18LateTransition, voter15, [1, 0], minVoteSpendLib)
+        await castVote(proposalN.sc18LateTransition, voter15, [0, 1], minVoteSpendLib)
         // Re-fetch rather than reuse a variable from 18.2 — this step must also work standalone
         // (e.g. `--step 18.3` against an already-progressed network), and votingEnd is stable
         // once dao_committee_result has run, so re-deriving it here is equivalent.

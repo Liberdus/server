@@ -9,10 +9,7 @@ import * as AccountsStorage from '../../storage/accountStorage'
 import { isUserAccount, isDaoProposalsMeta, isDaoProposalAccount } from '../../@types/accountTypeGuards'
 import { DAO_PROPOSALS_META_ID_STRING } from '../../accounts/daoProposalsMetaAccount'
 import { validateChangesPayload } from '../../utils/daoParamValidation'
-
-// options[0] must be an affirmative string — dao_vote_result treats winnerIndex === 0 as "accepted".
-// Without this guard, inverted options (e.g. ['no', 'yes']) would silently flip the vote outcome.
-export const AFFIRMATIVE_OPTION_STRINGS = ['yes', 'accept', 'approve']
+import { validateDaoOptions } from '../../utils/daoBallotOptions'
 
 export const validate_fields = (
   tx: Tx.DaoProposalCreate,
@@ -51,20 +48,9 @@ export const validate_fields = (
     response.reason = 'tx "description" must be a non-empty string of at most 10000 characters'
     return response
   }
-  if (!Array.isArray(tx.options) || tx.options.length < 2 || tx.options.length > 10) {
-    response.reason = 'tx "options" must be an array with 2 to 10 entries'
-    return response
-  }
-  for (const opt of tx.options) {
-    if (typeof opt !== 'string' || opt.trim().length === 0) {
-      response.reason = 'each entry in tx "options" must be a non-empty string'
-      return response
-    }
-  }
-  if (!AFFIRMATIVE_OPTION_STRINGS.includes(tx.options[0].trim().toLowerCase())) {
-    response.reason = `tx "options[0]" must be a recognized affirmative choice (one of: ${AFFIRMATIVE_OPTION_STRINGS.join(
-      ', ',
-    )}) — dao_vote_result treats option index 0 as the "accept this change" outcome`
+  const optionsError = validateDaoOptions(tx.options)
+  if (optionsError) {
+    response.reason = optionsError
     return response
   }
   if (tx.startTime !== undefined && (typeof tx.startTime !== 'number' || tx.startTime < 0 || !Number.isFinite(tx.startTime))) {
