@@ -1,15 +1,15 @@
 import * as crypto from '../../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
-import * as config from '../../config'
 import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } from '../../@types'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
-import { getClaimEnd, getVotingStart } from '../../accounts/daoProposalAccount'
-import { computeClaimReward } from '../../utils/daoClaimRewardMath'
 
-export const validate_fields = (tx: Tx.DaoClaimReward, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
+export const validate_fields = (
+  tx: Tx.DaoCancel,
+  response: ShardusTypes.IncomingTransactionResult,
+): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address'
     return response
@@ -31,7 +31,7 @@ export const validate_fields = (tx: Tx.DaoClaimReward, response: ShardusTypes.In
 }
 
 export const validate = (
-  tx: Tx.DaoClaimReward,
+  tx: Tx.DaoCancel,
   wrappedStates: WrappedStates,
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
@@ -47,34 +47,12 @@ export const validate = (
     response.reason = 'Proposal account not found or is not a DaoProposalAccount'
     return response
   }
-  if (proposal.status !== 'accepted' && proposal.status !== 'applied' && proposal.status !== 'rejected' && proposal.status !== 'canceled') {
-    response.reason = `Proposal voting has not been finalised (current status: ${proposal.status})`
+  if (proposal.status !== 'voting' && proposal.status !== 'accepted') {
+    response.reason = `Proposal is not in voting or accepted status (current: ${proposal.status})`
     return response
   }
-  if (tx.timestamp > getClaimEnd(proposal)) {
-    response.reason = 'Claim period has ended'
-    return response
-  }
-
-  const voterEntry = proposal.voterList.find((v) => v.address === tx.from)
-  if (!voterEntry) {
-    response.reason = 'tx sender did not vote on this proposal'
-    return response
-  }
-  if (proposal.claimList.includes(tx.from)) {
-    response.reason = 'tx sender has already claimed their reward for this proposal'
-    return response
-  }
-  if (proposal.voterList.length === 0) {
-    response.reason = 'No voters eligible for reward on this proposal'
-    return response
-  }
-  if (proposal.voterRewardPool === 0n) {
-    response.reason = 'Reward pool is empty'
-    return response
-  }
-  if (proposal.claimedReward >= proposal.voterRewardPool) {
-    response.reason = 'Reward pool has been fully claimed'
+  if (!proposal.committeeAddresses.includes(tx.from)) {
+    response.reason = 'Only a committee member can submit dao_cancel'
     return response
   }
 
@@ -90,7 +68,7 @@ export const validate = (
 }
 
 export const apply = (
-  tx: Tx.DaoClaimReward,
+  tx: Tx.DaoCancel,
   txTimestamp: number,
   txId: string,
   wrappedStates: WrappedStates,
@@ -99,37 +77,24 @@ export const apply = (
 ): void => {
   const from = wrappedStates[tx.from].data as UserAccount
   const proposal = wrappedStates[tx.proposalId].data as DaoProposalAccount
-
-  const voterIndex = proposal.voterList.findIndex((v) => v.address === tx.from)
-  const voterEntry = proposal.voterList[voterIndex]
-
-  // Time delta: gap between this voter's vote and the previous voter (or voting start if first)
-  const previousTimestamp = voterIndex === 0 ? getVotingStart(proposal) : proposal.voterList[voterIndex - 1].timestamp
-  let timeDelta = BigInt(voterEntry.timestamp - previousTimestamp)
-  // Clamp to zero: out-of-order landing (rare) should not produce a negative timeDelta
-  // and silently distort the computed reward.
-  if (timeDelta < 0n) {
-    timeDelta = 0n
-  }
-
-  const votingDuration = BigInt(proposal.votingDuration)
-  const voterCount = BigInt(proposal.voterList.length)
-
-  let reward = computeClaimReward(proposal.voterRewardPool, timeDelta, votingDuration, voterCount)
-
-  // Cap at remaining unclaimed pool to prevent rounding over-distribution
-  const remainingPool = SafeBigIntMath.subtract(proposal.voterRewardPool, proposal.claimedReward)
-  if (reward > remainingPool) {
-    reward = remainingPool
-  }
-
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
 
-  // Credit reward, deduct tx fee, and accumulate the claimed total
-  from.data.balance = (from.data.balance ?? 0n) + reward
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
-  proposal.claimedReward = proposal.claimedReward + reward
-  proposal.claimList.push(tx.from)
+
+  let burnAmount = 0n
+  if (proposal.status === 'voting') {
+    // Canceling from 'voting' skips dao_vote_result entirely, so replicate the two things it
+    // would otherwise have done — without this, a canceled-while-voting proposal would keep its
+    // full, un-burned pool and claimEnd/applyEligibleAt would fall back to the nominal (pre-cancel)
+    // votingEnd instead of anchoring to when it was actually decided.
+    proposal.votingEndedAt = txTimestamp
+    burnAmount = (proposal.voterRewardPool * BigInt(Math.round(proposal.pctBurned))) / 100n
+    proposal.voterRewardPool = proposal.voterRewardPool - burnAmount
+    proposal.initialBurnedReward = SafeBigIntMath.add(proposal.initialBurnedReward, burnAmount)
+  }
+  // Canceling from 'accepted' needs none of the above — dao_vote_result already set
+  // votingEndedAt and ran this exact burn on the way to 'accepted'.
+  proposal.status = 'canceled'
 
   from.timestamp = txTimestamp
   proposal.timestamp = txTimestamp
@@ -142,15 +107,19 @@ export const apply = (
     to: tx.proposalId,
     type: tx.type,
     transactionFee: txFeeWei,
-    additionalInfo: { reward },
+    additionalInfo: {
+      proposalStatus: proposal.status,
+      burnAmount,
+      voterRewardPool: proposal.voterRewardPool,
+    },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
-  dapp.log('Applied dao_claim_reward tx', tx.from, tx.proposalId, reward.toString())
+  dapp.log('Applied dao_cancel tx', tx.from, tx.proposalId, proposal.status)
 }
 
 export const createFailedAppReceiptData = (
-  tx: Tx.DaoClaimReward,
+  tx: Tx.DaoCancel,
   txTimestamp: number,
   txId: string,
   wrappedStates: WrappedStates,
@@ -186,14 +155,14 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.DaoClaimReward, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
+export const keys = (tx: Tx.DaoCancel, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [tx.proposalId]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.DaoClaimReward, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.DaoCancel, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
     rw: [tx.from, tx.proposalId],
     wo: [],
@@ -207,11 +176,11 @@ export const createRelevantAccount = (
   dapp: Shardus,
   account: UserAccount | DaoProposalAccount,
   accountId: string,
-  tx: Tx.DaoClaimReward,
+  tx: Tx.DaoCancel,
   accountCreated = false,
 ): ShardusTypes.WrappedResponse => {
   if (!account) {
-    throw new Error(`dao_claim_reward.createRelevantAccount: account ${accountId} does not exist`)
+    throw new Error(`dao_cancel.createRelevantAccount: account ${accountId} does not exist`)
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }

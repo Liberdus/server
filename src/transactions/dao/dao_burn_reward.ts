@@ -49,7 +49,7 @@ export const validate = (
     response.reason = 'Proposal is withheld; the reward pool was already burned'
     return response
   }
-  if (proposal.status !== 'accepted' && proposal.status !== 'applied' && proposal.status !== 'rejected') {
+  if (proposal.status !== 'accepted' && proposal.status !== 'applied' && proposal.status !== 'rejected' && proposal.status !== 'canceled') {
     response.reason = `Proposal voting has not been finalised (current status: ${proposal.status})`
     return response
   }

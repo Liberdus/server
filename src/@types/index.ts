@@ -85,6 +85,7 @@ export enum AJVSchemaEnum {
   dao_unapply_parameters = 'dao_unapply_parameters',
   dao_claim_reward = 'dao_claim_reward',
   dao_burn_reward = 'dao_burn_reward',
+  dao_cancel = 'dao_cancel',
 }
 
 export enum TXTypes {
@@ -152,6 +153,7 @@ export enum TXTypes {
   dao_unapply_parameters = 'dao_unapply_parameters',
   dao_claim_reward = 'dao_claim_reward',
   dao_burn_reward = 'dao_burn_reward',
+  dao_cancel = 'dao_cancel',
 }
 
 export interface BaseLiberdusTx {
@@ -573,6 +575,11 @@ export namespace Tx {
     from: string
     proposalId: string
   }
+
+  export interface DaoCancel extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+  }
 }
 
 export interface Signature {
@@ -787,7 +794,7 @@ export interface DevAccount {
 }
 
 // New DAO account types (Phase 1: governance/economic/protocol proposals)
-export type DaoProposalStatus = 'review' | 'withheld' | 'voting' | 'rejected' | 'accepted' | 'applied'
+export type DaoProposalStatus = 'review' | 'withheld' | 'voting' | 'rejected' | 'accepted' | 'applied' | 'canceled'
 export type DaoProposalType = 'governance' | 'economic' | 'protocol'
 
 export interface DaoGovernanceData {
