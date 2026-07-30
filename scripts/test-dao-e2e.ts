@@ -93,7 +93,7 @@ function parseCommaList(value: string, label: string): string[] {
 }
 
 /** Bumped whenever a new scenario is added — keeps --scenario and --step validation in sync. */
-const MAX_SCENARIO_NUMBER = 18
+const MAX_SCENARIO_NUMBER = 19
 
 function parseScenarioFilter(value: string | null): Set<number> | null {
   if (value == null) return null
@@ -839,7 +839,7 @@ function parseBiString(s: string): bigint {
 function asBigInt(value: bigint | string | number | { dataType?: string; value?: string }): bigint {
   if (typeof value === 'bigint') return value
   if (value != null && typeof value === 'object' && (value as any).dataType === 'bi' && (value as any).value != null) {
-    return parseBiString(String((value as any).value))
+    return BigInt('0x' + String((value as any).value).replace(/^0x/i, ''))
   }
   if (typeof value === 'string') return parseBiString(value)
   return BigInt(value as number)
@@ -2039,6 +2039,9 @@ async function main(): Promise<void> {
     sc16EmergencyTimeout: getProposalN('sc16EmergencyTimeout'),
     sc17EmergencyRecovery: getProposalN('sc17EmergencyRecovery'),
     sc18LateTransition: getProposalN('sc18LateTransition'),
+    sc19CancelVoting: getProposalN('sc19CancelVoting'),
+    sc19CancelAccepted: getProposalN('sc19CancelAccepted'),
+    sc19CancelApplied: getProposalN('sc19CancelApplied'),
   }
   // Register scenario labels for proposals restored from saved state (--no-start/--step reruns),
   // not just freshly-created ones (those go through setProposalN below).
@@ -2131,6 +2134,7 @@ async function main(): Promise<void> {
   let sc8ArchiverActiveVersionTarget = '3.7.10'
   let sc8TopLevelActiveVersionBefore = ''
   let sc8ArchiverMinVersionBefore = ''
+  let sc19PctBurnedTarget = 66
 
   if (shouldFundAccounts) {
     await step('0.1  Fund all DAO E2E accounts', async () => {
@@ -4424,9 +4428,268 @@ async function main(): Promise<void> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Scenario 19 — dao_cancel: committee can cancel from 'voting' or 'accepted'
+  // ─────────────────────────────────────────────────────────────────────────
+  const sc19: ScenarioDef = {
+    num: 19,
+    name: 'Scenario 19 — dao_cancel cancels voting/accepted proposals, rejects elsewhere',
+    setupSteps: [
+    [
+      '19.1a Create sc19CancelVoting (regular, will be canceled from voting)',
+      async () => {
+        setProposalN('sc19CancelVoting', await createDaoProposal({
+          proposer: proposer8,
+          title: 'dao_cancel — canceled while voting',
+          description: 'Regular proposal advanced to voting then canceled by the committee',
+          changes: [{ key: 'pctBurned', value: '67', current: '50' }],
+          gracePeriodMs: graceDurationMs,
+        }))
+        saveCurrentRunState()
+      },
+    ],
+    [
+      '19.1b Create sc19CancelAccepted (regular, will be canceled from accepted)',
+      async () => {
+        setProposalN('sc19CancelAccepted', await createDaoProposal({
+          proposer: proposer9,
+          title: 'dao_cancel — canceled while accepted',
+          description: 'Regular proposal advanced to accepted then canceled by the committee',
+          changes: [{ key: 'pctBurned', value: '68', current: '50' }],
+          gracePeriodMs: graceDurationMs,
+        }))
+        saveCurrentRunState()
+      },
+    ],
+    [
+      '19.1c Create sc19CancelApplied (emergency, will reach applied then reject dao_cancel)',
+      async () => {
+        const daoParams = await getDaoParameters()
+        const currentPctBurned = Number(daoParams.pctBurned)
+        sc19PctBurnedTarget = currentPctBurned === 66 ? 69 : 66
+        setProposalN('sc19CancelApplied', await createDaoProposal({
+          proposer: committee[1],
+          emergency: true,
+          title: 'dao_cancel — rejected once applied',
+          description: `Emergency proposal toggles pctBurned from ${currentPctBurned} to ${sc19PctBurnedTarget}, then dao_cancel must be rejected once applied`,
+          changes: [{ key: 'pctBurned', value: String(sc19PctBurnedTarget), current: String(currentPctBurned) }],
+          gracePeriodMs: graceDurationMs,
+        }))
+        saveCurrentRunState()
+      },
+    ],
+    ],
+    bodySteps: [
+    [
+      '19.2  dao_cancel rejected while sc19CancelVoting is still review',
+      async () => {
+        await injectExpectReject(
+          { type: 'dao_cancel', networkId: currentNetworkId, from: committee[3].address, proposalId: daoProposalId(proposalN.sc19CancelVoting), timestamp: Date.now() },
+          committee[3],
+          'voting or accepted',
+        )
+      },
+    ],
+    [
+      '19.3  Advance all three sc19 proposals through their committee phase together (shared review window)',
+      async () => {
+        // All three proposals are created ~seconds apart in setup, so their review windows nearly
+        // coincide. Casting every proposal's committee accept votes before any of them sleeps to
+        // reviewEnd (rather than fully driving one proposal through its whole downstream flow
+        // before ever touching the next) avoids the later proposals' own review windows silently
+        // expiring while an earlier proposal's longer flow is still running.
+        for (const i of [0, 1, 2]) {
+          await injectAndAssert(
+            { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[i].address, proposalId: daoProposalId(proposalN.sc19CancelVoting), vote: 'accept', timestamp: Date.now() },
+            committee[i],
+          )
+        }
+        for (const i of [1, 2, 3]) {
+          await injectAndAssert(
+            { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[i].address, proposalId: daoProposalId(proposalN.sc19CancelAccepted), vote: 'accept', timestamp: Date.now() },
+            committee[i],
+          )
+        }
+        // sc19CancelApplied is emergency: a decisive accept tally flips it straight to 'accepted'
+        // as soon as the 3rd vote lands, with no dao_committee_result step (and thus no need to
+        // wait for reviewEnd) — but the votes themselves still have to land before reviewEnd like
+        // any other committee vote, so they must be cast here too, not deferred to a later step.
+        for (const i of [1, 2, 3]) {
+          await injectAndAssert(
+            { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[i].address, proposalId: daoProposalId(proposalN.sc19CancelApplied), vote: 'accept', timestamp: Date.now() },
+            committee[i],
+          )
+        }
+        const appliedAfterVotes = await getProposal(proposalN.sc19CancelApplied)
+        assert(appliedAfterVotes.status === 'accepted', `Expected status 'accepted' for emergency, got '${appliedAfterVotes.status}'`)
+
+        // sc19CancelAccepted was created last among the two non-emergency proposals, so its
+        // reviewEnd is the later of the two — sleeping to it satisfies both review windows.
+        const acceptedBeforeResult = await getProposal(proposalN.sc19CancelAccepted)
+        await sleepUntilTimestamp(acceptedBeforeResult.reviewEnd, 'reviewEnd', SLEEP_BUFFER_MS)
+
+        await injectAndAssert(
+          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer8.address, proposalId: daoProposalId(proposalN.sc19CancelVoting), timestamp: Date.now() },
+          proposer8,
+        )
+        const voting = await getProposal(proposalN.sc19CancelVoting)
+        assert(voting.status === 'voting', `Expected status 'voting', got '${voting.status}'`)
+
+        await injectAndAssert(
+          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer9.address, proposalId: daoProposalId(proposalN.sc19CancelAccepted), timestamp: Date.now() },
+          proposer9,
+        )
+        const votingAccepted = await getProposal(proposalN.sc19CancelAccepted)
+        assert(votingAccepted.status === 'voting', `Expected status 'voting', got '${votingAccepted.status}'`)
+
+        await castVote(proposalN.sc19CancelVoting, voter13, [0, 1], minVoteSpendLib)
+      },
+    ],
+    [
+      '19.4a Finalize sc19CancelAccepted to accepted',
+      async () => {
+        await castVote(proposalN.sc19CancelAccepted, voter14, [0, 1], minVoteSpendLib)
+        await finalizeVote(proposalN.sc19CancelAccepted, proposer9, SLEEP_BUFFER_MS)
+        const proposal = await getProposal(proposalN.sc19CancelAccepted)
+        assert(proposal.status === 'accepted', `Expected status 'accepted', got '${proposal.status}'`)
+      },
+    ],
+    [
+      '19.4b dao_cancel rejected from a non-committee sender while sc19CancelVoting is voting',
+      async () => {
+        await injectExpectReject(
+          { type: 'dao_cancel', networkId: currentNetworkId, from: voter1.address, proposalId: daoProposalId(proposalN.sc19CancelVoting), timestamp: Date.now() },
+          voter1,
+          'committee member',
+        )
+      },
+    ],
+    [
+      '19.5  dao_cancel from committee cancels sc19CancelVoting (from voting) and replicates the vote_result burn',
+      async () => {
+        const proposalBefore = await getProposal(proposalN.sc19CancelVoting)
+        const poolBeforeCancel = asBigInt(proposalBefore.voterRewardPool)
+        const pctBurned = Number(proposalBefore.pctBurned)
+        const expectedBurn = (poolBeforeCancel * BigInt(Math.round(pctBurned))) / 100n
+
+        const { receipt } = await injectAndAssert(
+          { type: 'dao_cancel', networkId: currentNetworkId, from: committee[3].address, proposalId: daoProposalId(proposalN.sc19CancelVoting), timestamp: Date.now() },
+          committee[3],
+        )
+        assert(receipt.additionalInfo?.proposalStatus === 'canceled', `Expected receipt proposalStatus 'canceled', got ${JSON.stringify(receipt.additionalInfo)}`)
+        assert(asBigInt(receipt.additionalInfo.burnAmount) === expectedBurn, `Expected receipt burnAmount ${expectedBurn}, got ${receipt.additionalInfo.burnAmount}`)
+
+        const proposal = await getProposal(proposalN.sc19CancelVoting)
+        assert(proposal.status === 'canceled', `Expected status 'canceled', got '${proposal.status}'`)
+        assert(typeof proposal.votingEndedAt === 'number', `Expected votingEndedAt to be set on cancel-from-voting, got ${proposal.votingEndedAt}`)
+        assert(
+          asBigInt(proposal.voterRewardPool) === poolBeforeCancel - expectedBurn,
+          `Expected voterRewardPool ${poolBeforeCancel - expectedBurn} after cancel-from-voting burn, got ${proposal.voterRewardPool}`,
+        )
+      },
+    ],
+    [
+      '19.6  dao_claim_reward still works on the canceled sc19CancelVoting',
+      async () => {
+        // Claimed right after cancellation, before the (highly variable, cycle-dependent) apply
+        // flow for sc19CancelApplied below — sc19CancelVoting's own claimEnd is fixed relative to
+        // its cancel timestamp (19.5), not to how long unrelated later steps take to run.
+        const { receipt } = await injectAndAssert(
+          { type: 'dao_claim_reward', networkId: currentNetworkId, from: voter13.address, proposalId: daoProposalId(proposalN.sc19CancelVoting), timestamp: Date.now() },
+          voter13,
+        )
+        const reward = asBigInt(receipt.additionalInfo.reward)
+        assert(reward > 0n, 'Expected non-zero claim reward on canceled-from-voting proposal')
+        const proposal = await getProposal(proposalN.sc19CancelVoting)
+        assert(asBigInt(proposal.claimedReward) === reward, `Expected claimedReward to equal claim reward ${reward}, got ${proposal.claimedReward}`)
+      },
+    ],
+    [
+      '19.7  dao_cancel from committee cancels sc19CancelAccepted (from accepted), no additional burn',
+      async () => {
+        const { receipt } = await injectAndAssert(
+          { type: 'dao_cancel', networkId: currentNetworkId, from: committee[4].address, proposalId: daoProposalId(proposalN.sc19CancelAccepted), timestamp: Date.now() },
+          committee[4],
+        )
+        assert(receipt.additionalInfo?.proposalStatus === 'canceled', `Expected receipt proposalStatus 'canceled', got ${JSON.stringify(receipt.additionalInfo)}`)
+        assert(asBigInt(receipt.additionalInfo.burnAmount) === 0n, `Expected cancel-from-accepted to burn nothing itself, got ${receipt.additionalInfo.burnAmount}`)
+        const proposal = await getProposal(proposalN.sc19CancelAccepted)
+        assert(proposal.status === 'canceled', `Expected status 'canceled', got '${proposal.status}'`)
+      },
+    ],
+    [
+      '19.8  sc19CancelApplied (already accepted from 19.3): apply immediately (no grace period)',
+      async () => {
+        const accepted = await getProposal(proposalN.sc19CancelApplied)
+        assert(accepted.status === 'accepted', `Expected status 'accepted' for emergency, got '${accepted.status}'`)
+
+        await applyAcceptedProposal(proposalN.sc19CancelApplied, committee[1], SLEEP_BUFFER_MS, committee, cycleDurationMs, async receipt => {
+          await waitForNetworkParameter(['current', 'dao', 'pctBurned'], sc19PctBurnedTarget, applyParamsPollMs)
+          await waitForListOfChangesFromReceipt(
+            `appData.dao.pctBurned=${sc19PctBurnedTarget}`,
+            receipt,
+            c => String(c?.appData?.dao?.pctBurned) === String(sc19PctBurnedTarget),
+            applyParamsPollMs,
+          )
+        })
+        const proposal = await getProposal(proposalN.sc19CancelApplied)
+        assert(proposal.status === 'applied', `Expected status 'applied', got '${proposal.status}'`)
+      },
+    ],
+    [
+      '19.9  dao_cancel rejected against sc19CancelApplied (already applied)',
+      async () => {
+        await injectExpectReject(
+          { type: 'dao_cancel', networkId: currentNetworkId, from: committee[1].address, proposalId: daoProposalId(proposalN.sc19CancelApplied), timestamp: Date.now() },
+          committee[1],
+          'voting or accepted',
+        )
+      },
+    ],
+    [
+      '19.10 dao_burn_reward still works on the canceled sc19CancelAccepted after claimEnd',
+      async () => {
+        const proposalBefore = await getProposal(proposalN.sc19CancelAccepted)
+        await sleepUntilTimestamp(proposalBefore.claimEnd, 'claimEnd', SLEEP_BUFFER_MS)
+        const remainingBeforeBurn = asBigInt(proposalBefore.voterRewardPool) - asBigInt(proposalBefore.claimedReward)
+        const { receipt } = await injectAndAssert(
+          { type: 'dao_burn_reward', networkId: currentNetworkId, from: voter14.address, proposalId: daoProposalId(proposalN.sc19CancelAccepted), timestamp: Date.now() },
+          voter14,
+        )
+        assert(asBigInt(receipt.additionalInfo.burned) === remainingBeforeBurn, `Expected burned ${remainingBeforeBurn}, got ${receipt.additionalInfo.burned}`)
+        const proposal = await getProposal(proposalN.sc19CancelAccepted)
+        assert(asBigInt(proposal.voterRewardPool) === 0n, `Expected voterRewardPool === 0 after final burn, got ${proposal.voterRewardPool}`)
+      },
+    ],
+    [
+      '19.11 Sanity: dao_vote/dao_vote_result reject sc19CancelVoting, dao_apply_parameters rejects sc19CancelAccepted',
+      async () => {
+        await injectExpectReject(
+          { type: 'dao_vote', networkId: currentNetworkId, from: voter13.address, proposalId: daoProposalId(proposalN.sc19CancelVoting), weights: [0, 1], spend: libToWei(minVoteSpendLib), timestamp: Date.now() },
+          voter13,
+          'voting',
+        )
+        await injectExpectReject(
+          { type: 'dao_vote_result', networkId: currentNetworkId, from: committee[3].address, proposalId: daoProposalId(proposalN.sc19CancelVoting), timestamp: Date.now() },
+          committee[3],
+          'voting',
+        )
+        const matchesRejectedChange = (change: any) => String(change?.appData?.dao?.pctBurned) === '68'
+        await expectPreCrackRejectNoGlobalChange(
+          { type: 'dao_apply_parameters', networkId: currentNetworkId, from: committee[4].address, proposalId: daoProposalId(proposalN.sc19CancelAccepted), timestamp: Date.now() },
+          committee[4],
+          'accepted status',
+          proposalN.sc19CancelAccepted,
+          matchesRejectedChange,
+        )
+      },
+    ],
+    ],
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Run scenarios — sequential (default) or parallel (--parallel flag)
   // ─────────────────────────────────────────────────────────────────────────
-  const scenarios = [sc1, sc2, sc3, sc4, sc5, sc6, sc7, sc8, sc9, sc10, sc11, sc12, sc13, sc14, sc15, sc16, sc17, sc18]
+  const scenarios = [sc1, sc2, sc3, sc4, sc5, sc6, sc7, sc8, sc9, sc10, sc11, sc12, sc13, sc14, sc15, sc16, sc17, sc18, sc19]
   validateScenarioCatalog(scenarios)
   if (PARALLEL) {
     await runScenariosParallel(scenarios)
