@@ -2042,6 +2042,7 @@ async function main(): Promise<void> {
     sc19CancelVoting: getProposalN('sc19CancelVoting'),
     sc19CancelAccepted: getProposalN('sc19CancelAccepted'),
     sc19CancelApplied: getProposalN('sc19CancelApplied'),
+    sc19CancelReview: getProposalN('sc19CancelReview'),
   }
   // Register scenario labels for proposals restored from saved state (--no-start/--step reruns),
   // not just freshly-created ones (those go through setProposalN below).
@@ -2114,7 +2115,14 @@ async function main(): Promise<void> {
     await sleepUntilTimestamp(targetMs, `${label} (deliberately late)`, SLEEP_BUFFER_MS + LATE_TRANSITION_DELAY_MS)
     return injectAndAssert(buildTx(), actor)
   }
-  const futureStartDelayMs = PARALLEL ? 120_000 : reviewDurationMs + 60_000
+  // Scenario 9's future-startTime proposal is created during setup, but the assertion that depends
+  // on it (9.3 — "committee vote before startTime is rejected") only runs in the body phase. Every
+  // scenario's setupSteps run sequentially before *any* bodySteps, so this delay has to outlast the
+  // entire remaining setup phase: each proposal creation added anywhere after Scenario 9 costs
+  // ~8s of tx settle time out of this budget. At 15 creations after sc9 that measured ~121s, which
+  // is exactly how the old flat 120_000 started failing 9.3 by ~1s once Scenario 19 grew a fourth
+  // proposal. Keep generous headroom so adding a setup step doesn't silently break Scenario 9.
+  const futureStartDelayMs = PARALLEL ? 240_000 : reviewDurationMs + 60_000
   // In --parallel mode, multiple scenario bodies submit overlapping transactions onto the same
   // network concurrently, which measurably increases per-tx queue/confirmation latency (we saw a
   // decisive dao_committee_vote blow past the default 2-cycle budget and an expected-reject
@@ -4428,11 +4436,11 @@ async function main(): Promise<void> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Scenario 19 — dao_cancel: committee can cancel from 'voting' or 'accepted'
+  // Scenario 19 — dao_cancel: committee can cancel from 'review', 'voting', or 'accepted'
   // ─────────────────────────────────────────────────────────────────────────
   const sc19: ScenarioDef = {
     num: 19,
-    name: 'Scenario 19 — dao_cancel cancels voting/accepted proposals, rejects elsewhere',
+    name: 'Scenario 19 — dao_cancel cancels review/voting/accepted proposals, rejects elsewhere',
     setupSteps: [
     [
       '19.1a Create sc19CancelVoting (regular, will be canceled from voting)',
@@ -4477,15 +4485,59 @@ async function main(): Promise<void> {
         saveCurrentRunState()
       },
     ],
+    [
+      '19.1d Create sc19CancelReview (regular, future startTime, will be canceled directly from review)',
+      async () => {
+        // Regular/non-emergency so voterRewardPool is seeded — otherwise the full-pool-burn
+        // assertion below would be vacuous. A future startTime deliberately proves dao_cancel is a
+        // committee kill-switch that doesn't wait for the review window to actually be open, unlike
+        // dao_committee_vote which rejects before startTime.
+        setProposalN('sc19CancelReview', await createDaoProposal({
+          proposer: proposer10,
+          title: 'dao_cancel — canceled while still review',
+          description: 'Regular proposal canceled directly from review, before startTime, full pool burn',
+          changes: [{ key: 'pctBurned', value: '69', current: '50' }],
+          gracePeriodMs: graceDurationMs,
+          startTime: nowPlus(futureStartDelayMs),
+        }))
+        saveCurrentRunState()
+        const proposal = await getProposal(proposalN.sc19CancelReview)
+        assert(proposal.creationTime < proposal.startTime, `Expected creationTime < startTime, got ${proposal.creationTime} >= ${proposal.startTime}`)
+      },
+    ],
     ],
     bodySteps: [
     [
-      '19.2  dao_cancel rejected while sc19CancelVoting is still review',
+      '19.2a dao_cancel from committee cancels sc19CancelReview (from review, before startTime), full pool burn',
+      async () => {
+        const proposalBefore = await getProposal(proposalN.sc19CancelReview)
+        const poolBeforeCancel = asBigInt(proposalBefore.voterRewardPool)
+        // Fresh-run-only assertion: futureStartDelayMs is sized to outlast a normal full run, but
+        // a much later isolated `--step 19.2a --no-start` rerun against an old saved proposal
+        // number could hit this after startTime has already passed — that's a rerun-hygiene
+        // limitation of this specific check, not a sign dao_cancel itself has a startTime gate.
+        assert(Date.now() < proposalBefore.startTime, 'Expected sc19CancelReview to still be before its startTime at cancel time')
+
+        const { receipt } = await injectAndAssert(
+          { type: 'dao_cancel', networkId: currentNetworkId, from: committee[3].address, proposalId: daoProposalId(proposalN.sc19CancelReview), timestamp: Date.now() },
+          committee[3],
+        )
+        assert(receipt.additionalInfo?.proposalStatus === 'canceled', `Expected receipt proposalStatus 'canceled', got ${JSON.stringify(receipt.additionalInfo)}`)
+        assert(asBigInt(receipt.additionalInfo.burnAmount) === poolBeforeCancel, `Expected receipt burnAmount ${poolBeforeCancel} (full pool), got ${receipt.additionalInfo.burnAmount}`)
+
+        const proposal = await getProposal(proposalN.sc19CancelReview)
+        assert(proposal.status === 'canceled', `Expected status 'canceled', got '${proposal.status}'`)
+        assert(asBigInt(proposal.voterRewardPool) === 0n, `Expected voterRewardPool === 0n after full burn, got ${proposal.voterRewardPool}`)
+        assert(asBigInt(proposal.initialBurnedReward) === poolBeforeCancel, `Expected initialBurnedReward ${poolBeforeCancel} (full pre-cancel pool), got ${proposal.initialBurnedReward}`)
+      },
+    ],
+    [
+      '19.2b dao_claim_reward rejected on the canceled sc19CancelReview (no voters, empty pool)',
       async () => {
         await injectExpectReject(
-          { type: 'dao_cancel', networkId: currentNetworkId, from: committee[3].address, proposalId: daoProposalId(proposalN.sc19CancelVoting), timestamp: Date.now() },
-          committee[3],
-          'voting or accepted',
+          { type: 'dao_claim_reward', networkId: currentNetworkId, from: voter1.address, proposalId: daoProposalId(proposalN.sc19CancelReview), timestamp: Date.now() },
+          voter1,
+          'did not vote',
         )
       },
     ],
