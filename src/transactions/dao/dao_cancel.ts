@@ -47,8 +47,8 @@ export const validate = (
     response.reason = 'Proposal account not found or is not a DaoProposalAccount'
     return response
   }
-  if (proposal.status !== 'voting' && proposal.status !== 'accepted') {
-    response.reason = `Proposal is not in voting or accepted status (current: ${proposal.status})`
+  if (proposal.status !== 'review' && proposal.status !== 'voting' && proposal.status !== 'accepted') {
+    response.reason = `Proposal is not in review, voting or accepted status (current: ${proposal.status})`
     return response
   }
   if (!proposal.committeeAddresses.includes(tx.from)) {
@@ -82,7 +82,16 @@ export const apply = (
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
 
   let burnAmount = 0n
-  if (proposal.status === 'voting') {
+  if (proposal.status === 'review') {
+    // Never entered voting — no voters exist, so the whole pool burns, exactly like a real
+    // committee withhold-tally would (dao_committee_result.ts). Emergency proposals seed
+    // voterRewardPool at 0n, so this is a no-op burn for them, consistent with withhold's existing
+    // emergency handling. No votingStartedAt/votingEndedAt write needed either — real withheld
+    // proposals never set those, and the timing getters already fall back to the nominal schedule.
+    burnAmount = proposal.voterRewardPool
+    proposal.initialBurnedReward = SafeBigIntMath.add(proposal.initialBurnedReward, burnAmount)
+    proposal.voterRewardPool = 0n
+  } else if (proposal.status === 'voting') {
     // Canceling from 'voting' skips dao_vote_result entirely, so replicate the two things it
     // would otherwise have done — without this, a canceled-while-voting proposal would keep its
     // full, un-burned pool and claimEnd/applyEligibleAt would fall back to the nominal (pre-cancel)

@@ -2976,7 +2976,7 @@ vorpal
 // dao cancel
 // ---------------------------------------------------------------------------
 vorpal
-  .command('dao cancel', 'cancel a proposal that is in voting or accepted status (committee only)')
+  .command('dao cancel', 'cancel a proposal that is in review, voting or accepted status (committee only)')
   .action(async function (args, callback) {
     const answers = await this.prompt([
       {
