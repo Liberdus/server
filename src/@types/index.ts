@@ -796,17 +796,23 @@ export interface DevAccount {
 // New DAO account types (Phase 1: governance/economic/protocol proposals)
 export type DaoProposalStatus = 'review' | 'withheld' | 'voting' | 'rejected' | 'accepted' | 'applied' | 'canceled'
 export type DaoProposalType = 'governance' | 'economic' | 'protocol'
+export interface DaoParamChange {
+  key: string
+  value: string
+  current: string
+}
+export type DaoParamChanges = DaoParamChange[] | DaoParamChange[][]
 
 export interface DaoGovernanceData {
-  changes: Array<{ key: string; value: string; current: string }>
+  changes: DaoParamChanges
 }
 
 export interface DaoEconomicData {
-  changes: Array<{ key: string; value: string; current: string }>
+  changes: DaoParamChanges
 }
 
 export interface DaoProtocolData {
-  changes: Array<{ key: string; value: string; current: string }>
+  changes: DaoParamChanges
 }
 
 export interface DaoProposalsMeta {
@@ -859,6 +865,7 @@ export interface DaoProposalAccount {
   // Voting state
   options: string[]
   totalVote: bigint[]
+  winningOptionIndex?: number
   // Fixed once dao_vote_result runs (post-burn pool); accumulates pre-burn (proposalFeeWei +
   // sum of vote spends). claimedReward tracks the running total paid out via dao_claim_reward;
   // remaining unclaimed = voterRewardPool - claimedReward.

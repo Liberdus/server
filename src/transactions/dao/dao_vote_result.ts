@@ -88,6 +88,7 @@ export const apply = (
   }
 
   const winningOption = proposal.options[winnerIndex]
+  proposal.winningOptionIndex = winnerIndex
   proposal.status = isWinningOptionAccepted(proposal.options, winnerIndex) ? 'accepted' : 'rejected'
   // Record the real time this ran, so claimEnd/applyEligibleAt reflect it.
   proposal.votingEndedAt = txTimestamp
@@ -114,6 +115,7 @@ export const apply = (
     transactionFee: txFeeWei,
     additionalInfo: {
       winningOption,
+      winningOptionIndex: winnerIndex,
       proposalStatus: proposal.status,
       burnAmount,
       voterRewardPool: proposal.voterRewardPool,

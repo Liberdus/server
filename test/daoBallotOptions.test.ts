@@ -1,7 +1,7 @@
 import { isWinningOptionAccepted, validateDaoOptions } from '../src/utils/daoBallotOptions'
 
 describe('dao ballot options', () => {
-  test('negative-first binary ballots accept only option 1', () => {
+  test('negative-first binary ballots reject option 0 and accept option 1', () => {
     expect(validateDaoOptions(['no', 'yes'])).toBeUndefined()
     expect(isWinningOptionAccepted(['no', 'yes'], 0)).toBe(false)
     expect(isWinningOptionAccepted(['no', 'yes'], 1)).toBe(true)
@@ -17,11 +17,17 @@ describe('dao ballot options', () => {
     expect(isWinningOptionAccepted(['deny', 'approve'], 1)).toBe(true)
   })
 
-  test('negative-first multi-option ballots accept only option 1', () => {
+  test('negative-first multi-option ballots accept any non-zero winner', () => {
     expect(validateDaoOptions(['no', 'yes', 'abstain'])).toBeUndefined()
     expect(isWinningOptionAccepted(['no', 'yes', 'abstain'], 0)).toBe(false)
     expect(isWinningOptionAccepted(['no', 'yes', 'abstain'], 1)).toBe(true)
-    expect(isWinningOptionAccepted(['no', 'yes', 'abstain'], 2)).toBe(false)
+    expect(isWinningOptionAccepted(['no', 'yes', 'abstain'], 2)).toBe(true)
+  })
+
+  test('negative-first action labels do not need to be affirmative keywords', () => {
+    expect(validateDaoOptions(['no', 'Increase burn'])).toBeUndefined()
+    expect(validateDaoOptions(['no', 'abstain'])).toBeUndefined()
+    expect(isWinningOptionAccepted(['no', 'Increase burn'], 1)).toBe(true)
   })
 
   test('old affirmative-first ballots still resolve for in-flight proposals', () => {
@@ -32,7 +38,6 @@ describe('dao ballot options', () => {
 
   test('invalid new proposal option layouts are rejected', () => {
     expect(validateDaoOptions(['maybe', 'yes'])).toContain('options[0]')
-    expect(validateDaoOptions(['no', 'abstain'])).toContain('options[1]')
     expect(validateDaoOptions(['no'])).toContain('2 to 10')
     expect(validateDaoOptions(['no', 'yes', '2', '3', '4', '5', '6', '7', '8', '9', '10'])).toContain('2 to 10')
   })

@@ -8,8 +8,8 @@ import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { isUserAccount, isDaoProposalsMeta, isDaoProposalAccount } from '../../@types/accountTypeGuards'
 import { DAO_PROPOSALS_META_ID_STRING } from '../../accounts/daoProposalsMetaAccount'
-import { validateChangesPayload } from '../../utils/daoParamValidation'
 import { validateDaoOptions } from '../../utils/daoBallotOptions'
+import { validateProposalChangeSets } from '../../utils/daoProposalChangeSets'
 
 export const validate_fields = (
   tx: Tx.DaoProposalCreate,
@@ -63,38 +63,7 @@ export const validate_fields = (
     return response
   }
   const payload = tx[tx.proposalType as 'governance' | 'economic' | 'protocol']
-  if (!payload || !Array.isArray(payload.changes) || payload.changes.length === 0) {
-    response.reason = `tx "${tx.proposalType}" payload must include a non-empty "changes" array`
-    return response
-  }
-  // Structural check: validate field types and reject duplicate raw keys before the
-  // heavier path-resolution and coerce pass in validateChangesPayload below.
-  const seenKeys = new Set<string>()
-  for (const [i, change] of payload.changes.entries()) {
-    if (change === null || typeof change !== 'object') {
-      response.reason = `each change must be an object { key: string; value: string; current: string } - got ${change === null ? 'null' : typeof change} at changes[${i}]`
-      return response
-    }
-    if (typeof change.key !== 'string' || change.key.length === 0) {
-      response.reason = `each change must have a non-empty string "key" - got ${change.key === '' ? 'an empty string' : typeof change.key} at changes[${i}].key`
-      return response
-    }
-    if (typeof change.value !== 'string') {
-      response.reason = `each change must have a string "value" - got ${typeof change.value} at the "value" for key '${change.key}'`
-      return response
-    }
-    if (typeof change.current !== 'string') {
-      response.reason = `each change must have a string "current" - got ${typeof change.current} at the "current" for key '${change.key}'`
-      return response
-    }
-    if (seenKeys.has(change.key)) {
-      response.reason = `each change must have a unique "key" - got duplicate "${change.key}"`
-      return response
-    }
-    seenKeys.add(change.key)
-  }
-  // Quick check using cached network account.
-  const changesError = validateChangesPayload(tx.proposalType, payload.changes, AccountsStorage.cachedNetworkAccount, dapp)
+  const changesError = validateProposalChangeSets(tx.proposalType, tx.options, payload?.changes ?? [], AccountsStorage.cachedNetworkAccount, dapp, tx.emergency)
   if (changesError) {
     response.reason = changesError
     return response
@@ -168,7 +137,7 @@ export const validate = (
 
   // Recheck with live wrappedStates — validate_fields ran against the cached network account.
   const txPayload = tx[tx.proposalType as 'governance' | 'economic' | 'protocol']
-  const changesError = validateChangesPayload(tx.proposalType, txPayload?.changes ?? [], network, dapp)
+  const changesError = validateProposalChangeSets(tx.proposalType, tx.options, txPayload?.changes ?? [], network, dapp, tx.emergency)
   if (changesError) {
     response.reason = changesError
     return response

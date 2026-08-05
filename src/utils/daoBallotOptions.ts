@@ -25,9 +25,6 @@ export function validateDaoOptions(options: string[]): string | undefined {
   if (!isNegativeOption(options[0])) {
     return `tx "options[0]" must be a recognized rejection choice (one of: ${NEGATIVE_OPTION_STRINGS.join(', ')})`
   }
-  if (!isAffirmativeOption(options[1])) {
-    return `tx "options[1]" must be a recognized acceptance choice (one of: ${AFFIRMATIVE_OPTION_STRINGS.join(', ')})`
-  }
   return undefined
 }
 
@@ -35,8 +32,8 @@ export function isWinningOptionAccepted(options: string[], winnerIndex: number):
   if (!Array.isArray(options) || winnerIndex < 0 || winnerIndex >= options.length) {
     return false
   }
-  if (options.length >= 2 && isNegativeOption(options[0]) && isAffirmativeOption(options[1])) {
-    return winnerIndex === 1
+  if (isNegativeOption(options[0])) {
+    return winnerIndex > 0
   }
   if (isAffirmativeOption(options[0])) {
     return winnerIndex === 0
