@@ -50,7 +50,7 @@ import * as net from 'net'
 import path from 'path'
 import * as ShardusCrypto from '@shardus/lib-crypto-utils'
 import { Utils } from '@shardus/lib-types'
-import { DaoProposalAccount } from '../src/@types'
+import type { DaoParamChange, DaoProposalAccount } from '../src/@types'
 import { computeClaimReward } from '../src/utils/daoClaimRewardMath'
 import { getReviewEnd, getVotingStart, getVotingEnd, getClaimEnd, getApplyEligibleAt } from '../src/accounts/daoProposalAccount'
 import { generateTxId } from '../src/utils'
@@ -1216,7 +1216,11 @@ async function getProposal(n: number): Promise<DaoProposalWithTiming> {
 }
 
 function archiverActiveVersionFromProposal(proposal: DaoProposalAccount): string | null {
-  const change = proposal.economic?.changes?.find(c => c.key === 'archiver')
+  const changes = proposal.economic?.changes
+  const flatChanges: DaoParamChange[] | undefined = Array.isArray(changes?.[0])
+    ? (changes as DaoParamChange[][]).flat()
+    : (changes as DaoParamChange[] | undefined)
+  const change = flatChanges?.find(c => c.key === 'archiver')
   if (!change) return null
   const value = safeParse(change.value)
   return value?.activeVersion == null ? null : String(value.activeVersion)
@@ -1347,6 +1351,8 @@ async function waitForListOfChangesFromReceipt(description: string, receipt: TxR
 }
 
 type ProposalType = 'governance' | 'economic' | 'protocol'
+type DaoProposalChange = { key: string; value: string; current: string }
+type DaoProposalChangeSets = DaoProposalChange[] | DaoProposalChange[][]
 
 interface ProposalCreateOptions {
   proposer: TestAccount
@@ -1355,7 +1361,7 @@ interface ProposalCreateOptions {
   title: string
   description: string
   options?: string[]
-  changes: Array<{ key: string; value: string; current: string }>
+  changes: DaoProposalChangeSets
   gracePeriodMs: number
   startTime?: number
   expectedBalanceDelta?: (receipt: TxReceipt) => bigint
@@ -1363,6 +1369,10 @@ interface ProposalCreateOptions {
 
 function proposalPayloadKey(type: ProposalType): 'governance' | 'economic' | 'protocol' {
   return type
+}
+
+function asChangeSets(changes: DaoProposalChangeSets): DaoProposalChange[][] {
+  return Array.isArray(changes[0]) ? changes as DaoProposalChange[][] : [changes as DaoProposalChange[]]
 }
 
 async function createDaoProposal(opts: ProposalCreateOptions): Promise<number> {
@@ -1381,7 +1391,7 @@ async function createDaoProposal(opts: ProposalCreateOptions): Promise<number> {
       description: opts.description,
       options: opts.options ?? ['no', 'yes'],
       gracePeriod: opts.gracePeriodMs,
-      [proposalPayloadKey(proposalType)]: { changes: opts.changes },
+      [proposalPayloadKey(proposalType)]: { changes: asChangeSets(opts.changes) },
       timestamp: Date.now(),
     }
     if (opts.startTime !== undefined) tx.startTime = opts.startTime
@@ -2139,6 +2149,7 @@ async function main(): Promise<void> {
   let sc17VoteThresholdUsdTarget = '150.0'
   let sc17UnapplyThreshold = 3
   let sc8NodeRewardTarget = '1.25'
+  let sc8NodeRewardAlternate = '9.99'
   let sc8ArchiverActiveVersionTarget = '3.7.10'
   let sc8TopLevelActiveVersionBefore = ''
   let sc8ArchiverMinVersionBefore = ''
@@ -2172,6 +2183,7 @@ async function main(): Promise<void> {
           proposer,
           title: 'Vote exponent adjustment',
           description: `Toggle voteExponent from ${currentVoteExponent} to ${sc1VoteExponentTarget}`,
+          options: ['no', 'Change vote exponent'],
           changes: [{ key: 'voteExponent', value: String(sc1VoteExponentTarget), current: String(currentVoteExponent) }],
           gracePeriodMs: graceDurationMs,
           expectedBalanceDelta: receipt => -(proposalFeeWei + asBigInt(receipt.transactionFee ?? 0n)),
@@ -2283,7 +2295,7 @@ async function main(): Promise<void> {
       '1.6  dao_vote x2 (voter1 + voter2, both vote option 1)',
       async () => {
         // weights[i] maps 1:1 by index onto proposal.options[i] — [0, 1] puts the vote's
-        // entire weight on options[1] ('yes') for negative-first DAO ballots.
+        // entire weight on options[1], the action option for negative-first DAO ballots.
         await castVote(proposalN.sc1, voter1, [0, 1], minVoteSpendLib, receipt => -(libToWei(minVoteSpendLib) + asBigInt(receipt.transactionFee ?? 0n)))
         await castVote(proposalN.sc1, voter2, [0, 1], minVoteSpendLib)
         const proposal = await getProposal(proposalN.sc1)
@@ -2531,11 +2543,11 @@ async function main(): Promise<void> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Scenario 3 — Auto-accept via dao_committee_result
+  // Scenario 3 — Zero-vote tie resolves to option 0
   // ─────────────────────────────────────────────────────────────────────────
   const sc3: ScenarioDef = {
     num: 3,
-    name: 'Scenario 3 — Auto-accept via committee_result (no committee votes submitted)',
+    name: 'Scenario 3 — Zero-vote tie resolves to option 0',
     setupSteps: [
     [
       '3.1  dao_proposal_create (non-emergency, no votes will be submitted)',
@@ -2543,7 +2555,7 @@ async function main(): Promise<void> {
         setProposalN('sc3', await createDaoProposal({
           proposer,
           title: 'Zero-vote acceptance',
-          description: 'Auto-accept test — committee_result will advance this after reviewEnd',
+          description: 'Zero-vote tie-break test — committee_result will advance this after reviewEnd',
           changes: [{ key: 'pctBurned', value: '55', current: '50' }],
           gracePeriodMs: graceDurationMs,
         }))
@@ -2643,12 +2655,42 @@ async function main(): Promise<void> {
             options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             governance: {
-              changes: [{ key: 'pctBurned', value: '70', current: '50' }],
+              changes: [[{ key: 'pctBurned', value: '70', current: '50' }]],
             },
             timestamp: Date.now(),
           }),
           voter1,
           'committee',
+        )
+      },
+    ],
+
+    [
+      '4.1b  Emergency proposal with multiple action change sets → rejected',
+      async () => {
+        await expectProposalCreateReject(
+          proposalNumber => ({
+            type: 'dao_proposal_create',
+            networkId: currentNetworkId,
+            from: committee[0].address,
+            proposalId: daoProposalId(proposalNumber),
+            metaId: ShardusCrypto.hash('dao proposals meta'),
+            proposalType: 'governance',
+            emergency: true,
+            title: 'Invalid emergency multi-action proposal',
+            description: 'Emergency proposal with multiple action options must be rejected',
+            options: ['no', 'Set burn to 70', 'Set burn to 65'],
+            gracePeriod: graceDurationMs,
+            governance: {
+              changes: [
+                [{ key: 'pctBurned', value: '70', current: '50' }],
+                [{ key: 'pctBurned', value: '65', current: '50' }],
+              ],
+            },
+            timestamp: Date.now(),
+          }),
+          committee[0],
+          'emergency',
         )
       },
     ],
@@ -2664,7 +2706,7 @@ async function main(): Promise<void> {
           emergency: true,
           title: 'Emergency burn adjustment',
           description: `Emergency governance proposal toggles pctBurned from ${currentPctBurned} to ${sc4PctBurnedTarget}`,
-          changes: [{ key: 'pctBurned', value: String(sc4PctBurnedTarget), current: String(currentPctBurned) }],
+          changes: [[{ key: 'pctBurned', value: String(sc4PctBurnedTarget), current: String(currentPctBurned) }]],
           gracePeriodMs: graceDurationMs,
         }))
         saveCurrentRunState()
@@ -2987,8 +3029,8 @@ async function main(): Promise<void> {
           proposer: proposer5,
           title: 'Weighted multi-option vote',
           description: 'Multi-option weighted vote test proposal',
-          options: ['no', 'yes', 'abstain'],
-          changes: [{ key: 'voteExponent', value: '0.3', current: '0.1' }],
+          options: ['no', 'Set exponent to 0.3', 'Set exponent to 0.4'],
+          changes: [[{ key: 'voteExponent', value: '0.3', current: '0.1' }], [{ key: 'voteExponent', value: '0.4', current: '0.1' }]],
           gracePeriodMs: graceDurationMs,
         }))
         saveCurrentRunState()
@@ -3055,12 +3097,17 @@ async function main(): Promise<void> {
       async () => {
         const currentValue = String(await getCurrentNetworkValue('nodeRewardAmountUsdStr'))
         sc8NodeRewardTarget = currentValue === '1.25' ? '1.35' : '1.25'
+        sc8NodeRewardAlternate = [currentValue, sc8NodeRewardTarget].includes('9.99') ? '9.98' : '9.99'
         setProposalN('sc8Economic', await createDaoProposal({
           proposer: proposer6,
           proposalType: 'economic',
           title: 'Node reward adjustment',
           description: `Economic proposal updates nodeRewardAmountUsdStr from ${currentValue} to ${sc8NodeRewardTarget}`,
-          changes: [{ key: 'nodeRewardAmountUsdStr', value: sc8NodeRewardTarget, current: currentValue }],
+          options: ['no', `Set node reward to ${sc8NodeRewardAlternate}`, `Set node reward to ${sc8NodeRewardTarget}`],
+          changes: [
+            [{ key: 'nodeRewardAmountUsdStr', value: sc8NodeRewardAlternate, current: currentValue }],
+            [{ key: 'nodeRewardAmountUsdStr', value: sc8NodeRewardTarget, current: currentValue }],
+          ],
           gracePeriodMs: graceDurationMs,
         }))
         saveCurrentRunState()
@@ -3082,7 +3129,7 @@ async function main(): Promise<void> {
             description: 'Invalid governance namespace test',
             options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
-            governance: { changes: [{ key: 'nodeRewardAmountUsdStr', value: '1.5', current: '1.0' }] },
+            governance: { changes: [[{ key: 'nodeRewardAmountUsdStr', value: '1.5', current: '1.0' }]] },
             timestamp: Date.now(),
           }),
           proposer6,
@@ -3106,7 +3153,7 @@ async function main(): Promise<void> {
             description: 'Invalid protocol namespace test',
             options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
-            protocol: { changes: [{ key: 'nodeRewardAmountUsdStr', value: '1.5', current: '1.25' }] },
+            protocol: { changes: [[{ key: 'nodeRewardAmountUsdStr', value: '1.5', current: '1.25' }]] },
             timestamp: Date.now(),
           }),
           proposer7,
@@ -3181,10 +3228,13 @@ async function main(): Promise<void> {
       '8.4  Economic proposal applies via apply_change_network_param',
       async () => {
         await committeeAcceptToVoting(proposalN.sc8Economic, proposer6, committee, SLEEP_BUFFER_MS, [1, 2, 3])
-        await castVote(proposalN.sc8Economic, voter7, [0, 1], minVoteSpendLib)
-        await finalizeVote(proposalN.sc8Economic, proposer6, SLEEP_BUFFER_MS)
+        await castVote(proposalN.sc8Economic, voter7, [0, 0, 1], minVoteSpendLib)
+        const { receipt: resultReceipt } = await finalizeVote(proposalN.sc8Economic, proposer6, SLEEP_BUFFER_MS)
+        assert(resultReceipt.additionalInfo?.winningOptionIndex === 2, `Expected winningOptionIndex 2, got ${JSON.stringify(resultReceipt.additionalInfo)}`)
         await applyAcceptedProposal(proposalN.sc8Economic, proposer6, SLEEP_BUFFER_MS, committee, cycleDurationMs, async receipt => {
           await waitForNetworkParameter(['current', 'nodeRewardAmountUsdStr'], sc8NodeRewardTarget, applyParamsPollMs)
+          const landedValue = String(await getCurrentNetworkValue('nodeRewardAmountUsdStr'))
+          assert(landedValue !== sc8NodeRewardAlternate, `Expected losing alternate ${sc8NodeRewardAlternate} not to land`)
           await waitForListOfChangesFromReceipt(
             `appData.nodeRewardAmountUsdStr=${sc8NodeRewardTarget}`,
             receipt,
@@ -3250,10 +3300,10 @@ async function main(): Promise<void> {
             options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             protocol: {
-              changes: [
+              changes: [[
                 { key: 'debug', value: '{"countEndpointStart":-3}', current: '{"countEndpointStart":-1}' },
                 { key: 'countEndpointStart', value: '-3', current: '-1' },
-              ],
+              ]],
             },
             timestamp: Date.now(),
           }),
@@ -3328,7 +3378,7 @@ async function main(): Promise<void> {
             description: 'Past startTime rejection test',
             options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
-            governance: { changes: [{ key: 'pctBurned', value: '52', current: '50' }] },
+            governance: { changes: [[{ key: 'pctBurned', value: '52', current: '50' }]] },
             startTime: timestamp - 1,
             timestamp,
           }),
@@ -3638,7 +3688,7 @@ async function main(): Promise<void> {
             description: 'Too many options rejection',
             options: ['no', 'yes', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
             gracePeriod: graceDurationMs,
-            governance: { changes: [{ key: 'pctBurned', value: '59', current: '50' }] },
+            governance: { changes: [[{ key: 'pctBurned', value: '59', current: '50' }]] },
             timestamp: Date.now(),
           }),
           proposer10,
@@ -3920,13 +3970,14 @@ async function main(): Promise<void> {
             reason: 'options[0]',
           },
           {
-            title: 'Invalid second option',
-            description: 'Invalid non-affirmative second option test',
+            title: 'Invalid flat changes payload',
+            description: 'Flat changes payload is legacy-only and rejected for new proposals',
             account: proposer3,
-            options: ['no', 'abstain'],
+            options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             changes: [{ key: 'pctBurned', value: '63', current: '50' }],
-            reason: 'options[1]',
+            useRawChanges: true,
+            reason: 'nested changes',
           },
           {
             title: '   ',
@@ -3989,7 +4040,7 @@ async function main(): Promise<void> {
               description: c.description,
               options: c.options,
               gracePeriod: c.gracePeriod,
-              governance: { changes: c.changes },
+              governance: { changes: c.useRawChanges ? c.changes : asChangeSets(c.changes) },
               timestamp: Date.now(),
             }),
             c.account,
@@ -4062,7 +4113,7 @@ async function main(): Promise<void> {
             options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             governance: {
-              changes: [{ key: 'committeeAddresses', value: JSON.stringify(invalidCommitteeAddresses), current: JSON.stringify(daoParams.committeeAddresses) }],
+              changes: [[{ key: 'committeeAddresses', value: JSON.stringify(invalidCommitteeAddresses), current: JSON.stringify(daoParams.committeeAddresses) }]],
             },
             timestamp: Date.now(),
           }),

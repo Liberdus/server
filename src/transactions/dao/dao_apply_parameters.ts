@@ -10,6 +10,7 @@ import { Utils } from '@shardus/lib-types'
 import { getApplyEligibleAt } from '../../accounts/daoProposalAccount'
 import { buildNestedChange, mergeNestedChange, resolveChanges, ResolvedChange } from '../../utils/daoParamResolver'
 import { coerce, validateChangesPayload } from '../../utils/daoParamValidation'
+import { getSelectedChanges } from '../../utils/daoProposalChangeSets'
 
 export const validate_fields = (tx: Tx.DaoApplyParameters, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -75,7 +76,13 @@ export const validate = (
   }
 
   // Re-validate change keys and values against the live network state before applying.
-  const changes = getChanges(proposal)
+  let changes: ReturnType<typeof getSelectedChanges>
+  try {
+    changes = getSelectedChanges(proposal)
+  } catch (err) {
+    response.reason = err instanceof Error ? err.message : String(err)
+    return response
+  }
   const changesError = validateChangesPayload(proposal.proposalType, changes, network, dapp)
   if (changesError) {
     response.reason = changesError
@@ -105,10 +112,11 @@ export const apply = (
   const network = wrappedStates[config.networkAccount].data as NetworkAccount
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
 
+  const changes = getSelectedChanges(proposal)
+  const resolvedChanges = resolveChanges(proposal.proposalType, network, dapp, changes)
+
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
 
-  const changes = getChanges(proposal)
-  const resolvedChanges = resolveChanges(proposal.proposalType, network, dapp, changes)
   const when = txTimestamp + config.ONE_SECOND * 10
   const now = dapp.shardusGetTime()
   console.log(
@@ -166,19 +174,6 @@ export const apply = (
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
   dapp.log('Applied dao_apply_parameters tx', tx.proposalId, proposal.proposalType, changes.length, 'changes', Utils.safeStringify(value))
-}
-
-function getChanges(proposal: DaoProposalAccount): Array<{ key: string; value: string }> {
-  if (proposal.proposalType === 'governance' && proposal.governance) {
-    return proposal.governance.changes
-  }
-  if (proposal.proposalType === 'economic' && proposal.economic) {
-    return proposal.economic.changes
-  }
-  if (proposal.proposalType === 'protocol' && proposal.protocol) {
-    return proposal.protocol.changes
-  }
-  return []
 }
 
 function buildConfigChange(resolvedChanges: ResolvedChange[]): Record<string, unknown> {

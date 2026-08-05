@@ -2615,6 +2615,18 @@ function asBigIntForDisplay(value) {
   return 0n
 }
 
+function formatDaoProposalChanges(p) {
+  const payload = p.governance || p.economic || p.protocol
+  const changes = payload?.changes
+  if (!Array.isArray(changes)) return ''
+  if (Array.isArray(changes[0])) {
+    return changes
+      .map((changeSet, i) => `${p.options?.[i + 1] || `option ${i + 1}`}: ${JSON.stringify(changeSet)}`)
+      .join('\n              ')
+  }
+  return JSON.stringify(changes)
+}
+
 // Mirrors utils.usdStrToWei on the server — converts a USD-string snapshot to Wei at the
 // given exchange rate.
 function usdStrToWei(usdStr, stabilityFactorStr) {
@@ -2677,13 +2689,13 @@ vorpal.command('dao proposal create', 'create a new DAO governance/economic/prot
     {
       type: 'input',
       name: 'options',
-      message: 'Enter ballot options as comma-separated list (e.g. no,yes):',
+      message: 'Enter ballot options as comma-separated list (e.g. no,Increase burn,Decrease burn):',
       default: 'no,yes',
     },
     {
       type: 'input',
       name: 'changesJson',
-      message: 'Enter parameter changes as JSON array (e.g. [{"key":"voteExponent","value":"0.2","current":"0.1"}]):',
+      message: 'Enter parameter change sets as JSON array (e.g. [[{"key":"voteExponent","value":"1.2","current":"1.1"}]]):',
       default: '[]',
     },
     {
@@ -3190,9 +3202,7 @@ vorpal.command('dao proposal <number>', 'show details of a single DAO proposal')
       this.log(`Claim ends:   ${new Date(timing.claimEnd).toISOString()}`)
       // Content
       this.log(`Description:  ${p.description}`)
-      if (p.governance) this.log(`Changes:      ${JSON.stringify(p.governance.changes)}`)
-      if (p.economic) this.log(`Changes:      ${JSON.stringify(p.economic.changes)}`)
-      if (p.protocol) this.log(`Changes:      ${JSON.stringify(p.protocol.changes)}`)
+      this.log(`Changes:      ${formatDaoProposalChanges(p)}`)
     }
   } catch (err) {
     this.log('Error:', err.message)
