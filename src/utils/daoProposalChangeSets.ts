@@ -15,12 +15,12 @@ export function validateProposalChangeSets(
   emergency: boolean,
 ): string | undefined {
   if (!Array.isArray(changes) || changes.length === 0) {
-    return `tx "${proposalType}" payload must include a non-empty "changes" array`
+    return `tx "${proposalType}.changes" must be a non-empty array`
   }
 
   if (isNestedChangeSets(changes)) {
     if (changes.length !== options.length - 1) {
-      return `nested changes must have exactly one change set for each non-rejection option (expected ${options.length - 1}, got ${changes.length})`
+      return `nested changes must have exactly one change set per action option (expected ${options.length - 1}, got ${changes.length})`
     }
     if (emergency && (options.length !== 2 || changes.length !== 1)) {
       return 'emergency DAO proposals must have exactly one action option and one change set'
@@ -35,7 +35,7 @@ export function validateProposalChangeSets(
   }
 
   // Create-time only: apply still accepts flat changes for proposals created before change sets existed.
-  return 'new DAO proposals must use nested changes: wrap each option change set in its own array, e.g. [[{...}]]'
+  return 'nested changes required: one change set per action option'
 }
 
 export function getSelectedChanges(proposal: DaoProposalAccount): DaoParamChange[] {

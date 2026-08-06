@@ -51,8 +51,8 @@ describe('dao proposal change sets', () => {
   })
 
   test('flat changes are rejected for new proposal creation', () => {
-    expect(validateProposalChangeSets('governance', ['no', 'A'], [changeA], undefined, undefined, false)).toContain('nested changes')
-    expect(validateProposalChangeSets('governance', ['no', 'A', 'B'], [changeA], undefined, undefined, false)).toContain('nested changes')
+    expect(validateProposalChangeSets('governance', ['no', 'A'], [changeA], undefined, undefined, false)).toContain('nested changes required')
+    expect(validateProposalChangeSets('governance', ['no', 'A', 'B'], [changeA], undefined, undefined, false)).toContain('nested changes required')
   })
 
   test('invalid change payload shapes are rejected', () => {
@@ -62,8 +62,8 @@ describe('dao proposal change sets', () => {
     expect(validateProposalChangeSets('governance', ['no', 'A'], [[]], undefined, undefined, false)).toContain('non-empty')
   })
 
-  test('nested changes require one set per non-rejection option', () => {
-    expect(validateProposalChangeSets('governance', ['no', 'A', 'B'], [[changeA]], undefined, undefined, false)).toContain('one change set')
+  test('nested changes require one set per action option', () => {
+    expect(validateProposalChangeSets('governance', ['no', 'A', 'B'], [[changeA]], undefined, undefined, false)).toContain('must have exactly')
   })
 
   test('emergency nested proposals allow only one action change set', () => {

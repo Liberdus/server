@@ -3977,7 +3977,7 @@ async function main(): Promise<void> {
             gracePeriod: graceDurationMs,
             changes: [{ key: 'pctBurned', value: '63', current: '50' }],
             useRawChanges: true,
-            reason: 'nested changes',
+            reason: 'nested changes required',
           },
           {
             title: '   ',
