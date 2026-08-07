@@ -8,6 +8,7 @@ import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { isUserAccount, isDaoProposalsMeta, isDaoProposalAccount } from '../../@types/accountTypeGuards'
 import { DAO_PROPOSALS_META_ID_STRING } from '../../accounts/daoProposalsMetaAccount'
+import { recordProposalStatus } from '../../utils/daoProposalIndex'
 import { validateDaoOptions } from '../../utils/daoBallotOptions'
 import { validateProposalChangeSets } from '../../utils/daoProposalChangeSets'
 
@@ -220,6 +221,10 @@ export const apply = (
   if (tx.protocol) proposal.protocol = tx.protocol
 
   proposal.status = 'review'
+
+  // A newly created proposal is always a real transition, so no previousStatus guard is needed
+  // here. This also always runs, even when historical backfill is skipped.
+  recordProposalStatus(meta, proposal.number, proposal.status, proposal.emergency, txTimestamp)
 
   from.timestamp = txTimestamp
   meta.timestamp = txTimestamp

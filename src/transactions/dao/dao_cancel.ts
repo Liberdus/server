@@ -1,10 +1,12 @@
 import * as crypto from '../../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
-import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } from '../../@types'
+import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount, DaoProposalsMeta } from '../../@types'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
+import { daoProposalsMetaId } from '../../accounts/daoProposalsMetaAccount'
+import { recordProposalStatus } from '../../utils/daoProposalIndex'
 
 export const validate_fields = (
   tx: Tx.DaoCancel,
@@ -77,7 +79,9 @@ export const apply = (
 ): void => {
   const from = wrappedStates[tx.from].data as UserAccount
   const proposal = wrappedStates[tx.proposalId].data as DaoProposalAccount
+  const meta = wrappedStates[daoProposalsMetaId()].data as DaoProposalsMeta
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+  const previousStatus = proposal.status
 
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
 
@@ -107,6 +111,12 @@ export const apply = (
 
   from.timestamp = txTimestamp
   proposal.timestamp = txTimestamp
+
+  // Always a real transition (canceled), but the guard is kept so every handler reads the
+  // same way and stays correct if the branches ever change.
+  if (proposal.status !== previousStatus) {
+    recordProposalStatus(meta, proposal.number, proposal.status, proposal.emergency, txTimestamp)
+  }
 
   const appReceiptData: AppReceiptData = {
     txId,
@@ -166,14 +176,14 @@ export const createFailedAppReceiptData = (
 
 export const keys = (tx: Tx.DaoCancel, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.proposalId]
+  result.targetKeys = [tx.proposalId, daoProposalsMetaId()]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
 export const memoryPattern = (tx: Tx.DaoCancel, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
-    rw: [tx.from, tx.proposalId],
+    rw: [tx.from, tx.proposalId, daoProposalsMetaId()],
     wo: [],
     on: [],
     ri: [],
@@ -183,7 +193,7 @@ export const memoryPattern = (tx: Tx.DaoCancel, result: ShardusTypes.Transaction
 
 export const createRelevantAccount = (
   dapp: Shardus,
-  account: UserAccount | DaoProposalAccount,
+  account: UserAccount | DaoProposalAccount | DaoProposalsMeta,
   accountId: string,
   tx: Tx.DaoCancel,
   accountCreated = false,
