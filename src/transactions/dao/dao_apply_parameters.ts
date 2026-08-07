@@ -1,11 +1,13 @@
 import * as crypto from '../../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../../config'
-import { NetworkAccount, UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount, OurAppDefinedData, TXTypes } from '../../@types'
+import { NetworkAccount, UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount, OurAppDefinedData, TXTypes , DaoProposalsMeta} from '../../@types'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
+import { daoProposalsMetaId } from '../../accounts/daoProposalsMetaAccount'
+import { recordProposalStatus } from '../../utils/daoProposalIndex'
 import { Utils } from '@shardus/lib-types'
 import { getApplyEligibleAt } from '../../accounts/daoProposalAccount'
 import { buildNestedChange, mergeNestedChange, resolveChanges, ResolvedChange } from '../../utils/daoParamResolver'
@@ -109,6 +111,8 @@ export const apply = (
 ): void => {
   const from = wrappedStates[tx.from].data as UserAccount
   const proposal = wrappedStates[tx.proposalId].data as DaoProposalAccount
+  const meta = wrappedStates[daoProposalsMetaId()].data as DaoProposalsMeta
+  const previousStatus = proposal.status
   const network = wrappedStates[config.networkAccount].data as NetworkAccount
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
 
@@ -160,6 +164,12 @@ export const apply = (
   from.timestamp = txTimestamp
   proposal.status = 'applied'
   proposal.timestamp = txTimestamp
+
+  // Always a real transition (applied), but the guard is kept so every handler reads the
+  // same way and stays correct if the branches ever change.
+  if (proposal.status !== previousStatus) {
+    recordProposalStatus(meta, proposal.number, proposal.status, proposal.emergency, txTimestamp)
+  }
 
   const appReceiptData: AppReceiptData = {
     txId,
@@ -262,14 +272,14 @@ export const createFailedAppReceiptData = (
 
 export const keys = (tx: Tx.DaoApplyParameters, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.proposalId, config.networkAccount]
+  result.targetKeys = [tx.proposalId, config.networkAccount, daoProposalsMetaId()]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
 export const memoryPattern = (tx: Tx.DaoApplyParameters, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
-    rw: [tx.from, tx.proposalId],
+    rw: [tx.from, tx.proposalId, daoProposalsMetaId()],
     wo: [],
     on: [],
     ri: [],
@@ -279,7 +289,7 @@ export const memoryPattern = (tx: Tx.DaoApplyParameters, result: ShardusTypes.Tr
 
 export const createRelevantAccount = (
   dapp: Shardus,
-  account: UserAccount | DaoProposalAccount,
+  account: UserAccount | DaoProposalAccount | DaoProposalsMeta,
   accountId: string,
   tx: Tx.DaoApplyParameters,
   accountCreated = false,
