@@ -822,7 +822,8 @@ export interface DaoProtocolData {
  * which means "last touched by any tx" and is therefore approximate.
  */
 export interface DaoProposalIndexEntry {
-  number: number
+  /** The proposal's sequential number, matching DaoProposalAccount.number. */
+  proposal: number
   status: DaoProposalStatus
   /** Mirrors DaoProposalAccount.emergency, which is immutable after creation. */
   emergencyFlag: boolean
