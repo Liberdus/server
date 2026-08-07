@@ -815,11 +815,31 @@ export interface DaoProtocolData {
   changes: DaoParamChanges
 }
 
+/**
+ * One entry in the DaoProposalsMeta proposal index. `timestamp` is the txTimestamp of the
+ * transaction that created the proposal or changed its status — not the proposal account's own
+ * timestamp. Entries backfilled from pre-index proposals carry that account's `timestamp` instead,
+ * which means "last touched by any tx" and is therefore approximate.
+ */
+export interface DaoProposalIndexEntry {
+  number: number
+  status: DaoProposalStatus
+  /** Mirrors DaoProposalAccount.emergency, which is immutable after creation. */
+  emergencyFlag: boolean
+  timestamp: number
+}
+
 export interface DaoProposalsMeta {
   id: string
   type: string
   count: number
+  /**
+   * Index of every proposal, ordered most-recent-timestamp first. Optional so accounts serialized
+   * before this field existed still deserialize; normalize with `meta.proposals ??= []` before use.
+   */
+  proposals?: DaoProposalIndexEntry[]
   hash: string
+  /** Account timestamp — distinct from the per-entry timestamps in `proposals`. */
   timestamp: number
 }
 
