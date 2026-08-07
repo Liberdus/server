@@ -93,7 +93,7 @@ function parseCommaList(value: string, label: string): string[] {
 }
 
 /** Bumped whenever a new scenario is added — keeps --scenario and --step validation in sync. */
-const MAX_SCENARIO_NUMBER = 19
+const MAX_SCENARIO_NUMBER = 20
 
 function parseScenarioFilter(value: string | null): Set<number> | null {
   if (value == null) return null
@@ -1215,6 +1215,82 @@ async function getProposal(n: number): Promise<DaoProposalWithTiming> {
   return proposal!
 }
 
+/** One entry of meta.proposals — the consensus-visible recent-activity index. */
+interface ProposalIndexEntry {
+  proposal: number
+  status: string
+  emergencyFlag: boolean
+  timestamp: number
+}
+
+async function getProposalIndexEntries(): Promise<ProposalIndexEntry[]> {
+  const res = await apiGet('/dao/proposals/meta')
+  return (safeParse(res.data)?.meta?.proposals ?? []) as ProposalIndexEntry[]
+}
+
+async function getProposalSummaryEntries(): Promise<ProposalIndexEntry[]> {
+  const res = await apiGet('/dao/proposals/summary')
+  return (safeParse(res.data)?.proposals ?? []) as ProposalIndexEntry[]
+}
+
+/**
+ * Polls until proposal `n`'s index entry reports `expectedStatus`, then returns it.
+ *
+ * Polls rather than asserting once for the same reason getProposal() does: apiGet picks a random
+ * active node per call, so a just-committed write is not guaranteed visible on the first node hit.
+ */
+async function waitForIndexEntry(n: number, expectedStatus: string): Promise<ProposalIndexEntry> {
+  let found: ProposalIndexEntry | null = null
+  let lastSeen: ProposalIndexEntry | undefined
+  try {
+    await pollUntil(
+      async () => {
+        let entries: ProposalIndexEntry[]
+        try {
+          entries = await getProposalIndexEntries()
+        } catch (err) {
+          if (isRetryablePollError(err)) return false
+          throw err
+        }
+        lastSeen = entries.find(e => e.proposal === n)
+        if (lastSeen?.status === expectedStatus) {
+          found = lastSeen
+          return true
+        }
+        return false
+      },
+      txSettleTimeoutMs,
+      2_000,
+    )
+  } catch (err) {
+    if (err instanceof PollTimeoutError) {
+      const seen = lastSeen ? `status "${lastSeen.status}"` : 'no entry at all'
+      throw new Error(`Proposal #${n} index entry never reached status "${expectedStatus}" — last saw ${seen}`)
+    }
+    throw err
+  }
+  return found!
+}
+
+/**
+ * Invariants the index must satisfy at all times, regardless of which scenarios are running.
+ *
+ * Checked against the whole array rather than one proposal, so it stays meaningful in --parallel
+ * mode where other scenarios are concurrently transitioning their own proposals.
+ */
+function assertIndexInvariants(entries: ProposalIndexEntry[], context: string): void {
+  const numbers = entries.map(e => e.proposal)
+  assert(new Set(numbers).size === numbers.length, `${context}: index contains duplicate proposal numbers (${numbers.join(', ')})`)
+  for (let i = 1; i < entries.length; i++) {
+    const prev = entries[i - 1]
+    const curr = entries[i]
+    // Most-recent-first, ties broken by descending number — the total order recordProposalStatus
+    // sorts by. A violation means nodes could disagree on the array.
+    const ordered = prev.timestamp > curr.timestamp || (prev.timestamp === curr.timestamp && prev.proposal > curr.proposal)
+    assert(ordered, `${context}: index out of order at position ${i} — #${prev.proposal}@${prev.timestamp} before #${curr.proposal}@${curr.timestamp}`)
+  }
+}
+
 function archiverActiveVersionFromProposal(proposal: DaoProposalAccount): string | null {
   const changes = proposal.economic?.changes
   const flatChanges: DaoParamChange[] | undefined = Array.isArray(changes?.[0])
@@ -2053,6 +2129,8 @@ async function main(): Promise<void> {
     sc19CancelAccepted: getProposalN('sc19CancelAccepted'),
     sc19CancelApplied: getProposalN('sc19CancelApplied'),
     sc19CancelReview: getProposalN('sc19CancelReview'),
+    sc20Lifecycle: getProposalN('sc20Lifecycle'),
+    sc20Emergency: getProposalN('sc20Emergency'),
   }
   // Register scenario labels for proposals restored from saved state (--no-start/--step reruns),
   // not just freshly-created ones (those go through setProposalN below).
@@ -4789,10 +4867,163 @@ async function main(): Promise<void> {
     ],
   }
 
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Scenario 20 — the proposal index (meta.proposals) tracks status transitions
+  // ─────────────────────────────────────────────────────────────────────────
+  // sequentialOnly so this scenario owns the index while it runs. The byte-identical and
+  // summary-is-a-prefix assertions below compare readings taken at different moments, which only
+  // holds if no other scenario is transitioning a proposal in between.
+  const sc20: ScenarioDef = {
+    num: 20,
+    name: 'Scenario 20 — proposal index records status transitions and nothing else',
+    sequentialOnly: true,
+    setupSteps: [
+    [
+      '20.1a Create sc20Lifecycle (regular, driven through the full lifecycle)',
+      async () => {
+        setProposalN('sc20Lifecycle', await createDaoProposal({
+          proposer: proposer10,
+          title: 'proposal index — lifecycle tracking',
+          description: 'Regular proposal whose every status transition must appear in the index',
+          changes: [{ key: 'pctBurned', value: '52', current: '50' }],
+          gracePeriodMs: graceDurationMs,
+        }))
+        saveCurrentRunState()
+      },
+    ],
+    [
+      '20.1b Create sc20Emergency (emergency, for the emergencyFlag mirror)',
+      async () => {
+        setProposalN('sc20Emergency', await createDaoProposal({
+          proposer: committee[2],
+          emergency: true,
+          title: 'proposal index — emergency flag',
+          description: 'Emergency proposal used only to check emergencyFlag reaches the index',
+          changes: [{ key: 'pctBurned', value: '53', current: '50' }],
+          gracePeriodMs: graceDurationMs,
+        }))
+        saveCurrentRunState()
+      },
+    ],
+    ],
+    bodySteps: [
+    [
+      '20.2 Creation puts the proposal in the index as review',
+      async () => {
+        const entry = await waitForIndexEntry(proposalN.sc20Lifecycle, 'review')
+        assert(entry.emergencyFlag === false, `Expected emergencyFlag false for a regular proposal, got ${entry.emergencyFlag}`)
+        assert(entry.timestamp > 0, `Expected a real entry timestamp, got ${entry.timestamp}`)
+        assertIndexInvariants(await getProposalIndexEntries(), 'after creation')
+      },
+    ],
+    [
+      '20.3 emergencyFlag mirrors the proposal account',
+      async () => {
+        const entry = await waitForIndexEntry(proposalN.sc20Emergency, 'review')
+        assert(entry.emergencyFlag === true, `Expected emergencyFlag true for an emergency proposal, got ${entry.emergencyFlag}`)
+      },
+    ],
+    [
+      '20.4 Committee acceptance moves the entry to voting and bumps its timestamp',
+      async () => {
+        const before = await waitForIndexEntry(proposalN.sc20Lifecycle, 'review')
+        await committeeAcceptToVoting(proposalN.sc20Lifecycle, committee[0], committee, SLEEP_BUFFER_MS)
+        const after = await waitForIndexEntry(proposalN.sc20Lifecycle, 'voting')
+        assert(after.timestamp > before.timestamp, `Expected the entry timestamp to advance on transition, got ${before.timestamp} -> ${after.timestamp}`)
+        assert(after.emergencyFlag === false, 'emergencyFlag must survive an upsert unchanged')
+      },
+    ],
+    [
+      '20.5 dao_vote leaves the index entry byte-identical (negative case)',
+      async () => {
+        // The whole point of the previousStatus guard: a transaction that mutates the proposal
+        // without changing its status must not touch the index at all — not reorder it, not
+        // restamp it. A restamped entry would also mean an unnecessary meta account write on
+        // every vote.
+        //
+        // Baseline re-derived from the index rather than carried in memory from 20.4, so a
+        // --step rerun against an already-progressed network still tests something.
+        const before = await waitForIndexEntry(proposalN.sc20Lifecycle, 'voting')
+        await castVote(proposalN.sc20Lifecycle, voter15, [0, 1], minVoteSpendLib)
+        const entries = await getProposalIndexEntries()
+        const after = entries.find(e => e.proposal === proposalN.sc20Lifecycle)
+        assert(after != null, `Proposal #${proposalN.sc20Lifecycle} vanished from the index after dao_vote`)
+        assert(
+          JSON.stringify(after) === JSON.stringify(before),
+          `dao_vote changed the index entry: ${JSON.stringify(before)} -> ${JSON.stringify(after)}`,
+        )
+        assertIndexInvariants(entries, 'after a non-status transaction')
+      },
+    ],
+    [
+      '20.6 Vote finalization moves the entry to accepted',
+      async () => {
+        const before = await waitForIndexEntry(proposalN.sc20Lifecycle, 'voting')
+        await finalizeVote(proposalN.sc20Lifecycle, committee[0], SLEEP_BUFFER_MS)
+        // Assert the account's status before waiting on the index, so a surprise outcome reports
+        // the real status rather than timing out waiting for an entry that will never say
+        // 'accepted'.
+        const proposal = await getProposal(proposalN.sc20Lifecycle)
+        assert(proposal.status === 'accepted', `Expected the single yes vote to accept the proposal, got ${proposal.status}`)
+        const entry = await waitForIndexEntry(proposalN.sc20Lifecycle, 'accepted')
+        assert(entry.timestamp > before.timestamp, 'Expected the entry timestamp to advance again on finalization')
+      },
+    ],
+    [
+      '20.7 dao_claim_reward leaves the index entry byte-identical (negative case)',
+      async () => {
+        // waitForIndexEntry rather than .find(): if the entry were missing, two undefineds would
+        // compare equal below and the negative case would pass without testing anything.
+        const before = await waitForIndexEntry(proposalN.sc20Lifecycle, 'accepted')
+        await injectAndAssert(
+          {
+            type: 'dao_claim_reward',
+            networkId: currentNetworkId,
+            from: voter15.address,
+            proposalId: daoProposalId(proposalN.sc20Lifecycle),
+            timestamp: Date.now(),
+          },
+          voter15,
+          { expectedBalanceDelta: receipt => asBigInt(receipt.additionalInfo.reward) - asBigInt(receipt.transactionFee ?? 0n) },
+        )
+        const after = (await getProposalIndexEntries()).find(e => e.proposal === proposalN.sc20Lifecycle)
+        assert(after != null, `Proposal #${proposalN.sc20Lifecycle} vanished from the index after dao_claim_reward`)
+        assert(
+          JSON.stringify(after) === JSON.stringify(before),
+          `dao_claim_reward changed the index entry: ${JSON.stringify(before)} -> ${JSON.stringify(after)}`,
+        )
+      },
+    ],
+    [
+      '20.8 The summary endpoint is the leading window of the same index',
+      async () => {
+        const entries = await getProposalIndexEntries()
+        const summary = await getProposalSummaryEntries()
+        assert(summary.length <= 20, `Summary returned ${summary.length} entries, expected at most 20`)
+        assert(
+          summary.length === Math.min(entries.length, 20),
+          `Summary length ${summary.length} does not match the expected window over ${entries.length} index entries`,
+        )
+        assert(
+          JSON.stringify(summary) === JSON.stringify(entries.slice(0, summary.length)),
+          'Summary is not the leading slice of meta.proposals — it must be derived, not stored separately',
+        )
+        assertIndexInvariants(summary, 'summary endpoint')
+        // Both of this scenario's proposals transitioned more recently than anything earlier
+        // scenarios created, so both must be in the window however many proposals exist.
+        for (const n of [proposalN.sc20Lifecycle, proposalN.sc20Emergency]) {
+          assert(summary.some(e => e.proposal === n), `Expected the just-transitioned proposal #${n} in the summary window`)
+        }
+      },
+    ],
+    ],
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // Run scenarios — sequential (default) or parallel (--parallel flag)
   // ─────────────────────────────────────────────────────────────────────────
-  const scenarios = [sc1, sc2, sc3, sc4, sc5, sc6, sc7, sc8, sc9, sc10, sc11, sc12, sc13, sc14, sc15, sc16, sc17, sc18, sc19]
+  const scenarios = [sc1, sc2, sc3, sc4, sc5, sc6, sc7, sc8, sc9, sc10, sc11, sc12, sc13, sc14, sc15, sc16, sc17, sc18, sc19, sc20]
   validateScenarioCatalog(scenarios)
   if (PARALLEL) {
     await runScenariosParallel(scenarios)
