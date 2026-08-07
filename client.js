@@ -3076,6 +3076,11 @@ vorpal.command('dao burn reward', "burn the unclaimed voter reward for a proposa
 // ---------------------------------------------------------------------------
 // dao proposals  (query — fetches meta for count, then each proposal by number)
 // ---------------------------------------------------------------------------
+// Deliberately still the full O(N) historical scan, not migrated to the index. The index is
+// populated by status transitions and filled in for older proposals a chunk at a time, so listing
+// from it would silently omit proposals that exist but have not been backfilled yet — wrong for
+// the command whose job is the complete list. `dao summary` is the fast recent-activity path;
+// this one stays exhaustive.
 const VALID_DAO_STATUSES = ['review', 'withheld', 'voting', 'rejected', 'accepted', 'applied', 'canceled']
 
 vorpal.command('dao proposals [status]', `list DAO proposals, optionally filtered by status (${VALID_DAO_STATUSES.join('/')})`).action(async function (args, callback) {
@@ -3124,6 +3129,62 @@ vorpal.command('dao proposals [status]', `list DAO proposals, optionally filtere
   }
   callback()
 })
+
+// ---------------------------------------------------------------------------
+// dao summary  (query — the recently-active index, then details for just those)
+// ---------------------------------------------------------------------------
+// Separate command rather than a `dao proposals` sub-word: `dao proposals [status]` would parse
+// "summary" as a status and reject it.
+vorpal
+  .command('dao summary [status]', `list the 20 most recently active DAO proposals, optionally filtering those entries by status (${VALID_DAO_STATUSES.join('/')})`)
+  .action(async function (args, callback) {
+    if (args.status && !VALID_DAO_STATUSES.includes(args.status)) {
+      this.log(`Unknown status "${args.status}". Valid values: ${VALID_DAO_STATUSES.join(', ')}`)
+      callback()
+      return
+    }
+    try {
+      const summaryRes = await axios.get(`${PROTOCOL}://${HOST}/dao/proposals/summary`)
+      const entries = parseDaoApiBody(summaryRes.data)?.proposals ?? []
+      const selected = args.status ? entries.filter(e => e.status === args.status) : entries
+      if (selected.length === 0) {
+        // An empty index on a network that has proposals is expected until dao_proposal_create
+        // has backfilled them — `dao proposals` still lists everything by walking meta.count.
+        this.log('No proposals in the recent-activity index.')
+        callback()
+        return
+      }
+      // Step two: one detail fetch per selected entry, not per proposal on the network. This is
+      // what the index buys — the list stays 20 requests wide however many proposals exist.
+      const details = await Promise.all(
+        selected.map(async e => {
+          try {
+            const res = await axios.get(`${PROTOCOL}://${HOST}/dao/proposals/${e.proposal}`)
+            return parseDaoApiBody(res.data)?.proposal ?? null
+          } catch (err) {
+            if (err.response?.status === 404) return null // not yet visible on this node
+            throw err // network failure or server error — propagate
+          }
+        })
+      )
+      selected.forEach((e, i) => {
+        const active = new Date(e.timestamp).toISOString()
+        const flag = e.emergencyFlag ? ' [emergency]' : ''
+        const p = details[i]
+        if (!p) {
+          // Index entry without a reachable account — show what the index knows rather than
+          // dropping the row, so a gap is visible instead of silent.
+          this.log(`#${e.proposal} [${e.status}]${flag} | active ${active} | (details unavailable on this node)`)
+          return
+        }
+        const title = p.title.length > 60 ? `${p.title.slice(0, 60)}...` : p.title
+        this.log(`#${e.proposal} [${e.status}]${flag} | active ${active} | ${p.proposalType} | ${title} | pool: ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
+      })
+    } catch (err) {
+      this.log('Error:', err.message)
+    }
+    callback()
+  })
 
 // ---------------------------------------------------------------------------
 // dao proposal <n>  (query single)
