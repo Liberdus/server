@@ -38,6 +38,7 @@ export default (dapp: Shardus): void => {
   // (last registered = first matched in Express), so register specific paths last.
   dapp.registerExternalGet('dao/proposals/:id', dao.proposals.get(dapp))
   dapp.registerExternalGet('dao/proposals/meta', dao.proposals.meta(dapp))
+  dapp.registerExternalGet('dao/proposals/summary', dao.proposals.summary(dapp))
   dapp.registerExternalGet('dao/voters/:proposalId', dao.voters.list(dapp))
 
   dapp.registerExternalGet('account/:id', accounts.account(dapp))
