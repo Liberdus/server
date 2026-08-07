@@ -159,14 +159,14 @@ export const validate = (
   return response
 }
 
-export const apply = (
+export const apply = async (
   tx: Tx.DaoProposalCreate,
   txTimestamp: number,
   txId: string,
   wrappedStates: WrappedStates,
   dapp: Shardus,
   applyResponse: ShardusTypes.ApplyResponse,
-): void => {
+): Promise<void> => {
   const network = wrappedStates[config.networkAccount].data as NetworkAccount
   const from = wrappedStates[tx.from].data as UserAccount
   const meta = wrappedStates[tx.metaId].data as DaoProposalsMeta
