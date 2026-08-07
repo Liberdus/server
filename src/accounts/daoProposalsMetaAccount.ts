@@ -11,6 +11,7 @@ export function daoProposalsMetaAccount(id: string): DaoProposalsMeta {
     id,
     type: 'DaoProposalsMeta',
     count: 0,
+    proposals: [],
     hash: '',
     timestamp: 0,
   }
