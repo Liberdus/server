@@ -32,7 +32,7 @@ export const meta = (dapp) => async (req, res): Promise<void> => {
  * "Recently active" is not "newest": the index is ordered by last status transition, so a batch of
  * old proposals moving through their lifecycle can push a brand-new proposal out of the window.
  *
- * Returns entries only — number, status, emergencyFlag, timestamp. Callers that need titles or
+ * Returns the meta count plus entries only — proposal, status, emergencyFlag, timestamp. Callers that need titles or
  * balances follow up with `dao/proposals/:id` for the handful they are displaying, which is the
  * point of the index: one request instead of one per proposal.
  */
@@ -40,14 +40,14 @@ export const summary = (dapp) => async (req, res): Promise<void> => {
   try {
     const account = await dapp.getLocalOrRemoteAccount(metaId())
     if (!account || !account.data) {
-      res.json({ proposals: [] })
+      res.json({ count: 0, proposals: [] })
       return
     }
     const meta = account.data as DaoProposalsMeta
     // `proposals` is optional so meta accounts serialized before the index existed still
     // deserialize; on those this correctly reports an empty list until the backfill fills it in.
     const proposals = Array.isArray(meta.proposals) ? meta.proposals.slice(0, SUMMARY_SIZE) : []
-    res.send(Utils.safeStringify({ proposals }))
+    res.send(Utils.safeStringify({ count: meta.count, proposals }))
   } catch (error) {
     dapp.log(error)
     res.json({ error })

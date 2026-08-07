@@ -8,8 +8,8 @@ function makeEntry(number: number, timestamp: number): DaoProposalIndexEntry {
   return { proposal: number, status: 'voting', emergencyFlag: false, timestamp }
 }
 
-function makeMeta(proposals: DaoProposalIndexEntry[] | undefined, timestamp: number): DaoProposalsMeta {
-  return { id: 'meta', type: 'DaoProposalsMeta', count: 0, proposals, hash: '', timestamp } as DaoProposalsMeta
+function makeMeta(proposals: DaoProposalIndexEntry[] | undefined, timestamp: number, count = proposals?.length ?? 0): DaoProposalsMeta {
+  return { id: 'meta', type: 'DaoProposalsMeta', count, proposals, hash: '', timestamp } as DaoProposalsMeta
 }
 
 /** Minimal stand-ins for the Shardus dapp and the Express response the handler is given. */
@@ -39,7 +39,8 @@ describe('dao/proposals/summary', () => {
 
     await summary(dapp)({}, res)
 
-    const body = res.body() as { proposals: DaoProposalIndexEntry[] }
+    const body = res.body() as { count: number; proposals: DaoProposalIndexEntry[] }
+    expect(body.count).toBe(25)
     expect(body.proposals).toHaveLength(20)
     expect(body.proposals[0].proposal).toBe(25)
     expect(body.proposals[19].proposal).toBe(6)
@@ -51,16 +52,18 @@ describe('dao/proposals/summary', () => {
 
     await summary(dapp)({}, res)
 
-    expect((res.body() as { proposals: DaoProposalIndexEntry[] }).proposals.map((e) => e.proposal)).toEqual([2, 1])
+    const body = res.body() as { count: number; proposals: DaoProposalIndexEntry[] }
+    expect(body.count).toBe(2)
+    expect(body.proposals.map((e) => e.proposal)).toEqual([2, 1])
   })
 
-  test('returns an empty list for a meta account serialized before the index existed', async () => {
-    const dapp = makeDapp({ data: makeMeta(undefined, 3000) })
+  test('returns the count and an empty list for a meta account serialized before the index existed', async () => {
+    const dapp = makeDapp({ data: makeMeta(undefined, 3000, 12) })
     const res = makeRes()
 
     await summary(dapp)({}, res)
 
-    expect((res.body() as { proposals: DaoProposalIndexEntry[] }).proposals).toEqual([])
+    expect(res.body()).toEqual({ count: 12, proposals: [] })
   })
 
   test('returns an empty list when the meta account does not exist yet', async () => {
@@ -69,7 +72,7 @@ describe('dao/proposals/summary', () => {
 
     await summary(dapp)({}, res)
 
-    expect(res.json).toHaveBeenCalledWith({ proposals: [] })
+    expect(res.json).toHaveBeenCalledWith({ count: 0, proposals: [] })
   })
 
   test('reflects a status transition on the very next request', async () => {

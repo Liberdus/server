@@ -1223,14 +1223,25 @@ interface ProposalIndexEntry {
   timestamp: number
 }
 
-async function getProposalIndexEntries(): Promise<ProposalIndexEntry[]> {
-  const res = await apiGet('/dao/proposals/meta')
-  return (safeParse(res.data)?.meta?.proposals ?? []) as ProposalIndexEntry[]
+interface ProposalIndexSummary {
+  count: number
+  proposals: ProposalIndexEntry[]
 }
 
-async function getProposalSummaryEntries(): Promise<ProposalIndexEntry[]> {
+async function getProposalIndexMeta(): Promise<{ count: number; proposals: ProposalIndexEntry[] }> {
+  const res = await apiGet('/dao/proposals/meta')
+  const meta = safeParse(res.data)?.meta ?? {}
+  return { count: (meta.count ?? 0) as number, proposals: (meta.proposals ?? []) as ProposalIndexEntry[] }
+}
+
+async function getProposalIndexEntries(): Promise<ProposalIndexEntry[]> {
+  return (await getProposalIndexMeta()).proposals
+}
+
+async function getProposalSummary(): Promise<ProposalIndexSummary> {
   const res = await apiGet('/dao/proposals/summary')
-  return (safeParse(res.data)?.proposals ?? []) as ProposalIndexEntry[]
+  const body = safeParse(res.data) ?? {}
+  return { count: (body.count ?? 0) as number, proposals: (body.proposals ?? []) as ProposalIndexEntry[] }
 }
 
 /**
@@ -4998,8 +5009,11 @@ async function main(): Promise<void> {
     [
       '20.8 The summary endpoint is the leading window of the same index',
       async () => {
-        const entries = await getProposalIndexEntries()
-        const summary = await getProposalSummaryEntries()
+        const meta = await getProposalIndexMeta()
+        const entries = meta.proposals
+        const summaryResponse = await getProposalSummary()
+        const summary = summaryResponse.proposals
+        assert(summaryResponse.count === meta.count, `Summary count ${summaryResponse.count} does not match meta count ${meta.count}`)
         assert(summary.length <= 20, `Summary returned ${summary.length} entries, expected at most 20`)
         assert(
           summary.length === Math.min(entries.length, 20),

@@ -3145,12 +3145,14 @@ vorpal
     }
     try {
       const summaryRes = await axios.get(`${PROTOCOL}://${HOST}/dao/proposals/summary`)
-      const entries = parseDaoApiBody(summaryRes.data)?.proposals ?? []
+      const summary = parseDaoApiBody(summaryRes.data) ?? {}
+      const entries = summary.proposals ?? []
       const selected = args.status ? entries.filter(e => e.status === args.status) : entries
       if (selected.length === 0) {
         // An empty index on a network that has proposals is expected until dao_proposal_create
         // has backfilled them — `dao proposals` still lists everything by walking meta.count.
-        this.log('No proposals in the recent-activity index.')
+        const countText = typeof summary.count === 'number' && summary.count > 0 ? ` (${summary.count} total proposals)` : ''
+        this.log(`No proposals in the recent-activity index${countText}.`)
         callback()
         return
       }
