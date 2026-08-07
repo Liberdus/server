@@ -21,6 +21,39 @@ export function getProposalIndex(meta: DaoProposalsMeta): DaoProposalIndexEntry[
 }
 
 /**
+ * Safety ceiling on a single backfill batch. Not configurable — there is no flag for this.
+ *
+ * The batch is fetched concurrently, so this is a bound on simultaneous in-flight account fetches
+ * inside a consensus-bound apply(), not on wall time. It is deliberately well above any realistic
+ * pre-upgrade proposal count (devnet has 40), so in practice a network fills its whole index on the
+ * first creation after upgrading. It exists only so a pathologically large history cannot open
+ * thousands of sockets at once; such a network simply converges over a few creations instead.
+ */
+const MAX_BACKFILL_BATCH_SIZE = 50
+
+/**
+ * Returns the proposal numbers missing from the index, oldest first.
+ *
+ * Two things this deliberately does NOT do:
+ *
+ * 1. It never returns `meta.count` itself. During dao_proposal_create, `count` has already been
+ *    incremented for the proposal being created, whose account is not committed yet and exists only
+ *    in wrappedStates. Fetching it would always fail, and since the batch is all-or-nothing that
+ *    would abort every backfill forever.
+ * 2. It does not derive the set from `proposals.length`. The historical chunk is optional while new
+ *    proposals are always indexed, so the array can legitimately hold #45 while #1..#30 are absent.
+ *    Only the actual entry numbers say what is missing.
+ */
+export function findMissingProposalNumbers(meta: DaoProposalsMeta): number[] {
+  const present = new Set(getProposalIndex(meta).map((entry) => entry.proposal))
+  const missing: number[] = []
+  for (let n = 1; n < meta.count && missing.length < MAX_BACKFILL_BATCH_SIZE; n++) {
+    if (!present.has(n)) missing.push(n)
+  }
+  return missing
+}
+
+/**
  * Orders index entries most-recent-first, breaking ties by descending proposal number.
  *
  * Proposal numbers are unique, so this is a total order — no two entries can compare equal, which
@@ -28,7 +61,7 @@ export function getProposalIndex(meta: DaoProposalsMeta): DaoProposalIndexEntry[
  * consensus-visible, so every node must produce byte-identical output.
  */
 export function compareIndexEntries(a: DaoProposalIndexEntry, b: DaoProposalIndexEntry): number {
-  return b.timestamp - a.timestamp || b.number - a.number
+  return b.timestamp - a.timestamp || b.proposal - a.proposal
 }
 
 /**
@@ -54,10 +87,10 @@ export function recordProposalStatus(
 ): void {
   const proposals = getProposalIndex(meta)
 
-  const existingIndex = proposals.findIndex((entry) => entry.number === proposalNumber)
+  const existingIndex = proposals.findIndex((entry) => entry.proposal === proposalNumber)
   if (existingIndex !== -1) proposals.splice(existingIndex, 1)
 
-  proposals.push({ number: proposalNumber, status, emergencyFlag, timestamp: txTimestamp })
+  proposals.push({ proposal: proposalNumber, status, emergencyFlag, timestamp: txTimestamp })
 
   // Sort rather than unshift: a live transition always carries the newest timestamp and would land
   // at the front either way, but backfill inserts historical entries whose timestamps are older
