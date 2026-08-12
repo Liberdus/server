@@ -178,8 +178,12 @@ export const validate = (
  * - All-or-nothing. A partially applied batch would give every node a different array; abandoning
  *   the whole batch on any failure collapses the outcomes to exactly two (batch applied, or
  *   nothing), so a majority can still agree.
- * - Never wedge creation. The proposal being created is indexed before this runs, so a batch that
- *   cannot be fetched only delays historical entries — it never blocks new proposals.
+ * - Never wedge creation permanently. The proposal being created is indexed before this runs, so a
+ *   batch the whole network agrees to skip costs nothing but the historical entries. The guarantee
+ *   is weaker when nodes *disagree*: the receipt fails and the entire transaction, creation
+ *   included, has to be resubmitted. What cannot happen is a backfill permanently preventing
+ *   proposals from being created — a retry whose fetches agree succeeds, and once the index is
+ *   complete this path stops running at all.
  *
  * The fetches cannot hang apply() inside consensus, so no local timeout is added here (and
  * getLocalOrRemoteAccount exposes no timeout parameter to pass one through). Core already bounds

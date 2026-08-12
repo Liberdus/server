@@ -40,7 +40,7 @@ const MAX_BACKFILL_BATCH_SIZE = 50
  *    incremented for the proposal being created, whose account is not committed yet and exists only
  *    in wrappedStates. Fetching it would always fail, and since the batch is all-or-nothing that
  *    would abort every backfill forever.
- * 2. It does not derive the set from `proposals.length`. The historical chunk is optional while new
+ * 2. It does not derive the set from `proposals.length`. The historical batch is optional while new
  *    proposals are always indexed, so the array can legitimately hold #45 while #1..#30 are absent.
  *    Only the actual entry numbers say what is missing.
  */

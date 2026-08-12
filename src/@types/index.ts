@@ -836,7 +836,8 @@ export interface DaoProposalsMeta {
   count: number
   /**
    * Index of every proposal, ordered most-recent-timestamp first. Optional so accounts serialized
-   * before this field existed still deserialize; normalize with `meta.proposals ??= []` before use.
+   * before this field existed still deserialize; read it through getProposalIndex(), which
+   * normalizes the missing case and asserts the account type.
    */
   proposals?: DaoProposalIndexEntry[]
   hash: string
