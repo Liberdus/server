@@ -2695,7 +2695,9 @@ vorpal.command('dao proposal create', 'create a new DAO governance/economic/prot
     {
       type: 'input',
       name: 'changesJson',
-      message: 'Enter parameter change sets as JSON array (e.g. [[{"key":"voteExponent","value":"1.2","current":"1.1"}]]):',
+      message:
+        'Enter parameter change sets as JSON array — one set per action option, so the options example above needs two ' +
+        '(e.g. [[{"key":"pctBurned","value":"60","current":"50"}],[{"key":"pctBurned","value":"40","current":"50"}]]):',
       default: '[]',
     },
     {
@@ -3226,6 +3228,12 @@ vorpal.command('dao proposal <number>', 'show details of a single DAO proposal')
       // Voting state
       this.log(`Options:      ${p.options.join(', ')}`)
       this.log(`Total weight: ${p.totalVote.map((w) => asBigIntForDisplay(w).toString()).join(', ')}`)
+      if (p.winningOptionIndex !== undefined) {
+        const winnerLabel = p.options?.[p.winningOptionIndex] ?? `index ${p.winningOptionIndex}`
+        // Index 0 is the rejection lane, so a winning 0 means no change set applies at all.
+        const outcome = p.winningOptionIndex > 0 ? `change set ${p.winningOptionIndex} applies` : 'rejection lane — no change set applies'
+        this.log(`Winner:       [${p.winningOptionIndex}] ${winnerLabel}  (${outcome})`)
+      }
       const voterRewardPool = asBigIntForDisplay(p.voterRewardPool)
       const claimedReward = asBigIntForDisplay(p.claimedReward)
       const initialBurnedReward = asBigIntForDisplay(p.initialBurnedReward)
