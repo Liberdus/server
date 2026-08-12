@@ -1,7 +1,7 @@
 import * as crypto from '../../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../../config'
-import { NetworkAccount, UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount, OurAppDefinedData, TXTypes , DaoProposalsMeta} from '../../@types'
+import { NetworkAccount, UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount, OurAppDefinedData, TXTypes, DaoProposalsMeta } from '../../@types'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'

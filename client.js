@@ -3077,7 +3077,8 @@ vorpal.command('dao burn reward', "burn the unclaimed voter reward for a proposa
 // dao proposals  (query — fetches meta for count, then each proposal by number)
 // ---------------------------------------------------------------------------
 // Deliberately still the full O(N) historical scan, not migrated to the index. The index is
-// populated by status transitions and filled in for older proposals a chunk at a time, so listing
+// populated by status transitions, and older proposals are backfilled only once a proposal is
+// created after the upgrade, so listing
 // from it would silently omit proposals that exist but have not been backfilled yet — wrong for
 // the command whose job is the complete list. `dao summary` is the fast recent-activity path;
 // this one stays exhaustive.

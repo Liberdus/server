@@ -1,6 +1,6 @@
 import * as crypto from '../../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
-import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount , DaoProposalsMeta} from '../../@types'
+import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount, DaoProposalsMeta } from '../../@types'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
