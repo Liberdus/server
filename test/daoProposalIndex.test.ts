@@ -1,5 +1,8 @@
 import { DaoProposalsMeta } from '../src/@types'
-import { compareIndexEntries, findMissingProposalNumbers, getProposalIndex, recordProposalStatus } from '../src/utils/daoProposalIndex'
+import * as crypto from '../src/crypto'
+import { backfillProposalIndex, compareIndexEntries, findMissingProposalNumbers, getProposalIndex, recordProposalStatus } from '../src/utils/daoProposalIndex'
+
+crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 function makeMeta(overrides: Partial<DaoProposalsMeta> = {}): DaoProposalsMeta {
   return {
@@ -224,5 +227,96 @@ describe('findMissingProposalNumbers batch ceiling', () => {
     // consensus-bound apply(). Such a network converges over a few creations instead of one.
     const meta = makeMeta({ count: 10_000 })
     expect(findMissingProposalNumbers(meta)).toHaveLength(50)
+  })
+})
+
+describe('backfillProposalIndex', () => {
+  function proposalAccount(number: number, over: Record<string, unknown> = {}): unknown {
+    return { type: 'DaoProposalAccount', number, status: 'applied', emergency: false, timestamp: 1000 + number, ...over }
+  }
+
+  /** Returns accounts by the address the backfill derives, so a fetch for #N gets proposal #N. */
+  function makeDapp(byNumber: Record<number, unknown>): { getLocalOrRemoteAccount: jest.Mock; log: jest.Mock } {
+    return {
+      getLocalOrRemoteAccount: jest.fn(async (address: string) => {
+        const hit = Object.entries(byNumber).find(([n]) => crypto.hash(`dao proposal #${n}`) === address)
+        if (!hit) return null
+        const data = hit[1]
+        if (data instanceof Error) throw data
+        return { data }
+      }),
+      log: jest.fn(),
+    }
+  }
+
+  test('fills every missing proposal in one batch', async () => {
+    const meta = makeMeta({ count: 4 })
+    recordProposalStatus(meta, 4, 'review', false, 9000)
+    const dapp = makeDapp({ 1: proposalAccount(1), 2: proposalAccount(2, { emergency: true }), 3: proposalAccount(3, { status: 'rejected' }) })
+
+    await backfillProposalIndex(meta, dapp as never)
+
+    // Not sorted before comparing: this is the one case where backfilled historical timestamps
+    // interleave with a live entry, which is exactly what recordProposalStatus's sort exists for.
+    expect(meta.proposals.map((e) => e.proposal)).toEqual([4, 3, 2, 1])
+    expect(meta.proposals.find((e) => e.proposal === 2)?.emergencyFlag).toBe(true)
+    expect(meta.proposals.find((e) => e.proposal === 3)?.status).toBe('rejected')
+    // Backfilled entries carry the account's own timestamp, not the caller's.
+    expect(meta.proposals.find((e) => e.proposal === 1)?.timestamp).toBe(1001)
+  })
+
+  test('abandons the whole batch when any account is unreachable', async () => {
+    // All-or-nothing is what collapses the outcomes to two, so a majority of nodes can still agree.
+    // A partial write here would give every node a different array.
+    const meta = makeMeta({ count: 4 })
+    recordProposalStatus(meta, 4, 'review', false, 9000)
+    const dapp = makeDapp({ 1: proposalAccount(1), 3: proposalAccount(3) }) // #2 missing
+
+    await backfillProposalIndex(meta, dapp as never)
+
+    expect(meta.proposals.map((e) => e.proposal)).toEqual([4])
+  })
+
+  test('abandons the whole batch when a fetch throws', async () => {
+    const meta = makeMeta({ count: 3 })
+    recordProposalStatus(meta, 3, 'review', false, 9000)
+    const dapp = makeDapp({ 1: proposalAccount(1), 2: new Error('unreachable') })
+
+    await expect(backfillProposalIndex(meta, dapp as never)).resolves.toBeUndefined()
+    expect(meta.proposals.map((e) => e.proposal)).toEqual([3])
+  })
+
+  test('rejects an account of the wrong type rather than indexing it', async () => {
+    const meta = makeMeta({ count: 2 })
+    recordProposalStatus(meta, 2, 'review', false, 9000)
+    const dapp = makeDapp({ 1: { type: 'UserAccount', number: 1, status: 'applied', emergency: false, timestamp: 1 } })
+
+    await backfillProposalIndex(meta, dapp as never)
+
+    expect(meta.proposals.map((e) => e.proposal)).toEqual([2])
+  })
+
+  test('is a no-op once the index is complete', async () => {
+    const meta = makeMeta({ count: 3 })
+    recordProposalStatus(meta, 1, 'applied', false, 1000)
+    recordProposalStatus(meta, 2, 'applied', false, 2000)
+    const dapp = makeDapp({})
+
+    await backfillProposalIndex(meta, dapp as never)
+
+    expect(dapp.getLocalOrRemoteAccount).not.toHaveBeenCalled()
+  })
+
+  test('never fetches the proposal currently being created', async () => {
+    // count is already incremented for the in-flight proposal, whose account is not committed yet.
+    const meta = makeMeta({ count: 3 })
+    recordProposalStatus(meta, 3, 'review', false, 9000)
+    const dapp = makeDapp({ 1: proposalAccount(1), 2: proposalAccount(2) })
+
+    await backfillProposalIndex(meta, dapp as never)
+
+    const asked = dapp.getLocalOrRemoteAccount.mock.calls.map((c) => c[0])
+    expect(asked).not.toContain(crypto.hash('dao proposal #3'))
+    expect(asked).toHaveLength(2)
   })
 })

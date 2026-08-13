@@ -3,12 +3,13 @@ import { Shardus, ShardusTypes } from '@shardus/core'
 import * as utils from '../../utils'
 import create from '../../accounts'
 import * as config from '../../config'
-import { UserAccount, NetworkAccount, WrappedStates, Tx, AppReceiptData, DaoProposalsMeta, DaoProposalAccount, DaoProposalStatus } from '../../@types'
+import { UserAccount, NetworkAccount, WrappedStates, Tx, AppReceiptData, DaoProposalsMeta, DaoProposalAccount } from '../../@types'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { isUserAccount, isDaoProposalsMeta, isDaoProposalAccount } from '../../@types/accountTypeGuards'
 import { DAO_PROPOSALS_META_ID_STRING } from '../../accounts/daoProposalsMetaAccount'
-import { findMissingProposalNumbers, getProposalIndex, recordProposalStatus } from '../../utils/daoProposalIndex'
+import { recordProposalStatus } from '../../utils/daoProposalIndex'
+// import { backfillProposalIndex } from '../../utils/daoProposalIndex'   // disabled with its call in apply()
 import { validateDaoOptions } from '../../utils/daoBallotOptions'
 import { validateProposalChangeSets } from '../../utils/daoProposalChangeSets'
 
@@ -159,94 +160,6 @@ export const validate = (
   return response
 }
 
-/**
- * Fills historical proposals into the index until it is complete.
- *
- * Self-limiting: once every proposal 1..count-1 is present, findMissingProposalNumbers returns
- * empty and this becomes a no-op forever.
- *
- * KNOWN AND ACCEPTED: this makes apply() non-deterministic. Handlers normally derive state only
- * from wrappedStates, which Shardus snapshots identically for every node; a network fetch does not
- * have that property, because nodes hold different shards, query different peers, and time out
- * independently. If nodes compute different arrays they submit different
- * AppliedVote.account_state_hash_after values, no majority forms, and the transaction fails
- * consensus. That is a reliability cost, not a safety one — committed state stays consistent and
- * there is no fork; the visible symptom is dao_proposal_create failing and needing a retry.
- *
- * Two mitigations keep that tolerable, and both matter:
- *
- * - All-or-nothing. A partially applied batch would give every node a different array; abandoning
- *   the whole batch on any failure collapses the outcomes to exactly two (batch applied, or
- *   nothing), so a majority can still agree.
- * - Never wedge creation permanently. The proposal being created is indexed before this runs, so a
- *   batch the whole network agrees to skip costs nothing but the historical entries. The guarantee
- *   is weaker when nodes *disagree*: the receipt fails and the entire transaction, creation
- *   included, has to be resubmitted. What cannot happen is a backfill permanently preventing
- *   proposals from being created — a retry whose fetches agree succeeds, and once the index is
- *   complete this path stops running at all.
- *
- * The fetches cannot hang apply() inside consensus, so no local timeout is added here (and
- * getLocalOrRemoteAccount exposes no timeout parameter to pass one through). Core already bounds
- * each call: stateManager.getLocalOrRemoteAccount reaches a remote node via p2p.askBinary, which
- * hands `network.timeout` (default 5s) to the socket send and rejects on expiry. Because
- * canThrowException defaults to false, state-manager swallows that rejection and returns null,
- * which the `!account` check below treats as a failed batch. The whole batch is issued concurrently,
- * so the worst case is one timeout of added latency however many accounts are missing.
- */
-async function backfillProposalIndex(meta: DaoProposalsMeta, dapp: Shardus): Promise<void> {
-  const missing = findMissingProposalNumbers(meta)
-  if (missing.length === 0) return
-
-  // Issued concurrently rather than one at a time, and as a single batch rather than chunks spread
-  // over successive creations. Convergence is what that buys: a network upgrading with 40 existing
-  // proposals fills its entire index on the first creation afterwards.
-  //
-  // Determinism survives this. Promise.all resolves in input order regardless of completion order,
-  // so results map back to `missing` positionally, and recordProposalStatus sorts by the total order
-  // in compareIndexEntries anyway — completion order is never observable in the output.
-  //
-  // Each fetch catches its own failure and yields null rather than rejecting, so one bad account
-  // cannot leave the other promises unhandled, and every failure mode lands on the same null check.
-  const wrapped = await Promise.all(
-    missing.map(async (proposalNumber) => {
-      try {
-        return await dapp.getLocalOrRemoteAccount(crypto.hash(`dao proposal #${proposalNumber}`))
-      } catch (err) {
-        dapp.log('dao_proposal_create: backfill fetch threw', proposalNumber, err)
-        return null
-      }
-    }),
-  )
-
-  const entries: Array<{ proposal: number; status: DaoProposalStatus; emergency: boolean; timestamp: number }> = []
-  for (let i = 0; i < missing.length; i++) {
-    const account = wrapped[i]?.data as DaoProposalAccount
-    if (!account || !isDaoProposalAccount(account)) {
-      // All-or-nothing: one unreachable account abandons the whole batch rather than writing a
-      // partial array that no two nodes would agree on. The next creation retries.
-      dapp.log('dao_proposal_create: backfill could not read proposal, skipping batch', missing[i])
-      return
-    }
-    // proposal.timestamp means "last touched by any tx", not "last status change" — several
-    // handlers bump it without changing status. Backfilled timestamps are therefore approximate,
-    // which is accepted; it is the only timestamp reachable from the account and it is
-    // deterministic, so every node that reads the account agrees on it.
-    // Keyed on the requested number, not account.number: the address was derived from it, so it is
-    // the authoritative identity for this entry regardless of what the fetched body says.
-    entries.push({ proposal: missing[i], status: account.status, emergency: account.emergency, timestamp: account.timestamp })
-  }
-
-  // Apply only after every fetch in the batch succeeded.
-  for (const entry of entries) {
-    recordProposalStatus(meta, entry.proposal, entry.status, entry.emergency, entry.timestamp)
-  }
-  // Note: recordProposalStatus stamps meta.timestamp with each entry's timestamp, which here is
-  // historical. apply() reassigns meta.timestamp = txTimestamp after this returns, which is what
-  // keeps the account emitted as changed — src/index.ts only persists accounts whose timestamp
-  // equals txTimestamp. Do not reorder that assignment above this call.
-  dapp.log('dao_proposal_create: backfilled proposal index entries', entries.length, 'of', getProposalIndex(meta).length)
-}
-
 export const apply = async (
   tx: Tx.DaoProposalCreate,
   txTimestamp: number,
@@ -311,11 +224,15 @@ export const apply = async (
   proposal.status = 'review'
 
   // A newly created proposal is always a real transition, so no previousStatus guard is needed
-  // here. Crucially this runs BEFORE the backfill and never depends on a fetch, so a failing
-  // backfill can never stop the proposal being created from reaching the index.
+  // here. It also runs before the backfill and never depends on a fetch, so a batch the network
+  // agrees to skip cannot keep this proposal out of the index. That guarantee is weaker than it
+  // sounds if backfill is re-enabled: nodes disagreeing on the fetches fail the receipt, and the
+  // whole transaction — this entry included — has to be resubmitted.
   recordProposalStatus(meta, proposal.number, proposal.status, proposal.emergency, txTimestamp)
 
-  await backfillProposalIndex(meta, dapp)
+  // Historical backfill is disabled for now. The helper still lives in utils/daoProposalIndex;
+  // re-enabling is uncommenting this line and its import.
+  // await backfillProposalIndex(meta, dapp)
 
   from.timestamp = txTimestamp
   meta.timestamp = txTimestamp
