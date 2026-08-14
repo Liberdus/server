@@ -11,6 +11,7 @@ import {
   DevAccount,
   DaoProposalsMeta,
   DaoProposalAccount,
+  GroupAccount,
 } from '.'
 
 /**
@@ -25,6 +26,13 @@ export function isUserAccount(account: unknown): account is UserAccount {
  */
 export function isChatAccount(account: unknown): account is ChatAccount {
   return !!account && typeof account === 'object' && 'type' in account && account.type === 'ChatAccount'
+}
+
+/**
+ * Type guard to check if an account is a GroupAccount
+ */
+export function isGroupAccount(account: unknown): account is GroupAccount {
+  return !!account && typeof account === 'object' && 'type' in account && account.type === 'GroupAccount'
 }
 
 /**

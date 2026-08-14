@@ -154,6 +154,12 @@ export enum TXTypes {
   dao_claim_reward = 'dao_claim_reward',
   dao_burn_reward = 'dao_burn_reward',
   dao_cancel = 'dao_cancel',
+  // MLS (RFC 9420) group chat
+  group_create = 'group_create',
+  group_keypackage_publish = 'group_keypackage_publish',
+  group_message = 'group_message',
+  group_commit = 'group_commit',
+  group_leave = 'group_leave',
 }
 
 export interface BaseLiberdusTx {
@@ -272,6 +278,123 @@ export namespace Tx {
   }
 
   export type MessageRecord = Message
+
+  /**
+   * ------------------------- MLS GROUP CHAT (RFC 9420) -------------------------
+   *
+   * Group messaging uses its own transaction family because `Message` is
+   * irreducibly two-party: its chatId is hash(from,to) and its toll state is
+   * [sender, receiver] pairs.
+   *
+   * All group transactions target a single GroupAccount, so Shardus orders them
+   * deterministically by timestamp. That ordering is what makes MLS — which
+   * requires every member to apply the same commits in the same sequence —
+   * workable on-chain, and `GroupAccount.epoch` fences concurrent commits.
+   *
+   * Every blob below is opaque base64 produced by the client's MLS stack. The
+   * network never sees plaintext, group name, or who said what inside a message.
+   */
+
+  /** ML-KEM-1024 sealed post-quantum PSK, addressed to one joining member. */
+  export interface GroupSealedPsk {
+    cipherText: string // ML-KEM-1024 ciphertext, b64
+    nonce: string // AEAD nonce, b64
+    ct: string // wrapped 32-byte group PSK, b64
+  }
+
+  /** Everything a newly added member needs to join. */
+  export interface GroupWelcomeEnvelope {
+    welcome: string // b64 MLS Welcome
+    ratchetTree: string // b64 ratchet tree
+    sealedPsk: GroupSealedPsk
+    pskId: string // b64
+    pskNonce: string // b64
+    epoch: number
+    timestamp: number
+  }
+
+  export interface GroupCreate extends BaseLiberdusTx {
+    from: string
+    groupId: string // must equal hash(from + groupNonce)
+    groupNonce: string // 32-byte hex, client-chosen
+    mlsGroupId: string // hex of the MLS group_id
+    cipherSuite: number // pinned; members must agree
+    meta: string // client-encrypted {name, avatar, ...}
+    maxMembers: number
+    fee: bigint
+  }
+
+  /** Publish single-use MLS KeyPackages so others can add this account. */
+  export interface GroupKeyPackagePublish extends BaseLiberdusTx {
+    from: string
+    keyPackages: string[] // b64, each consumed on use
+    lastResortKeyPackage?: string // b64, reusable fallback when the pool empties
+    cipherSuite: number
+    fee: bigint
+  }
+
+  /** An application message: one MLS PrivateMessage. The hot path. */
+  export interface GroupMessage extends BaseLiberdusTx {
+    from: string
+    groupId: string
+    epoch: number // recorded, NOT enforced (see group_message.ts)
+    message: string // b64 MLS PrivateMessage
+    fee: bigint
+  }
+
+  export interface GroupMessageRecord {
+    type: TXTypes.group_message
+    txId: string
+    from: string
+    groupId: string
+    epoch: number
+    message: string
+    timestamp: number
+    sign: Signature
+  }
+
+  /** A membership change: MLS proposals + commit, fenced on `epoch`. */
+  export interface GroupCommit extends BaseLiberdusTx {
+    from: string
+    groupId: string
+    epoch: number // MUST equal GroupAccount.epoch
+    commit: string // b64 MLS commit
+    proposals: string[] // b64, applied before the commit
+    pskId: string // b64, external PSK referenced by the commit
+    pskNonce: string // b64
+    welcomes: { address: string; envelope: GroupWelcomeEnvelope }[]
+    groupInfo: string // b64 GroupInfo w/ external_pub, for recovery
+    ratchetTree: string // b64 post-commit tree
+    addedMembers: string[]
+    removedMembers: string[]
+    consumedKeyPackages: { address: string; keyPackage: string }[]
+    meta?: string
+    fee: bigint
+  }
+
+  /** Trimmed transcript record. Welcomes and trees live elsewhere to keep this small. */
+  export interface GroupCommitRecord {
+    type: TXTypes.group_commit
+    txId: string
+    from: string
+    groupId: string
+    epoch: number // epoch BEFORE this commit applied
+    commit: string
+    proposals: string[]
+    pskId: string
+    pskNonce: string
+    addedMembers: string[]
+    removedMembers: string[]
+    timestamp: number
+    sign: Signature
+  }
+
+  /** Self-removal. Not cryptographically effective until an admin commits a Remove. */
+  export interface GroupLeave extends BaseLiberdusTx {
+    from: string
+    groupId: string
+    fee: bigint
+  }
 
   export interface Read extends BaseLiberdusTx {
     from: string
@@ -609,6 +732,15 @@ export interface UserAccount {
     stake?: bigint
     remove_stake_request: number | null
     payments: DeveloperPayment[]
+    /**
+     * Pool of single-use MLS KeyPackages, b64. Popped by group_commit when this
+     * account is added to a group; the client tops the pool back up.
+     */
+    mlsKeyPackages?: string[]
+    /** Reusable fallback used when the pool empties (RFC 9420 s10, weaker PCS). */
+    mlsLastResortKeyPackage?: string
+    /** Ciphersuite the published KeyPackages were generated for. */
+    mlsCipherSuite?: number
   }
   alias: string | null
   emailHash: string | null
@@ -696,6 +828,66 @@ export interface ChatAccount {
   read: [number, number] // timestamps of last read
   replied: [number, number] // timestamps of last reply
   hasChats: boolean // if chat has messages
+}
+
+/**
+ * One account per MLS group. Because every group transaction targets this single
+ * account, Shardus serializes them into a deterministic, consensus-agreed order —
+ * which is exactly the total-order broadcast MLS needs from a delivery service.
+ *
+ * The network stores only ciphertext and the minimum public metadata required to
+ * authorize writes (who is a member) and to fence concurrent commits (`epoch`).
+ */
+export interface GroupAccount {
+  id: string
+  type: string
+  hash: string
+  timestamp: number
+
+  // --- MLS coordination -----------------------------------------------------
+  mlsGroupId: string
+  cipherSuite: number
+  /**
+   * AUTHORITATIVE MLS epoch. A group_commit must name this exact value or it is
+   * rejected, so exactly one commit can land per epoch no matter how many
+   * members race. Incremented on every applied commit.
+   */
+  epoch: number
+
+  // --- membership (public metadata; required for authorization) -------------
+  members: string[]
+  admins: string[]
+  memberSince: { [address: string]: { epoch: number; timestamp: number } }
+
+  // --- transcript -----------------------------------------------------------
+  /** Application messages. Safe to prune: losing them costs history only. */
+  messages: Tx.GroupMessageRecord[]
+  /**
+   * Commits. MUST NOT be pruned on the ordinary retention timer — dropping a
+   * commit a member has not applied locks that member out of the group forever.
+   * Only prune below `checkpoint.epoch`, from which stragglers can re-join
+   * externally.
+   */
+  handshakes: Tx.GroupCommitRecord[]
+
+  /** Welcome + sealed PQ PSK awaiting collection by each newly added member. */
+  pendingWelcomes: { [address: string]: Tx.GroupWelcomeEnvelope }
+
+  // --- recovery -------------------------------------------------------------
+  checkpoint: {
+    epoch: number
+    groupInfo: string // b64 GroupInfo with external_pub
+    ratchetTree: string // b64
+    timestamp: number
+  } | null
+
+  // --- misc -----------------------------------------------------------------
+  meta: string // client-encrypted group name/avatar; opaque here
+  maxMembers: number
+  /** Per-member send throttle, address -> last group_message timestamp. */
+  lastMessageAt: { [address: string]: number }
+  createdBy: string
+  hasChats: boolean
 }
 
 export interface AliasAccount {
@@ -897,7 +1089,8 @@ export type Accounts = NetworkAccount &
   NodeAccount &
   ChatAccount &
   DaoProposalsMeta &
-  DaoProposalAccount
+  DaoProposalAccount &
+  GroupAccount
 
 export type AccountVariant =
   | NetworkAccount
@@ -912,6 +1105,7 @@ export type AccountVariant =
   | DevAccount
   | DaoProposalsMeta
   | DaoProposalAccount
+  | GroupAccount
 
 /**
  * ---------------------- NETWORK DATA export interfaceS ----------------------

@@ -261,6 +261,162 @@ export const schemaMessageTX = {
   additionalProperties: false,
 }
 
+/**
+ * ------------------------- MLS GROUP CHAT SCHEMAS -------------------------
+ *
+ * NOTE: `baseTxProperties` omits `networkId` and `fee`, even though every
+ * transaction carries them. Combined with `additionalProperties: false` that
+ * makes several existing schemas (schemaMessageTX among them) reject real
+ * traffic — they only pass today because LiberdusFlags.enableAJVValidation is
+ * false. The group schemas below declare both explicitly so they are correct
+ * when that flag is eventually turned on.
+ */
+const groupBaseProperties = {
+  ...baseTxProperties,
+  networkId: { type: 'string' },
+  fee: { isBigInt: true },
+}
+const groupBaseRequired = [...baseTxRequired, 'networkId', 'fee']
+
+const schemaGroupSealedPsk = {
+  type: 'object',
+  properties: {
+    cipherText: { type: 'string' },
+    nonce: { type: 'string' },
+    ct: { type: 'string' },
+  },
+  required: ['cipherText', 'nonce', 'ct'],
+  additionalProperties: false,
+}
+
+const schemaGroupWelcomeEnvelope = {
+  type: 'object',
+  properties: {
+    welcome: { type: 'string' },
+    ratchetTree: { type: 'string' },
+    sealedPsk: schemaGroupSealedPsk,
+    pskId: { type: 'string' },
+    pskNonce: { type: 'string' },
+    epoch: { type: 'number', minimum: 0 },
+    timestamp: { type: 'number', minimum: 0 },
+  },
+  required: ['welcome', 'ratchetTree', 'sealedPsk', 'pskId', 'pskNonce'],
+  additionalProperties: false,
+}
+
+export const schemaGroupCreateTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+    groupNonce: { type: 'string', minLength: 64, maxLength: 64 },
+    mlsGroupId: { type: 'string', minLength: 1 },
+    cipherSuite: { type: 'number', minimum: 1 },
+    meta: { type: 'string' },
+    maxMembers: { type: 'number', minimum: 1 },
+  },
+  required: [...groupBaseRequired, 'from', 'groupId', 'groupNonce', 'mlsGroupId', 'cipherSuite', 'meta', 'maxMembers'],
+  additionalProperties: false,
+}
+
+export const schemaGroupKeyPackagePublishTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    keyPackages: { type: 'array', items: { type: 'string' } },
+    lastResortKeyPackage: { type: 'string' },
+    cipherSuite: { type: 'number', minimum: 1 },
+  },
+  required: [...groupBaseRequired, 'from', 'keyPackages', 'cipherSuite'],
+  additionalProperties: false,
+}
+
+export const schemaGroupMessageTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+    epoch: { type: 'number', minimum: 0 },
+    message: { type: 'string', minLength: 1 },
+  },
+  required: [...groupBaseRequired, 'from', 'groupId', 'epoch', 'message'],
+  additionalProperties: false,
+}
+
+export const schemaGroupCommitTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+    epoch: { type: 'number', minimum: 0 },
+    commit: { type: 'string', minLength: 1 },
+    proposals: { type: 'array', items: { type: 'string' } },
+    pskId: { type: 'string' },
+    pskNonce: { type: 'string' },
+    welcomes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          address: { type: 'string' },
+          envelope: schemaGroupWelcomeEnvelope,
+        },
+        required: ['address', 'envelope'],
+        additionalProperties: false,
+      },
+    },
+    groupInfo: { type: 'string' },
+    ratchetTree: { type: 'string' },
+    addedMembers: { type: 'array', items: { type: 'string' } },
+    removedMembers: { type: 'array', items: { type: 'string' } },
+    consumedKeyPackages: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          address: { type: 'string' },
+          keyPackage: { type: 'string' },
+        },
+        required: ['address', 'keyPackage'],
+        additionalProperties: false,
+      },
+    },
+    meta: { type: 'string' },
+  },
+  required: [
+    ...groupBaseRequired,
+    'from',
+    'groupId',
+    'epoch',
+    'commit',
+    'proposals',
+    'pskId',
+    'pskNonce',
+    'welcomes',
+    'groupInfo',
+    'ratchetTree',
+    'addedMembers',
+    'removedMembers',
+    'consumedKeyPackages',
+  ],
+  additionalProperties: false,
+}
+
+export const schemaGroupLeaveTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+  },
+  required: [...groupBaseRequired, 'from', 'groupId'],
+  additionalProperties: false,
+}
+
 export const schemaReadTX = {
   type: 'object',
   properties: {
@@ -935,6 +1091,11 @@ function addSchemas(): void {
     [TXTypes.issue]: schemaIssueTX,
     [TXTypes.dev_issue]: schemaDevIssueTX,
     [TXTypes.message]: schemaMessageTX,
+    [TXTypes.group_create]: schemaGroupCreateTX,
+    [TXTypes.group_keypackage_publish]: schemaGroupKeyPackagePublishTX,
+    [TXTypes.group_message]: schemaGroupMessageTX,
+    [TXTypes.group_commit]: schemaGroupCommitTX,
+    [TXTypes.group_leave]: schemaGroupLeaveTX,
     [TXTypes.read]: schemaReadTX,
     [TXTypes.reclaim_toll]: schemeReclaimTollTX,
     [TXTypes.update_chat_toll]: schemaUpdateChatTollTX,

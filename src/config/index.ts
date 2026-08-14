@@ -271,6 +271,24 @@ interface LiberdusFlags {
   minCommitteeMembers: number
   maxCommitteeMembers: number
   enableAJVValidation: boolean
+  // --- MLS group chat -------------------------------------------------------
+  // Kill-switch for the whole group_* transaction family. Everything below
+  // affects transaction validity, so it must stay identical across all nodes.
+  enableGroupChat: boolean
+  /** Hard cap on members per group. Bounds commit size and account hotspotting. */
+  groupMaxMembers: number
+  /** Members addable/removable in one commit (bounds the transaction key set). */
+  groupMaxMembersPerCommit: number
+  /** Max size of one MLS application message, in kB. */
+  groupMessageSizeLimit: number
+  /** Application messages retained per group before the oldest are dropped. */
+  groupMessageMaxLength: number
+  /** Days of application-message history retained. Commits are NOT pruned by this. */
+  groupMessageRetentionDays: number
+  /** Minimum gap between group_message transactions from one member, in ms. */
+  groupMessageMinIntervalMs: number
+  /** Max unconsumed KeyPackages an account may hold at once. */
+  groupMaxKeyPackagesPerAccount: number
   versionFlags: {
     replierNoToll: boolean
     allowZeroToll: boolean
@@ -322,6 +340,15 @@ export const LiberdusFlags: LiberdusFlags = {
   minCommitteeMembers: 4,
   maxCommitteeMembers: 10,
   enableAJVValidation: false,
+  // MLS group chat — off until the feature ships
+  enableGroupChat: true,
+  groupMaxMembers: 50,
+  groupMaxMembersPerCommit: 10,
+  groupMessageSizeLimit: 64, // 64 kB; an X-Wing commit is ~5.5 kB
+  groupMessageMaxLength: 500,
+  groupMessageRetentionDays: 7,
+  groupMessageMinIntervalMs: 1000,
+  groupMaxKeyPackagesPerAccount: 10, // X-Wing KeyPackages are ~2.6 kB each
   versionFlags: {
     replierNoToll: true, // turn on by 2.3.5
     allowZeroToll: true, // turn on by 2.3.6
