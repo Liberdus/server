@@ -77,6 +77,15 @@ const daoPreCrackTxTypes = new Set([
   TXTypes.dao_cancel,
 ])
 
+/** MLS group chat transaction family, gated by LiberdusFlags.enableGroupChat. */
+const groupChatTxTypes = new Set([
+  TXTypes.group_create,
+  TXTypes.group_keypackage_publish,
+  TXTypes.group_message,
+  TXTypes.group_commit,
+  TXTypes.group_leave,
+])
+
 let isReadyToJoinLatestValue = false
 let mustUseAdminCert = false
 
@@ -277,6 +286,12 @@ const shardusSetup = (): void => {
         // 3.7. Reject dao_cancel specifically when its own kill-switch flag is off
         if (tx.type === TXTypes.dao_cancel && !LiberdusFlags.enableDaoCancel) {
           validationResult.reason = 'dao_cancel is not enabled on this network'
+          return validationResult
+        }
+
+        // 3.8. Reject MLS group chat transactions while the feature is off
+        if (!LiberdusFlags.enableGroupChat && groupChatTxTypes.has(tx.type)) {
+          validationResult.reason = 'Group chat transactions are not enabled on this network yet'
           return validationResult
         }
 
