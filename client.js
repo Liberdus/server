@@ -2627,6 +2627,12 @@ function formatDaoProposalChanges(p) {
   return JSON.stringify(changes)
 }
 
+// Pre-title proposals deserialize without `title`; treat missing/empty as untitled.
+function formatDaoTitle(title, maxLen = Infinity) {
+  const text = typeof title === 'string' && title.length > 0 ? title : '(untitled)'
+  return text.length > maxLen ? `${text.slice(0, maxLen)}...` : text
+}
+
 // Mirrors utils.usdStrToWei on the server — converts a USD-string snapshot to Wei at the
 // given exchange rate.
 function usdStrToWei(usdStr, stabilityFactorStr) {
@@ -3123,8 +3129,9 @@ vorpal.command('dao proposals [status]', `list DAO proposals, optionally filtere
       this.log('No proposals found.')
     } else {
       for (const p of filtered) {
-        const title = p.title.length > 80 ? `${p.title.slice(0, 80)}...` : p.title
-        this.log(`#${p.number} [${p.status}] ${p.proposalType} | ${title} | options: ${p.options.join('/')} | pool: ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
+        const title = formatDaoTitle(p.title, 80)
+        const options = Array.isArray(p.options) ? p.options.join('/') : ''
+        this.log(`#${p.number} [${p.status}] ${p.proposalType} | ${title} | options: ${options} | pool: ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
       }
     }
   } catch (err) {
@@ -3182,7 +3189,7 @@ vorpal
           this.log(`#${e.proposal} [${e.status}]${flag} | active ${active} | (details unavailable on this node)`)
           return
         }
-        const title = p.title.length > 60 ? `${p.title.slice(0, 60)}...` : p.title
+        const title = formatDaoTitle(p.title, 60)
         this.log(`#${e.proposal} [${e.status}]${flag} | active ${active} | ${p.proposalType} | ${title} | pool: ${weiToLibStr(asBigIntForDisplay(p.voterRewardPool))} LIB`)
       })
     } catch (err) {
@@ -3215,7 +3222,7 @@ vorpal.command('dao proposal <number>', 'show details of a single DAO proposal')
       this.log(`Proposal #${args.number} not found.`)
     } else {
       this.log(`\n--- Proposal #${p.number} ---`)
-      this.log(`Title:        ${p.title}`)
+      this.log(`Title:        ${formatDaoTitle(p.title)}`)
       this.log(`ID:           ${p.id}`)
       this.log(`Status:       ${p.status}`)
       this.log(`Type:         ${p.proposalType}${p.emergency ? ' (EMERGENCY)' : ''}`)
