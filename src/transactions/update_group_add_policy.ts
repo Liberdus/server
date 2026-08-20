@@ -1,32 +1,36 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as utils from '../utils'
-import { UserAccount, GroupAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
+import { UserAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
-import { isUserAccount, isGroupAccount } from '../@types/accountTypeGuards'
+import { isUserAccount } from '../@types/accountTypeGuards'
+
+const POLICIES = ['anyone', 'contacts', 'nobody']
 
 /**
- * Self-removal from a group.
+ * Sets who may add this account to a group without it having asked to join.
  *
- * IMPORTANT: this drops the member from the roster and stops the network
- * accepting their messages, but it is NOT cryptographically effective on its
- * own — the leaver still holds the current epoch's group secret and could
- * decrypt traffic until a remaining member commits a Remove, which rotates the
- * keys. Clients should prompt an admin to commit promptly and should surface
- * the group as "leaving" until that lands.
+ * 'contacts' means accounts this one is connected to — those it has waived its
+ * chat toll for (toll.required === 0), which is the relationship that replaced
+ * the deprecated friends list.
  *
- * Leaving is deliberately not fenced on epoch: it does not advance the MLS
- * epoch, and blocking someone from leaving because a commit raced them would be
- * hostile.
+ * The network default is restrictive, because being added is not free for the
+ * addee: it consumes one of their single-use KeyPackages and, under
+ * update-on-join, makes them inject a group_commit of their own. This lets an
+ * account opt into being addable by anyone, or refuse direct adds entirely and
+ * accept members only through join requests.
  */
-export const validate_fields = (tx: Tx.GroupLeave, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
+export const validate_fields = (
+  tx: Tx.UpdateGroupAddPolicy,
+  response: ShardusTypes.IncomingTransactionResult,
+): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address.'
     return response
   }
-  if (utils.isValidAddress(tx.groupId) === false) {
-    response.reason = 'tx "groupId" is not a valid address.'
+  if (typeof tx.policy !== 'string' || !POLICIES.includes(tx.policy)) {
+    response.reason = `tx "policy" must be one of ${POLICIES.join(', ')}.`
     return response
   }
   if (typeof tx.fee !== 'bigint') {
@@ -46,13 +50,12 @@ export const validate_fields = (tx: Tx.GroupLeave, response: ShardusTypes.Incomi
 }
 
 export const validate = (
-  tx: Tx.GroupLeave,
+  tx: Tx.UpdateGroupAddPolicy,
   wrappedStates: WrappedStates,
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
   const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
-  const group: GroupAccount = wrappedStates[tx.groupId] && wrappedStates[tx.groupId].data
 
   if (typeof from === 'undefined' || from === null) {
     response.reason = '"from" account does not exist.'
@@ -62,28 +65,9 @@ export const validate = (
     response.reason = 'from account is not a UserAccount'
     return response
   }
-  if (typeof group === 'undefined' || group === null) {
-    response.reason = '"groupId" account does not exist.'
-    return response
-  }
-  if (!isGroupAccount(group)) {
-    response.reason = 'groupId account is not a GroupAccount'
-    return response
-  }
-  if (!group.members.includes(tx.from)) {
-    response.reason = 'sender is not a member of this group.'
-    return response
-  }
-  // The last member cannot leave, or the group would be unrecoverable while
-  // still holding a transcript.
-  if (group.members.length === 1) {
-    response.reason = 'the last member cannot leave the group.'
-    return response
-  }
 
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   if (transactionFee > tx.fee) {
-    response.success = false
     response.reason = `The network transaction fee (${transactionFee}) is greater than the transaction fee provided (${tx.fee}).`
     return response
   }
@@ -98,7 +82,7 @@ export const validate = (
 }
 
 export const apply = (
-  tx: Tx.GroupLeave,
+  tx: Tx.UpdateGroupAddPolicy,
   txTimestamp: number,
   txId: string,
   wrappedStates: WrappedStates,
@@ -106,38 +90,11 @@ export const apply = (
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const group: GroupAccount = wrappedStates[tx.groupId].data
 
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
 
-  group.members = group.members.filter((m) => m !== tx.from)
-  group.admins = group.admins.filter((a) => a !== tx.from)
-  delete group.memberSince[tx.from]
-  delete group.lastMessageAt[tx.from]
-  /*
-   * Any uncollected Welcome for this account lives on the GroupTreeAccount,
-   * which group_leave deliberately does NOT name in keys() — leaving is a
-   * roster change and should not drag the tree into consensus. A stale welcome
-   * is harmless: it is addressed to key material the leaver has abandoned, and
-   * the next commit overwrites or removes it.
-   */
-
-  // If the last admin walked out, promote the longest-standing remaining member
-  // so the group can still be managed.
-  if (group.admins.length === 0 && group.members.length > 0) {
-    const successor = group.members
-      .slice()
-      .sort((a, b) => (group.memberSince[a]?.timestamp || 0) - (group.memberSince[b]?.timestamp || 0))[0]
-    group.admins.push(successor)
-  }
-
-  if (from.data.chats && from.data.chats[tx.groupId]) {
-    delete from.data.chats[tx.groupId]
-  }
-  from.data.chatTimestamp = txTimestamp
-
-  group.timestamp = txTimestamp
+  from.data.groupAddPolicy = tx.policy
   from.timestamp = txTimestamp
 
   const appReceiptData: AppReceiptData = {
@@ -145,21 +102,18 @@ export const apply = (
     timestamp: txTimestamp,
     success: true,
     from: tx.from,
-    to: tx.groupId,
+    to: tx.from,
     type: tx.type,
     transactionFee,
-    additionalInfo: {
-      groupId: tx.groupId,
-      remainingMembers: group.members.length,
-    },
+    additionalInfo: { policy: tx.policy },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
-  dapp.log('Applied group_leave tx', tx.groupId, tx.from)
+  dapp.log('Applied update_group_add_policy tx', tx.from, tx.policy)
 }
 
 export const createFailedAppReceiptData = (
-  tx: Tx.GroupLeave,
+  tx: Tx.UpdateGroupAddPolicy,
   txTimestamp: number,
   txId: string,
   wrappedStates: WrappedStates,
@@ -187,41 +141,38 @@ export const createFailedAppReceiptData = (
     success: false,
     reason,
     from: tx.from,
-    to: tx.groupId,
+    to: tx.from,
     type: tx.type,
     transactionFee,
-    additionalInfo: { groupId: tx.groupId },
+    additionalInfo: {},
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.GroupLeave, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
+export const keys = (tx: Tx.UpdateGroupAddPolicy, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.groupId]
+  result.targetKeys = []
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.GroupLeave, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
-  return {
-    rw: [tx.from, tx.groupId],
-    wo: [],
-    on: [],
-    ri: [],
-    ro: [],
-  }
+export const memoryPattern = (
+  tx: Tx.UpdateGroupAddPolicy,
+  result: ShardusTypes.TransactionKeys,
+): ShardusTypes.ShardusMemoryPatternsInput => {
+  return { rw: [tx.from], wo: [], on: [], ri: [], ro: [] }
 }
 
 export const createRelevantAccount = (
   dapp: Shardus,
-  account: UserAccount | GroupAccount,
+  account: UserAccount,
   accountId: string,
-  tx: Tx.GroupLeave,
+  tx: Tx.UpdateGroupAddPolicy,
   accountCreated = false,
 ): ShardusTypes.WrappedResponse => {
   if (!account) {
-    throw Error('Account must exist in order to leave a group')
+    throw Error('Account must exist in order to set a group add policy')
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }

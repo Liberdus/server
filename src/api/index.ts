@@ -57,6 +57,8 @@ export default (dapp: Shardus): void => {
   dapp.registerExternalGet('group/:groupId', group.info(dapp))
   dapp.registerExternalGet('group/:groupId/checkpoint', group.checkpoint(dapp))
   dapp.registerExternalGet('group/:groupId/messages/:timestamp', group.messages(dapp))
+  dapp.registerExternalGet('group/:groupId/tree', group.tree(dapp))
+  dapp.registerExternalGet('group/:groupId/requests', group.joinRequests(dapp))
   dapp.registerExternalGet('group/:groupId/handshakes/:epoch', group.handshakes(dapp))
   dapp.registerExternalGet('group/:groupId/welcome/:address', group.welcome(dapp))
   dapp.registerExternalGet('account/:id/keypackages', group.keyPackages(dapp))

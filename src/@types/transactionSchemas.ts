@@ -314,9 +314,10 @@ export const schemaGroupCreateTX = {
     mlsGroupId: { type: 'string', minLength: 1 },
     cipherSuite: { type: 'number', minimum: 1 },
     meta: { type: 'string' },
+    joinFee: { type: 'string' },
     maxMembers: { type: 'number', minimum: 1 },
   },
-  required: [...groupBaseRequired, 'from', 'groupId', 'groupNonce', 'mlsGroupId', 'cipherSuite', 'meta', 'maxMembers'],
+  required: [...groupBaseRequired, 'from', 'groupId', 'groupNonce', 'mlsGroupId', 'cipherSuite', 'meta', 'maxMembers', 'joinFee'],
   additionalProperties: false,
 }
 
@@ -371,6 +372,20 @@ export const schemaGroupCommitTX = {
     },
     groupInfo: { type: 'string' },
     ratchetTree: { type: 'string' },
+    // Ratchet-tree nodes this commit changed, by node index. `n: null` blanks a
+    // node, so the type is nullable rather than string.
+    treeDelta: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          i: { type: 'number', minimum: 0 },
+          n: { type: ['string', 'null'] },
+        },
+        required: ['i', 'n'],
+        additionalProperties: false,
+      },
+    },
     addedMembers: { type: 'array', items: { type: 'string' } },
     removedMembers: { type: 'array', items: { type: 'string' } },
     consumedKeyPackages: {
@@ -399,10 +414,57 @@ export const schemaGroupCommitTX = {
     'welcomes',
     'groupInfo',
     'ratchetTree',
+    'treeDelta',
     'addedMembers',
     'removedMembers',
     'consumedKeyPackages',
   ],
+  additionalProperties: false,
+}
+
+export const schemaGroupJoinRequestTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+    escrow: { type: 'string' }, // bigint on the wire
+    message: { type: 'string' },
+  },
+  required: [...groupBaseRequired, 'from', 'groupId', 'escrow', 'message'],
+  additionalProperties: false,
+}
+
+export const schemaGroupFeeClaimTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+  },
+  required: [...groupBaseRequired, 'from', 'groupId'],
+  additionalProperties: false,
+}
+
+export const schemaGroupJoinReclaimTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+  },
+  required: [...groupBaseRequired, 'from', 'groupId'],
+  additionalProperties: false,
+}
+
+export const schemaUpdateGroupAddPolicyTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    policy: { type: 'string', enum: ['anyone', 'contacts', 'nobody'] },
+  },
+  required: [...groupBaseRequired, 'from', 'policy'],
   additionalProperties: false,
 }
 
@@ -1096,6 +1158,10 @@ function addSchemas(): void {
     [TXTypes.group_message]: schemaGroupMessageTX,
     [TXTypes.group_commit]: schemaGroupCommitTX,
     [TXTypes.group_leave]: schemaGroupLeaveTX,
+    [TXTypes.update_group_add_policy]: schemaUpdateGroupAddPolicyTX,
+    [TXTypes.group_join_request]: schemaGroupJoinRequestTX,
+    [TXTypes.group_join_reclaim]: schemaGroupJoinReclaimTX,
+    [TXTypes.group_fee_claim]: schemaGroupFeeClaimTX,
     [TXTypes.read]: schemaReadTX,
     [TXTypes.reclaim_toll]: schemeReclaimTollTX,
     [TXTypes.update_chat_toll]: schemaUpdateChatTollTX,

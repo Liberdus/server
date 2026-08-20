@@ -160,6 +160,10 @@ export enum TXTypes {
   group_message = 'group_message',
   group_commit = 'group_commit',
   group_leave = 'group_leave',
+  update_group_add_policy = 'update_group_add_policy',
+  group_join_request = 'group_join_request',
+  group_join_reclaim = 'group_join_reclaim',
+  group_fee_claim = 'group_fee_claim',
 }
 
 export interface BaseLiberdusTx {
@@ -321,6 +325,8 @@ export namespace Tx {
     cipherSuite: number // pinned; members must agree
     meta: string // client-encrypted {name, avatar, ...}
     maxMembers: number
+    /** Price of admission, escrowed by a requester and earned by the approving admin. */
+    joinFee: bigint
     fee: bigint
   }
 
@@ -364,7 +370,21 @@ export namespace Tx {
     pskNonce: string // b64
     welcomes: { address: string; envelope: GroupWelcomeEnvelope }[]
     groupInfo: string // b64 GroupInfo w/ external_pub, for recovery
-    ratchetTree: string // b64 post-commit tree
+    /**
+     * BASELINE ONLY: the full b64 post-commit tree. Sent on a group's first
+     * commit, or once per group when migrating an existing group onto the
+     * delta scheme. Empty on every other commit — see `treeDelta`.
+     */
+    ratchetTree: string
+    /**
+     * Ratchet-tree nodes this commit changed, by node index (even = leaf,
+     * odd = parent); `n: null` blanks the node.
+     *
+     * Must be an explicit field rather than something the server derives: our
+     * commits are mls_private_message, so the UpdatePath inside them is
+     * encrypted and the network cannot read it.
+     */
+    treeDelta: { i: number; n: string | null }[]
     addedMembers: string[]
     removedMembers: string[]
     consumedKeyPackages: { address: string; keyPackage: string }[]
@@ -390,6 +410,45 @@ export namespace Tx {
   }
 
   /** Self-removal. Not cryptographically effective until an admin commits a Remove. */
+  /**
+   * Asks to join a group. The requester's own consent to be added, which
+   * group_commit then requires — nobody can be pulled into a group they did not
+   * ask for.
+   *
+   * Carries NO KeyPackage: the approving commit draws one from the requester's
+   * published pool. Pinning one here would break if the requester rotated their
+   * pool while the request was pending, because publishing discards the private
+   * halves — the Welcome would be undecryptable and they could never join.
+   */
+  export interface GroupJoinRequest extends BaseLiberdusTx {
+    from: string
+    groupId: string
+    /** The group's joinFee at request time, debited now and held on the group. */
+    escrow: bigint
+    message: string
+    fee: bigint
+  }
+
+  /** Collects join fees that have finished vesting. */
+  export interface GroupFeeClaim extends BaseLiberdusTx {
+    from: string
+    groupId: string
+    fee: bigint
+  }
+
+  /** Withdraws a join request and returns its escrow. Modelled on reclaim_toll. */
+  export interface GroupJoinReclaim extends BaseLiberdusTx {
+    from: string
+    groupId: string
+    fee: bigint
+  }
+
+  export interface UpdateGroupAddPolicy extends BaseLiberdusTx {
+    from: string
+    policy: 'anyone' | 'contacts' | 'nobody'
+    fee: bigint
+  }
+
   export interface GroupLeave extends BaseLiberdusTx {
     from: string
     groupId: string
@@ -741,6 +800,19 @@ export interface UserAccount {
     mlsLastResortKeyPackage?: string
     /** Ciphersuite the published KeyPackages were generated for. */
     mlsCipherSuite?: number
+    /**
+     * Who may add this account to a group WITHOUT it having asked to join.
+     *
+     *   'contacts' (default) - only accounts this one is connected to, i.e. has
+     *                            waived its chat toll for (toll.required === 0)
+     *   'anyone'             - anybody, i.e. the pre-consent behaviour
+     *   'nobody'             - direct adds refused; join requests only
+     *
+     * Being added is not free for the addee: it consumes one of their single-use
+     * KeyPackages and, under update-on-join, makes them inject a group_commit of
+     * their own. So the default is restrictive.
+     */
+    groupAddPolicy?: 'anyone' | 'contacts' | 'nobody'
   }
   alias: string | null
   emailHash: string | null
@@ -863,23 +935,23 @@ export interface GroupAccount {
   /** Application messages. Safe to prune: losing them costs history only. */
   messages: Tx.GroupMessageRecord[]
   /**
-   * Commits. MUST NOT be pruned on the ordinary retention timer — dropping a
-   * commit a member has not applied locks that member out of the group forever.
-   * Only prune below `checkpoint.epoch`, from which stragglers can re-join
-   * externally.
+   * Commits, welcomes, the ratchet tree and the recovery checkpoint all live on
+   * the GroupTreeAccount instead — see `treeId`. They are needed only by
+   * group_commit, whereas THIS account is loaded, shipped to the consensus group
+   * and re-hashed by every single group_message. Keeping them here made the hot
+   * path carry megabytes it never reads.
    */
-  handshakes: Tx.GroupCommitRecord[]
+  treeId: string
 
-  /** Welcome + sealed PQ PSK awaiting collection by each newly added member. */
-  pendingWelcomes: { [address: string]: Tx.GroupWelcomeEnvelope }
-
-  // --- recovery -------------------------------------------------------------
-  checkpoint: {
-    epoch: number
-    groupInfo: string // b64 GroupInfo with external_pub
-    ratchetTree: string // b64
-    timestamp: number
-  } | null
+  // --- admission ------------------------------------------------------------
+  /**
+   * Price of admission, escrowed by the requester and earned by the approving
+   * admin. Zero until paid groups ship; the plumbing exists so enabling them is
+   * a matter of allowing this to be set.
+   */
+  joinFee: bigint
+  /** Addresses refused admission. The group's analogue of toll.required = 2. */
+  blocked: string[]
 
   // --- misc -----------------------------------------------------------------
   meta: string // client-encrypted group name/avatar; opaque here
@@ -888,6 +960,113 @@ export interface GroupAccount {
   lastMessageAt: { [address: string]: number }
   createdBy: string
   hasChats: boolean
+}
+
+/**
+ * The cold half of a group: everything group_commit needs and group_message does
+ * not.
+ *
+ * Split out because `keys()` for a message names only the GroupAccount, so any
+ * byte stored there is transferred and re-hashed on every message. The ratchet
+ * tree alone is ~112 kB at 32 members, and `handshakes` grows without bound.
+ *
+ * Its id is hash(groupId + 'ratchet-tree') — deterministic so it can be named in
+ * keys() before the account exists, and domain-separated so it cannot collide
+ * with a user address (hash(username)) or a group id (hash(creator + nonce)).
+ */
+export interface GroupTreeAccount {
+  id: string
+  type: string
+  hash: string
+  timestamp: number
+
+  /** Back-reference, so the pair can be validated as belonging together. */
+  groupId: string
+
+  // --- ratchet tree ---------------------------------------------------------
+  /**
+   * b64 encodeRatchetTree of the CURRENT tree, maintained by applying each
+   * commit's `treeDelta`. Public key material only — never group state.
+   */
+  ratchetTree: string
+  /** Epoch `ratchetTree` corresponds to. Invariant: equals GroupAccount.epoch. */
+  treeEpoch: number
+
+  // --- transcript -----------------------------------------------------------
+  /**
+   * Commits. MUST NOT be pruned on the ordinary retention timer — dropping a
+   * commit a member has not applied locks that member out of the group forever.
+   * Only prune below `checkpoint.epoch`, from which stragglers can re-join
+   * externally.
+   */
+  handshakes: Tx.GroupCommitRecord[]
+
+  /**
+   * Welcome + sealed PQ PSK awaiting collection by each newly added member,
+   * tagged with who added them so the invitee can be told before deciding.
+   */
+  pendingWelcomes: { [address: string]: Tx.GroupWelcomeEnvelope & { addedBy?: string } }
+
+  /**
+   * Ratchet tree snapshots, keyed by the epoch they belong to.
+   *
+   * A joiner needs the tree matching the GroupContext in its Welcome, but the
+   * live tree moves on immediately — under update-on-join the joiner's own path
+   * update is the very next commit. So the server keeps a snapshot, taken at
+   * zero transaction cost from the tree it already maintains.
+   *
+   * Keyed by EPOCH, not by address: every joiner added in one commit shares the
+   * same tree, and at 100 members a tree is ~354 kB. Storing one per joiner made
+   * a 10-member add write 3.5 MB. Entries are dropped as soon as no pending
+   * welcome refers to them.
+   */
+  welcomeTrees: { [epoch: string]: string }
+
+  /**
+   * Outstanding requests to join, by requester address.
+   *
+   * Lives here rather than on the GroupAccount because only group_commit reads
+   * it — decision 4 exists to keep anything else off the account that every
+   * group_message transfers and re-hashes.
+   */
+  pendingJoinRequests: {
+    [address: string]: {
+      /** Debited from the requester at request time; theirs until approved. */
+      escrow: bigint
+      message: string
+      timestamp: number
+    }
+  }
+
+  /**
+   * Join fees earned but not yet payable.
+   *
+   * An approved fee does NOT land in the admin's balance immediately. It waits
+   * until `vestingUntil`, so that a member removed before then can be refunded
+   * rather than having to claw money back from someone who may already have
+   * spent it. See GROUP_MEMBERSHIP_CONSENT_SPEC §5.2.
+   */
+  vestedFees: {
+    /** The admin who approved, and is owed this. */
+    admin: string
+    /** The member who paid it, and who gets it back on an early removal. */
+    member: string
+    amount: bigint
+    vestingUntil: number
+  }[]
+
+  // --- recovery -------------------------------------------------------------
+  /**
+   * Recovery pointer for a desynced member. Deliberately carries NO tree: it is
+   * rewritten on every commit, so its epoch always equals `treeEpoch` and a tree
+   * here would duplicate `ratchetTree` byte for byte. Read `ratchetTree` when
+   * `checkpoint.epoch === treeEpoch`.
+   */
+  checkpoint: {
+    epoch: number
+    groupInfo: string // b64 GroupInfo with external_pub
+    timestamp: number
+  } | null
 }
 
 export interface AliasAccount {
@@ -1090,7 +1269,8 @@ export type Accounts = NetworkAccount &
   ChatAccount &
   DaoProposalsMeta &
   DaoProposalAccount &
-  GroupAccount
+  GroupAccount &
+  GroupTreeAccount
 
 export type AccountVariant =
   | NetworkAccount
@@ -1106,6 +1286,7 @@ export type AccountVariant =
   | DaoProposalsMeta
   | DaoProposalAccount
   | GroupAccount
+  | GroupTreeAccount
 
 /**
  * ---------------------- NETWORK DATA export interfaceS ----------------------

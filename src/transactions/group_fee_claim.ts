@@ -1,26 +1,33 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as utils from '../utils'
-import { UserAccount, GroupAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
+import { UserAccount, GroupTreeAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
-import { isUserAccount, isGroupAccount } from '../@types/accountTypeGuards'
+import { isUserAccount, isGroupTreeAccount } from '../@types/accountTypeGuards'
+
+/** Fees this admin has earned and that have finished vesting. */
+const matured = (tree: GroupTreeAccount, admin: string, now: number): bigint =>
+  (tree.vestedFees || [])
+    .filter((v) => v.admin === admin && v.vestingUntil <= now)
+    .reduce((sum, v) => SafeBigIntMath.add(sum, v.amount), BigInt(0))
 
 /**
- * Self-removal from a group.
+ * Collects join fees that have finished vesting.
  *
- * IMPORTANT: this drops the member from the roster and stops the network
- * accepting their messages, but it is NOT cryptographically effective on its
- * own — the leaver still holds the current epoch's group secret and could
- * decrypt traffic until a remaining member commits a Remove, which rotates the
- * keys. Clients should prompt an admin to commit promptly and should surface
- * the group as "leaving" until that lands.
+ * An approved join fee is not paid out immediately: until `vestingUntil` it can
+ * still be returned to the member if they are removed, which is what stops
+ * "take the fee, remove them" from being a cheap scam. This is the other half —
+ * once the window has passed, the admin who did the approving collects.
  *
- * Leaving is deliberately not fenced on epoch: it does not advance the MLS
- * epoch, and blocking someone from leaving because a commit raced them would be
- * hostile.
+ * Deliberately a separate transaction rather than a sweep during group_commit:
+ * an admin should be able to collect without having to make a membership change
+ * to trigger it, and a group with no activity should not strand its fees.
  */
-export const validate_fields = (tx: Tx.GroupLeave, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
+export const validate_fields = (
+  tx: Tx.GroupFeeClaim,
+  response: ShardusTypes.IncomingTransactionResult,
+): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address.'
     return response
@@ -46,38 +53,29 @@ export const validate_fields = (tx: Tx.GroupLeave, response: ShardusTypes.Incomi
 }
 
 export const validate = (
-  tx: Tx.GroupLeave,
+  tx: Tx.GroupFeeClaim,
   wrappedStates: WrappedStates,
   response: ShardusTypes.IncomingTransactionResult,
   dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
   const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
-  const group: GroupAccount = wrappedStates[tx.groupId] && wrappedStates[tx.groupId].data
+  const treeId = utils.calculateGroupTreeId(tx.groupId)
+  const tree: GroupTreeAccount = wrappedStates[treeId] && wrappedStates[treeId].data
 
-  if (typeof from === 'undefined' || from === null) {
+  if (typeof from === 'undefined' || from === null || !isUserAccount(from)) {
     response.reason = '"from" account does not exist.'
     return response
   }
-  if (!isUserAccount(from)) {
-    response.reason = 'from account is not a UserAccount'
+  if (!tree || !isGroupTreeAccount(tree)) {
+    response.reason = 'this group has no fees to claim.'
     return response
   }
-  if (typeof group === 'undefined' || group === null) {
-    response.reason = '"groupId" account does not exist.'
-    return response
-  }
-  if (!isGroupAccount(group)) {
-    response.reason = 'groupId account is not a GroupAccount'
-    return response
-  }
-  if (!group.members.includes(tx.from)) {
-    response.reason = 'sender is not a member of this group.'
-    return response
-  }
-  // The last member cannot leave, or the group would be unrecoverable while
-  // still holding a transcript.
-  if (group.members.length === 1) {
-    response.reason = 'the last member cannot leave the group.'
+  /*
+   * Timestamps come from the transaction, not Date.now(), so every validator
+   * reaches the same answer about what has matured.
+   */
+  if (matured(tree, tx.from, tx.timestamp) <= BigInt(0)) {
+    response.reason = 'no join fees have finished vesting for this account.'
     return response
   }
 
@@ -98,7 +96,7 @@ export const validate = (
 }
 
 export const apply = (
-  tx: Tx.GroupLeave,
+  tx: Tx.GroupFeeClaim,
   txTimestamp: number,
   txId: string,
   wrappedStates: WrappedStates,
@@ -106,38 +104,17 @@ export const apply = (
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
-  const group: GroupAccount = wrappedStates[tx.groupId].data
+  const treeId = utils.calculateGroupTreeId(tx.groupId)
+  const tree: GroupTreeAccount = wrappedStates[treeId].data
 
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
 
-  group.members = group.members.filter((m) => m !== tx.from)
-  group.admins = group.admins.filter((a) => a !== tx.from)
-  delete group.memberSince[tx.from]
-  delete group.lastMessageAt[tx.from]
-  /*
-   * Any uncollected Welcome for this account lives on the GroupTreeAccount,
-   * which group_leave deliberately does NOT name in keys() — leaving is a
-   * roster change and should not drag the tree into consensus. A stale welcome
-   * is harmless: it is addressed to key material the leaver has abandoned, and
-   * the next commit overwrites or removes it.
-   */
+  const amount = matured(tree, tx.from, txTimestamp)
+  from.data.balance = SafeBigIntMath.add(from.data.balance, amount)
+  tree.vestedFees = (tree.vestedFees || []).filter((v) => !(v.admin === tx.from && v.vestingUntil <= txTimestamp))
 
-  // If the last admin walked out, promote the longest-standing remaining member
-  // so the group can still be managed.
-  if (group.admins.length === 0 && group.members.length > 0) {
-    const successor = group.members
-      .slice()
-      .sort((a, b) => (group.memberSince[a]?.timestamp || 0) - (group.memberSince[b]?.timestamp || 0))[0]
-    group.admins.push(successor)
-  }
-
-  if (from.data.chats && from.data.chats[tx.groupId]) {
-    delete from.data.chats[tx.groupId]
-  }
-  from.data.chatTimestamp = txTimestamp
-
-  group.timestamp = txTimestamp
+  tree.timestamp = txTimestamp
   from.timestamp = txTimestamp
 
   const appReceiptData: AppReceiptData = {
@@ -148,18 +125,15 @@ export const apply = (
     to: tx.groupId,
     type: tx.type,
     transactionFee,
-    additionalInfo: {
-      groupId: tx.groupId,
-      remainingMembers: group.members.length,
-    },
+    additionalInfo: { groupId: tx.groupId, claimed: amount.toString() },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
-  dapp.log('Applied group_leave tx', tx.groupId, tx.from)
+  dapp.log('Applied group_fee_claim tx', tx.groupId, tx.from, amount)
 }
 
 export const createFailedAppReceiptData = (
-  tx: Tx.GroupLeave,
+  tx: Tx.GroupFeeClaim,
   txTimestamp: number,
   txId: string,
   wrappedStates: WrappedStates,
@@ -196,32 +170,29 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.GroupLeave, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
+export const keys = (tx: Tx.GroupFeeClaim, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.groupId]
+  result.targetKeys = [utils.calculateGroupTreeId(tx.groupId)]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.GroupLeave, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
-  return {
-    rw: [tx.from, tx.groupId],
-    wo: [],
-    on: [],
-    ri: [],
-    ro: [],
-  }
+export const memoryPattern = (
+  tx: Tx.GroupFeeClaim,
+  result: ShardusTypes.TransactionKeys,
+): ShardusTypes.ShardusMemoryPatternsInput => {
+  return { rw: [tx.from, utils.calculateGroupTreeId(tx.groupId)], wo: [], on: [], ri: [], ro: [] }
 }
 
 export const createRelevantAccount = (
   dapp: Shardus,
-  account: UserAccount | GroupAccount,
+  account: UserAccount | GroupTreeAccount,
   accountId: string,
-  tx: Tx.GroupLeave,
+  tx: Tx.GroupFeeClaim,
   accountCreated = false,
 ): ShardusTypes.WrappedResponse => {
   if (!account) {
-    throw Error('Account must exist in order to leave a group')
+    throw Error('Account must exist in order to claim group fees')
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }
