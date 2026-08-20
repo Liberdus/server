@@ -59,6 +59,21 @@ export const validate_fields = (tx: Tx.GroupCreate, response: ShardusTypes.Incom
     response.reason = `tx "maxMembers" must be an integer between 1 and ${config.LiberdusFlags.groupMaxMembers}.`
     return response
   }
+  /*
+   * Price of admission. Zero means an open group; a positive value is escrowed
+   * by each requester and earned by the admin who approves them, after a
+   * vesting delay (see group_commit). Capped as a guard against a typo turning
+   * a group into one nobody can afford to join.
+   */
+  if (typeof tx.joinFee !== 'bigint' || tx.joinFee < BigInt(0)) {
+    response.reason = 'tx "joinFee" must be a non-negative bigint.'
+    return response
+  }
+  const maxJoinFee = utils.usdStrToWei(config.LiberdusFlags.groupMaxJoinFeeUsdStr, AccountsStorage.cachedNetworkAccount)
+  if (maxJoinFee > BigInt(0) && tx.joinFee > maxJoinFee) {
+    response.reason = `tx "joinFee" exceeds the maximum allowed (${maxJoinFee}).`
+    return response
+  }
   if (typeof tx.fee !== 'bigint') {
     response.reason = 'tx "fee" must be a bigint.'
     return response

@@ -115,7 +115,13 @@ export const apply = (
   group.admins = group.admins.filter((a) => a !== tx.from)
   delete group.memberSince[tx.from]
   delete group.lastMessageAt[tx.from]
-  delete group.pendingWelcomes[tx.from]
+  /*
+   * Any uncollected Welcome for this account lives on the GroupTreeAccount,
+   * which group_leave deliberately does NOT name in keys() — leaving is a
+   * roster change and should not drag the tree into consensus. A stale welcome
+   * is harmless: it is addressed to key material the leaver has abandoned, and
+   * the next commit overwrites or removes it.
+   */
 
   // If the last admin walked out, promote the longest-standing remaining member
   // so the group can still be managed.

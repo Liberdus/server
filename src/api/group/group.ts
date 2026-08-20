@@ -1,6 +1,7 @@
 import { Shardus } from '@shardus/core'
-import { GroupAccount, UserAccount } from '../../@types'
-import { isGroupAccount, isUserAccount } from '../../@types/accountTypeGuards'
+import { GroupAccount, GroupTreeAccount, UserAccount } from '../../@types'
+import { isGroupAccount, isGroupTreeAccount, isUserAccount } from '../../@types/accountTypeGuards'
+import * as utils from '../../utils'
 
 /**
  * Read endpoints for MLS group chat.
@@ -16,6 +17,18 @@ const loadGroup = async (dapp: Shardus, groupId: string): Promise<GroupAccount |
   if (!account || !account.data) return null
   const group = account.data as unknown as GroupAccount
   return isGroupAccount(group) ? group : null
+}
+
+/**
+ * The cold half of a group: ratchet tree, commit transcript, welcomes and
+ * checkpoint. A separate account so that group_message never carries it, so
+ * every read endpoint that needs those has to fetch it explicitly.
+ */
+const loadTree = async (dapp: Shardus, groupId: string): Promise<GroupTreeAccount | null> => {
+  const account = await dapp.getLocalOrRemoteAccount(utils.calculateGroupTreeId(groupId))
+  if (!account || !account.data) return null
+  const tree = account.data as unknown as GroupTreeAccount
+  return isGroupTreeAccount(tree) ? tree : null
 }
 
 /** GET /group/:groupId — metadata only; no transcript. */
@@ -43,9 +56,9 @@ export const info =
           createdBy: group.createdBy,
           hasChats: group.hasChats,
           timestamp: group.timestamp,
-          checkpointEpoch: group.checkpoint ? group.checkpoint.epoch : null,
           messageCount: group.messages.length,
-          handshakeCount: group.handshakes.length,
+          treeId: group.treeId,
+          joinFee: group.joinFee.toString(),
         },
       })
     } catch (error) {
@@ -96,12 +109,17 @@ export const handshakes =
         res.json({ error: 'No group with the given id' })
         return
       }
-      const available = group.handshakes.map((h) => h.epoch)
+      const tree = await loadTree(dapp, groupId)
+      if (!tree) {
+        res.json({ handshakes: [], epoch: group.epoch, oldestAvailableEpoch: group.epoch, checkpoint: null })
+        return
+      }
+      const available = tree.handshakes.map((h) => h.epoch)
       res.json({
-        handshakes: group.handshakes.filter((h) => h.epoch >= fromEpoch),
+        handshakes: tree.handshakes.filter((h) => h.epoch >= fromEpoch),
         epoch: group.epoch,
         oldestAvailableEpoch: available.length > 0 ? Math.min(...available) : group.epoch,
-        checkpoint: group.checkpoint,
+        checkpoint: tree.checkpoint,
       })
     } catch (error) {
       dapp.log(error)
@@ -121,12 +139,122 @@ export const welcome =
         res.json({ error: 'No group with the given id' })
         return
       }
-      const envelope = group.pendingWelcomes[address]
+      const tree = await loadTree(dapp, groupId)
+      const envelope = tree && tree.pendingWelcomes[address]
       if (!envelope) {
         res.json({ error: 'No pending welcome for this address' })
         return
       }
-      res.json({ welcome: envelope, cipherSuite: group.cipherSuite, mlsGroupId: group.mlsGroupId })
+      /*
+       * Attach the tree snapshot for this welcome's epoch. It is stored once per
+       * epoch rather than per joiner (a tree is ~354 kB at 100 members), and is
+       * merged in here so the client sees one self-contained envelope.
+       *
+       * A missing snapshot means the group moved on before this member joined —
+       * the joiner cannot use the live tree, because it no longer matches the
+       * GroupContext in its Welcome, and must be added again.
+       */
+      const ratchetTree = tree.welcomeTrees[String(envelope.epoch)]
+      if (!ratchetTree) {
+        res.json({ error: 'The ratchet tree for this welcome is no longer available; ask to be added again' })
+        return
+      }
+      res.json({
+        welcome: { ...envelope, ratchetTree },
+        cipherSuite: group.cipherSuite,
+        mlsGroupId: group.mlsGroupId,
+      })
+    } catch (error) {
+      dapp.log(error)
+      res.json({ error })
+    }
+  }
+
+/**
+ * GET /group/:groupId/tree — the current ratchet tree.
+ *
+ * This is what replaces shipping a full tree inside every Welcome envelope. It
+ * is public key material only, and a joiner MUST verify it against the
+ * `tree_hash` in the GroupContext of its Welcome (RFC 9420) rather than trusting
+ * what the network returns.
+ *
+ * `treeEpoch` is the epoch this tree corresponds to. A joiner whose Welcome
+ * names an earlier epoch must use the snapshot in its own welcome envelope
+ * instead, since the live tree has already moved on.
+ */
+export const tree =
+  (dapp: Shardus) =>
+  async (req, res): Promise<void> => {
+    try {
+      const groupId = req.params['groupId']
+      const group = await loadGroup(dapp, groupId)
+      if (!group) {
+        res.json({ error: 'No group with the given id' })
+        return
+      }
+      const treeAccount = await loadTree(dapp, groupId)
+      if (!treeAccount) {
+        res.json({ error: 'No ratchet tree stored for this group yet' })
+        return
+      }
+      res.json({
+        ratchetTree: treeAccount.ratchetTree,
+        treeEpoch: treeAccount.treeEpoch,
+        epoch: group.epoch,
+        cipherSuite: group.cipherSuite,
+      })
+    } catch (error) {
+      dapp.log(error)
+      res.json({ error })
+    }
+  }
+
+/**
+ * GET /group/:groupId/requests — outstanding requests to join.
+ *
+ * Read by admins to decide who to admit. Public: the roster and member count
+ * already are, and a would-be member can reasonably check whether their own
+ * request is still pending before reclaiming it.
+ */
+export const joinRequests =
+  (dapp: Shardus) =>
+  async (req, res): Promise<void> => {
+    try {
+      const groupId = req.params['groupId']
+      const group = await loadGroup(dapp, groupId)
+      if (!group) {
+        res.json({ error: 'No group with the given id' })
+        return
+      }
+      const tree = await loadTree(dapp, groupId)
+      const requests = tree
+        ? Object.entries(tree.pendingJoinRequests).map(([address, r]) => ({
+            address,
+            message: r.message,
+            escrow: r.escrow.toString(),
+            timestamp: r.timestamp,
+          }))
+        : []
+      /*
+       * Vested fees are reported alongside, so an admin's client can show what
+       * is claimable without a second round trip. `matured` is relative to the
+       * caller's clock only for display; the claim transaction recomputes it
+       * from the transaction timestamp so validators agree.
+       */
+      const now = Date.now()
+      const fees = tree ? tree.vestedFees || [] : []
+      res.json({
+        requests,
+        joinFee: group.joinFee.toString(),
+        epoch: group.epoch,
+        vestedFees: fees.map((v) => ({
+          admin: v.admin,
+          member: v.member,
+          amount: v.amount.toString(),
+          vestingUntil: v.vestingUntil,
+          matured: v.vestingUntil <= now,
+        })),
+      })
     } catch (error) {
       dapp.log(error)
       res.json({ error })
@@ -144,11 +272,12 @@ export const checkpoint =
         res.json({ error: 'No group with the given id' })
         return
       }
-      if (!group.checkpoint) {
+      const tree = await loadTree(dapp, groupId)
+      if (!tree || !tree.checkpoint) {
         res.json({ error: 'No checkpoint yet for this group' })
         return
       }
-      res.json({ checkpoint: group.checkpoint, epoch: group.epoch, cipherSuite: group.cipherSuite })
+      res.json({ checkpoint: tree.checkpoint, epoch: group.epoch, cipherSuite: group.cipherSuite })
     } catch (error) {
       dapp.log(error)
       res.json({ error })

@@ -12,6 +12,7 @@ import {
   DaoProposalsMeta,
   DaoProposalAccount,
   GroupAccount,
+  GroupTreeAccount,
 } from '.'
 
 /**
@@ -33,6 +34,10 @@ export function isChatAccount(account: unknown): account is ChatAccount {
  */
 export function isGroupAccount(account: unknown): account is GroupAccount {
   return !!account && typeof account === 'object' && 'type' in account && account.type === 'GroupAccount'
+}
+
+export function isGroupTreeAccount(account: unknown): account is GroupTreeAccount {
+  return !!account && typeof account === 'object' && 'type' in account && account.type === 'GroupTreeAccount'
 }
 
 /**

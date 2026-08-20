@@ -61,6 +61,10 @@ import * as group_create from './group_create'
 import * as group_keypackage_publish from './group_keypackage_publish'
 import * as group_message from './group_message'
 import * as group_commit from './group_commit'
+import * as update_group_add_policy from './update_group_add_policy'
+import * as group_join_request from './group_join_request'
+import * as group_join_reclaim from './group_join_reclaim'
+import * as group_fee_claim from './group_fee_claim'
 import * as group_leave from './group_leave'
 
 export default {
@@ -127,5 +131,9 @@ export default {
   group_keypackage_publish,
   group_message,
   group_commit,
+  update_group_add_policy,
+  group_join_request,
+  group_join_reclaim,
+  group_fee_claim,
   group_leave,
 }

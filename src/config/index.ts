@@ -24,6 +24,22 @@ const daoVotingDurationMs = process.env.DAO_VOTING_DURATION_MS ? Number(process.
 const daoGraceDurationMs = process.env.DAO_GRACE_DURATION_MS ? Number(process.env.DAO_GRACE_DURATION_MS) : 7 * ONE_DAY
 const daoClaimDurationMs = process.env.DAO_CLAIM_DURATION_MS ? Number(process.env.DAO_CLAIM_DURATION_MS) : 30 * ONE_DAY
 
+/*
+ * Group chat durations, overridable via env for local/E2E testing, exactly as
+ * the DAO phases above are. Without this a tester cannot exercise fee
+ * collection at all: a 7-day vest means the Collect button reads "nothing to
+ * collect yet" for a week.
+ *
+ *   GROUP_JOIN_FEE_VESTING_MS=60000   # 1 minute
+ *   GROUP_JOIN_REQUEST_TIMEOUT_MS=60000
+ */
+const groupJoinFeeVestingMs = process.env.GROUP_JOIN_FEE_VESTING_MS
+  ? Number(process.env.GROUP_JOIN_FEE_VESTING_MS)
+  : 7 * ONE_DAY
+const groupJoinRequestTimeoutMs = process.env.GROUP_JOIN_REQUEST_TIMEOUT_MS
+  ? Number(process.env.GROUP_JOIN_REQUEST_TIMEOUT_MS)
+  : 7 * ONE_DAY
+
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
 export const cycleDuration = process.env.CYCLE_DURATION ? Number(process.env.CYCLE_DURATION) : 60
 const reduceTimeFromTxTimestamp = cycleDuration * ONE_SECOND
@@ -289,6 +305,13 @@ interface LiberdusFlags {
   groupMessageMinIntervalMs: number
   /** Max unconsumed KeyPackages an account may hold at once. */
   groupMaxKeyPackagesPerAccount: number
+  groupMaxHandshakes: number
+  groupDefaultAddPolicy: 'anyone' | 'contacts' | 'nobody'
+  groupMaxPendingJoinRequests: number
+  groupJoinRequestTimeoutMs: number
+  groupMaxJoinRequestMessageLength: number
+  groupJoinFeeVestingMs: number
+  groupMaxJoinFeeUsdStr: string
   versionFlags: {
     replierNoToll: boolean
     allowZeroToll: boolean
@@ -344,11 +367,53 @@ export const LiberdusFlags: LiberdusFlags = {
   enableGroupChat: true,
   groupMaxMembers: 50,
   groupMaxMembersPerCommit: 10,
-  groupMessageSizeLimit: 64, // 64 kB; an X-Wing commit is ~5.5 kB
+  // 64 kB. Measured, not estimated: the commit blob is ~3.9 kB on an add and
+  // ~0.4 kB on a remove, and does NOT grow with the group. What grows is the
+  // ratchet tree carried in each welcome — ~1.8 kB per existing member — so in
+  // practice this limit caps how large a group can be when adding a member.
+  groupMessageSizeLimit: 64,
   groupMessageMaxLength: 500,
   groupMessageRetentionDays: 7,
   groupMessageMinIntervalMs: 1000,
   groupMaxKeyPackagesPerAccount: 10, // X-Wing KeyPackages are ~2.6 kB each
+  /*
+   * How many commits the group transcript keeps.
+   *
+   * Pruning a commit locks out any member that has not applied it — they must
+   * reset and be re-added — so this is a deliberate trade of history for a
+   * bounded account. Measured at 100 members: a handshake record averages ~9 kB
+   * and the ratchet tree is ~354 kB, so 50 records keeps the GroupTreeAccount
+   * near 800 kB in steady state. Clients see `oldestAvailableEpoch` on the
+   * handshakes endpoint and surface a reset when they fall behind it.
+   */
+  groupMaxHandshakes: 50,
+  /*
+   * Network default for accounts that have not set `groupAddPolicy`.
+   *
+   * 'contacts' is the safe production value: being added costs the addee a
+   * KeyPackage and, under update-on-join, a transaction of their own. Set
+   * 'anyone' for local testing where accounts are not mutual contacts.
+   */
+  groupDefaultAddPolicy: 'contacts' as 'anyone' | 'contacts' | 'nobody',
+  /*
+   * Join requests are the one place a stranger can write to a group's account.
+   * With a joinFee of zero nothing is escrowed, so escrow deters nothing and
+   * this cap plus the timeout are the only defence against a group being
+   * flooded. They are load-bearing, not tuning knobs.
+   */
+  groupMaxPendingJoinRequests: 100,
+  groupJoinRequestTimeoutMs,
+  groupMaxJoinRequestMessageLength: 200,
+  /*
+   * How long an approved join fee waits before the admin can collect it.
+   *
+   * The window in which removing the member refunds them instead. It does not
+   * stop an admin who simply waits it out — that part is irreducibly
+   * reputational — but it removes the cheap "take the fee, remove them" scam.
+   */
+  groupJoinFeeVestingMs,
+  /** Upper bound on what a group may charge, as a sanity check on typos. */
+  groupMaxJoinFeeUsdStr: '1000.0',
   versionFlags: {
     replierNoToll: true, // turn on by 2.3.5
     allowZeroToll: true, // turn on by 2.3.6

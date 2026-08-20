@@ -624,6 +624,18 @@ export function calculateGroupId(creator: string, groupNonce: string): string {
   return crypto.hash(`${creator.toLowerCase()}${groupNonce.toLowerCase()}`)
 }
 
+/**
+ * Address of the GroupTreeAccount paired with a group.
+ *
+ * Deterministic so it can be named in keys() before the account exists, and
+ * domain-separated by a literal that no other address derivation uses: a user
+ * address is hash(username) and a group id is hash(creator + nonce), so neither
+ * can be steered into colliding with this.
+ */
+export function calculateGroupTreeId(groupId: string): string {
+  return crypto.hash(`${groupId.toLowerCase()}ratchet-tree`)
+}
+
 export function validateTxTimestamp(txnTimestamp: number): { success: boolean; reason: string } {
   const validationResult = { success: false, reason: '' }
   try {

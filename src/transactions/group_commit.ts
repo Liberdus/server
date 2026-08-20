@@ -2,10 +2,11 @@ import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as utils from '../utils'
 import * as config from '../config'
-import { UserAccount, GroupAccount, WrappedStates, Tx, AppReceiptData, TXTypes } from '../@types'
+import { UserAccount, GroupAccount, GroupTreeAccount, ChatAccount, WrappedStates, Tx, AppReceiptData, TXTypes } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
-import { isUserAccount, isGroupAccount } from '../@types/accountTypeGuards'
+import { isUserAccount, isGroupAccount, isGroupTreeAccount } from '../@types/accountTypeGuards'
+import create from '../accounts'
 
 /**
  * An MLS membership change: proposals + commit, plus the Welcomes for anyone
@@ -51,6 +52,33 @@ export const validate_fields = (tx: Tx.GroupCommit, response: ShardusTypes.Incom
   }
   if (typeof tx.groupInfo !== 'string' || typeof tx.ratchetTree !== 'string') {
     response.reason = 'tx "groupInfo" and "ratchetTree" must be strings.'
+    return response
+  }
+  /*
+   * The ratchet tree is published as a DELTA: only the nodes this commit
+   * changed, addressed by ratchet-tree node index. The full tree is ~1.8 kB per
+   * member, whereas a delta is one node on an add and O(log N) on a rekey, so
+   * this is what keeps a commit's size independent of group size.
+   *
+   * `ratchetTree` is now a BASELINE, sent only on a group's first commit or on
+   * migration; every other commit leaves it empty and sends a delta instead.
+   */
+  if (!Array.isArray(tx.treeDelta)) {
+    response.reason = 'tx "treeDelta" must be an array.'
+    return response
+  }
+  for (const entry of tx.treeDelta) {
+    if (!entry || typeof entry.i !== 'number' || !Number.isInteger(entry.i) || entry.i < 0) {
+      response.reason = 'tx "treeDelta" contains an entry with an invalid node index.'
+      return response
+    }
+    if (entry.n !== null && typeof entry.n !== 'string') {
+      response.reason = 'tx "treeDelta" entries must carry a base64 node or null to blank it.'
+      return response
+    }
+  }
+  if (tx.ratchetTree.length === 0 && tx.treeDelta.length === 0) {
+    response.reason = 'tx must carry either a baseline "ratchetTree" or a non-empty "treeDelta".'
     return response
   }
   if (!Array.isArray(tx.addedMembers) || !Array.isArray(tx.removedMembers)) {
@@ -125,13 +153,41 @@ export const validate_fields = (tx: Tx.GroupCommit, response: ShardusTypes.Incom
     }
   }
 
+  /*
+   * The welcomes are counted here, not just the commit.
+   *
+   * Each welcome envelope carries a full ratchet tree (~1.8 kB per group member)
+   * plus a sealed post-quantum PSK, so on an add they are by far the largest
+   * part of the transaction — the commit itself is a few kB and does not grow
+   * with the group. Measuring only commit + groupInfo + ratchetTree let a
+   * multi-hundred-kB transaction pass a 64 kB limit, which made the check worse
+   * than useless: it reported a number nobody could act on while the real
+   * payload went unbounded.
+   */
+  const welcomeBytes = tx.welcomes.reduce((sum, w) => {
+    const env = w.envelope
+    // sealedPsk is an object ({cipherText, nonce}), so sum its fields rather
+    // than stringifying it — String(obj) would score every PSK as 15 bytes.
+    return (
+      sum +
+      Buffer.byteLength(String(env.welcome), 'utf8') +
+      Buffer.byteLength(String(env.ratchetTree || ''), 'utf8') +
+      Buffer.byteLength(String(env.sealedPsk.cipherText || ''), 'utf8') +
+      Buffer.byteLength(String(env.sealedPsk.nonce || ''), 'utf8')
+    )
+  }, 0)
+
   const totalBytes =
     Buffer.byteLength(tx.commit, 'utf8') +
     Buffer.byteLength(tx.groupInfo, 'utf8') +
     Buffer.byteLength(tx.ratchetTree, 'utf8') +
-    tx.proposals.reduce((sum, p) => sum + Buffer.byteLength(String(p), 'utf8'), 0)
+    tx.proposals.reduce((sum, p) => sum + Buffer.byteLength(String(p), 'utf8'), 0) +
+    tx.treeDelta.reduce((sum, d) => sum + Buffer.byteLength(String(d.n || ''), 'utf8') + 16, 0) +
+    welcomeBytes
   if (totalBytes / 1024 > config.LiberdusFlags.groupMessageSizeLimit) {
-    response.reason = `commit payload exceeds ${config.LiberdusFlags.groupMessageSizeLimit} kB.`
+    response.reason =
+      `commit payload exceeds ${config.LiberdusFlags.groupMessageSizeLimit} kB ` +
+      `(${Math.ceil(totalBytes / 1024)} kB, of which ${Math.ceil(welcomeBytes / 1024)} kB is welcomes).`
     return response
   }
 
@@ -159,6 +215,8 @@ export const validate = (
 ): ShardusTypes.IncomingTransactionResult => {
   const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
   const group: GroupAccount = wrappedStates[tx.groupId] && wrappedStates[tx.groupId].data
+  const treeForValidate: GroupTreeAccount =
+    wrappedStates[utils.calculateGroupTreeId(tx.groupId)] && wrappedStates[utils.calculateGroupTreeId(tx.groupId)].data
 
   if (typeof from === 'undefined' || from === null) {
     response.reason = '"from" account does not exist.'
@@ -201,6 +259,84 @@ export const validate = (
     const addee: UserAccount = wrappedStates[address] && wrappedStates[address].data
     if (!addee || !isUserAccount(addee)) {
       response.reason = `added member ${address} does not have a UserAccount.`
+      return response
+    }
+
+    /*
+     * CONSENT TO BE ADDED, route 1: they asked.
+     *
+     * A pending join request IS the consent, and it is per-group and explicit,
+     * so it overrides whatever the addee's blanket add policy says.
+     */
+    const requested = !!(treeForValidate && treeForValidate.pendingJoinRequests[address])
+
+    /*
+     * CONSENT TO BE ADDED, route 2.
+     *
+     * Being added is not free for the addee: it consumes one of their single-use
+     * KeyPackages, and under update-on-join it makes them inject a group_commit
+     * of their own. So an add that nobody asked for spends someone else's money
+     * and their key material. The addee's account is already loaded here — it is
+     * read just above — so this check costs nothing.
+     */
+    if (!requested) {
+      const policy = addee.data.groupAddPolicy ?? config.LiberdusFlags.groupDefaultAddPolicy
+      if (policy === 'nobody') {
+        response.reason = `${address} does not accept group invitations; they must request to join.`
+        return response
+      }
+      if (policy === 'contacts') {
+        /*
+         * "Connected" is expressed through the toll, not a friends list.
+         *
+         * A new ChatAccount starts at required: [1, 1] — both sides charging —
+         * so `required === 0` is a deliberate act by the ADDEE waiving the toll
+         * for this specific account, which is exactly the relationship that used
+         * to be a friend entry. `required === 2` is an explicit block.
+         *
+         * Read from the addee's own slot: toll.required[i] is what party i
+         * demands of the other, so the adder's setting says nothing about
+         * whether the addee wants to hear from them.
+         */
+        const chatId = utils.calculateChatId(address, tx.from)
+        const chat: ChatAccount = wrappedStates[chatId] && wrappedStates[chatId].data
+        const [addr1] = utils.sortAddresses(address, tx.from)
+        const addeeIndex = addr1 === address ? 0 : 1
+        const addeeRequires = chat && Array.isArray(chat.toll?.required) ? chat.toll.required[addeeIndex] : 1
+
+        if (addeeRequires === 2) {
+          response.reason = `${address} has blocked ${tx.from}.`
+          return response
+        }
+        if (addeeRequires !== 0) {
+          response.reason = `${address} only accepts group invitations from accounts they are connected to.`
+          return response
+        }
+      }
+    }
+
+    /*
+     * The declared KeyPackage must actually be in the addee's pool.
+     *
+     * apply() removes it by value, so a string that was never there burns
+     * nothing and leaves the real package reusable — and single-use KeyPackages
+     * are precisely what stop one init key being used for two adds. Without this
+     * the declaration is unenforced and the forward-secrecy property it exists
+     * to provide is not actually held.
+     */
+    const declared = tx.consumedKeyPackages.find((c) => c.address === address)
+    if (!declared) {
+      // validate_fields already requires one per added member, but validate must
+      // not depend on that having run — a throw here would fail the whole
+      // transaction opaquely instead of rejecting it with a reason.
+      response.reason = `no key package declared for ${address}.`
+      return response
+    }
+    const pool = Array.isArray(addee.data.mlsKeyPackages) ? addee.data.mlsKeyPackages : []
+    const isLastResort =
+      !!addee.data.mlsLastResortKeyPackage && declared.keyPackage === addee.data.mlsLastResortKeyPackage
+    if (!pool.includes(declared.keyPackage) && !isLastResort) {
+      response.reason = `the key package declared for ${address} is not in their published pool.`
       return response
     }
   }
@@ -261,6 +397,50 @@ export const validate = (
   return response
 }
 
+/**
+ * How far behind the current epoch an uncollected welcome may fall before it is
+ * dropped. Generous: the only cost of keeping one is storage, but discarding one
+ * an invitee could still have used would silently strand them.
+ */
+const WELCOME_RETENTION_EPOCHS = 50
+
+/**
+ * Applies a ratchet-tree delta to the stored tree.
+ *
+ * The tree is stored as base64 of ts-mls `encodeRatchetTree`, which is a
+ * length-prefixed list of optional nodes. Rather than re-implement that codec
+ * here, the account holds a JSON array of per-node base64 blobs (`null` = blank)
+ * that the client assembles and the server only indexes into. The server never
+ * parses a node; it moves opaque strings by index.
+ *
+ * Deterministic, so every validator produces the same bytes — a requirement for
+ * consensus.
+ */
+const applyTreeDelta = (stored: string, delta: { i: number; n: string | null }[]): string => {
+  let nodes: (string | null)[] = []
+  if (stored.length > 0) {
+    try {
+      const parsed = JSON.parse(stored)
+      if (Array.isArray(parsed)) nodes = parsed
+    } catch {
+      // Unreadable stored tree: rebuild from the delta rather than throwing and
+      // wedging the group. The joiner's tree-hash check is what actually
+      // protects correctness here.
+      nodes = []
+    }
+  }
+  for (const entry of delta) {
+    // Grow with explicit blanks so indices stay meaningful; a sparse JS array
+    // would serialise as nulls anyway but with undefined holes in between.
+    while (nodes.length <= entry.i) nodes.push(null)
+    nodes[entry.i] = entry.n
+  }
+  // Trailing blanks carry no information and would grow the account forever as
+  // members are removed from the right-hand side of the tree.
+  while (nodes.length > 0 && nodes[nodes.length - 1] === null) nodes.pop()
+  return JSON.stringify(nodes)
+}
+
 export const apply = (
   tx: Tx.GroupCommit,
   txTimestamp: number,
@@ -271,6 +451,12 @@ export const apply = (
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
   const group: GroupAccount = wrappedStates[tx.groupId].data
+  const treeId = utils.calculateGroupTreeId(tx.groupId)
+  const tree: GroupTreeAccount = wrappedStates[treeId] && wrappedStates[treeId].data
+
+  if (!tree) {
+    throw Error('getRelevantAccount must create the GroupTreeAccount before apply')
+  }
 
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
@@ -294,7 +480,21 @@ export const apply = (
     timestamp: txTimestamp,
     sign: tx.sign,
   }
-  group.handshakes.push(commitRecord)
+  tree.handshakes.push(commitRecord)
+  /*
+   * Bound the transcript.
+   *
+   * Pruning a commit locks out any member that has not applied it — MLS state
+   * cannot be rebuilt from the public transcript, so they must reset and be
+   * re-added. That is the trade: an unbounded transcript grows ~9 kB per commit
+   * forever (measured at 100 members) and is transferred and re-hashed on every
+   * later commit. Clients read `oldestAvailableEpoch` from the handshakes
+   * endpoint and surface a reset when they fall behind it.
+   */
+  const maxHandshakes = config.LiberdusFlags.groupMaxHandshakes
+  if (maxHandshakes > 0 && tree.handshakes.length > maxHandshakes) {
+    tree.handshakes = tree.handshakes.slice(-maxHandshakes)
+  }
 
   group.epoch = previousEpoch + 1
 
@@ -304,20 +504,140 @@ export const apply = (
 
   for (const address of tx.addedMembers) {
     group.memberSince[address] = { epoch: group.epoch, timestamp: txTimestamp }
+
+    /*
+     * Approving a request consumes it, and its escrow is earned by the admin who
+     * did the approving — `from`, not the group and not whoever created it.
+     *
+     * joinFee is zero until paid groups ship, so this moves nothing today. When
+     * it does, §5.2 of the consent spec adds a vesting delay here so that
+     * "take the fee, remove the member" can be refunded rather than clawed back.
+     */
+    const request = tree.pendingJoinRequests[address]
+    if (request) {
+      /*
+       * The fee does NOT land in the admin's balance yet.
+       *
+       * Paying immediately would make "take the fee, remove the member" a scam
+       * that has to be undone by clawing money back from someone who may
+       * already have spent it. Vesting inverts that: until `vestingUntil` the
+       * money is still recoverable, so removing the member simply returns it
+       * (see the removal loop below). Only after the window does the admin
+       * become able to claim it. Same shape as a 1:1 toll, which is likewise
+       * conditional rather than immediate.
+       */
+      if (request.escrow > BigInt(0)) {
+        tree.vestedFees.push({
+          admin: tx.from,
+          member: address,
+          amount: request.escrow,
+          vestingUntil: txTimestamp + config.LiberdusFlags.groupJoinFeeVestingMs,
+        })
+      }
+      delete tree.pendingJoinRequests[address]
+    }
   }
   for (const address of tx.removedMembers) {
     delete group.memberSince[address]
     delete group.lastMessageAt[address]
-    delete group.pendingWelcomes[address]
+    delete tree.pendingWelcomes[address]
+
+    /*
+     * Removed before their join fee vested: give it back.
+     *
+     * This is what makes the vesting window meaningful rather than decorative —
+     * the money is returned automatically, from an account nobody has been paid
+     * from yet, instead of having to be recovered from the admin afterwards.
+     * A member who LEAVES is not refunded (group_leave does not run this), or
+     * every paid group would be a free trial.
+     */
+    const stillVesting = tree.vestedFees.filter((v) => v.member === address && v.vestingUntil > txTimestamp)
+    if (stillVesting.length > 0) {
+      const refundee: UserAccount = wrappedStates[address] && wrappedStates[address].data
+      if (refundee && isUserAccount(refundee)) {
+        for (const v of stillVesting) {
+          refundee.data.balance = SafeBigIntMath.add(refundee.data.balance, v.amount)
+        }
+        refundee.timestamp = txTimestamp
+      }
+      tree.vestedFees = tree.vestedFees.filter((v) => !(v.member === address && v.vestingUntil > txTimestamp))
+    }
   }
 
-  // Park each Welcome (and its sealed PQ PSK) for collection by the new member.
+  /*
+   * Advance the stored ratchet tree.
+   *
+   * A baseline replaces it wholesale; otherwise the delta is applied by node
+   * index. This is pure data movement — the network does no MLS cryptography and
+   * cannot check that the delta is honest. It does not need to: RFC 9420
+   * requires a joiner to verify the tree against the `tree_hash` in the
+   * GroupContext carried in its Welcome, so a committer who publishes a corrupt
+   * tree is caught by the joiner and cannot forge one that hashes correctly.
+   */
+  if (tx.ratchetTree.length > 0) {
+    tree.ratchetTree = tx.ratchetTree
+  } else {
+    tree.ratchetTree = applyTreeDelta(tree.ratchetTree, tx.treeDelta)
+  }
+  tree.treeEpoch = group.epoch
+
+  console.log("thant: tree", tree)
+  console.log("thant: tree.ratchetTree", tree.ratchetTree)
+
+  /*
+   * Drop the sender's own pending welcome.
+   *
+   * Welcomes are collected over a GET, which cannot mutate consensus state, so
+   * nothing else ever removed them — they accumulated for the life of the group,
+   * and each one carries a full tree snapshot. A commit signed by that member is
+   * proof they joined, and under the update-on-join rule every joiner sends one
+   * almost immediately.
+   */
+  delete tree.pendingWelcomes[tx.from]
+
+  /*
+   * Backstop for an invitee that never joins and never commits: their welcome is
+   * addressed to an epoch whose keys have long rotated, so it is useless to them
+   * and merely expensive to keep. Bounded by the roster either way, but this
+   * keeps a group that repeatedly invites no-shows from carrying them forever.
+   */
+  for (const [address, envelope] of Object.entries(tree.pendingWelcomes)) {
+    if (group.epoch - (envelope.epoch || 0) > WELCOME_RETENTION_EPOCHS) {
+      delete tree.pendingWelcomes[address]
+    }
+  }
+
+  /*
+   * Park each Welcome for collection, and take ONE tree snapshot for the epoch.
+   *
+   * The joiner needs the tree matching the GroupContext in its Welcome, but the
+   * live tree moves on immediately — under update-on-join the very next commit is
+   * the joiner's own path update. The snapshot costs zero transaction bytes,
+   * since the assembled tree is already in hand.
+   *
+   * Keyed by epoch rather than stored per joiner: everyone added in one commit
+   * shares the same tree, and at 100 members that tree is ~354 kB — a per-joiner
+   * copy made a 10-member add write 3.5 MB.
+   */
   for (const welcome of tx.welcomes) {
-    group.pendingWelcomes[welcome.address] = {
+    tree.pendingWelcomes[welcome.address] = {
       ...welcome.envelope,
+      // Who did the adding. The invitee's client needs this to say "X added you"
+      // when asking whether to accept, and nothing else records it — the commit
+      // transcript is pruned, and the roster does not say who admitted whom.
+      addedBy: tx.from,
       epoch: group.epoch,
       timestamp: txTimestamp,
     }
+  }
+  if (tx.welcomes.length > 0) {
+    tree.welcomeTrees[String(group.epoch)] = tree.ratchetTree
+  }
+
+  // Drop snapshots no pending welcome refers to any more.
+  const neededEpochs = new Set(Object.values(tree.pendingWelcomes).map((w) => String(w.epoch)))
+  for (const epoch of Object.keys(tree.welcomeTrees)) {
+    if (!neededEpochs.has(epoch)) delete tree.welcomeTrees[epoch]
   }
 
   /*
@@ -325,10 +645,15 @@ export const apply = (
    * pruned can rejoin from this GroupInfo via an external commit; without it
    * they would be locked out permanently.
    */
-  group.checkpoint = {
+  /*
+   * No tree copy here. The checkpoint is rewritten on every commit, so its epoch
+   * always equals treeEpoch and its tree would be byte-identical to
+   * `tree.ratchetTree` — it was storing the whole thing twice. Consumers read
+   * `tree.ratchetTree` when `checkpoint.epoch === tree.treeEpoch`.
+   */
+  tree.checkpoint = {
     epoch: group.epoch,
     groupInfo: tx.groupInfo,
-    ratchetTree: tx.ratchetTree,
     timestamp: txTimestamp,
   }
 
@@ -371,6 +696,7 @@ export const apply = (
   }
 
   group.timestamp = txTimestamp
+  tree.timestamp = txTimestamp
   from.timestamp = txTimestamp
 
   const appReceiptData: AppReceiptData = {
@@ -439,28 +765,68 @@ export const createFailedAppReceiptData = (
  */
 export const keys = (tx: Tx.GroupCommit, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [tx.groupId, ...tx.addedMembers, ...tx.removedMembers]
+  // The tree account is a separate address, so it must be named here or apply()
+  // cannot write it. group_message deliberately does NOT name it.
+  /*
+   * The chat account for each (adder, addee) pair carries the toll setting that
+   * says whether the addee accepts invitations from this account, so it has to
+   * be loaded for validate() to read. Read-only — see memoryPattern.
+   */
+  const connectionChats = tx.addedMembers.map((address) => utils.calculateChatId(address, tx.from))
+  result.targetKeys = [
+    tx.groupId,
+    utils.calculateGroupTreeId(tx.groupId),
+    ...tx.addedMembers,
+    ...tx.removedMembers,
+    ...connectionChats,
+  ]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
 export const memoryPattern = (tx: Tx.GroupCommit, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
   return {
-    rw: [tx.from, tx.groupId, ...tx.addedMembers, ...tx.removedMembers],
+    rw: [tx.from, tx.groupId, utils.calculateGroupTreeId(tx.groupId), ...tx.addedMembers, ...tx.removedMembers],
     wo: [],
     on: [],
-    ri: [],
+    // Connection chats are only read, never written, by a commit.
+    ri: tx.addedMembers.map((address) => utils.calculateChatId(address, tx.from)),
     ro: [],
   }
 }
 
 export const createRelevantAccount = (
   dapp: Shardus,
-  account: UserAccount | GroupAccount,
+  account: UserAccount | GroupAccount | GroupTreeAccount | ChatAccount,
   accountId: string,
   tx: Tx.GroupCommit,
   accountCreated = false,
 ): ShardusTypes.WrappedResponse => {
+  /*
+   * The tree account is created lazily rather than by group_create, so groups
+   * that predate the split get one on their first commit. That commit is also
+   * the one that publishes the baseline `ratchetTree` (see apply), so the pair
+   * becomes consistent in a single step.
+   */
+  if (!account && accountId === utils.calculateGroupTreeId(tx.groupId)) {
+    account = create.groupTreeAccount(accountId, tx.groupId)
+    accountCreated = true
+  }
+  /*
+   * Two accounts that have never chatted have no chat account, and therefore no
+   * toll setting for validate() to read — the transaction would otherwise fail
+   * opaquely on a missing account rather than with a reason.
+   *
+   * The default construction waives only the INITIATOR's toll (chatAccount sets
+   * required[senderIndex] = 0 so a replier is not charged), leaving the addee's
+   * at 1. validate() reads the addee's slot, so this materialises exactly the
+   * "not connected" state and the add is refused with a clear message.
+   */
+  if (!account && tx.addedMembers.some((address) => utils.calculateChatId(address, tx.from) === accountId)) {
+    const addee = tx.addedMembers.find((address) => utils.calculateChatId(address, tx.from) === accountId)
+    account = create.chatAccount(accountId, { from: tx.from, to: addee } as Tx.Message)
+    accountCreated = true
+  }
   if (!account) {
     throw Error('Account must exist in order to commit to a group')
   }

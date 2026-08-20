@@ -1,4 +1,5 @@
 import * as crypto from '../crypto'
+import * as utils from '../utils'
 import { VectorBufferStream } from '@shardus/core'
 import { Utils } from '@shardus/lib-types'
 import { SerdeTypeIdent } from '.'
@@ -31,10 +32,13 @@ export const groupAccount = (accountId: string, tx: Tx.GroupCreate, timestamp: n
     memberSince: { [from]: { epoch: 0, timestamp } },
 
     messages: [],
-    handshakes: [],
-    pendingWelcomes: {},
 
-    checkpoint: null,
+    // The tree, commit transcript, welcomes and checkpoint live on the paired
+    // GroupTreeAccount so that group_message never has to carry them.
+    treeId: utils.calculateGroupTreeId(accountId),
+
+    joinFee: tx.joinFee ?? BigInt(0),
+    blocked: [],
 
     meta: tx.meta,
     maxMembers: tx.maxMembers,
@@ -80,10 +84,10 @@ export const serializeGroupAccount = (stream: VectorBufferStream, inp: GroupAcco
 
   stream.writeString(Utils.safeStringify(inp.memberSince))
   stream.writeString(Utils.safeStringify(inp.messages))
-  stream.writeString(Utils.safeStringify(inp.handshakes))
-  stream.writeString(Utils.safeStringify(inp.pendingWelcomes))
-  stream.writeString(Utils.safeStringify(inp.checkpoint))
   stream.writeString(Utils.safeStringify(inp.lastMessageAt))
+  stream.writeString(inp.treeId)
+  stream.writeString(inp.joinFee.toString())
+  stream.writeString(Utils.safeStringify(inp.blocked))
 
   stream.writeString(inp.meta)
   stream.writeUInt32(inp.maxMembers)
@@ -119,10 +123,10 @@ export const deserializeGroupAccount = (stream: VectorBufferStream, root = false
 
   const memberSince = Utils.safeJsonParse(stream.readString())
   const messages = Utils.safeJsonParse(stream.readString())
-  const handshakes = Utils.safeJsonParse(stream.readString())
-  const pendingWelcomes = Utils.safeJsonParse(stream.readString())
-  const checkpoint = Utils.safeJsonParse(stream.readString())
   const lastMessageAt = Utils.safeJsonParse(stream.readString())
+  const treeId = stream.readString()
+  const joinFee = BigInt(stream.readString())
+  const blocked = Utils.safeJsonParse(stream.readString())
 
   const meta = stream.readString()
   const maxMembers = stream.readUInt32()
@@ -141,9 +145,9 @@ export const deserializeGroupAccount = (stream: VectorBufferStream, root = false
     admins,
     memberSince,
     messages,
-    handshakes,
-    pendingWelcomes,
-    checkpoint,
+    treeId,
+    joinFee,
+    blocked,
     meta,
     maxMembers,
     lastMessageAt,
