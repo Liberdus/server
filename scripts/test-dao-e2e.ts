@@ -1366,6 +1366,19 @@ async function getEffectiveUnapplyThreshold(committeeSize: number): Promise<numb
   return Math.min(base, committeeSize)
 }
 
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
+
+/** Read from the live flags so a /debug-set-liberdus-flag change cannot invalidate the assertions. */
+async function getDaoProposalTimingLimits(): Promise<{ maxStartDelayMs: number; maxGracePeriodMs: number }> {
+  const flags = safeParse((await apiGet('/debug-liberdus-flags')).data)?.LiberdusFlags
+  const startDelay = flags?.daoMaxProposalStartDelayMs
+  const gracePeriod = flags?.daoMaxProposalGracePeriodMs
+  return {
+    maxStartDelayMs: Number.isSafeInteger(startDelay) && startDelay > 0 ? startDelay : 3 * ONE_DAY_MS,
+    maxGracePeriodMs: Number.isSafeInteger(gracePeriod) && gracePeriod > 0 ? gracePeriod : 30 * ONE_DAY_MS,
+  }
+}
+
 async function getProposalListOfChanges(): Promise<any[]> {
   return (await getNetworkParameters())?.listOfChanges ?? []
 }
@@ -3473,6 +3486,58 @@ async function main(): Promise<void> {
           }),
           proposer2,
           'cannot be earlier',
+        )
+      },
+    ],
+    [
+      '9.1b Reject startTime and gracePeriod beyond their configured ceilings',
+      async () => {
+        const { maxStartDelayMs, maxGracePeriodMs } = await getDaoProposalTimingLimits()
+        const timestamp = Date.now()
+        const baseTx = (proposalNumber: number): Record<string, unknown> => ({
+          type: 'dao_proposal_create',
+          networkId: currentNetworkId,
+          from: proposer2.address,
+          proposalId: daoProposalId(proposalNumber),
+          metaId: daoMetaId(),
+          proposalType: 'governance',
+          emergency: false,
+          title: 'Timing limit',
+          description: 'Timing ceiling rejection test',
+          options: ['no', 'yes'],
+          governance: { changes: [[{ key: 'pctBurned', value: '52', current: '50' }]] },
+          timestamp,
+        })
+        // A day over, not +1ms: injectExpectReject refreshes tx.timestamp, shrinking this offset.
+        await expectProposalCreateReject(
+          n => ({ ...baseTx(n), gracePeriod: graceDurationMs, startTime: timestamp + maxStartDelayMs + ONE_DAY_MS }),
+          proposer2,
+          'after the creation time',
+        )
+        await expectProposalCreateReject(
+          n => ({ ...baseTx(n), gracePeriod: maxGracePeriodMs + 1 }),
+          proposer2,
+          'exceeds the maximum of',
+        )
+        // Both limit values pass the ceilings; the duplicate key is what rejects, and validate_fields
+        // reaches it only past both. gracePeriod sits exactly on its limit, startTime just under
+        // (the timestamp refresh again).
+        await expectProposalCreateReject(
+          n => ({
+            ...baseTx(n),
+            gracePeriod: maxGracePeriodMs,
+            startTime: timestamp + maxStartDelayMs,
+            governance: {
+              changes: [
+                [
+                  { key: 'pctBurned', value: '52', current: '50' },
+                  { key: 'pctBurned', value: '53', current: '50' },
+                ],
+              ],
+            },
+          }),
+          proposer2,
+          'unique "key" entries',
         )
       },
     ],

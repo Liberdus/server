@@ -268,6 +268,10 @@ interface LiberdusFlags {
   // Committee votes needed for dao_unapply_parameters to flip applied -> accepted. Consensus-
   // relevant: must stay identical across all nodes.
   daoUnapplyCommitteeThreshold: number
+  // Largest startTime offset from the tx timestamp, and largest gracePeriod, that
+  // dao_proposal_create will accept.
+  daoMaxProposalStartDelayMs: number
+  daoMaxProposalGracePeriodMs: number
   minCommitteeMembers: number
   maxCommitteeMembers: number
   enableAJVValidation: boolean
@@ -319,6 +323,8 @@ export const LiberdusFlags: LiberdusFlags = {
   enableNewDAOTransactions: true, // turned on by migration 2.5.1
   enableDaoCancel: true,
   daoUnapplyCommitteeThreshold: 3,
+  daoMaxProposalStartDelayMs: 3 * ONE_DAY,
+  daoMaxProposalGracePeriodMs: 30 * ONE_DAY,
   minCommitteeMembers: 4,
   maxCommitteeMembers: 10,
   enableAJVValidation: false,
