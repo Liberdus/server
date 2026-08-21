@@ -42,6 +42,12 @@ export const validate_fields = (
     response.reason = 'tx "gracePeriod" must be a non-negative number if provided'
     return response
   }
+  // Not redundant with the graceDuration check in validate(): that bounds the request by a DAO
+  // parameter governance can raise, so it is a policy limit. This is the actual upper bound.
+  if (tx.gracePeriod !== undefined && tx.gracePeriod > config.LiberdusFlags.daoMaxProposalGracePeriodMs) {
+    response.reason = `tx "gracePeriod" (${tx.gracePeriod}ms) exceeds the maximum of ${config.LiberdusFlags.daoMaxProposalGracePeriodMs}ms`
+    return response
+  }
   if (typeof tx.title !== 'string' || tx.title.trim().length === 0 || tx.title.length > 100) {
     response.reason = 'tx "title" must be a non-empty string of at most 100 characters'
     return response
@@ -62,6 +68,12 @@ export const validate_fields = (
   // startTime can be set in the future so the committee has time to review before voting begins; defaults to creation time.
   if (tx.startTime !== undefined && tx.startTime < tx.timestamp) {
     response.reason = `tx "startTime" (${tx.startTime}) cannot be earlier than the creation time (${tx.timestamp})`
+    return response
+  }
+  // Offset measured from tx.timestamp rather than Date.now(), so nodes validating at different
+  // moments still reach the same verdict.
+  if (tx.startTime !== undefined && tx.startTime - tx.timestamp > config.LiberdusFlags.daoMaxProposalStartDelayMs) {
+    response.reason = `tx "startTime" (${tx.startTime}) is more than ${config.LiberdusFlags.daoMaxProposalStartDelayMs}ms after the creation time (${tx.timestamp})`
     return response
   }
   const payload = tx[tx.proposalType as 'governance' | 'economic' | 'protocol']
