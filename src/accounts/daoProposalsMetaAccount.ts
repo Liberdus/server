@@ -7,11 +7,8 @@ import { Utils } from '@shardus/lib-types'
 export const DAO_PROPOSALS_META_ID_STRING = 'dao proposals meta'
 
 /**
- * Address of the DAO proposals meta account.
- *
- * Derived rather than carried on the transaction, so status-transition handlers can declare it in
- * keys()/memoryPattern() without a new tx field. Kept lazy (not a module-level const) because the
- * crypto module needs initializing before hashing — same shape as the API's metaId() helper.
+ * Address of the DAO proposals meta account, derived so handlers can declare it in keys() without
+ * a new tx field. Lazy rather than a module const: crypto must be initialized before hashing.
  */
 export function daoProposalsMetaId(): string {
   return crypto.hash(DAO_PROPOSALS_META_ID_STRING)

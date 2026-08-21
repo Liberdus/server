@@ -6,10 +6,7 @@ import { Utils } from '@shardus/lib-types'
 const metaId = () => crypto.hash(DAO_PROPOSALS_META_ID_STRING)
 const proposalId = (n: number) => crypto.hash(`dao proposal #${n}`)
 
-/**
- * Fixed, not a query parameter. The endpoint takes no parameters at all, so there is nothing to
- * vary this by; clients that want a different window can slice `dao/proposals/meta` themselves.
- */
+/** Fixed: the endpoint takes no parameters. Clients wanting a different window slice `meta`. */
 const SUMMARY_SIZE = 20
 
 export const meta = (dapp) => async (req, res): Promise<void> => {
@@ -27,14 +24,11 @@ export const meta = (dapp) => async (req, res): Promise<void> => {
 }
 
 /**
- * The most recently active proposals, newest first.
+ * The most recently *active* proposals — ordered by last status transition, not by number, so old
+ * proposals moving through their lifecycle can push a newer one out of the window.
  *
- * "Recently active" is not "newest": the index is ordered by last status transition, so a batch of
- * old proposals moving through their lifecycle can push a brand-new proposal out of the window.
- *
- * Returns the meta count plus entries only — proposal, status, emergencyFlag, timestamp. Callers that need titles or
- * balances follow up with `dao/proposals/:id` for the handful they are displaying, which is the
- * point of the index: one request instead of one per proposal.
+ * Returns `meta.count` plus index entries only; callers needing titles or balances follow up with
+ * `dao/proposals/:id` for just the handful they display.
  */
 export const summary = (dapp) => async (req, res): Promise<void> => {
   try {
@@ -44,8 +38,7 @@ export const summary = (dapp) => async (req, res): Promise<void> => {
       return
     }
     const meta = account.data as DaoProposalsMeta
-    // `proposals` is optional so meta accounts serialized before the index existed still
-    // deserialize; on those this correctly reports an empty list until the backfill fills it in.
+    // `proposals` is optional on pre-index accounts; those correctly report an empty list.
     const proposals = Array.isArray(meta.proposals) ? meta.proposals.slice(0, SUMMARY_SIZE) : []
     res.send(Utils.safeStringify({ count: meta.count, proposals }))
   } catch (error) {

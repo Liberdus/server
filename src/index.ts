@@ -377,11 +377,8 @@ const shardusSetup = (): void => {
         // Create a deep copy backup of the original wrapped states
         const originalWrappedStates = utils.deepCloneWrappedStates(wrappedStates)
         try {
-          // Awaited because a handler's apply() may be async (dao_proposal_create backfills the
-          // proposal index). Without the await, two things break for async handlers: the catch
-          // below would not see a rejection, and the changed-account loop further down would run
-          // before the handler finished mutating state. Sync handlers are unaffected — awaiting a
-          // void return is a no-op beyond a microtask hop.
+          // Awaited because a handler's apply() may be async: without it the catch below would
+          // miss a rejection and the changed-account loop would run before the handler finished.
           await transactions[tx.type].apply(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse)
         } catch (e) {
           console.error(`Error applying transaction ${txId} of type ${tx.type}:`, e.message)
