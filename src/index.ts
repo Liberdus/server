@@ -80,6 +80,8 @@ const daoPreCrackTxTypes = new Set([
 let isReadyToJoinLatestValue = false
 let mustUseAdminCert = false
 let nextGoldenTicketRetryAt = 0
+let isGoldenTicketRetry = false
+let isGoldenTicketFetchInProgress = false
 
 const shardusSetup = (): void => {
   // SDK SETUP FUNCTIONS
@@ -1583,25 +1585,33 @@ const shardusSetup = (): void => {
         (!isRequestedAdminCert || hasExpiredGoldenTicket) &&
         networkAccount &&
         utils.isEqualOrNewerVersion('2.4.3', networkAccount.current.activeVersion) &&
-        dapp.shardusGetTime() >= nextGoldenTicketRetryAt
+        dapp.shardusGetTime() >= nextGoldenTicketRetryAt &&
+        !isGoldenTicketFetchInProgress
       ) {
+        isGoldenTicketFetchInProgress = true
         try {
-          const goldenTicketResult = await tryAndFetchGoldenTicket(publicKey, networkAccount, dapp)
+          const goldenTicketResult = await tryAndFetchGoldenTicket(publicKey, networkAccount, dapp, isGoldenTicketRetry)
           if (goldenTicketResult.ticket) {
             setAdminCertificate(goldenTicketResult.ticket)
             markRequestedAdminCert()
+            isGoldenTicketRetry = false
             /* prettier-ignore */
             if (LiberdusFlags.VerboseLogs) console.log(`fetched golden ticket: ${Utils.safeStringify(goldenTicketResult.ticket)}`)
             nestedCountersInstance.countEvent('liberdus-staking', 'fetched golden ticket from server')
             console.log(`Admin certificate is set to `, adminCert)
           } else if (goldenTicketResult.terminal) {
+            // An expired ticket otherwise keeps hasExpiredGoldenTicket true and
+            // bypasses isRequestedAdminCert on every isReadyToJoin invocation.
+            if (hasExpiredGoldenTicket) setAdminCertificate(null)
             markRequestedAdminCert()
+            isGoldenTicketRetry = false
             /* prettier-ignore */
             if (LiberdusFlags.VerboseLogs) console.log(`terminal golden ticket fetch error: ${goldenTicketResult.error}`)
             nestedCountersInstance.countEvent('liberdus-staking', `terminal golden ticket fetch error: ${goldenTicketResult.error}`)
           } else {
             const goldenTicketRetryInterval = networkAccount.current.goldenTicketRetryInterval || 10 * configs.ONE_MINUTE
             nextGoldenTicketRetryAt = dapp.shardusGetTime() + goldenTicketRetryInterval
+            isGoldenTicketRetry = true
             /* prettier-ignore */
             if (LiberdusFlags.VerboseLogs) console.log(`no golden ticket available from server, retrying in ${goldenTicketRetryInterval}ms`)
             nestedCountersInstance.countEvent('liberdus-staking', `no golden ticket available from server, retrying in ${goldenTicketRetryInterval}ms`)
@@ -1609,8 +1619,11 @@ const shardusSetup = (): void => {
         } catch (e) {
           const goldenTicketRetryInterval = networkAccount.current.goldenTicketRetryInterval || 10 * configs.ONE_MINUTE
           nextGoldenTicketRetryAt = dapp.shardusGetTime() + goldenTicketRetryInterval
+          isGoldenTicketRetry = true
           /* prettier-ignore */
           if (logFlags.error) console.log(`Error fetching golden ticket: ${e.message}; retrying in ${goldenTicketRetryInterval}ms`) // non fatal
+        } finally {
+          isGoldenTicketFetchInProgress = false
         }
       }
       console.log('is AdminCert set to ', adminCert)

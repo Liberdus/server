@@ -97,8 +97,20 @@ describe('Golden Ticket fetch', () => {
     expect(result.error).toContain('ECONNREFUSED')
   })
 
+  it('adds one second to the timestamp when retrying', async () => {
+    mockShardusPost.mockResolvedValue({ data: { success: true, ticket } })
+
+    await tryAndFetchGoldenTicket('public-key', network, dapp, true)
+
+    expect(dapp.signAsNode).toHaveBeenCalledWith(expect.objectContaining({ timestamp: 124456 }))
+  })
+
   it('identifies terminal Golden Ticket validation errors', () => {
     expect(isTerminalGoldenTicketError('Public key not registered or inactive')).toBe(true)
+    expect(isTerminalGoldenTicketError('Schema validation failed: publicKey must be a string')).toBe(true)
+    expect(isTerminalGoldenTicketError('Nonce must be a non-negative integer')).toBe(true)
+    expect(isTerminalGoldenTicketError('Port must be between 1 and 65535')).toBe(true)
     expect(isTerminalGoldenTicketError('Timestamp out of acceptable range')).toBe(false)
+    expect(isTerminalGoldenTicketError('Rate limit exceeded for this validator')).toBe(false)
   })
 })
