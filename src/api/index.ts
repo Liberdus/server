@@ -1,7 +1,5 @@
 import { inject } from './inject'
 import network from './network'
-import issues from './issues'
-import proposals from './proposals'
 import accounts from './accounts'
 import messages from './messages'
 import debug from './debug'
@@ -15,24 +13,6 @@ export default (dapp: Shardus): void => {
   dapp.registerExternalPost('inject', inject(dapp))
 
   dapp.registerExternalGet('network/parameters', network.current(dapp))
-  dapp.registerExternalGet('network/parameters/next', network.next(dapp))
-  dapp.registerExternalGet('network/windows/all', network.windows_all(dapp))
-  dapp.registerExternalGet('network/windows', network.windows(dapp))
-  dapp.registerExternalGet('network/windows/dev', network.windows_dev(dapp))
-
-  dapp.registerExternalGet('issues', issues.all(dapp))
-  dapp.registerExternalGet('issues/latest', issues.latest(dapp))
-  dapp.registerExternalGet('issues/count', issues.count(dapp))
-  dapp.registerExternalGet('issues/dev', issues.dev_all(dapp))
-  dapp.registerExternalGet('issues/dev/latest', issues.dev_latest(dapp))
-  dapp.registerExternalGet('issues/dev/count', issues.dev_count(dapp))
-
-  dapp.registerExternalGet('proposals', proposals.all(dapp))
-  dapp.registerExternalGet('proposals/latest', proposals.latest(dapp))
-  dapp.registerExternalGet('proposals/count', proposals.count(dapp))
-  dapp.registerExternalGet('proposals/dev', proposals.dev_all(dapp))
-  dapp.registerExternalGet('proposals/dev/latest', proposals.dev_latest(dapp))
-  dapp.registerExternalGet('proposals/dev/count', proposals.dev_count(dapp))
 
   // New DAO API routes — Shardus applies registerExternalGet routes in LIFO order
   // (last registered = first matched in Express), so register specific paths last.

@@ -4,10 +4,6 @@ import {
   AliasAccount,
   NetworkAccount,
   NodeAccount,
-  IssueAccount,
-  DevIssueAccount,
-  ProposalAccount,
-  DevProposalAccount,
   DevAccount,
   DaoProposalsMeta,
   DaoProposalAccount,
@@ -46,34 +42,6 @@ export function isNetworkAccount(account: unknown): account is NetworkAccount {
  */
 export function isNodeAccount(account: unknown): account is NodeAccount {
   return !!account && typeof account === 'object' && 'type' in account && account.type === 'NodeAccount'
-}
-
-/**
- * Type guard to check if an account is an IssueAccount
- */
-export function isIssueAccount(account: unknown): account is IssueAccount {
-  return !!account && typeof account === 'object' && 'type' in account && account.type === 'IssueAccount'
-}
-
-/**
- * Type guard to check if an account is a DevIssueAccount
- */
-export function isDevIssueAccount(account: unknown): account is DevIssueAccount {
-  return !!account && typeof account === 'object' && 'type' in account && account.type === 'DevIssueAccount'
-}
-
-/**
- * Type guard to check if an account is a ProposalAccount
- */
-export function isProposalAccount(account: unknown): account is ProposalAccount {
-  return !!account && typeof account === 'object' && 'type' in account && account.type === 'ProposalAccount'
-}
-
-/**
- * Type guard to check if an account is a DevProposalAccount
- */
-export function isDevProposalAccount(account: unknown): account is DevProposalAccount {
-  return !!account && typeof account === 'object' && 'type' in account && account.type === 'DevProposalAccount'
 }
 
 /**
