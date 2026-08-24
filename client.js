@@ -665,78 +665,6 @@ async function queryNodeParameters() {
   }
 }
 
-// QUERY'S ALL NETWORK ISSUES
-async function queryIssues() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/issues`)
-  return res.data.issues
-}
-
-// QUERY'S ALL NETWORK DEV_ISSUES
-async function queryDevIssues() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/issues/dev`)
-  return res.data.devIssues
-}
-
-// QUERY'S THE MOST RECENT NETWORK ISSUE
-async function queryLatestIssue() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/issues/latest`)
-  return res.data.issue
-}
-
-// QUERY'S THE MOST RECENT NETWORK DEV_ISSUE
-async function queryLatestDevIssue() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/issues/dev/latest`)
-  return res.data.devIssue
-}
-
-// QUERY'S THE CURRENT NETWORK ISSUE COUNT
-async function getIssueCount() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/issues/count`)
-  return res.data.count
-}
-
-// QUERY'S THE CURRENT NETWORK DEV_ISSUE COUNT
-async function getDevIssueCount() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/issues/dev/count`)
-  return res.data.count
-}
-
-// QUERY'S ALL NETWORK PROPOSALS
-async function queryProposals() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals`)
-  return res.data.proposals
-}
-
-// QUERY'S ALL NETWORK DEV_PROPOSALS
-async function queryDevProposals() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals/dev`)
-  return res.data.devProposals
-}
-
-// QUERY'S ALL PROPOSALS ON THE LATEST ISSUE
-async function queryLatestProposals() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals/latest`)
-  return res.data.proposals
-}
-
-// QUERY'S ALL PROPOSALS ON THE LATEST ISSUE
-async function queryLatestDevProposals() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals/dev/latest`)
-  return res.data.devProposals
-}
-
-// QUERY'S THE CURRENT ISSUE'S PROPOSAL COUNT
-async function getProposalCount() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals/count`)
-  return res.data.count
-}
-
-// QUERY'S THE CURRENT ISSUE'S PROPOSAL COUNT
-async function getDevProposalCount() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals/dev/count`)
-  return res.data.count
-}
-
 // COMMAND TO SET THE HOST IP:PORT
 vorpal.command('use host <host>', 'uses <host> as the node for queries and transactions').action(function (args, callback) {
   HOST = args.host
@@ -1436,6 +1364,9 @@ vorpal.command('claim', 'submits a claim transaction for the snapshot').action(f
   })
 })
 
+// Legacy proposal commands are retired. Keep the old definitions unreachable until the CLI
+// section is physically removed with the next client-only cleanup.
+if (false) {
 // COMMAND TO SUBMIT A PROPOSAL
 vorpal.command('proposal', 'submits a proposal to change network parameters').action(async function (args, callback) {
   const networkParams = await queryParameters()
@@ -1752,6 +1683,8 @@ vorpal.command('vote dev', 'vote for a development proposal').action(async funct
     callback()
   })
 })
+
+}
 
 // COMMAND TO POLL FOR MESSAGES BETWEEN 2 USERS AFTER A SPECIFIED TIMESTAMP
 vorpal.command('message poll <to>', 'gets messages between you and <to>').action(async function (args, callback) {

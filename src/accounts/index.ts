@@ -1,50 +1,38 @@
 import { aliasAccount, deserializeAliasAccount, serializeAliasAccount } from './aliasAccount'
 import { devAccount, deserializeDevAccount, serializeDevAccount } from './devAccount'
 import { chatAccount, deserializeChatAccount, serializeChatAccount } from './chatAccount'
-import { deserializeDevProposalAccount, devProposalAccount, serializeDevProposalAccount } from './devProposalAccount'
-import { deserializeDevIssueAccount, devIssueAccount, serializeDevIssueAccount } from './devIssueAccount'
 import { deserializeUserAccount, serializeUserAccount, userAccount } from './userAccount'
-import { deserializeIssueAccount, issueAccount, serializeIssueAccount } from './issueAccount'
 import { deserializeNetworkAccount, networkAccount, serializeNetworkAccount } from './networkAccount'
 import { deserializeNodeAccount, nodeAccount, serializeNodeAccount } from './nodeAccount'
-import { deserializeProposalAccount, proposalAccount, serializeProposalAccount } from './proposalAccount'
 import { daoProposalsMetaAccount, deserializeDaoProposalsMetaAccount, serializeDaoProposalsMetaAccount } from './daoProposalsMetaAccount'
 import { daoProposalAccount, deserializeDaoProposalAccount, serializeDaoProposalAccount } from './daoProposalAccount'
 import { VectorBufferStream } from '@shardus/core'
 import {
-  DeveloperPayment,
   AccountVariant,
   AliasAccount,
   ChatAccount,
-  DevIssueAccount,
-  DevProposalAccount,
-  IssueAccount,
   NetworkAccount,
   NodeAccount,
-  ProposalAccount,
   UserAccount,
   DevAccount,
   DaoProposalsMeta,
   DaoProposalAccount,
+  DeveloperPayment,
 } from '../@types'
 import { Utils } from '@shardus/lib-types'
 
 export enum SerdeTypeIdent {
   AliasAccount = 1,
-  ChatAccount,
-  DevIssueAccount,
-  DevProposalAccount,
-  IssueAccount,
-  NetworkAccount,
-  NodeAccount,
-  ProposalAccount,
-  UserAccount,
-  DeveloperPayment,
-  NetworkParameters,
-  DevAccount,
-  Fallback,
-  DaoProposalsMeta,
-  DaoProposalAccount,
+  ChatAccount = 2,
+  // 3, 4, 5, 8, 10 and 11 are retired legacy DAO payload identifiers.
+  NetworkAccount = 6,
+  NodeAccount = 7,
+  UserAccount = 9,
+  DeveloperPayment = 10,
+  DevAccount = 12,
+  Fallback = 13,
+  DaoProposalsMeta = 14,
+  DaoProposalAccount = 15,
 }
 
 export const serializeAccounts = (inp: AccountVariant): VectorBufferStream => {
@@ -56,23 +44,11 @@ export const serializeAccounts = (inp: AccountVariant): VectorBufferStream => {
     case 'chatAccount':
       serializeChatAccount(stream, inp as ChatAccount, true)
       break
-    case 'devIssueAccount':
-      serializeDevIssueAccount(stream, inp as DevIssueAccount, true)
-      break
-    case 'devProposalAccount':
-      serializeDevProposalAccount(stream, inp as DevProposalAccount, true)
-      break
-    case 'issueAccount':
-      serializeIssueAccount(stream, inp as IssueAccount, true)
-      break
     case 'networkAccount':
       serializeNetworkAccount(stream, inp as NetworkAccount, true)
       break
     case 'nodeAccount':
       serializeNodeAccount(stream, inp as NodeAccount, true)
-      break
-    case 'proposalAccount':
-      serializeProposalAccount(stream, inp as ProposalAccount, true)
       break
     case 'userAccount':
       serializeUserAccount(stream, inp as UserAccount, true)
@@ -102,18 +78,10 @@ export const deserializeAccounts = (buffer: Buffer): AccountVariant => {
       return deserializeAliasAccount(stream)
     case SerdeTypeIdent.ChatAccount:
       return deserializeChatAccount(stream)
-    case SerdeTypeIdent.DevIssueAccount:
-      return deserializeDevIssueAccount(stream)
-    case SerdeTypeIdent.DevProposalAccount:
-      return deserializeDevProposalAccount(stream)
-    case SerdeTypeIdent.IssueAccount:
-      return deserializeIssueAccount(stream)
     case SerdeTypeIdent.NetworkAccount:
       return deserializeNetworkAccount(stream)
     case SerdeTypeIdent.NodeAccount:
       return deserializeNodeAccount(stream)
-    case SerdeTypeIdent.ProposalAccount:
-      return deserializeProposalAccount(stream)
     case SerdeTypeIdent.UserAccount:
       return deserializeUserAccount(stream)
     case SerdeTypeIdent.DevAccount:
@@ -165,56 +133,12 @@ export const deserializeDeveloperPayment = (stream: VectorBufferStream, root = f
   }
 }
 
-export const serializeNetworkParameters = (stream: VectorBufferStream, inp: any, root = false): void => {
-  if (root) {
-    stream.writeUInt16(SerdeTypeIdent.NetworkParameters)
-  }
-  stream.writeString(inp.title)
-  stream.writeString(inp.description)
-  stream.writeUInt32(inp.nodeRewardInterval)
-  stream.writeUInt32(inp.nodeRewardAmount)
-  stream.writeUInt32(inp.nodePenalty)
-  stream.writeUInt32(inp.transactionFee)
-  stream.writeUInt32(inp.stakeRequired)
-  stream.writeUInt32(inp.maintenanceInterval)
-  stream.writeUInt32(inp.maintenanceFee)
-  stream.writeUInt32(inp.proposalFee)
-  stream.writeUInt32(inp.devProposalFee)
-  stream.writeUInt32(inp.faucetAmount)
-  stream.writeUInt32(inp.defaultToll)
-}
-
-export const deserializeNetworkParameters = (stream: VectorBufferStream, root = false): any => {
-  if (root && stream.readUInt16() !== SerdeTypeIdent.NetworkParameters) {
-    throw new Error('Unexpected bufferstream for NetworkParameters type')
-  }
-  return {
-    title: stream.readString(),
-    description: stream.readString(),
-    nodeRewardInterval: stream.readUInt32(),
-    nodeRewardAmount: stream.readUInt32(),
-    nodePenalty: stream.readUInt32(),
-    transactionFee: stream.readUInt32(),
-    stakeRequired: stream.readUInt32(),
-    maintenanceInterval: stream.readUInt32(),
-    maintenanceFee: stream.readUInt32(),
-    proposalFee: stream.readUInt32(),
-    devProposalFee: stream.readUInt32(),
-    faucetAmount: stream.readUInt32(),
-    defaultToll: stream.readUInt32(),
-  }
-}
-
 export default {
   aliasAccount,
   devAccount,
   chatAccount,
-  devIssueAccount,
-  devProposalAccount,
-  issueAccount,
   networkAccount,
   nodeAccount,
-  proposalAccount,
   userAccount,
   daoProposalsMetaAccount,
   daoProposalAccount,
