@@ -551,6 +551,11 @@ config = merge(config, {
 
       downNodeFilteringEnabled: false, //turning down node filtering off for diagnostics purposes
       initShutdown: false,
+
+      // archiver down detection
+      checkNetworkStopped: true,
+      archiverNetworkCheckInterval: 1000 * 60 * 1,
+      shouldApopOnNetworkStop: false,
     },
     features: {
       //This feature will restrict transactions to only coin transfers
