@@ -22,6 +22,13 @@ export interface AdminCertResponse {
   cached?: boolean
 }
 
+export interface GoldenTicketFetchResult {
+  ticket?: AdminCert
+  error?: string
+  retryable: boolean
+  terminal: boolean
+}
+
 export type PutAdminCertRequest = AdminCert
 
 export interface PutAdminCertResult {
@@ -31,6 +38,33 @@ export interface PutAdminCertResult {
 
 export let adminCert: AdminCert = null
 export let isRequestedAdminCert: boolean = false
+
+export function isTerminalGoldenTicketError(error?: string): boolean {
+  if (!error) return false
+  const normalizedError = error.toLowerCase()
+  return (
+    normalizedError.includes('schema validation failed') ||
+    normalizedError.includes('invalid request format') ||
+    normalizedError.includes('public key not registered') ||
+    normalizedError.includes('inactive') ||
+    normalizedError.includes('validator not found') ||
+    normalizedError.includes('nonce cannot be empty') ||
+    normalizedError.includes('nonce must be') ||
+    normalizedError.includes('port must be between') ||
+    normalizedError.includes('signature owner does not match registered public key') ||
+    normalizedError.includes('invalid signature') ||
+    normalizedError.includes('signature validation failed')
+  )
+}
+
+function createGoldenTicketFetchResult(error?: string): GoldenTicketFetchResult {
+  const terminal = isTerminalGoldenTicketError(error)
+  return {
+    error,
+    retryable: !terminal,
+    terminal,
+  }
+}
 
 function validatePutAdminCertRequest(req: PutAdminCertRequest, shardus: Shardus): PutAdminCertResult {
   const publicKey = shardus.crypto.getPublicKey()
@@ -79,29 +113,42 @@ export async function putAdminCertificateHandler(req: Request, shardus: Shardus)
   return { success: true }
 }
 
-export async function tryAndFetchGoldenTicket(publicKey: string, network: NetworkAccount, dapp: Shardus): Promise<AdminCert> {
+export async function tryAndFetchGoldenTicket(
+  publicKey: string,
+  network: NetworkAccount,
+  dapp: Shardus,
+  isRetry = false,
+): Promise<GoldenTicketFetchResult> {
   try {
     if (LiberdusFlags.VerboseLogs) console.log('Fetching golden ticket from', network.current.goldenTicketServerUrl, 'for publicKey', publicKey, 'node')
     const goldenTicketRequest: any = {
       publicKey,
       ip: config.server.ip.externalIp,
       port: config.server.ip.externalPort,
-      timestamp: dapp.shardusGetTime(),
+      timestamp: dapp.shardusGetTime() + (isRetry ? 1000 : 0),
       nonce: Math.floor(Math.random() * 1e6),
     }
     const signedGoldenTicketRequest: GoldenTicketRequest = dapp.signAsNode(goldenTicketRequest)
     if (LiberdusFlags.VerboseLogs) console.log('Golden Ticket request', signedGoldenTicketRequest)
     const response = await shardusPost<AdminCertResponse>(network.current.goldenTicketServerUrl, signedGoldenTicketRequest, { timeout: 5000 })
     if (LiberdusFlags.VerboseLogs) console.log('Golden Ticket response', response.data)
-    if (response.data && response.data.success) {
-      return response.data.ticket
+    if (response.data && response.data.success && response.data.ticket) {
+      return {
+        ticket: response.data.ticket,
+        retryable: false,
+        terminal: false,
+      }
     } else {
-      console.error('No golden ticket received')
-      return null
+      const error = response.data?.error || 'No golden ticket received'
+      console.error(error)
+      return createGoldenTicketFetchResult(error)
     }
   } catch (error) {
-    console.error(`Error fetching golden ticket from - ${(error as Error).message}`)
-    return null
+    const axiosError = error as { message?: string; response?: { data?: AdminCertResponse; status?: number } }
+    const responseError = axiosError.response?.data?.error
+    const errorMessage = responseError || axiosError.message || 'Unknown Golden Ticket fetch error'
+    console.error(`Error fetching golden ticket from - ${errorMessage}`)
+    return createGoldenTicketFetchResult(errorMessage)
   }
 }
 export function setAdminCertificate(cert: AdminCert): void {
