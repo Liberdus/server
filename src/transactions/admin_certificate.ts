@@ -43,8 +43,14 @@ export function isTerminalGoldenTicketError(error?: string): boolean {
   if (!error) return false
   const normalizedError = error.toLowerCase()
   return (
+    normalizedError.includes('schema validation failed') ||
+    normalizedError.includes('invalid request format') ||
     normalizedError.includes('public key not registered') ||
     normalizedError.includes('inactive') ||
+    normalizedError.includes('validator not found') ||
+    normalizedError.includes('nonce cannot be empty') ||
+    normalizedError.includes('nonce must be') ||
+    normalizedError.includes('port must be between') ||
     normalizedError.includes('signature owner does not match registered public key') ||
     normalizedError.includes('invalid signature') ||
     normalizedError.includes('signature validation failed')
@@ -107,14 +113,19 @@ export async function putAdminCertificateHandler(req: Request, shardus: Shardus)
   return { success: true }
 }
 
-export async function tryAndFetchGoldenTicket(publicKey: string, network: NetworkAccount, dapp: Shardus): Promise<GoldenTicketFetchResult> {
+export async function tryAndFetchGoldenTicket(
+  publicKey: string,
+  network: NetworkAccount,
+  dapp: Shardus,
+  isRetry = false,
+): Promise<GoldenTicketFetchResult> {
   try {
     if (LiberdusFlags.VerboseLogs) console.log('Fetching golden ticket from', network.current.goldenTicketServerUrl, 'for publicKey', publicKey, 'node')
     const goldenTicketRequest: any = {
       publicKey,
       ip: config.server.ip.externalIp,
       port: config.server.ip.externalPort,
-      timestamp: dapp.shardusGetTime(),
+      timestamp: dapp.shardusGetTime() + (isRetry ? 1000 : 0),
       nonce: Math.floor(Math.random() * 1e6),
     }
     const signedGoldenTicketRequest: GoldenTicketRequest = dapp.signAsNode(goldenTicketRequest)
