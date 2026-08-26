@@ -212,42 +212,6 @@ export const schemaInitNetworkTX = {
   additionalProperties: false,
 }
 
-export const schemaNetworkWindowsTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    nodeId: { type: 'string' },
-  },
-  required: [...baseTxRequired, 'from', 'nodeId'],
-  additionalProperties: false,
-}
-
-export const schemaIssueTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    nodeId: { type: 'string' },
-    issue: { type: 'string' },
-    proposal: { type: 'string' },
-  },
-  required: [...baseTxRequired, 'from', 'nodeId', 'issue', 'proposal'],
-  additionalProperties: false,
-}
-
-export const schemaDevIssueTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    nodeId: { type: 'string' },
-    devIssue: { type: 'string' },
-  },
-  required: [...baseTxRequired, 'from', 'nodeId', 'devIssue'],
-  additionalProperties: false,
-}
-
 export const schemaMessageTX = {
   type: 'object',
   properties: {
@@ -310,18 +274,6 @@ export const schemaNodeRewardTX = {
   additionalProperties: false,
 }
 
-export const schemaParametersTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    nodeId: { type: 'string' },
-    issue: { type: 'string' },
-  },
-  required: [...baseTxRequired, 'from', 'nodeId', 'issue'],
-  additionalProperties: false,
-}
-
 export const schemaChangeConfigTX = {
   type: 'object',
   properties: {
@@ -371,51 +323,6 @@ export const schemaApplyChangeNetworkParamTX = {
     change: { type: 'object' },
   },
   required: ['type', 'timestamp', 'change'],
-  additionalProperties: false,
-}
-
-export const schemaDevParametersTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    nodeId: { type: 'string' },
-    devIssue: { type: 'string' },
-  },
-  required: [...baseTxRequired, 'from', 'nodeId', 'devIssue'],
-  additionalProperties: false,
-}
-
-export const schemaProposalTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    proposal: { type: 'string' },
-    issue: { type: 'string' },
-    parameters: { type: 'object' },
-  },
-  required: [...baseTxRequired, 'from', 'proposal', 'issue', 'parameters'],
-  additionalProperties: false,
-}
-
-export const schemaDevProposalTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    devProposal: { type: 'string' },
-    devIssue: { type: 'string' },
-    totalAmount: { isBigInt: true },
-    payments: {
-      type: 'array',
-      items: { type: 'object' },
-    },
-    title: { type: 'string' },
-    description: { type: 'string' },
-    payAddress: { type: 'string' },
-  },
-  required: [...baseTxRequired, 'from', 'devProposal', 'devIssue', 'totalAmount', 'payments', 'title', 'description', 'payAddress'],
   additionalProperties: false,
 }
 
@@ -499,38 +406,6 @@ export const schemaStakeTX = {
   additionalProperties: false,
 }
 
-export const schemaTallyTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    nodeId: { type: 'string' },
-    issue: { type: 'string' },
-    proposals: {
-      type: 'array',
-      items: { type: 'string' },
-    },
-  },
-  required: [...baseTxRequired, 'from', 'nodeId', 'issue', 'proposals'],
-  additionalProperties: false,
-}
-
-export const schemaDevTallyTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    nodeId: { type: 'string' },
-    devIssue: { type: 'string' },
-    devProposals: {
-      type: 'array',
-      items: { type: 'string' },
-    },
-  },
-  required: [...baseTxRequired, 'from', 'nodeId', 'devIssue', 'devProposals'],
-  additionalProperties: false,
-}
-
 export const schemaTollTX = {
   type: 'object',
   properties: {
@@ -551,46 +426,6 @@ export const schemaVerifyTX = {
     code: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'code'],
-  additionalProperties: false,
-}
-
-export const schemaVoteTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    issue: { type: 'string' },
-    proposal: { type: 'string' },
-    amount: { isBigInt: true },
-  },
-  required: [...baseTxRequired, 'from', 'issue', 'proposal', 'amount'],
-  additionalProperties: false,
-}
-
-export const schemaDevVoteTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    devIssue: { type: 'string' },
-    devProposal: { type: 'string' },
-    approve: { type: 'boolean' },
-    amount: { isBigInt: true },
-  },
-  required: [...baseTxRequired, 'from', 'devIssue', 'devProposal', 'approve', 'amount'],
-  additionalProperties: false,
-}
-
-export const schemaDevPaymentTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    nodeId: { type: 'string' },
-    developer: { type: 'string' },
-    payment: { type: 'object' },
-  },
-  required: [...baseTxRequired, 'from', 'nodeId', 'developer', 'payment'],
   additionalProperties: false,
 }
 
@@ -678,80 +513,6 @@ export const schemaClaimRewardTX = {
     },
   },
   required: [...baseTxRequired, 'nominee', 'nominator', 'deactivatedNodeId', 'nodeDeactivatedTime'],
-  additionalProperties: false,
-}
-
-export const schemaApplyParametersTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    current: { type: 'object' },
-    next: { type: 'object' },
-    windows: { type: 'object' },
-    nextWindows: { type: 'object' },
-    issue: { type: 'number' },
-    devWindows: { type: 'object' },
-    nextDevWindows: { type: 'object' },
-  },
-  required: [...baseTxRequired, 'current', 'next', 'windows', 'nextWindows', 'issue'],
-  additionalProperties: false,
-}
-
-export const schemaApplyDevParametersTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    devWindows: { type: 'object' },
-    nextDevWindows: { type: 'object' },
-    developerFund: {
-      type: 'array',
-      items: { type: 'object' },
-    },
-    nextDeveloperFund: {
-      type: 'array',
-      items: { type: 'object' },
-    },
-    devIssue: { type: 'number' },
-  },
-  required: [...baseTxRequired, 'devWindows', 'nextDevWindows', 'developerFund', 'nextDeveloperFund', 'devIssue'],
-  additionalProperties: false,
-}
-
-export const schemaApplyDevPaymentTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    developerFund: {
-      type: 'array',
-      items: { type: 'object' },
-    },
-  },
-  required: [...baseTxRequired, 'developerFund'],
-  additionalProperties: false,
-}
-
-export const schemaApplyTallyTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    next: { type: 'object' },
-    nextWindows: { type: 'object' },
-  },
-  required: [...baseTxRequired, 'next', 'nextWindows'],
-  additionalProperties: false,
-}
-
-export const schemaApplyDevTallyTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    nextDeveloperFund: {
-      type: 'array',
-      items: { type: 'object' },
-    },
-    nextDevWindows: { type: 'object' },
-  },
-  required: [...baseTxRequired, 'nextDeveloperFund', 'nextDevWindows'],
   additionalProperties: false,
 }
 
