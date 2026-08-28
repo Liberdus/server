@@ -1,7 +1,7 @@
 import { LiberdusFlags } from '../src/config'
-import { Accounts, NetworkAccount } from '../src/@types'
+import { Accounts, NetworkAccount, UserAccount } from '../src/@types'
 import * as crypto from '../src/crypto'
-import { calculateAccountHash } from '../src/utils'
+import { calculateAccountHash, stripLegacyDaoState } from '../src/utils'
 import { backfillNetworkAccount } from '../src/transactions/apply_change_network_param'
 
 describe('legacy DAO state migration', () => {
@@ -56,5 +56,17 @@ describe('legacy DAO state migration', () => {
     // State conversion belongs to the consensus-ordered apply path only; hashing must
     // never remove legacy fields, or dormant accounts would fail hash verification.
     expect((account.data as unknown as { payments: unknown }).payments).toBe(payments)
+  })
+
+  test('strips retired user-account state only from the apply-state helper', () => {
+    LiberdusFlags.versionFlags.removeLegacyDaoState = true
+    const account = {
+      type: 'UserAccount',
+      data: { payments: [{ amount: 1n }] },
+    } as unknown as UserAccount
+
+    stripLegacyDaoState(account)
+
+    expect(account.data).not.toHaveProperty('payments')
   })
 })

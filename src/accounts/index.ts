@@ -17,7 +17,6 @@ import {
   DevAccount,
   DaoProposalsMeta,
   DaoProposalAccount,
-  DeveloperPayment,
 } from '../@types'
 import { Utils } from '@shardus/lib-types'
 
@@ -28,7 +27,6 @@ export enum SerdeTypeIdent {
   NetworkAccount = 6,
   NodeAccount = 7,
   UserAccount = 9,
-  DeveloperPayment = 10,
   DevAccount = 12,
   Fallback = 13,
   DaoProposalsMeta = 14,
@@ -107,30 +105,6 @@ export const fallbackDeserializer = (stream: VectorBufferStream, root = false): 
     throw new Error('Unexpected bufferstream for Fallback type')
   }
   return Utils.safeJsonParse(stream.readString())
-}
-
-export const serializeDeveloperPayment = (stream: VectorBufferStream, inp: DeveloperPayment, root = false): void => {
-  if (root) {
-    stream.writeUInt16(SerdeTypeIdent.DeveloperPayment)
-  }
-  stream.writeString(inp.id)
-  stream.writeString(inp.address)
-  stream.writeBigUInt64(inp.amount)
-  stream.writeUInt32(inp.delay)
-  stream.writeBigUInt64(BigInt(inp.timestamp))
-}
-
-export const deserializeDeveloperPayment = (stream: VectorBufferStream, root = false): DeveloperPayment => {
-  if (root && stream.readUInt16() !== SerdeTypeIdent.DeveloperPayment) {
-    throw new Error('Unexpected bufferstream for DeveloperPayment type')
-  }
-  return {
-    id: stream.readString(),
-    address: stream.readString(),
-    amount: stream.readBigUInt64(),
-    delay: stream.readUInt32(),
-    timestamp: Number(stream.readBigUInt64()),
-  }
 }
 
 export default {

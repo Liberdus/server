@@ -316,7 +316,7 @@ export const LiberdusFlags: LiberdusFlags = {
     includeTxToKeyInReadTx: true, // turn on by 2.4.8
     updateTollRequiredTxInChatHistory: true, // turn on by 2.4.9
     supportDeductTxFeeFromAmount: true, // turn on by 2.4.9
-    removeLegacyDaoState: false, // turn on by 2.5.3
+    removeLegacyDaoState: false, // turn on by 2.5.2
   },
 }
 

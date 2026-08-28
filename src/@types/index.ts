@@ -450,7 +450,6 @@ export interface UserAccount {
     friends: object
     stake?: bigint
     remove_stake_request: number | null
-    payments: DeveloperPayment[]
   }
   alias: string | null
   emailHash: string | null
@@ -568,14 +567,6 @@ export interface DevAccount {
   id: string
   type: string
   hash: string
-  timestamp: number
-}
-
-export interface DeveloperPayment {
-  id: string
-  address: string
-  amount: bigint
-  delay: number
   timestamp: number
 }
 
