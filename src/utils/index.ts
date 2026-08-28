@@ -61,6 +61,9 @@ export function calculateAccountHash(account: Accounts): string {
 export function stripLegacyDaoState(account: NetworkAccount | UserAccount): void {
   if (LiberdusFlags.versionFlags.removeLegacyDaoState === true) {
     const legacyAccount = account as Accounts & Record<string, unknown>
+    if (legacyAccount.type === 'UserAccount' && legacyAccount.data != null) {
+      delete (legacyAccount.data as Record<string, unknown>).payments
+    }
     if (legacyAccount.type === 'NetworkAccount') {
       const network = legacyAccount as NetworkAccount & Record<string, unknown>
       delete network.next
