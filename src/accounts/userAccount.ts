@@ -1,10 +1,10 @@
 import { TollUnit, UserAccount } from '../@types'
 import { VectorBufferStream } from '@shardus/core'
 import * as crypto from '@shardus/lib-crypto-utils'
-import { deserializeDeveloperPayment, SerdeTypeIdent, serializeDeveloperPayment } from '.'
+import { SerdeTypeIdent } from '.'
 import * as utils from '../utils'
 import * as AccountsStorage from '../storage/accountStorage'
-import { INITIAL_PARAMETERS } from '../config'
+import { INITIAL_PARAMETERS, LiberdusFlags } from '../config'
 
 export const userAccount = (accountId: string, timestamp: number): UserAccount => {
   // Ensure lowercase accountId
@@ -21,7 +21,7 @@ export const userAccount = (accountId: string, timestamp: number): UserAccount =
       chats: {},
       chatTimestamp: 0,
       friends: {},
-      payments: [],
+      ...(LiberdusFlags.versionFlags.removeLegacyDaoState ? {} : { payments: [] }),
     },
     alias: null,
     emailHash: null,
@@ -83,10 +83,9 @@ export const serializeUserAccount = (stream: VectorBufferStream, inp: UserAccoun
     stream.writeUInt8(0)
   }
 
-  stream.writeUInt32(inp.data.payments.length)
-  for (let i = 0; i < inp.data.payments.length; i++) {
-    serializeDeveloperPayment(stream, inp.data.payments[i])
-  }
+  // Legacy user accounts contain only an empty payments array. Preserve its
+  // positional slot without retaining the retired payment type or serializer.
+  stream.writeUInt32(0)
 
   stream.writeUInt8(inp.alias ? 1 : 0)
   if (inp.alias) {
@@ -163,11 +162,11 @@ export const deserializeUserAccount = (stream: VectorBufferStream, root = false)
     remove_stake_request = stream.readUInt32()
   }
 
-  // Deserialize payments
-  const payments = []
+  // The migrated state contains only an empty payment slot. Consume its length to
+  // preserve the positional layout without restoring the retired payment decoder.
   const paymentsLength = stream.readUInt32()
-  for (let i = 0; i < paymentsLength; i++) {
-    payments.push(deserializeDeveloperPayment(stream))
+  if (paymentsLength !== 0) {
+    throw new Error('Legacy user-account payments are not supported')
   }
 
   // Optional alias
@@ -219,7 +218,7 @@ export const deserializeUserAccount = (stream: VectorBufferStream, root = false)
       chats,
       chatTimestamp,
       friends,
-      payments,
+      ...(LiberdusFlags.versionFlags.removeLegacyDaoState ? {} : { payments: [] }),
     },
     alias,
     emailHash,
