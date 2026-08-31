@@ -164,6 +164,7 @@ export enum TXTypes {
   group_join_request = 'group_join_request',
   group_join_reclaim = 'group_join_reclaim',
   group_fee_claim = 'group_fee_claim',
+  group_maintenance_fund = 'group_maintenance_fund',
 }
 
 export interface BaseLiberdusTx {
@@ -433,6 +434,23 @@ export namespace Tx {
   export interface GroupFeeClaim extends BaseLiberdusTx {
     from: string
     groupId: string
+    fee: bigint
+  }
+
+  /**
+   * Tops up a group's maintenanceBalance, which pays the fee on commits that
+   * repair the ratchet tree.
+   *
+   * Open to anyone, member or not: the balance can only ever be spent burning a
+   * repair fee, so a contribution cannot be redirected and there is nothing to
+   * gain by restricting who may make one. There is deliberately no matching
+   * withdrawal transaction -- see GroupAccount.maintenanceBalance.
+   */
+  export interface GroupMaintenanceFund extends BaseLiberdusTx {
+    from: string
+    groupId: string
+    /** Amount to add to the balance, on top of this transaction's own fee. */
+    amount: bigint
     fee: bigint
   }
 
@@ -969,10 +987,16 @@ export interface GroupAccount {
    * count fixed at add time goes wrong the moment the network fee moves;
    * solvency is judged against the fee current at the time it is read.
    *
-   * NOT withdrawable. It leaves only as a burned repair fee, which is what
-   * makes it uninteresting to steal. It also never pays for a FAILED
-   * transaction -- see group_commit -- because that would hand anyone who can
-   * inject transactions a way to drain it.
+   * NOT withdrawable, and deliberately without an end-of-life payout. It leaves
+   * only as a burned repair fee, which is what makes it uninteresting to steal.
+   * It also never pays for a FAILED transaction -- see group_commit -- because
+   * that would hand anyone who can inject transactions a way to drain it.
+   *
+   * There is no case where the balance is stranded, so nothing is owed an exit.
+   * group_leave refuses to let the last member go, so a group always keeps at
+   * least one, and a one-member group has no copath and so can never need a
+   * repair. The balance simply idles until the group grows again -- at which
+   * point the adds that grow it top it up anyway.
    *
    * Optional on the wire: groups created before this field existed deserialize
    * with zero rather than failing.

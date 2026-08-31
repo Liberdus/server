@@ -84,6 +84,7 @@ const groupChatTxTypes = new Set([
   TXTypes.group_message,
   TXTypes.group_commit,
   TXTypes.group_leave,
+  TXTypes.group_maintenance_fund,
 ])
 
 /**
