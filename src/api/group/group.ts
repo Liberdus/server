@@ -59,6 +59,15 @@ export const info =
           messageCount: group.messages.length,
           treeId: group.treeId,
           joinFee: group.joinFee.toString(),
+          /*
+           * What the group has left to pay for repairing its own tree.
+           *
+           * Public like everything else here, and needed client-side: the
+           * server cannot warn anyone that maintenance is running dry, because
+           * the transcript is ciphertext it has no key for. A string, as with
+           * joinFee, since JSON has no bigint.
+           */
+          maintenanceBalance: (group.maintenanceBalance ?? BigInt(0)).toString(),
         },
       })
     } catch (error) {
