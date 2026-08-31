@@ -231,6 +231,65 @@ export const validate_fields = (tx: Tx.GroupCommit, response: ShardusTypes.Incom
 }
 
 /**
+ * Does this commit repair the tree, rather than change it?
+ *
+ * A removal blanks every ancestor of the departing leaf, and the group stays
+ * degraded until some member commits a path update that fills them back in.
+ * That is the work the maintenance balance exists to pay for, and this is how
+ * the network recognises it -- from state it already holds, with nothing
+ * asserted by the sender.
+ *
+ * The tree is stored as a JSON array of node-or-null (see applyTreeDelta), so
+ * "was that node blank" is an array lookup. No MLS parsing is involved, and no
+ * leaf is attributed to anyone: the question is whether the tree was damaged
+ * and this commit repairs it, NOT whether the sender is the member who ought to
+ * have done it. The server stores members[] but not leaf indices, so it could
+ * not answer the second question anyway.
+ *
+ * Two judgement calls worth knowing about:
+ *
+ *  - An index at or past the end of the array counts as blank. Trailing blanks
+ *    are trimmed on write, so a removal on the right-hand side of the tree
+ *    leaves its ancestors -- up to and including the root -- simply absent.
+ *    Refusing to count those would deny the subsidy to exactly the repairs it
+ *    is meant to fund.
+ *  - A delta entry that blanks a node (n === null) never counts. Blanking is
+ *    damage, not repair.
+ *
+ * MUST be evaluated before applyTreeDelta runs, while the stored tree is still
+ * the pre-commit one.
+ */
+const fillsABlankNode = (storedTree: string, delta: { i: number; n: string | null }[]): boolean => {
+  let nodes: (string | null)[] = []
+  if (storedTree.length > 0) {
+    try {
+      const parsed = JSON.parse(storedTree)
+      if (Array.isArray(parsed)) nodes = parsed
+    } catch {
+      // An unreadable tree is not something to hand out a subsidy for.
+      return false
+    }
+  }
+  for (const entry of delta) {
+    if (entry.n === null) continue
+    if (entry.i >= nodes.length || nodes[entry.i] === null) return true
+  }
+  return false
+}
+
+/**
+ * A commit that changes no membership -- the shape a path update takes.
+ *
+ * Absent arrays are read as empty. validate_fields has already rejected any
+ * that are present but not arrays, so the only way to get here with one missing
+ * is a caller that skipped it, and "nobody was added" is the right reading.
+ */
+const isMembershipNeutral = (tx: Tx.GroupCommit): boolean =>
+  (tx.addedMembers?.length ?? 0) === 0 &&
+  (tx.removedMembers?.length ?? 0) === 0 &&
+  (tx.welcomes?.length ?? 0) === 0
+
+/**
  * What this commit owes the group's maintenance balance: one repair deposit per
  * added member, priced at the fee current right now.
  *
@@ -244,9 +303,10 @@ export const validate_fields = (tx: Tx.GroupCommit, response: ShardusTypes.Incom
  * underflow the admin's balance in apply.
  */
 const repairDepositOwed = (tx: Tx.GroupCommit, transactionFee: bigint): bigint => {
-  if (tx.addedMembers.length === 0) return BigInt(0)
+  const added = tx.addedMembers?.length ?? 0
+  if (added === 0) return BigInt(0)
   const perMember = SafeBigIntMath.multiply(transactionFee, BigInt(config.LiberdusFlags.groupRepairDepositMultiplier))
-  return SafeBigIntMath.multiply(perMember, BigInt(tx.addedMembers.length))
+  return SafeBigIntMath.multiply(perMember, BigInt(added))
 }
 
 /**
@@ -318,7 +378,28 @@ export const validatePreCrack = (
     return response
   }
   const depositOwed = repairDepositOwed(tx, transactionFee)
-  if (from.data.balance < SafeBigIntMath.add(transactionFee, depositOwed)) {
+
+  /*
+   * The same excusal validate() makes for a group-funded repair, approximated.
+   *
+   * Whether a commit really fills a blank cannot be answered here: that needs
+   * the ratchet tree, and fetching it per injection is the cost this hook
+   * exists to avoid. So this asks the two questions the GroupAccount can
+   * answer -- is the commit membership-neutral, and is the balance able to pay
+   * -- plus a cheap shape check that the delta writes at least one node.
+   *
+   * The approximation is deliberately loose in the safe direction. It can let
+   * through a broke sender whose commit turns out not to be a repair, and
+   * validate() then rejects it inside apply(); it will never reject a genuine
+   * repair that validate() would have excused. A pre-queue hook wrongly
+   * refusing honest work is the failure that would actually hurt.
+   */
+  const writesANode = (tx.treeDelta ?? []).some((entry) => entry && entry.n !== null)
+  const groupMightPayTheFee =
+    isMembershipNeutral(tx) && writesANode && (group.maintenanceBalance ?? BigInt(0)) >= transactionFee
+
+  const senderOwes = groupMightPayTheFee ? depositOwed : SafeBigIntMath.add(transactionFee, depositOwed)
+  if (from.data.balance < senderOwes) {
     response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the transaction fee (${transactionFee}) and the repair deposit (${depositOwed}).`
     return response
   }
@@ -509,7 +590,24 @@ export const validate = (
     return response
   }
   const depositOwed = repairDepositOwed(tx, transactionFee)
-  if (from.data.balance < SafeBigIntMath.add(transactionFee, depositOwed)) {
+
+  /*
+   * A repair the group's balance will cover does not need the sender to hold
+   * anything. Without this the member with an empty wallet -- exactly the
+   * person this whole mechanism is meant to stop charging -- still could not
+   * submit the repair.
+   *
+   * The condition matches apply() exactly, including the tree lookup, so a
+   * commit excused here is the same commit the balance goes on to pay for.
+   */
+  const groupWillPayTheFee =
+    isMembershipNeutral(tx) &&
+    !!treeForValidate &&
+    fillsABlankNode(treeForValidate.ratchetTree, tx.treeDelta) &&
+    (group.maintenanceBalance ?? BigInt(0)) >= transactionFee
+
+  const senderOwes = groupWillPayTheFee ? depositOwed : SafeBigIntMath.add(transactionFee, depositOwed)
+  if (from.data.balance < senderOwes) {
     response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the transaction fee (${transactionFee}) and the repair deposit (${depositOwed}).`
     return response
   }
@@ -581,7 +679,37 @@ export const apply = (
   }
 
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
-  from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
+
+  /*
+   * Who pays the fee.
+   *
+   * A repair commit is the group's own upkeep, so the group's balance pays it
+   * and the member who happened to perform it is left alone. Anything else --
+   * and any repair the balance cannot cover -- is charged to the sender as
+   * before.
+   *
+   * Evaluated here, ahead of applyTreeDelta, because fillsABlankNode has to see
+   * the tree as it was before this commit.
+   *
+   * The fee is burned either way: it is subtracted from an account and reported
+   * in the receipt, with no credit anywhere. This decides which account it
+   * comes out of, and changes nothing about supply.
+   *
+   * Note what is NOT here: a failed commit never reaches apply(), and the
+   * balance never pays for one. Anyone able to inject transactions can generate
+   * failures at will -- precrack only screens the node a client injects to --
+   * so paying for them would be an open drain.
+   */
+  const groupPaysTheFee =
+    isMembershipNeutral(tx) &&
+    fillsABlankNode(tree.ratchetTree, tx.treeDelta) &&
+    (group.maintenanceBalance ?? BigInt(0)) >= transactionFee
+
+  if (groupPaysTheFee) {
+    group.maintenanceBalance = SafeBigIntMath.subtract(group.maintenanceBalance ?? BigInt(0), transactionFee)
+  } else {
+    from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
+  }
 
   /*
    * Collect the repair deposit for anyone this commit admits.
