@@ -293,6 +293,16 @@ interface LiberdusFlags {
   enableGroupChat: boolean
   /** Hard cap on members per group. Bounds commit size and account hotspotting. */
   groupMaxMembers: number
+  /**
+   * Repair deposit charged per added member, as a multiple of the current
+   * transaction fee, and paid into the group's maintenanceBalance.
+   *
+   * A multiple of the live fee rather than a fixed amount of LIB: what the
+   * deposit needs to buy is one future repair commit, and the price of that is
+   * whatever the fee is on the day it happens. Two covers a repair with
+   * headroom.
+   */
+  groupRepairDepositMultiplier: number
   /** Members addable/removable in one commit (bounds the transaction key set). */
   groupMaxMembersPerCommit: number
   /** Max size of one MLS application message, in kB. */
@@ -367,6 +377,7 @@ export const LiberdusFlags: LiberdusFlags = {
   enableGroupChat: true,
   groupMaxMembers: 50,
   groupMaxMembersPerCommit: 10,
+  groupRepairDepositMultiplier: 2,
   // 64 kB. Measured, not estimated: the commit blob is ~3.9 kB on an add and
   // ~0.4 kB on a remove, and does NOT grow with the group. What grows is the
   // ratchet tree carried in each welcome — ~1.8 kB per existing member — so in

@@ -953,6 +953,32 @@ export interface GroupAccount {
   /** Addresses refused admission. The group's analogue of toll.required = 2. */
   blocked: string[]
 
+  // --- maintenance ----------------------------------------------------------
+  /**
+   * Pays the transaction fee for repairing this group's ratchet tree.
+   *
+   * Removing a member blanks its ancestors, and someone has to spend a commit
+   * to fill them back in. That someone is an ordinary member who happened to
+   * sit nearby, so charging them makes a bystander pay for the group's own
+   * upkeep. This balance pays instead.
+   *
+   * Funded per added member at add time, by the admin doing the adding: each
+   * member prepays for the cleanup their eventual departure causes.
+   *
+   * Held in LIB rather than as a count of prepaid repairs, deliberately. A
+   * count fixed at add time goes wrong the moment the network fee moves;
+   * solvency is judged against the fee current at the time it is read.
+   *
+   * NOT withdrawable. It leaves only as a burned repair fee, which is what
+   * makes it uninteresting to steal. It also never pays for a FAILED
+   * transaction -- see group_commit -- because that would hand anyone who can
+   * inject transactions a way to drain it.
+   *
+   * Optional on the wire: groups created before this field existed deserialize
+   * with zero rather than failing.
+   */
+  maintenanceBalance: bigint
+
   // --- misc -----------------------------------------------------------------
   meta: string // client-encrypted group name/avatar; opaque here
   maxMembers: number

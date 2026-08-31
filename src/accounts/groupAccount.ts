@@ -40,6 +40,10 @@ export const groupAccount = (accountId: string, tx: Tx.GroupCreate, timestamp: n
     joinFee: tx.joinFee ?? BigInt(0),
     blocked: [],
 
+    // Empty at creation: the founder is the only member, and deposits arrive
+    // one per added member as the group grows.
+    maintenanceBalance: BigInt(0),
+
     meta: tx.meta,
     maxMembers: tx.maxMembers,
     lastMessageAt: {},
@@ -93,6 +97,10 @@ export const serializeGroupAccount = (stream: VectorBufferStream, inp: GroupAcco
   stream.writeUInt32(inp.maxMembers)
   stream.writeString(inp.createdBy)
   stream.writeUInt8(inp.hasChats ? 1 : 0)
+
+  // Appended last, and read back defensively, so a group serialized before this
+  // field existed still deserializes. See the read side.
+  stream.writeString((inp.maintenanceBalance ?? BigInt(0)).toString())
 }
 
 export const deserializeGroupAccount = (stream: VectorBufferStream, root = false): GroupAccount => {
@@ -133,6 +141,15 @@ export const deserializeGroupAccount = (stream: VectorBufferStream, root = false
   const createdBy = stream.readString()
   const hasChats = stream.readUInt8() === 1
 
+  /*
+   * maintenanceBalance was added after groups were already being serialized,
+   * and these serializers carry no version tag. Reading it only when bytes
+   * remain lets an older buffer decode as an unfunded group instead of
+   * throwing, which is the difference between "this group has no deposits yet"
+   * and "this group can no longer be loaded".
+   */
+  const maintenanceBalance = stream.isAtOrPastEnd() ? BigInt(0) : BigInt(stream.readString())
+
   return {
     id,
     type,
@@ -148,6 +165,7 @@ export const deserializeGroupAccount = (stream: VectorBufferStream, root = false
     treeId,
     joinFee,
     blocked,
+    maintenanceBalance,
     meta,
     maxMembers,
     lastMessageAt,
