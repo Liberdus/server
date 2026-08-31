@@ -13,6 +13,8 @@ import {
   WrappedStates,
   GoldenTicketRequest,
   Accounts,
+  GroupAccount,
+  GroupTreeAccount,
 } from '../@types'
 import { AdminCert } from '../transactions/admin_certificate'
 import * as crypto from '../crypto'
@@ -902,4 +904,22 @@ export const rollbackWrappedStates = (wrappedStates: WrappedStates, originalWrap
       wrappedStates[accountId].stateId = originalWrappedStates[accountId].stateId
     }
   }
+}
+
+/**
+ * Mirrors the number of outstanding join requests onto the GroupAccount.
+ *
+ * The requests live on the cold GroupTreeAccount, but their count is polled:
+ * it is how an admin's open Group info page learns someone just asked to join.
+ * Loading the ratchet tree on every poll to discover an integer would undo the
+ * reason the accounts are split at all.
+ *
+ * Recomputed from the map rather than incremented. Every caller already holds
+ * the tree, so deriving it is free, and a derived number cannot drift out of
+ * step the way a hand-maintained counter eventually does. Call it after any
+ * change to pendingJoinRequests.
+ */
+export function syncPendingJoinCount(group: GroupAccount, tree: GroupTreeAccount): void {
+  if (!group || !tree) return
+  group.pendingJoinCount = Object.keys(tree.pendingJoinRequests || {}).length
 }

@@ -804,6 +804,8 @@ export const apply = (
       delete tree.pendingJoinRequests[address]
     }
   }
+  // Approving members clears their requests, so the mirrored count moves too.
+  utils.syncPendingJoinCount(group, tree)
   for (const address of tx.removedMembers) {
     delete group.memberSince[address]
     delete group.lastMessageAt[address]

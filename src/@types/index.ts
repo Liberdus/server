@@ -970,6 +970,24 @@ export interface GroupAccount {
   joinFee: bigint
   /** Addresses refused admission. The group's analogue of toll.required = 2. */
   blocked: string[]
+  /**
+   * How many requests to join are outstanding.
+   *
+   * A mirror of `Object.keys(GroupTreeAccount.pendingJoinRequests).length`,
+   * kept here so a client can notice a new request without loading the tree.
+   * The requests themselves are cold data, but their COUNT is polled: it is how
+   * an admin's open Group info page learns that someone just asked to join, and
+   * pulling ~112 kB of ratchet tree on every poll to discover an integer is
+   * exactly what splitting the accounts was meant to avoid.
+   *
+   * Always RECOMPUTED from the map, never incremented. Every site that touches
+   * pendingJoinRequests already holds the tree, so deriving it costs nothing
+   * and cannot drift the way a hand-maintained counter eventually does.
+   *
+   * Optional on the wire: groups serialized before this field existed
+   * deserialize with zero.
+   */
+  pendingJoinCount: number
 
   // --- maintenance ----------------------------------------------------------
   /**

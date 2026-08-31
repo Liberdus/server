@@ -39,6 +39,8 @@ export const groupAccount = (accountId: string, tx: Tx.GroupCreate, timestamp: n
 
     joinFee: tx.joinFee ?? BigInt(0),
     blocked: [],
+    // Nobody can have asked to join a group that has just been created.
+    pendingJoinCount: 0,
 
     // Empty at creation: the founder is the only member, and deposits arrive
     // one per added member as the group grows.
@@ -101,6 +103,7 @@ export const serializeGroupAccount = (stream: VectorBufferStream, inp: GroupAcco
   // Appended last, and read back defensively, so a group serialized before this
   // field existed still deserializes. See the read side.
   stream.writeString((inp.maintenanceBalance ?? BigInt(0)).toString())
+  stream.writeUInt32(inp.pendingJoinCount ?? 0)
 }
 
 export const deserializeGroupAccount = (stream: VectorBufferStream, root = false): GroupAccount => {
@@ -149,6 +152,7 @@ export const deserializeGroupAccount = (stream: VectorBufferStream, root = false
    * and "this group can no longer be loaded".
    */
   const maintenanceBalance = stream.isAtOrPastEnd() ? BigInt(0) : BigInt(stream.readString())
+  const pendingJoinCount = stream.isAtOrPastEnd() ? 0 : stream.readUInt32()
 
   return {
     id,
@@ -166,6 +170,7 @@ export const deserializeGroupAccount = (stream: VectorBufferStream, root = false
     joinFee,
     blocked,
     maintenanceBalance,
+    pendingJoinCount,
     meta,
     maxMembers,
     lastMessageAt,

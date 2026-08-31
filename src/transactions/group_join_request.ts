@@ -145,6 +145,7 @@ export const apply = (
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
+  const group: GroupAccount = wrappedStates[tx.groupId] && wrappedStates[tx.groupId].data
   const treeId = utils.calculateGroupTreeId(tx.groupId)
   const tree: GroupTreeAccount = wrappedStates[treeId] && wrappedStates[treeId].data
 
@@ -162,6 +163,13 @@ export const apply = (
     message: tx.message,
     timestamp: txTimestamp,
   }
+  /*
+   * Mirror the count onto the group account. That is the account an admin's
+   * client already polls, so this is what lets an open Group info page notice
+   * the request without anyone loading the ratchet tree.
+   */
+  utils.syncPendingJoinCount(group, tree)
+  if (group) group.timestamp = txTimestamp
 
   tree.timestamp = txTimestamp
   from.timestamp = txTimestamp
