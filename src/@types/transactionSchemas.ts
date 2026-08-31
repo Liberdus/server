@@ -261,6 +261,224 @@ export const schemaMessageTX = {
   additionalProperties: false,
 }
 
+/**
+ * ------------------------- MLS GROUP CHAT SCHEMAS -------------------------
+ *
+ * NOTE: `baseTxProperties` omits `networkId` and `fee`, even though every
+ * transaction carries them. Combined with `additionalProperties: false` that
+ * makes several existing schemas (schemaMessageTX among them) reject real
+ * traffic — they only pass today because LiberdusFlags.enableAJVValidation is
+ * false. The group schemas below declare both explicitly so they are correct
+ * when that flag is eventually turned on.
+ */
+const groupBaseProperties = {
+  ...baseTxProperties,
+  networkId: { type: 'string' },
+  fee: { isBigInt: true },
+}
+const groupBaseRequired = [...baseTxRequired, 'networkId', 'fee']
+
+const schemaGroupSealedPsk = {
+  type: 'object',
+  properties: {
+    cipherText: { type: 'string' },
+    nonce: { type: 'string' },
+    ct: { type: 'string' },
+  },
+  required: ['cipherText', 'nonce', 'ct'],
+  additionalProperties: false,
+}
+
+const schemaGroupWelcomeEnvelope = {
+  type: 'object',
+  properties: {
+    welcome: { type: 'string' },
+    ratchetTree: { type: 'string' },
+    sealedPsk: schemaGroupSealedPsk,
+    pskId: { type: 'string' },
+    pskNonce: { type: 'string' },
+    epoch: { type: 'number', minimum: 0 },
+    timestamp: { type: 'number', minimum: 0 },
+  },
+  required: ['welcome', 'ratchetTree', 'sealedPsk', 'pskId', 'pskNonce'],
+  additionalProperties: false,
+}
+
+export const schemaGroupCreateTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+    groupNonce: { type: 'string', minLength: 64, maxLength: 64 },
+    mlsGroupId: { type: 'string', minLength: 1 },
+    cipherSuite: { type: 'number', minimum: 1 },
+    meta: { type: 'string' },
+    joinFee: { type: 'string' },
+    maxMembers: { type: 'number', minimum: 1 },
+  },
+  required: [...groupBaseRequired, 'from', 'groupId', 'groupNonce', 'mlsGroupId', 'cipherSuite', 'meta', 'maxMembers', 'joinFee'],
+  additionalProperties: false,
+}
+
+export const schemaGroupKeyPackagePublishTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    keyPackages: { type: 'array', items: { type: 'string' } },
+    lastResortKeyPackage: { type: 'string' },
+    cipherSuite: { type: 'number', minimum: 1 },
+  },
+  required: [...groupBaseRequired, 'from', 'keyPackages', 'cipherSuite'],
+  additionalProperties: false,
+}
+
+export const schemaGroupMessageTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+    epoch: { type: 'number', minimum: 0 },
+    message: { type: 'string', minLength: 1 },
+  },
+  required: [...groupBaseRequired, 'from', 'groupId', 'epoch', 'message'],
+  additionalProperties: false,
+}
+
+export const schemaGroupCommitTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+    epoch: { type: 'number', minimum: 0 },
+    commit: { type: 'string', minLength: 1 },
+    proposals: { type: 'array', items: { type: 'string' } },
+    pskId: { type: 'string' },
+    pskNonce: { type: 'string' },
+    welcomes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          address: { type: 'string' },
+          envelope: schemaGroupWelcomeEnvelope,
+        },
+        required: ['address', 'envelope'],
+        additionalProperties: false,
+      },
+    },
+    groupInfo: { type: 'string' },
+    ratchetTree: { type: 'string' },
+    // Ratchet-tree nodes this commit changed, by node index. `n: null` blanks a
+    // node, so the type is nullable rather than string.
+    treeDelta: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          i: { type: 'number', minimum: 0 },
+          n: { type: ['string', 'null'] },
+        },
+        required: ['i', 'n'],
+        additionalProperties: false,
+      },
+    },
+    addedMembers: { type: 'array', items: { type: 'string' } },
+    removedMembers: { type: 'array', items: { type: 'string' } },
+    consumedKeyPackages: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          address: { type: 'string' },
+          keyPackage: { type: 'string' },
+        },
+        required: ['address', 'keyPackage'],
+        additionalProperties: false,
+      },
+    },
+    meta: { type: 'string' },
+  },
+  required: [
+    ...groupBaseRequired,
+    'from',
+    'groupId',
+    'epoch',
+    'commit',
+    'proposals',
+    'pskId',
+    'pskNonce',
+    'welcomes',
+    'groupInfo',
+    'ratchetTree',
+    'treeDelta',
+    'addedMembers',
+    'removedMembers',
+    'consumedKeyPackages',
+  ],
+  additionalProperties: false,
+}
+
+export const schemaGroupJoinRequestTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+    escrow: { type: 'string' }, // bigint on the wire
+    message: { type: 'string' },
+  },
+  required: [...groupBaseRequired, 'from', 'groupId', 'escrow', 'message'],
+  additionalProperties: false,
+}
+
+export const schemaGroupFeeClaimTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+  },
+  required: [...groupBaseRequired, 'from', 'groupId'],
+  additionalProperties: false,
+}
+
+export const schemaGroupJoinReclaimTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+  },
+  required: [...groupBaseRequired, 'from', 'groupId'],
+  additionalProperties: false,
+}
+
+export const schemaUpdateGroupAddPolicyTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    policy: { type: 'string', enum: ['anyone', 'contacts', 'nobody'] },
+  },
+  required: [...groupBaseRequired, 'from', 'policy'],
+  additionalProperties: false,
+}
+
+export const schemaGroupLeaveTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+  },
+  required: [...groupBaseRequired, 'from', 'groupId'],
+  additionalProperties: false,
+}
+
 export const schemaReadTX = {
   type: 'object',
   properties: {
@@ -935,6 +1153,15 @@ function addSchemas(): void {
     [TXTypes.issue]: schemaIssueTX,
     [TXTypes.dev_issue]: schemaDevIssueTX,
     [TXTypes.message]: schemaMessageTX,
+    [TXTypes.group_create]: schemaGroupCreateTX,
+    [TXTypes.group_keypackage_publish]: schemaGroupKeyPackagePublishTX,
+    [TXTypes.group_message]: schemaGroupMessageTX,
+    [TXTypes.group_commit]: schemaGroupCommitTX,
+    [TXTypes.group_leave]: schemaGroupLeaveTX,
+    [TXTypes.update_group_add_policy]: schemaUpdateGroupAddPolicyTX,
+    [TXTypes.group_join_request]: schemaGroupJoinRequestTX,
+    [TXTypes.group_join_reclaim]: schemaGroupJoinReclaimTX,
+    [TXTypes.group_fee_claim]: schemaGroupFeeClaimTX,
     [TXTypes.read]: schemaReadTX,
     [TXTypes.reclaim_toll]: schemeReclaimTollTX,
     [TXTypes.update_chat_toll]: schemaUpdateChatTollTX,
