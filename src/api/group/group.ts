@@ -68,6 +68,16 @@ export const info =
            * joinFee, since JSON has no bigint.
            */
           maintenanceBalance: (group.maintenanceBalance ?? BigInt(0)).toString(),
+          /*
+           * How many people are waiting to be let in.
+           *
+           * The requests themselves are on the cold tree account and are read
+           * through /requests, but the count rides here because this endpoint
+           * is polled: it is how an admin looking at Group info finds out that
+           * someone just asked to join, without anyone loading a ratchet tree
+           * to discover an integer.
+           */
+          pendingJoinCount: group.pendingJoinCount ?? 0,
         },
       })
     } catch (error) {

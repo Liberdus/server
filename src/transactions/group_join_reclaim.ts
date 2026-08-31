@@ -1,7 +1,7 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import * as utils from '../utils'
-import { UserAccount, GroupTreeAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
+import { UserAccount, GroupAccount, GroupTreeAccount, WrappedStates, Tx, AppReceiptData } from '../@types'
 import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 import { isUserAccount, isGroupTreeAccount } from '../@types/accountTypeGuards'
@@ -101,6 +101,7 @@ export const apply = (
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
   const from: UserAccount = wrappedStates[tx.from].data
+  const group: GroupAccount = wrappedStates[tx.groupId] && wrappedStates[tx.groupId].data
   const treeId = utils.calculateGroupTreeId(tx.groupId)
   const tree: GroupTreeAccount = wrappedStates[treeId].data
 
@@ -111,6 +112,8 @@ export const apply = (
   const refund = request ? request.escrow : BigInt(0)
   from.data.balance = SafeBigIntMath.add(from.data.balance, refund)
   delete tree.pendingJoinRequests[tx.from]
+  utils.syncPendingJoinCount(group, tree)
+  if (group) group.timestamp = txTimestamp
 
   tree.timestamp = txTimestamp
   from.timestamp = txTimestamp
@@ -170,7 +173,13 @@ export const createFailedAppReceiptData = (
 
 export const keys = (tx: Tx.GroupJoinReclaim, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
-  result.targetKeys = [utils.calculateGroupTreeId(tx.groupId)]
+  /*
+   * The group account is named because withdrawing a request changes
+   * pendingJoinCount, which is mirrored there for admins to poll. Without it a
+   * withdrawn request would stay counted forever, and admins would see a badge
+   * for someone who is no longer asking.
+   */
+  result.targetKeys = [tx.groupId, utils.calculateGroupTreeId(tx.groupId)]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
@@ -179,7 +188,7 @@ export const memoryPattern = (
   tx: Tx.GroupJoinReclaim,
   result: ShardusTypes.TransactionKeys,
 ): ShardusTypes.ShardusMemoryPatternsInput => {
-  return { rw: [tx.from, utils.calculateGroupTreeId(tx.groupId)], wo: [], on: [], ri: [], ro: [] }
+  return { rw: [tx.from, tx.groupId, utils.calculateGroupTreeId(tx.groupId)], wo: [], on: [], ri: [], ro: [] }
 }
 
 export const createRelevantAccount = (
