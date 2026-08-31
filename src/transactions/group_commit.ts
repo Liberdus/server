@@ -231,6 +231,25 @@ export const validate_fields = (tx: Tx.GroupCommit, response: ShardusTypes.Incom
 }
 
 /**
+ * What this commit owes the group's maintenance balance: one repair deposit per
+ * added member, priced at the fee current right now.
+ *
+ * Charged to the admin doing the adding, so the cost of a member's eventual
+ * departure is paid by whoever chose to admit them, at the moment they choose
+ * it. Nothing is owed by a commit that adds nobody -- a plain rekey or a
+ * removal takes money OUT of the balance, it does not put more in.
+ *
+ * Shared by validate, validatePreCrack and apply so the three cannot disagree
+ * about the amount; a mismatch would let a commit pass validation and then
+ * underflow the admin's balance in apply.
+ */
+const repairDepositOwed = (tx: Tx.GroupCommit, transactionFee: bigint): bigint => {
+  if (tx.addedMembers.length === 0) return BigInt(0)
+  const perMember = SafeBigIntMath.multiply(transactionFee, BigInt(config.LiberdusFlags.groupRepairDepositMultiplier))
+  return SafeBigIntMath.multiply(perMember, BigInt(tx.addedMembers.length))
+}
+
+/**
  * The subset of validate() that needs only the GroupAccount and the sender.
  *
  * Called from txPreCrackData, before the transaction enters the queue, where a
@@ -298,8 +317,9 @@ export const validatePreCrack = (
     response.reason = `The network transaction fee (${transactionFee}) is greater than the transaction fee provided (${tx.fee}).`
     return response
   }
-  if (from.data.balance < transactionFee) {
-    response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the transaction fee (${transactionFee}).`
+  const depositOwed = repairDepositOwed(tx, transactionFee)
+  if (from.data.balance < SafeBigIntMath.add(transactionFee, depositOwed)) {
+    response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the transaction fee (${transactionFee}) and the repair deposit (${depositOwed}).`
     return response
   }
 
@@ -488,8 +508,9 @@ export const validate = (
     response.reason = `The network transaction fee (${transactionFee}) is greater than the transaction fee provided (${tx.fee}).`
     return response
   }
-  if (from.data.balance < transactionFee) {
-    response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the transaction fee (${transactionFee}).`
+  const depositOwed = repairDepositOwed(tx, transactionFee)
+  if (from.data.balance < SafeBigIntMath.add(transactionFee, depositOwed)) {
+    response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the transaction fee (${transactionFee}) and the repair deposit (${depositOwed}).`
     return response
   }
 
@@ -561,6 +582,23 @@ export const apply = (
 
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
+
+  /*
+   * Collect the repair deposit for anyone this commit admits.
+   *
+   * Unlike the fee, this is not burned: it moves from the admin into the
+   * group, where it can only ever be spent paying the fee on a future repair
+   * commit. validate() has already checked the admin can cover fee + deposit,
+   * so this cannot underflow.
+   *
+   * `?? 0` because a group serialized before maintenanceBalance existed
+   * deserializes without it.
+   */
+  const depositOwed = repairDepositOwed(tx, transactionFee)
+  if (depositOwed > BigInt(0)) {
+    from.data.balance = SafeBigIntMath.subtract(from.data.balance, depositOwed)
+    group.maintenanceBalance = SafeBigIntMath.add(group.maintenanceBalance ?? BigInt(0), depositOwed)
+  }
 
   const previousEpoch = group.epoch
 
