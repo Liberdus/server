@@ -67,9 +67,32 @@ export const validate_fields = (tx: Tx.GroupCommit, response: ShardusTypes.Incom
     response.reason = 'tx "treeDelta" must be an array.'
     return response
   }
+  /*
+   * The index has to be bounded, not merely non-negative.
+   *
+   * applyTreeDelta grows the node array until it reaches entry.i, and the size
+   * check further down measures only the NODE PAYLOAD -- String(d.n) + 16 --
+   * so it never sees the index at all. `{i: 50000000, n: "AA"}` scores about
+   * 18 bytes, clears any groupMessageSizeLimit, and then costs fifty million
+   * array slots that get serialised into the account.
+   *
+   * This belongs in validate_fields rather than validate(): handleSharedTX
+   * calls app.validate and nothing else, so this is the only check a
+   * transaction arriving by gossip has to pass. A bound placed here holds even
+   * against a node that skips its own precrack and spreads the transaction
+   * directly to the group.
+   *
+   * A tree of N leaves uses node indices up to 2N-2, so 2 * groupMaxMembers is
+   * the ceiling for any group the network will admit.
+   */
+  const maxNodeIndex = 2 * config.LiberdusFlags.groupMaxMembers
   for (const entry of tx.treeDelta) {
     if (!entry || typeof entry.i !== 'number' || !Number.isInteger(entry.i) || entry.i < 0) {
       response.reason = 'tx "treeDelta" contains an entry with an invalid node index.'
+      return response
+    }
+    if (entry.i > maxNodeIndex) {
+      response.reason = `tx "treeDelta" node index ${entry.i} exceeds the maximum ${maxNodeIndex} for a group of up to ${config.LiberdusFlags.groupMaxMembers} members.`
       return response
     }
     if (entry.n !== null && typeof entry.n !== 'string') {
@@ -204,6 +227,84 @@ export const validate_fields = (tx: Tx.GroupCommit, response: ShardusTypes.Incom
     return response
   }
   response.success = true
+  return response
+}
+
+/**
+ * The subset of validate() that needs only the GroupAccount and the sender.
+ *
+ * Called from txPreCrackData, before the transaction enters the queue, where a
+ * rejection costs nothing. validate() itself cannot be reused there: it
+ * dereferences the GroupTreeAccount, and fetching a ~112 kB ratchet tree on
+ * every commit injection would cost more than the fee this saves.
+ *
+ * Every check here is copied from validate(), same order and same wording, so
+ * a transaction that clears this one fails later only for a reason that genuinely
+ * needs the tree -- or because the epoch moved underneath it between here and
+ * consensus, which is the race this cannot eliminate.
+ *
+ * Deliberately NOT a security boundary. It runs only on the node a client
+ * injects to; a transaction spread by gossip reaches handleSharedTX, which
+ * calls app.validate and never precracks. validate() inside apply() remains the
+ * check that actually decides anything.
+ */
+export const validatePreCrack = (
+  tx: Tx.GroupCommit,
+  wrappedStates: WrappedStates,
+  response: ShardusTypes.IncomingTransactionResult,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  dapp: Shardus,
+): ShardusTypes.IncomingTransactionResult => {
+  const from: UserAccount = wrappedStates[tx.from] && wrappedStates[tx.from].data
+  const group: GroupAccount = wrappedStates[tx.groupId] && wrappedStates[tx.groupId].data
+
+  if (typeof from === 'undefined' || from === null) {
+    response.reason = '"from" account does not exist.'
+    return response
+  }
+  if (!isUserAccount(from)) {
+    response.reason = 'from account is not a UserAccount'
+    return response
+  }
+  if (typeof group === 'undefined' || group === null) {
+    response.reason = '"groupId" account does not exist.'
+    return response
+  }
+  if (!isGroupAccount(group)) {
+    response.reason = 'groupId account is not a GroupAccount'
+    return response
+  }
+  if (!group.members.includes(tx.from)) {
+    response.reason = 'sender is not a member of this group.'
+    return response
+  }
+
+  // THE FENCE, screened early. This is the check the whole hook exists for:
+  // without it, every member that loses an ordinary epoch race pays a full fee
+  // to be told it lost.
+  if (tx.epoch !== group.epoch) {
+    response.reason = `stale epoch: commit targets epoch ${tx.epoch} but the group is at ${group.epoch}. Apply the latest commit and retry.`
+    return response
+  }
+
+  const changesMembership = tx.addedMembers.length > 0 || tx.removedMembers.length > 0
+  if (changesMembership && !group.admins.includes(tx.from)) {
+    response.reason = 'only an admin may add or remove members.'
+    return response
+  }
+
+  const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+  if (transactionFee > tx.fee) {
+    response.reason = `The network transaction fee (${transactionFee}) is greater than the transaction fee provided (${tx.fee}).`
+    return response
+  }
+  if (from.data.balance < transactionFee) {
+    response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the transaction fee (${transactionFee}).`
+    return response
+  }
+
+  response.success = true
+  response.reason = 'This transaction is valid!'
   return response
 }
 
@@ -580,9 +681,6 @@ export const apply = (
     tree.ratchetTree = applyTreeDelta(tree.ratchetTree, tx.treeDelta)
   }
   tree.treeEpoch = group.epoch
-
-  console.log("thant: tree", tree)
-  console.log("thant: tree.ratchetTree", tree.ratchetTree)
 
   /*
    * Drop the sender's own pending welcome.
