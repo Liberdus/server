@@ -777,6 +777,7 @@ export const schemaDaoProposalCreateTX = {
     governance: { type: 'object' },
     economic: { type: 'object' },
     protocol: { type: 'object' },
+    project: { type: 'object' },
     startTime: { type: 'number', minimum: 0 },
     networkId: { type: 'string' },
   },

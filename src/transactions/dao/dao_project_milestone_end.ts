@@ -127,6 +127,9 @@ export const apply = (
     // milestone and the fields are unambiguous for the next one.
     milestone.proposedTime = undefined
     milestone.endorsedTime = []
+    // Abandoned termination intent must not linger on a finished milestone, where it could later
+    // reach the threshold and terminate work that was already accepted and paid for.
+    milestone.terminateVotes = []
   }
 
   appendProjectLog(

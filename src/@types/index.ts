@@ -928,7 +928,13 @@ export interface DaoMilestone {
   endorsedTime: string[]
   terminateVotes: DaoTerminateVote[]
   status: DaoMilestoneStatus
-  /** Amount actually paid out, in wei. Zero until claimed. */
+  /**
+   * Amount paid out, in wei, and the settled marker: non-zero means claimed.
+   *
+   * A zero payout is unreachable, so the two meanings cannot diverge. `penalty < cost` is enforced
+   * at proposal creation and repeated in wei at dao_project_start, which together keep every payout
+   * branch strictly positive.
+   */
   paid: bigint
 }
 
