@@ -272,6 +272,10 @@ interface LiberdusFlags {
   // dao_proposal_create will accept.
   daoMaxProposalStartDelayMs: number
   daoMaxProposalGracePeriodMs: number
+  // Early/late thresholds as a percentage of a milestone's planned duration. Snapshotted onto each
+  // project at creation, so a project is judged by the rules it was created under.
+  daoProjectDurationBonusPercentage: number
+  daoProjectDurationPenaltyPercentage: number
   minCommitteeMembers: number
   maxCommitteeMembers: number
   enableAJVValidation: boolean
@@ -326,6 +330,8 @@ export const LiberdusFlags: LiberdusFlags = {
   daoUnapplyCommitteeThreshold: 3,
   daoMaxProposalStartDelayMs: 3 * ONE_DAY,
   daoMaxProposalGracePeriodMs: 30 * ONE_DAY,
+  daoProjectDurationBonusPercentage: 20,
+  daoProjectDurationPenaltyPercentage: 20,
   minCommitteeMembers: 4,
   maxCommitteeMembers: 10,
   enableAJVValidation: false,
