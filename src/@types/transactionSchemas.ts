@@ -764,7 +764,7 @@ export const schemaDaoProposalCreateTX = {
     proposalId: { type: 'string', minLength: 64, maxLength: 64 },
     metaId: { type: 'string', minLength: 64, maxLength: 64 },
     emergency: { type: 'boolean' },
-    proposalType: { enum: ['governance', 'economic', 'protocol'] },
+    proposalType: { enum: ['governance', 'economic', 'protocol', 'project'] },
     gracePeriod: { type: 'number', minimum: 0 },
     title: { type: 'string', minLength: 1, maxLength: 100 },
     description: { type: 'string', maxLength: 10000 },
