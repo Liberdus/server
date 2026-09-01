@@ -58,6 +58,9 @@ import * as dao_claim_reward from './dao/dao_claim_reward'
 import * as dao_burn_reward from './dao/dao_burn_reward'
 import * as dao_cancel from './dao/dao_cancel'
 import * as dao_project_start from './dao/dao_project_start'
+import * as dao_project_milestone_start from './dao/dao_project_milestone_start'
+import * as dao_project_milestone_end from './dao/dao_project_milestone_end'
+import * as dao_project_milestone_terminate from './dao/dao_project_milestone_terminate'
 
 export default {
   init_network,
@@ -120,4 +123,7 @@ export default {
   dao_burn_reward,
   dao_cancel,
   dao_project_start,
+  dao_project_milestone_start,
+  dao_project_milestone_end,
+  dao_project_milestone_terminate,
 }
