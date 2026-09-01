@@ -39,6 +39,8 @@ export default (dapp: Shardus): void => {
   dapp.registerExternalGet('dao/proposals/:id', dao.proposals.get(dapp))
   dapp.registerExternalGet('dao/proposals/meta', dao.proposals.meta(dapp))
   dapp.registerExternalGet('dao/proposals/summary', dao.proposals.summary(dapp))
+  dapp.registerExternalGet('dao/projects/:id', dao.proposals.project(dapp))
+  dapp.registerExternalGet('dao/projects/:id/logs', dao.proposals.projectLogs(dapp))
   dapp.registerExternalGet('dao/voters/:proposalId', dao.voters.list(dapp))
 
   dapp.registerExternalGet('account/:id', accounts.account(dapp))
