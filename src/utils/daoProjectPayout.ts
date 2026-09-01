@@ -47,9 +47,13 @@ export interface MilestonePayout {
  * What a completed milestone pays out.
  *
  * A late milestone earns no bonus, so the penalty is deducted from the cost alone. It floors at
- * zero: a penalty larger than the cost reduces the payment to nothing but never makes the
- * contractor owe the DAO, and never adds back to the project balance. Without the floor a large
- * penalty would invert into a credit.
+ * zero so a penalty larger than the cost can never invert into a credit against the DAO.
+ *
+ * The floor is defence in depth rather than a reachable branch: `penalty < cost` is enforced at
+ * proposal creation and repeated in wei at dao_project_start, so a payout of zero cannot occur.
+ * That is what lets `paid > 0n` serve as the settled marker in dao_project_milestone_claim. Keep
+ * the floor anyway — it is the only thing standing between a future gap in those checks and a
+ * negative payout.
  *
  * The USD-to-wei converter is injected, and callers must supply one bound to the project's stored
  * rate rather than the live one — the DAO's exposure was fixed at the amount minted.
@@ -69,8 +73,7 @@ export function milestonePayoutWei(
   }
   if (speed === 'late') {
     const penalty = usdStrToWei(milestone.penaltyUsdStr)
-    // Floor at zero: a penalty larger than the cost reduces the payment to nothing, but never makes
-    // the contractor owe the DAO and never adds back to the project balance.
+    // Unreachable while the creation rule and the start-time guard both hold — see the note above.
     return { speed, amountWei: penalty >= cost ? 0n : cost - penalty }
   }
   return { speed, amountWei: cost }

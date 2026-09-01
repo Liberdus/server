@@ -2661,13 +2661,13 @@ async function getDaoGraceDurationMs() {
 // ---------------------------------------------------------------------------
 // dao proposal create
 // ---------------------------------------------------------------------------
-vorpal.command('dao proposal create', 'create a new DAO governance/economic/protocol proposal').action(async function (args, callback) {
+vorpal.command('dao proposal create', 'create a new DAO governance/economic/protocol/project proposal').action(async function (args, callback) {
   const answers = await this.prompt([
     {
       type: 'list',
       name: 'proposalType',
       message: 'Proposal type:',
-      choices: ['governance', 'economic', 'protocol'],
+      choices: ['governance', 'economic', 'protocol', 'project'],
     },
     {
       type: 'confirm',
@@ -2700,11 +2700,27 @@ vorpal.command('dao proposal create', 'create a new DAO governance/economic/prot
     },
     {
       type: 'input',
+      name: 'contractorAddress',
+      message: 'Contractor address (project only):',
+      when: (a) => a.proposalType === 'project',
+    },
+    {
+      type: 'input',
+      name: 'milestonesJson',
+      message:
+        'Milestones as a JSON array (project only) — e.g. ' +
+        '[{"title":"Design","description":"Design it","deliverable":"A doc","duration":604800000,' +
+        '"costUsdStr":"1000","penaltyUsdStr":"100","bonusUsdStr":"50"}]:',
+      when: (a) => a.proposalType === 'project',
+    },
+    {
+      type: 'input',
       name: 'changesJson',
       message:
         'Enter parameter change sets as JSON array — one set per action option, so the options example above needs two ' +
         '(e.g. [[{"key":"pctBurned","value":"60","current":"50"}],[{"key":"pctBurned","value":"40","current":"50"}]]):',
       default: '[]',
+      when: (a) => a.proposalType !== 'project',
     },
     {
       type: 'number',
@@ -2721,7 +2737,8 @@ vorpal.command('dao proposal create', 'create a new DAO governance/economic/prot
     const proposalId = daoProposalId(nextCount)
 
     const options = answers.options.split(',').map((s) => s.trim())
-    const changes = JSON.parse(answers.changesJson)
+    // Projects supply milestones and a contractor; changesJson is ignored for them.
+    const changes = answers.proposalType === 'project' ? [] : JSON.parse(answers.changesJson)
     const maxGraceMs = await getDaoGraceDurationMs()
     const gracePeriod =
       answers.gracePeriodDays <= 0
@@ -2729,7 +2746,9 @@ vorpal.command('dao proposal create', 'create a new DAO governance/economic/prot
         : Math.min(answers.gracePeriodDays * ONE_DAY, maxGraceMs)
 
     const typePayload = {}
-    if (answers.proposalType === 'governance') typePayload.governance = { changes }
+    if (answers.proposalType === 'project') {
+      typePayload.project = { milestones: JSON.parse(answers.milestonesJson), address: answers.contractorAddress.trim() }
+    } else if (answers.proposalType === 'governance') typePayload.governance = { changes }
     else if (answers.proposalType === 'economic') typePayload.economic = { changes }
     else if (answers.proposalType === 'protocol') typePayload.protocol = { changes }
 

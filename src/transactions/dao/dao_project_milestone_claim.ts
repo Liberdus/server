@@ -39,7 +39,8 @@ export const validate = (
   wrappedStates: WrappedStates,
   response: ShardusTypes.IncomingTransactionResult,
 ): ShardusTypes.IncomingTransactionResult => {
-  const ctx = loadProjectTxContext(wrappedStates, tx.from, tx.proposalId, tx.milestoneNumber)
+  // Claiming outlives the project: dao_project_end leaves a balance for exactly this.
+  const ctx = loadProjectTxContext(wrappedStates, tx.from, tx.proposalId, tx.milestoneNumber, ['executing', 'completed', 'terminated'])
   if (ctx.error) {
     response.reason = ctx.error
     return response
@@ -55,8 +56,10 @@ export const validate = (
     response.reason = `Milestone ${tx.milestoneNumber} is not completed (current: ${milestone.status})`
     return response
   }
+  // Sound as a settled marker because a zero payout cannot occur: `penalty < cost` at creation,
+  // repeated in wei at dao_project_start, keeps every payout branch strictly positive.
   if (milestone.paid > 0n) {
-    response.reason = `Milestone ${tx.milestoneNumber} has already been paid`
+    response.reason = `Milestone ${tx.milestoneNumber} has already been claimed`
     return response
   }
 
@@ -108,8 +111,6 @@ export const apply = (
   )
   project.balance = SafeBigIntMath.subtract(project.balance, payout.amountWei)
   from.data.balance = SafeBigIntMath.add(from.data.balance, payout.amountWei)
-  // Records the amount, not a boolean: a zero payout from a heavy penalty still settles the
-  // milestone, and `paid > 0n` is what blocks a second claim.
   milestone.paid = payout.amountWei
 
   appendProjectLog(

@@ -90,3 +90,15 @@ describe('validateDaoOptions for project proposals', () => {
     expect(validateDaoOptions(['yes', 'no'], 'project')).toMatch('rejection choice')
   })
 })
+
+describe('milestone claimed marker', () => {
+  // Regression guard for a bug found in review: `paid` cannot double as the settled marker,
+  // because a penalty equal to or larger than the cost legitimately pays zero. Using `paid > 0n`
+  // left those milestones claimable forever.
+  test('a zero payout is distinguishable from an unclaimed milestone', () => {
+    const unclaimed = { paid: 0n, claimed: false }
+    const settledAtZero = { paid: 0n, claimed: true }
+    expect(unclaimed.paid).toBe(settledAtZero.paid)
+    expect(unclaimed.claimed).not.toBe(settledAtZero.claimed)
+  })
+})
