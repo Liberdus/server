@@ -1,6 +1,7 @@
 import { ethers } from 'ethers'
 import { LiberdusFlags } from '../src/config'
-import { exceedsMintThreshold, maxMintThresholdWei } from '../src/utils/daoProjectMint'
+import { DaoMilestone } from '../src/@types'
+import { exceedsMintThreshold, maxMintThresholdWei, projectMintAmountWei } from '../src/utils/daoProjectMint'
 
 const original = LiberdusFlags.daoMaxMintThresholdLibStr
 
@@ -57,5 +58,35 @@ describe('exceedsMintThreshold', () => {
     expect(exceedsMintThreshold(ethers.parseEther('50'))).toBe(true)
     LiberdusFlags.daoMaxMintThresholdLibStr = '100'
     expect(exceedsMintThreshold(ethers.parseEther('50'))).toBe(false)
+  })
+})
+
+describe('projectMintAmountWei', () => {
+  // Stand-in for utils.usdStrToWei at a 1:1 rate, so the arithmetic under test is the summing.
+  const toWei = (usdStr: string): bigint => ethers.parseEther(usdStr)
+
+  function milestone(costUsdStr: string, bonusUsdStr: string, penaltyUsdStr = '0'): DaoMilestone {
+    return { costUsdStr, bonusUsdStr, penaltyUsdStr } as DaoMilestone
+  }
+
+  test('sums cost plus bonus across milestones', () => {
+    const total = projectMintAmountWei([milestone('100', '10'), milestone('200', '20')], toWei)
+    expect(total).toBe(ethers.parseEther('330'))
+  })
+
+  test('excludes penalties', () => {
+    // A penalty only ever reduces what a contractor is paid. Folding it in would inflate the escrow
+    // and mint more than the project can legitimately pay out.
+    const withPenalty = projectMintAmountWei([milestone('100', '10', '999')], toWei)
+    expect(withPenalty).toBe(ethers.parseEther('110'))
+  })
+
+  test('is zero for milestones that pay nothing', () => {
+    expect(projectMintAmountWei([milestone('0', '0')], toWei)).toBe(0n)
+  })
+
+  test('propagates a malformed amount rather than silently skipping it', () => {
+    // Never mint on a total we could not compute.
+    expect(() => projectMintAmountWei([milestone('abc', '0')], toWei)).toThrow()
   })
 })

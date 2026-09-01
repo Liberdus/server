@@ -75,6 +75,7 @@ const daoPreCrackTxTypes = new Set([
   TXTypes.dao_claim_reward,
   TXTypes.dao_burn_reward,
   TXTypes.dao_cancel,
+  TXTypes.dao_project_start,
 ])
 
 let isReadyToJoinLatestValue = false
