@@ -47,6 +47,65 @@ export const summary = (dapp) => async (req, res): Promise<void> => {
   }
 }
 
+/**
+ * The project view of a proposal: milestones with their derived state, plus the balance and the
+ * rate every payout converts at.
+ *
+ * Separate from `dao/proposals/:id` because that endpoint returns the whole account, which for a
+ * project is dominated by an unbounded `logs` array. A caller watching milestone progress should
+ * not have to pull the entire audit trail on every poll.
+ */
+export const project = (dapp) => async (req, res): Promise<void> => {
+  try {
+    if (!/^\d+$/.test(req.params.id)) {
+      res.status(400).json({ error: 'Invalid proposal number' })
+      return
+    }
+    const account = await dapp.getLocalOrRemoteAccount(proposalId(parseInt(req.params.id, 10)))
+    const proposal = account?.data as DaoProposalAccount
+    if (!proposal) {
+      res.status(404).json({ error: `Proposal #${req.params.id} not found` })
+      return
+    }
+    if (proposal.proposalType !== 'project' || !proposal.project) {
+      res.status(400).json({ error: `Proposal #${req.params.id} is not a project proposal` })
+      return
+    }
+    const { logs, ...project } = proposal.project
+    res.send(
+      Utils.safeStringify({
+        number: proposal.number,
+        status: proposal.status,
+        project,
+        logCount: logs?.length ?? 0,
+      }),
+    )
+  } catch (error) {
+    dapp.log(error)
+    res.json({ error })
+  }
+}
+
+/** The audit trail, split out so it is fetched deliberately rather than on every project read. */
+export const projectLogs = (dapp) => async (req, res): Promise<void> => {
+  try {
+    if (!/^\d+$/.test(req.params.id)) {
+      res.status(400).json({ error: 'Invalid proposal number' })
+      return
+    }
+    const account = await dapp.getLocalOrRemoteAccount(proposalId(parseInt(req.params.id, 10)))
+    const proposal = account?.data as DaoProposalAccount
+    if (!proposal?.project) {
+      res.status(404).json({ error: `Project #${req.params.id} not found` })
+      return
+    }
+    res.send(Utils.safeStringify({ logs: proposal.project.logs ?? [] }))
+  } catch (error) {
+    dapp.log(error)
+    res.json({ error })
+  }
+}
+
 export const get = (dapp) => async (req, res): Promise<void> => {
   try {
     if (!/^\d+$/.test(req.params.id)) {

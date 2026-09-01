@@ -3090,7 +3090,7 @@ vorpal.command('dao burn reward', "burn the unclaimed voter reward for a proposa
 // from it would silently omit proposals that exist but have not been backfilled yet — wrong for
 // the command whose job is the complete list. `dao summary` is the fast recent-activity path;
 // this one stays exhaustive.
-const VALID_DAO_STATUSES = ['review', 'withheld', 'voting', 'rejected', 'accepted', 'applied', 'canceled']
+const VALID_DAO_STATUSES = ['review', 'withheld', 'voting', 'rejected', 'accepted', 'applied', 'canceled', 'executing', 'completed', 'terminated']
 
 vorpal.command('dao proposals [status]', `list DAO proposals, optionally filtered by status (${VALID_DAO_STATUSES.join('/')})`).action(async function (args, callback) {
   if (args.status && !VALID_DAO_STATUSES.includes(args.status)) {
@@ -3137,6 +3137,120 @@ vorpal.command('dao proposals [status]', `list DAO proposals, optionally filtere
   } catch (err) {
     this.log('Error:', err.message)
   }
+  callback()
+})
+
+// ---------------------------------------------------------------------------
+// dao project ...  (project proposal lifecycle)
+// ---------------------------------------------------------------------------
+// Every project tx takes a proposal number and, where relevant, a 1-based milestone number —
+// milestones are numbered from 1 in transactions but stored 0-based, and the server converts.
+function projectTx(type, proposalNumber, extra = {}) {
+  return { type, from: USER.address, proposalId: daoProposalId(proposalNumber), ...extra, timestamp: Date.now() }
+}
+
+async function submitProjectTx(ctx, tx) {
+  try {
+    signTransaction(tx)
+    ctx.log(await injectTx(tx))
+  } catch (err) {
+    ctx.log('Error:', err.message)
+  }
+}
+
+vorpal.command('dao project <number>', 'show a project proposal: milestones, balance and rate').action(async function (args, callback) {
+  try {
+    const res = await axios.get(`${PROTOCOL}://${HOST}/dao/projects/${args.number}`)
+    const body = parseDaoApiBody(res.data)
+    if (!body || body.error) {
+      this.log(body?.error ?? `Project #${args.number} not found.`)
+      callback()
+      return
+    }
+    const p = body.project
+    this.log(`\n--- Project #${body.number} [${body.status}] ---`)
+    this.log(`Contractor:   ${p.address}`)
+    if (p.proposedAddress) this.log(`Proposed:     ${p.proposedAddress} (${p.endorsedAddress?.length ?? 0} endorsements)`)
+    this.log(`Balance:      ${weiToLibStr(asBigIntForDisplay(p.balance))} LIB  @ rate ${p.rateUsdStr}`)
+    this.log(`Bonus/penalty thresholds: ${p.durationBonusPercentage}% / ${p.durationPenaltyPercentage}%`)
+    if (p.startTime) this.log(`Started:      ${new Date(p.startTime).toISOString()}`)
+    if (p.endTime) this.log(`Ended:        ${new Date(p.endTime).toISOString()}`)
+    this.log(`Log entries:  ${body.logCount}`)
+    this.log('Milestones:')
+    ;(p.milestones ?? []).forEach((m, i) => {
+      const paid = asBigIntForDisplay(m.paid)
+      const timing = m.startTime && m.endTime ? ` ${Math.round((m.endTime - m.startTime) / 86400000)}d of ${Math.round(m.duration / 86400000)}d planned` : ''
+      const pending = m.proposedTime ? ` | proposed ${new Date(m.proposedTime).toISOString()} (${m.endorsedTime?.length ?? 0} endorsements)` : ''
+      const votes = m.terminateVotes?.length ? ` | ${m.terminateVotes.length} terminate vote(s)` : ''
+      this.log(`  ${i + 1}. [${m.status}] ${m.title} | cost ${m.costUsdStr} USD${timing} | paid ${weiToLibStr(paid)} LIB${pending}${votes}`)
+    })
+  } catch (err) {
+    this.log('Error:', err.message)
+  }
+  callback()
+})
+
+vorpal.command('dao project logs <number>', 'show a project audit trail').action(async function (args, callback) {
+  try {
+    const res = await axios.get(`${PROTOCOL}://${HOST}/dao/projects/${args.number}/logs`)
+    const logs = parseDaoApiBody(res.data)?.logs ?? []
+    if (logs.length === 0) this.log('No log entries.')
+    for (const l of logs) this.log(`${new Date(l.timestamp).toISOString()} ${l.txType} by ${l.caller}${l.params ? ` | ${l.params}` : ''}`)
+  } catch (err) {
+    this.log('Error:', err.message)
+  }
+  callback()
+})
+
+vorpal.command('dao project start <number>', 'start an accepted project and mint its balance (committee only)').action(async function (args, callback) {
+  await submitProjectTx(this, projectTx('dao_project_start', args.number))
+  callback()
+})
+
+vorpal.command('dao project end <number>', 'end a project once every milestone is finished (committee only)').action(async function (args, callback) {
+  await submitProjectTx(this, projectTx('dao_project_end', args.number))
+  callback()
+})
+
+vorpal.command('dao project reclaim <number>', 'reclaim an unclaimed project balance after the delay (committee only)').action(async function (args, callback) {
+  await submitProjectTx(this, projectTx('dao_project_reclaim_balance', args.number))
+  callback()
+})
+
+vorpal
+  .command('dao project address <number>', 'propose or endorse a new contractor address (committee only)')
+  .action(async function (args, callback) {
+    // Blank endorses whatever is pending; a value proposes a replacement and resets endorsements.
+    const answers = await this.prompt([{ type: 'input', name: 'proposedAddress', message: 'New contractor address (blank to endorse the pending one):' }])
+    const extra = answers.proposedAddress?.trim() ? { proposedAddress: answers.proposedAddress.trim() } : {}
+    await submitProjectTx(this, projectTx('dao_project_change_address', args.number, extra))
+    callback()
+  })
+
+for (const [command, type, verb] of [
+  ['dao milestone start <number> <milestone>', 'dao_project_milestone_start', 'start'],
+  ['dao milestone end <number> <milestone>', 'dao_project_milestone_end', 'end'],
+]) {
+  vorpal.command(command, `propose or endorse a milestone ${verb} time (contractor or committee)`).action(async function (args, callback) {
+    // Blank endorses the pending time; a value proposes one and resets endorsements. The time may
+    // not be in the future — the server rejects that rather than crediting unserved duration.
+    const answers = await this.prompt([{ type: 'input', name: 'proposedTime', message: `Proposed ${verb} time in ms since epoch (blank to endorse):` }])
+    const extra = answers.proposedTime?.trim() ? { proposedTime: Number(answers.proposedTime.trim()) } : {}
+    await submitProjectTx(this, projectTx(type, args.number, { milestoneNumber: args.milestone, ...extra }))
+    callback()
+  })
+}
+
+vorpal
+  .command('dao milestone terminate <number> <milestone>', 'vote to terminate a milestone (committee only)')
+  .action(async function (args, callback) {
+    const answers = await this.prompt([{ type: 'input', name: 'reason', message: 'Reason for terminating:' }])
+    await submitProjectTx(this, projectTx('dao_project_milestone_terminate', args.number, { milestoneNumber: args.milestone, reason: answers.reason }))
+    callback()
+  })
+
+vorpal.command('dao milestone claim <number> <milestone>', 'claim payment for a completed milestone (contractor only)').action(async function (args, callback) {
+  await submitProjectTx(this, projectTx('dao_project_milestone_claim', args.number, { milestoneNumber: args.milestone }))
   callback()
 })
 
