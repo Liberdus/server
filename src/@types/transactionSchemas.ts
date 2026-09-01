@@ -907,6 +907,21 @@ export const schemaDaoProjectMilestoneTimeTX = {
   additionalProperties: false,
 }
 
+// dao_project_end and dao_project_reclaim_balance carry no extra fields, so they reuse
+// schemaDaoProjectStartTX rather than duplicating an identical shape three times.
+export const schemaDaoProjectChangeAddressTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    proposedAddress: { type: 'string', minLength: 64, maxLength: 64 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId'],
+  additionalProperties: false,
+}
+
 export const schemaDaoProjectMilestoneClaimTX = {
   type: 'object',
   properties: {
@@ -1042,6 +1057,9 @@ function addSchemas(): void {
     [TXTypes.dao_project_milestone_end]: schemaDaoProjectMilestoneTimeTX,
     [TXTypes.dao_project_milestone_terminate]: schemaDaoProjectMilestoneTerminateTX,
     [TXTypes.dao_project_milestone_claim]: schemaDaoProjectMilestoneClaimTX,
+    [TXTypes.dao_project_change_address]: schemaDaoProjectChangeAddressTX,
+    [TXTypes.dao_project_end]: schemaDaoProjectStartTX,
+    [TXTypes.dao_project_reclaim_balance]: schemaDaoProjectStartTX,
   }
   // Loop through TXTypes and register corresponding schemas
   Object.entries(txSchemaMap).forEach(([txType, schema]) => {
