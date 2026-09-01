@@ -13,7 +13,11 @@ export function isNegativeOption(option: string): boolean {
   return NEGATIVE_OPTION_STRINGS.includes(normalizeOption(option))
 }
 
-export function validateDaoOptions(options: string[]): string | undefined {
+/**
+ * `proposalType` is optional because only projects constrain the count: a project has one flat
+ * milestone array with no per-option variant, so a third option would have nothing to select.
+ */
+export function validateDaoOptions(options: string[], proposalType?: string): string | undefined {
   if (!Array.isArray(options) || options.length < 2 || options.length > 10) {
     return 'tx "options" must be an array with 2 to 10 entries'
   }
@@ -24,6 +28,9 @@ export function validateDaoOptions(options: string[]): string | undefined {
   }
   if (!isNegativeOption(options[0])) {
     return `tx "options[0]" must be a recognized rejection choice (one of: ${NEGATIVE_OPTION_STRINGS.join(', ')})`
+  }
+  if (proposalType === 'project' && options.length !== 2) {
+    return `tx "options" for a project proposal must have exactly 2 entries (got ${options.length})`
   }
   return undefined
 }

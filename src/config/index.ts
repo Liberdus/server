@@ -268,6 +268,10 @@ interface LiberdusFlags {
   // Committee votes needed for dao_unapply_parameters to flip applied -> accepted. Consensus-
   // relevant: must stay identical across all nodes.
   daoUnapplyCommitteeThreshold: number
+  // Early/late thresholds as a percentage of a milestone's planned duration. Snapshotted onto each
+  // project at creation, so a project is judged by the rules it was created under.
+  daoProjectDurationBonusPercentage: number
+  daoProjectDurationPenaltyPercentage: number
   minCommitteeMembers: number
   maxCommitteeMembers: number
   enableAJVValidation: boolean
@@ -319,6 +323,8 @@ export const LiberdusFlags: LiberdusFlags = {
   enableNewDAOTransactions: true, // turned on by migration 2.5.1
   enableDaoCancel: true,
   daoUnapplyCommitteeThreshold: 3,
+  daoProjectDurationBonusPercentage: 20,
+  daoProjectDurationPenaltyPercentage: 20,
   minCommitteeMembers: 4,
   maxCommitteeMembers: 10,
   enableAJVValidation: false,
