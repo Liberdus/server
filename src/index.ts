@@ -79,6 +79,7 @@ const daoPreCrackTxTypes = new Set([
   TXTypes.dao_project_milestone_start,
   TXTypes.dao_project_milestone_end,
   TXTypes.dao_project_milestone_terminate,
+  TXTypes.dao_project_milestone_claim,
 ])
 
 let isReadyToJoinLatestValue = false

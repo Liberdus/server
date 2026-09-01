@@ -61,6 +61,7 @@ import * as dao_project_start from './dao/dao_project_start'
 import * as dao_project_milestone_start from './dao/dao_project_milestone_start'
 import * as dao_project_milestone_end from './dao/dao_project_milestone_end'
 import * as dao_project_milestone_terminate from './dao/dao_project_milestone_terminate'
+import * as dao_project_milestone_claim from './dao/dao_project_milestone_claim'
 
 export default {
   init_network,
@@ -126,4 +127,5 @@ export default {
   dao_project_milestone_start,
   dao_project_milestone_end,
   dao_project_milestone_terminate,
+  dao_project_milestone_claim,
 }

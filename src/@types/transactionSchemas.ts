@@ -907,6 +907,19 @@ export const schemaDaoProjectMilestoneTimeTX = {
   additionalProperties: false,
 }
 
+export const schemaDaoProjectMilestoneClaimTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    milestoneNumber: { type: 'number', minimum: 1 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId', 'milestoneNumber'],
+  additionalProperties: false,
+}
+
 export const schemaDaoProjectMilestoneTerminateTX = {
   type: 'object',
   properties: {
@@ -1028,6 +1041,7 @@ function addSchemas(): void {
     [TXTypes.dao_project_milestone_start]: schemaDaoProjectMilestoneTimeTX,
     [TXTypes.dao_project_milestone_end]: schemaDaoProjectMilestoneTimeTX,
     [TXTypes.dao_project_milestone_terminate]: schemaDaoProjectMilestoneTerminateTX,
+    [TXTypes.dao_project_milestone_claim]: schemaDaoProjectMilestoneClaimTX,
   }
   // Loop through TXTypes and register corresponding schemas
   Object.entries(txSchemaMap).forEach(([txType, schema]) => {

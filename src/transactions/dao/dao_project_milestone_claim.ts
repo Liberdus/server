@@ -6,14 +6,10 @@ import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { appendProjectLog } from '../../utils/daoProjectLog'
-import { requiredEndorsements } from '../../utils/daoProjectEndorsement'
-import { usdToWeiAtRate } from '../../utils/daoProjectPayout'
+import { milestonePayoutWei, usdToWeiAtRate } from '../../utils/daoProjectPayout'
 import { loadProjectTxContext } from '../../utils/daoProjectTxContext'
 
-export const validate_fields = (
-  tx: Tx.DaoProjectMilestoneTerminate,
-  response: ShardusTypes.IncomingTransactionResult,
-): ShardusTypes.IncomingTransactionResult => {
+export const validate_fields = (tx: Tx.DaoProjectMilestoneClaim, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address'
     return response
@@ -24,12 +20,6 @@ export const validate_fields = (
   }
   if (typeof tx.milestoneNumber !== 'number' || !Number.isInteger(tx.milestoneNumber) || tx.milestoneNumber < 1) {
     response.reason = 'tx "milestoneNumber" must be a positive integer'
-    return response
-  }
-  // The policy requires a reason on every termination submission — it is the record of why the DAO
-  // stopped paying for work, and the log is what a dispute would be argued from.
-  if (typeof tx.reason !== 'string' || tx.reason.trim().length === 0 || tx.reason.length > 500) {
-    response.reason = 'tx "reason" must be a non-empty string of at most 500 characters'
     return response
   }
   if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
@@ -45,7 +35,7 @@ export const validate_fields = (
 }
 
 export const validate = (
-  tx: Tx.DaoProjectMilestoneTerminate,
+  tx: Tx.DaoProjectMilestoneClaim,
   wrappedStates: WrappedStates,
   response: ShardusTypes.IncomingTransactionResult,
 ): ShardusTypes.IncomingTransactionResult => {
@@ -54,20 +44,35 @@ export const validate = (
     response.reason = ctx.error
     return response
   }
-  const { from, proposal, project, milestone } = ctx
+  const { from, project, milestone } = ctx
 
-  // A milestone can be abandoned before or during work, but not after it has already resolved.
-  if (milestone.status !== 'pending' && milestone.status !== 'executing') {
-    response.reason = `Milestone ${tx.milestoneNumber} cannot be terminated (current: ${milestone.status})`
+  // Only the contractor is paid, and only for work the committee agreed was finished.
+  if (tx.from !== project.address) {
+    response.reason = 'Only the contractor may claim a milestone'
     return response
   }
-  // Committee only — unlike start and end, the contractor has no say in abandoning their own work.
-  if (!proposal.committeeAddresses.includes(tx.from)) {
-    response.reason = 'Only a committee member can terminate a milestone'
+  if (milestone.status !== 'completed') {
+    response.reason = `Milestone ${tx.milestoneNumber} is not completed (current: ${milestone.status})`
     return response
   }
-  if (milestone.terminateVotes.some((v) => v.address === tx.from)) {
-    response.reason = 'This address has already voted to terminate this milestone'
+  if (milestone.paid > 0n) {
+    response.reason = `Milestone ${tx.milestoneNumber} has already been paid`
+    return response
+  }
+
+  let payoutWei: bigint
+  try {
+    payoutWei = milestonePayoutWei(milestone, project.durationBonusPercentage, project.durationPenaltyPercentage, (usdStr) =>
+      usdToWeiAtRate(usdStr, project.rateUsdStr),
+    ).amountWei
+  } catch (err) {
+    response.reason = err instanceof Error ? err.message : String(err)
+    return response
+  }
+  // The balance is what was actually minted, so it caps what can be paid out regardless of what the
+  // milestone arithmetic says.
+  if (payoutWei > project.balance) {
+    response.reason = `Milestone payout (${payoutWei}) exceeds the project balance (${project.balance})`
     return response
   }
 
@@ -83,7 +88,7 @@ export const validate = (
 }
 
 export const apply = (
-  tx: Tx.DaoProjectMilestoneTerminate,
+  tx: Tx.DaoProjectMilestoneClaim,
   txTimestamp: number,
   txId: string,
   wrappedStates: WrappedStates,
@@ -98,31 +103,21 @@ export const apply = (
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
 
-  milestone.terminateVotes.push({ address: tx.from, reason: tx.reason, timestamp: txTimestamp })
-
-  // Committee-only, so the reachable maximum is the committee size — no contractor slot to allow for.
-  const required = requiredEndorsements(proposal.committeeAddresses.length, false)
-  const committed = milestone.terminateVotes.length >= required
-  if (committed) {
-    milestone.status = 'terminated'
-    milestone.endTime = txTimestamp
-    // The contractor can never claim this milestone, so the escrow held for it is released back out
-    // of the project's balance. Mirrors what was minted for it: cost plus the early bonus.
-    // At the project's stored rate, not the live one — this must mirror exactly what was minted for
-    // this milestone, or the balance drifts whenever the stability factor moves.
-    const releasedWei = usdToWeiAtRate(milestone.costUsdStr, project.rateUsdStr) + usdToWeiAtRate(milestone.bonusUsdStr, project.rateUsdStr)
-    project.balance = SafeBigIntMath.subtract(project.balance, releasedWei)
-    // Any pending start/end question on this milestone is moot now.
-    milestone.proposedTime = undefined
-    milestone.endorsedTime = []
-  }
+  const payout = milestonePayoutWei(milestone, project.durationBonusPercentage, project.durationPenaltyPercentage, (usdStr) =>
+    usdToWeiAtRate(usdStr, project.rateUsdStr),
+  )
+  project.balance = SafeBigIntMath.subtract(project.balance, payout.amountWei)
+  from.data.balance = SafeBigIntMath.add(from.data.balance, payout.amountWei)
+  // Records the amount, not a boolean: a zero payout from a heavy penalty still settles the
+  // milestone, and `paid > 0n` is what blocks a second claim.
+  milestone.paid = payout.amountWei
 
   appendProjectLog(
     project,
     tx.from,
     txTimestamp,
-    'dao_project_milestone_terminate',
-    `milestone=${tx.milestoneNumber} votes=${milestone.terminateVotes.length} committed=${committed} reason=${tx.reason}`,
+    'dao_project_milestone_claim',
+    `milestone=${tx.milestoneNumber} speed=${payout.speed} paid=${payout.amountWei}`,
   )
 
   from.timestamp = txTimestamp
@@ -139,28 +134,29 @@ export const apply = (
     additionalInfo: {
       milestoneNumber: tx.milestoneNumber,
       milestoneStatus: milestone.status,
-      terminateVotes: milestone.terminateVotes.length,
-      committed,
+      deliverySpeed: payout.speed,
+      paidWei: payout.amountWei,
+      remainingBalanceWei: project.balance,
     },
   }
   applyResponse.appReceiptDataHash = crypto.hashObj(appReceiptData)
   applyResponse.appReceiptData = appReceiptData
 
-  dapp.log('Applied dao_project_milestone_terminate tx', from.id, tx.proposalId, tx.milestoneNumber)
+  dapp.log('Applied dao_project_milestone_claim tx', from.id, tx.proposalId, tx.milestoneNumber, payout.amountWei)
 }
 
-export const createFailedAppReceiptData = (tx: Tx.DaoProjectMilestoneTerminate, txId: string, txTimestamp: number, reason: string): AppReceiptData => {
+export const createFailedAppReceiptData = (tx: Tx.DaoProjectMilestoneClaim, txId: string, txTimestamp: number, reason: string): AppReceiptData => {
   return { txId, timestamp: txTimestamp, success: false, from: tx.from, to: tx.proposalId, type: tx.type, transactionFee: 0n, additionalInfo: { reason } }
 }
 
-export const keys = (tx: Tx.DaoProjectMilestoneTerminate, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
+export const keys = (tx: Tx.DaoProjectMilestoneClaim, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [tx.proposalId]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.DaoProjectMilestoneTerminate): ShardusTypes.ShardusMemoryPatternsInput => {
+export const memoryPattern = (tx: Tx.DaoProjectMilestoneClaim): ShardusTypes.ShardusMemoryPatternsInput => {
   return { rw: [tx.from, tx.proposalId], wo: [], on: [], ri: [], ro: [] }
 }
 
@@ -168,11 +164,11 @@ export const createRelevantAccount = (
   dapp: Shardus,
   account: UserAccount | DaoProposalAccount,
   accountId: string,
-  tx: Tx.DaoProjectMilestoneTerminate,
+  tx: Tx.DaoProjectMilestoneClaim,
   accountCreated = false,
 ): ShardusTypes.WrappedResponse => {
   if (!account) {
-    throw new Error(`dao_project_milestone_terminate.createRelevantAccount: account ${accountId} does not exist`)
+    throw new Error(`dao_project_milestone_claim.createRelevantAccount: account ${accountId} does not exist`)
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }
