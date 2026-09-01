@@ -86,6 +86,7 @@ export enum AJVSchemaEnum {
   dao_claim_reward = 'dao_claim_reward',
   dao_burn_reward = 'dao_burn_reward',
   dao_cancel = 'dao_cancel',
+  dao_project_start = 'dao_project_start',
 }
 
 export enum TXTypes {
@@ -154,6 +155,7 @@ export enum TXTypes {
   dao_claim_reward = 'dao_claim_reward',
   dao_burn_reward = 'dao_burn_reward',
   dao_cancel = 'dao_cancel',
+  dao_project_start = 'dao_project_start',
 }
 
 export interface BaseLiberdusTx {
@@ -582,6 +584,11 @@ export namespace Tx {
   }
 
   export interface DaoCancel extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+  }
+
+  export interface DaoProjectStart extends BaseLiberdusTx {
     from: string
     proposalId: string
   }

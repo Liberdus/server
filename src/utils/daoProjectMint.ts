@@ -1,5 +1,6 @@
 import { ethers } from 'ethers'
 import { LiberdusFlags } from '../config'
+import { DaoMilestone } from '../@types'
 
 /**
  * The configured per-project mint ceiling, in wei.
@@ -29,4 +30,18 @@ export function maxMintThresholdWei(): bigint {
 /** True when minting `amountWei` would exceed the ceiling. Strictly greater — equality is allowed. */
 export function exceedsMintThreshold(amountWei: bigint): boolean {
   return amountWei > maxMintThresholdWei()
+}
+
+/**
+ * The most a project could ever owe: every milestone's cost plus its early-delivery bonus.
+ *
+ * Penalties are deliberately excluded. A penalty only ever reduces what a contractor is paid, so
+ * folding it in here would inflate the escrow and mint more than the project can legitimately pay
+ * out. The policy's phrase "including early bonuses" means exactly this sum.
+ *
+ * The USD-to-wei converter is injected rather than imported so this module stays clear of the utils
+ * barrel, which drags in the config/utils import cycle.
+ */
+export function projectMintAmountWei(milestones: DaoMilestone[], usdStrToWei: (usdStr: string) => bigint): bigint {
+  return milestones.reduce((total, m) => total + usdStrToWei(m.costUsdStr) + usdStrToWei(m.bonusUsdStr), 0n)
 }
