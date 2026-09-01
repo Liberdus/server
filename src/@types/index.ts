@@ -90,6 +90,7 @@ export enum AJVSchemaEnum {
   dao_project_milestone_start = 'dao_project_milestone_start',
   dao_project_milestone_end = 'dao_project_milestone_end',
   dao_project_milestone_terminate = 'dao_project_milestone_terminate',
+  dao_project_milestone_claim = 'dao_project_milestone_claim',
 }
 
 export enum TXTypes {
@@ -162,6 +163,7 @@ export enum TXTypes {
   dao_project_milestone_start = 'dao_project_milestone_start',
   dao_project_milestone_end = 'dao_project_milestone_end',
   dao_project_milestone_terminate = 'dao_project_milestone_terminate',
+  dao_project_milestone_claim = 'dao_project_milestone_claim',
 }
 
 export interface BaseLiberdusTx {
@@ -620,6 +622,12 @@ export namespace Tx {
     proposalId: string
     milestoneNumber: number
     reason: string
+  }
+
+  export interface DaoProjectMilestoneClaim extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+    milestoneNumber: number
   }
 }
 
