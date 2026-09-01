@@ -87,6 +87,9 @@ export enum AJVSchemaEnum {
   dao_burn_reward = 'dao_burn_reward',
   dao_cancel = 'dao_cancel',
   dao_project_start = 'dao_project_start',
+  dao_project_milestone_start = 'dao_project_milestone_start',
+  dao_project_milestone_end = 'dao_project_milestone_end',
+  dao_project_milestone_terminate = 'dao_project_milestone_terminate',
 }
 
 export enum TXTypes {
@@ -156,6 +159,9 @@ export enum TXTypes {
   dao_burn_reward = 'dao_burn_reward',
   dao_cancel = 'dao_cancel',
   dao_project_start = 'dao_project_start',
+  dao_project_milestone_start = 'dao_project_milestone_start',
+  dao_project_milestone_end = 'dao_project_milestone_end',
+  dao_project_milestone_terminate = 'dao_project_milestone_terminate',
 }
 
 export interface BaseLiberdusTx {
@@ -591,6 +597,29 @@ export namespace Tx {
   export interface DaoProjectStart extends BaseLiberdusTx {
     from: string
     proposalId: string
+  }
+
+  export interface DaoProjectMilestoneStart extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+    /** 1-based, matching how proposals are addressed externally. */
+    milestoneNumber: number
+    /** Present when proposing a time; absent when endorsing the pending one. */
+    proposedTime?: number
+  }
+
+  export interface DaoProjectMilestoneEnd extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+    milestoneNumber: number
+    proposedTime?: number
+  }
+
+  export interface DaoProjectMilestoneTerminate extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+    milestoneNumber: number
+    reason: string
   }
 }
 

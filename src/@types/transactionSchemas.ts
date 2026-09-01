@@ -892,6 +892,35 @@ export const schemaDaoBurnRewardTX = {
   additionalProperties: false,
 }
 
+// Shared by milestone start and end: both propose or endorse a single timestamp.
+export const schemaDaoProjectMilestoneTimeTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    milestoneNumber: { type: 'number', minimum: 1 },
+    proposedTime: { type: 'number', minimum: 0 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId', 'milestoneNumber'],
+  additionalProperties: false,
+}
+
+export const schemaDaoProjectMilestoneTerminateTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    milestoneNumber: { type: 'number', minimum: 1 },
+    reason: { type: 'string', minLength: 1, maxLength: 500 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId', 'milestoneNumber', 'reason'],
+  additionalProperties: false,
+}
+
 export const schemaDaoProjectStartTX = {
   type: 'object',
   properties: {
@@ -996,6 +1025,9 @@ function addSchemas(): void {
     [TXTypes.dao_burn_reward]: schemaDaoBurnRewardTX,
     [TXTypes.dao_cancel]: schemaDaoCancelTX,
     [TXTypes.dao_project_start]: schemaDaoProjectStartTX,
+    [TXTypes.dao_project_milestone_start]: schemaDaoProjectMilestoneTimeTX,
+    [TXTypes.dao_project_milestone_end]: schemaDaoProjectMilestoneTimeTX,
+    [TXTypes.dao_project_milestone_terminate]: schemaDaoProjectMilestoneTerminateTX,
   }
   // Loop through TXTypes and register corresponding schemas
   Object.entries(txSchemaMap).forEach(([txType, schema]) => {
