@@ -91,6 +91,9 @@ export enum AJVSchemaEnum {
   dao_project_milestone_end = 'dao_project_milestone_end',
   dao_project_milestone_terminate = 'dao_project_milestone_terminate',
   dao_project_milestone_claim = 'dao_project_milestone_claim',
+  dao_project_reclaim_balance = 'dao_project_reclaim_balance',
+  dao_project_end = 'dao_project_end',
+  dao_project_change_address = 'dao_project_change_address',
 }
 
 export enum TXTypes {
@@ -164,6 +167,9 @@ export enum TXTypes {
   dao_project_milestone_end = 'dao_project_milestone_end',
   dao_project_milestone_terminate = 'dao_project_milestone_terminate',
   dao_project_milestone_claim = 'dao_project_milestone_claim',
+  dao_project_reclaim_balance = 'dao_project_reclaim_balance',
+  dao_project_end = 'dao_project_end',
+  dao_project_change_address = 'dao_project_change_address',
 }
 
 export interface BaseLiberdusTx {
@@ -628,6 +634,23 @@ export namespace Tx {
     from: string
     proposalId: string
     milestoneNumber: number
+  }
+
+  export interface DaoProjectChangeAddress extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+    /** Present when proposing a replacement; absent when endorsing the pending one. */
+    proposedAddress?: string
+  }
+
+  export interface DaoProjectEnd extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+  }
+
+  export interface DaoProjectReclaimBalance extends BaseLiberdusTx {
+    from: string
+    proposalId: string
   }
 }
 

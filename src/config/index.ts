@@ -283,6 +283,8 @@ interface LiberdusFlags {
   // TODO: add the current_supply term once the network maintains it, and move this onto the network
   // account so governance can tune it (behind a version flag).
   daoMaxMintThresholdLibStr: string
+  // How long after a project ends before the committee may reclaim an unclaimed balance.
+  daoProjectReclaimDelayMs: number
   minCommitteeMembers: number
   maxCommitteeMembers: number
   enableAJVValidation: boolean
@@ -337,6 +339,7 @@ export const LiberdusFlags: LiberdusFlags = {
   daoProjectDurationBonusPercentage: 20,
   daoProjectDurationPenaltyPercentage: 20,
   daoMaxMintThresholdLibStr: '1000000',
+  daoProjectReclaimDelayMs: 90 * ONE_DAY,
   minCommitteeMembers: 4,
   maxCommitteeMembers: 10,
   enableAJVValidation: false,
