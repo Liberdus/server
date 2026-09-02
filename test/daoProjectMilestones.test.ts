@@ -111,14 +111,16 @@ describe('validateDaoOptions for project proposals', () => {
   })
 })
 
-describe('milestone claimed marker', () => {
-  // Regression guard for a bug found in review: `paid` cannot double as the settled marker,
-  // because a penalty equal to or larger than the cost legitimately pays zero. Using `paid > 0n`
-  // left those milestones claimable forever.
-  test('a zero payout is distinguishable from an unclaimed milestone', () => {
-    const unclaimed = { paid: 0n, claimed: false }
-    const settledAtZero = { paid: 0n, claimed: true }
-    expect(unclaimed.paid).toBe(settledAtZero.paid)
-    expect(unclaimed.claimed).not.toBe(settledAtZero.claimed)
+describe('milestone settled marker', () => {
+  // `paid > 0n` is the settled marker, which is only sound while a zero payout is unreachable.
+  // These assert the two rules that make it so, at the boundary where each one bites.
+  test('the creation rule makes a zero-cost milestone invalid', () => {
+    expect(validateProjectMilestones([milestone({ costUsdStr: '0', penaltyUsdStr: '0' })])).toBeDefined()
+  })
+
+  test('the creation rule leaves a strictly positive late payout', () => {
+    // cost - penalty > 0 for every pair the rule admits, so a claim can never settle at zero.
+    expect(validateProjectMilestones([milestone({ costUsdStr: '50', penaltyUsdStr: '49.999999999999999999' })])).toBeUndefined()
+    expect(validateProjectMilestones([milestone({ costUsdStr: '50', penaltyUsdStr: '50' })])).toBeDefined()
   })
 })
