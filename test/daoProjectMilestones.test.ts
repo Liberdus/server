@@ -59,14 +59,34 @@ describe('validateProjectMilestones', () => {
     expect(validateProjectMilestones([milestone({ costUsdStr: '-5' })])).toMatch('must not be negative')
   })
 
-  test('zero cost, penalty and bonus are allowed', () => {
-    // A milestone with no payment is unusual but not malformed — it may exist purely as a checkpoint.
-    expect(validateProjectMilestones([milestone({ costUsdStr: '0', penaltyUsdStr: '0', bonusUsdStr: '0' })])).toBeUndefined()
+  test('requires the penalty to be smaller than the cost', () => {
+    // A penalty reduces a payment rather than erasing it, and the rule is what keeps every payout
+    // branch strictly positive so `paid > 0n` can mean "settled".
+    expect(validateProjectMilestones([milestone({ costUsdStr: '1000', penaltyUsdStr: '999.999999999999999999' })])).toBeUndefined()
+    expect(validateProjectMilestones([milestone({ costUsdStr: '1000', penaltyUsdStr: '1000' })])).toMatch('must be less than')
+    expect(validateProjectMilestones([milestone({ costUsdStr: '1000', penaltyUsdStr: '1001' })])).toMatch('must be less than')
+  })
+
+  test('names both values when the penalty rule fails', () => {
+    const error = validateProjectMilestones([milestone({ costUsdStr: '40', penaltyUsdStr: '50' })])
+    expect(error).toMatch('"50"')
+    expect(error).toMatch('"40"')
+  })
+
+  test('rejects a zero cost, which the penalty rule implies', () => {
+    // Previously allowed as a checkpoint-only milestone. Since penalty >= 0 is already enforced,
+    // penalty < cost makes cost > 0 unreachable-by-construction rather than separately checked.
+    expect(validateProjectMilestones([milestone({ costUsdStr: '0', penaltyUsdStr: '0', bonusUsdStr: '0' })])).toMatch('must be less than')
+  })
+
+  test('a zero penalty is still allowed against a positive cost', () => {
+    expect(validateProjectMilestones([milestone({ costUsdStr: '1000', penaltyUsdStr: '0' })])).toBeUndefined()
   })
 
   test('reports the index of the offending milestone', () => {
     const error = validateProjectMilestones([milestone(), milestone({ duration: 0 })])
     expect(error).toMatch('milestones[1]')
+    expect(validateProjectMilestones([milestone(), milestone({ costUsdStr: '10', penaltyUsdStr: '20' })])).toMatch('milestones[1]')
   })
 })
 

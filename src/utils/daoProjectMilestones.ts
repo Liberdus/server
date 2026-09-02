@@ -69,6 +69,14 @@ export function validateProjectMilestones(milestones: unknown): string | undefin
       const error = usdStrError(m[field], field, path)
       if (error) return error
     }
+    // A penalty reduces a payment; it does not erase it. Allowing penalty >= cost would let late
+    // delivery forfeit the milestone entirely, which is what a termination is for. It also keeps
+    // every payout branch strictly positive, so `paid > 0n` remains a sound settled marker. Note
+    // this is the USD-level guarantee only — dao_project_start repeats it in wei, where truncation
+    // at the project's rate could still collapse a valid pair.
+    if (ethers.parseEther(m.penaltyUsdStr) >= ethers.parseEther(m.costUsdStr)) {
+      return `${path}.penaltyUsdStr ("${m.penaltyUsdStr}") must be less than ${path}.costUsdStr ("${m.costUsdStr}")`
+    }
   }
 
   return undefined
