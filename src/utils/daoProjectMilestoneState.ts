@@ -36,6 +36,37 @@ export function canStartMilestone(project: DaoProjectData, index: number): strin
   return undefined
 }
 
+/**
+ * The milestone a start transaction acts on: the first one still `pending`.
+ *
+ * The policy says "start the next milestone" rather than naming one, so the sender does not supply
+ * a number. A pure function of the project data, so every node derives the same milestone.
+ *
+ * `canStartMilestone` still runs at the call site: this only says which milestone is next in line,
+ * not that it may start yet.
+ */
+export function findNextPendingMilestone(project: DaoProjectData): { milestone?: DaoMilestone; index?: number; error?: string } {
+  const index = project.milestones.findIndex((m) => m.status === 'pending')
+  if (index === -1) {
+    return { error: 'No milestone is pending; every milestone has already started or finished' }
+  }
+  return { milestone: project.milestones[index], index }
+}
+
+/**
+ * The milestone an end transaction acts on: the one currently `executing`.
+ *
+ * At most one can be, because a milestone cannot start while an earlier one is unfinished, so
+ * "the current milestone" resolves unambiguously without the sender naming it.
+ */
+export function findExecutingMilestone(project: DaoProjectData): { milestone?: DaoMilestone; index?: number; error?: string } {
+  const index = project.milestones.findIndex((m) => m.status === 'executing')
+  if (index === -1) {
+    return { error: 'No milestone is executing; there is nothing to end' }
+  }
+  return { milestone: project.milestones[index], index }
+}
+
 /** True when no milestone remains that could still start or finish. */
 export function allMilestonesFinished(project: DaoProjectData): boolean {
   return project.milestones.every((m) => m.status === 'completed' || m.status === 'terminated')

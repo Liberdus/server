@@ -607,19 +607,21 @@ export namespace Tx {
     proposalId: string
   }
 
+  /**
+   * No milestone number: the policy says "start the next milestone", so the handler derives it as
+   * the first one still pending rather than taking it from the sender.
+   */
   export interface DaoProjectMilestoneStart extends BaseLiberdusTx {
     from: string
     proposalId: string
-    /** 1-based, matching how proposals are addressed externally. */
-    milestoneNumber: number
     /** Present when proposing a time; absent when endorsing the pending one. */
     proposedTime?: number
   }
 
+  /** Likewise derived — "end the current milestone", the one that is executing. */
   export interface DaoProjectMilestoneEnd extends BaseLiberdusTx {
     from: string
     proposalId: string
-    milestoneNumber: number
     proposedTime?: number
   }
 

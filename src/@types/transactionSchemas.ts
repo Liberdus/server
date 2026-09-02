@@ -900,11 +900,10 @@ export const schemaDaoProjectMilestoneTimeTX = {
     ...baseTxProperties,
     from: { type: 'string' },
     proposalId: { type: 'string', minLength: 64, maxLength: 64 },
-    milestoneNumber: { type: 'number', minimum: 1 },
     proposedTime: { type: 'number', minimum: 0 },
     networkId: { type: 'string' },
   },
-  required: [...baseTxRequired, 'from', 'proposalId', 'milestoneNumber'],
+  required: [...baseTxRequired, 'from', 'proposalId'],
   additionalProperties: false,
 }
 

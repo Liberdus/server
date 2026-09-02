@@ -7,7 +7,7 @@ import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { appendProjectLog } from '../../utils/daoProjectLog'
 import { applyEndorsement, writeOnceError } from '../../utils/daoProjectEndorsement'
-import { canStartMilestone } from '../../utils/daoProjectMilestoneState'
+import { canStartMilestone, findNextPendingMilestone } from '../../utils/daoProjectMilestoneState'
 import { loadProjectTxContext } from '../../utils/daoProjectTxContext'
 
 export const validate_fields = (tx: Tx.DaoProjectMilestoneStart, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
@@ -17,10 +17,6 @@ export const validate_fields = (tx: Tx.DaoProjectMilestoneStart, response: Shard
   }
   if (utils.isValidAddress(tx.proposalId) === false) {
     response.reason = 'tx "proposalId" is not a valid address'
-    return response
-  }
-  if (typeof tx.milestoneNumber !== 'number' || !Number.isInteger(tx.milestoneNumber) || tx.milestoneNumber < 1) {
-    response.reason = 'tx "milestoneNumber" must be a positive integer'
     return response
   }
   if (tx.proposedTime !== undefined) {
@@ -51,22 +47,27 @@ export const validate = (
   wrappedStates: WrappedStates,
   response: ShardusTypes.IncomingTransactionResult,
 ): ShardusTypes.IncomingTransactionResult => {
-  const ctx = loadProjectTxContext(wrappedStates, tx.from, tx.proposalId, tx.milestoneNumber)
+  const ctx = loadProjectTxContext(wrappedStates, tx.from, tx.proposalId)
   if (ctx.error) {
     response.reason = ctx.error
     return response
   }
-  const { from, proposal, project, milestone, milestoneIndex } = ctx
+  const { from, proposal, project } = ctx
 
   if (proposal.status !== 'executing') {
     response.reason = `Project is not executing (current: ${proposal.status})`
     return response
   }
 
-  if (milestone.status !== 'pending') {
-    response.reason = `Milestone ${tx.milestoneNumber} is not pending (current: ${milestone.status})`
+  // The policy says "start the next milestone", so the sender does not name one. Derived from
+  // wrappedStates, which Shardus snapshots identically for every node.
+  const next = findNextPendingMilestone(project)
+  if (next.error) {
+    response.reason = next.error
     return response
   }
+  const { milestone, index: milestoneIndex } = next
+
   const orderError = canStartMilestone(project, milestoneIndex)
   if (orderError) {
     response.reason = orderError
@@ -118,7 +119,11 @@ export const apply = (
   const from = wrappedStates[tx.from].data as UserAccount
   const proposal = wrappedStates[tx.proposalId].data as DaoProposalAccount
   const project = proposal.project
-  const milestone = project.milestones[tx.milestoneNumber - 1]
+  // Re-derived rather than carried from validate(), so apply() depends only on wrappedStates —
+  // the snapshot Shardus gives both, so the two cannot resolve to different milestones. validate()
+  // has already rejected the no-match case, which is why this destructure is not re-checked.
+  const { milestone, index: milestoneIndex } = findNextPendingMilestone(project)
+  const milestoneNumber = milestoneIndex + 1
 
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
@@ -157,7 +162,7 @@ export const apply = (
     tx.from,
     txTimestamp,
     'dao_project_milestone_start',
-    `milestone=${tx.milestoneNumber} proposed=${tx.proposedTime ?? ''} committed=${result.committed === true}`,
+    `milestone=${milestoneNumber} proposed=${tx.proposedTime ?? ''} committed=${result.committed === true}`,
   )
 
   from.timestamp = txTimestamp
@@ -172,7 +177,7 @@ export const apply = (
     type: tx.type,
     transactionFee: txFeeWei,
     additionalInfo: {
-      milestoneNumber: tx.milestoneNumber,
+      milestoneNumber,
       milestoneStatus: milestone.status,
       endorsements: milestone.endorsedTime.length,
       committed: result.committed === true,
@@ -181,7 +186,7 @@ export const apply = (
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 
-  dapp.log('Applied dao_project_milestone_start tx', from.id, tx.proposalId, tx.milestoneNumber)
+  dapp.log('Applied dao_project_milestone_start tx', from.id, tx.proposalId, milestoneNumber)
 }
 
 export const createFailedAppReceiptData = (
