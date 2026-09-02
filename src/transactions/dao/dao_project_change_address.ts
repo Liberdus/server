@@ -112,10 +112,17 @@ export const apply = (
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
 
+  // Presence, per policy line 352: "if called without an address it is endorsing the proposed
+  // address". Read hadPendingAddress before the assignment below so the endorse branch cannot see a
+  // pending value this transaction just created.
   const isProposing = tx.proposedAddress !== undefined
+  const hadPendingAddress = project.proposedAddress !== undefined
   if (isProposing) project.proposedAddress = tx.proposedAddress
   // No contractor slot here — passing undefined keeps the threshold clamped to the committee size.
-  const result = applyEndorsement(project.endorsedAddress, tx.from, isProposing, proposal.committeeAddresses, undefined, project.proposedAddress !== undefined)
+  const result = applyEndorsement(project.endorsedAddress, tx.from, isProposing, proposal.committeeAddresses, undefined, hadPendingAddress)
+  // validate() dry-runs the same call against a copy, so an error here means the two disagreed.
+  // Throwing rather than continuing keeps a half-applied endorsement out of consensus state.
+  if (result.error) throw new Error(`dao_project_change_address endorsement failed after validation: ${result.error}`)
 
   const previousAddress = project.address
   if (result.committed) {
