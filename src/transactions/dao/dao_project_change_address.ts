@@ -125,7 +125,7 @@ export const apply = (
     project.endorsedAddress = []
   }
 
-  appendProjectLog(project, tx.from, txTimestamp, 'dao_project_change_address', `proposed=${tx.proposedAddress ?? ''} committed=${result.committed === true}`)
+  appendProjectLog(project, tx.from, txTimestamp, 'dao_project_change_address', { proposedAddress: tx.proposedAddress })
 
   from.timestamp = txTimestamp
   proposal.timestamp = txTimestamp

@@ -3214,7 +3214,13 @@ vorpal.command('dao project logs <number>', 'show a project audit trail').action
     const res = await axios.get(`${PROTOCOL}://${HOST}/dao/projects/${args.number}/logs`)
     const logs = parseDaoApiBody(res.data)?.logs ?? []
     if (logs.length === 0) this.log('No log entries.')
-    for (const l of logs) this.log(`${new Date(l.timestamp).toISOString()} ${l.txType} by ${l.caller}${l.params ? ` | ${l.params}` : ''}`)
+    for (const l of logs) {
+      // params is a structured object; render it as key=value pairs rather than stringifying it.
+      const params = Object.entries(l.params ?? {})
+        .map(([k, v]) => `${k}=${v}`)
+        .join(' ')
+      this.log(`${new Date(l.timestamp).toISOString()} ${l.txType} by ${l.caller}${params ? ` | ${params}` : ''}`)
+    }
   } catch (err) {
     this.log('Error:', err.message)
   }

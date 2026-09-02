@@ -124,7 +124,7 @@ export const apply = (
     tx.from,
     txTimestamp,
     'dao_project_milestone_claim',
-    `milestone=${tx.milestoneNumber} speed=${payout.speed} paid=${payout.amountWei}`,
+    { milestoneNumber: tx.milestoneNumber },
   )
 
   from.timestamp = txTimestamp

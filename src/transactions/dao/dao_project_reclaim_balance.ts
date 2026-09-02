@@ -92,7 +92,7 @@ export const apply = (
   const reclaimedWei = project.balance
   project.balance = 0n
 
-  appendProjectLog(project, tx.from, txTimestamp, 'dao_project_reclaim_balance', `reclaimed=${reclaimedWei}`)
+  appendProjectLog(project, tx.from, txTimestamp, 'dao_project_reclaim_balance')
 
   from.timestamp = txTimestamp
   proposal.timestamp = txTimestamp

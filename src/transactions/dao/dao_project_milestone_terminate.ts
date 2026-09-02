@@ -127,7 +127,7 @@ export const apply = (
     tx.from,
     txTimestamp,
     'dao_project_milestone_terminate',
-    `milestone=${tx.milestoneNumber} votes=${milestone.terminateVotes.length} committed=${committed} reason=${tx.reason}`,
+    { milestoneNumber: tx.milestoneNumber, reason: tx.reason },
   )
 
   from.timestamp = txTimestamp
