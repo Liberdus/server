@@ -40,12 +40,18 @@ export const validate = (
   response: ShardusTypes.IncomingTransactionResult,
 ): ShardusTypes.IncomingTransactionResult => {
   // Claiming outlives the project: dao_project_end leaves a balance for exactly this.
-  const ctx = loadProjectTxContext(wrappedStates, tx.from, tx.proposalId, tx.milestoneNumber, ['executing', 'completed', 'terminated'])
+  const ctx = loadProjectTxContext(wrappedStates, tx.from, tx.proposalId, tx.milestoneNumber)
   if (ctx.error) {
     response.reason = ctx.error
     return response
   }
-  const { from, project, milestone } = ctx
+  const { from, proposal, project, milestone } = ctx
+  // Claiming is deliberately allowed after the project ends: dao_project_end trims the balance to
+  // exactly what completed-but-unclaimed milestones still owe, so the contractor can collect it.
+  if (proposal.status !== 'executing' && proposal.status !== 'completed' && proposal.status !== 'terminated') {
+    response.reason = `Project status ${proposal.status} does not allow claiming (expected executing, completed or terminated)`
+    return response
+  }
 
   // Only the contractor is paid, and only for work the committee agreed was finished.
   if (tx.from !== project.address) {

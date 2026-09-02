@@ -58,6 +58,11 @@ export const validate = (
   }
   const { from, proposal, project, milestone, milestoneIndex } = ctx
 
+  if (proposal.status !== 'executing') {
+    response.reason = `Project is not executing (current: ${proposal.status})`
+    return response
+  }
+
   if (milestone.status !== 'pending') {
     response.reason = `Milestone ${tx.milestoneNumber} is not pending (current: ${milestone.status})`
     return response

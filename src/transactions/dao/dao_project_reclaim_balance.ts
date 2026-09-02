@@ -5,8 +5,8 @@ import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } fr
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
-import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
 import { appendProjectLog } from '../../utils/daoProjectLog'
+import { loadProjectTxContext } from '../../utils/daoProjectTxContext'
 
 export const validate_fields = (tx: Tx.DaoProjectReclaimBalance, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -34,18 +34,12 @@ export const validate = (
   wrappedStates: WrappedStates,
   response: ShardusTypes.IncomingTransactionResult,
 ): ShardusTypes.IncomingTransactionResult => {
-  const from = wrappedStates[tx.from]?.data as UserAccount
-  const proposal = wrappedStates[tx.proposalId]?.data as DaoProposalAccount
-
-  if (!from || !isUserAccount(from)) {
-    response.reason = 'from account not found or is not a UserAccount'
+  const ctx = loadProjectTxContext(wrappedStates, tx.from, tx.proposalId)
+  if (ctx.error) {
+    response.reason = ctx.error
     return response
   }
-  if (!proposal || !isDaoProposalAccount(proposal) || proposal.proposalType !== 'project' || !proposal.project) {
-    response.reason = 'Proposal is not a project proposal'
-    return response
-  }
-  const project = proposal.project
+  const { from, proposal, project } = ctx
 
   if (proposal.status !== 'completed' && proposal.status !== 'terminated') {
     response.reason = `Project has not ended (current: ${proposal.status})`

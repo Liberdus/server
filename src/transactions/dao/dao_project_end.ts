@@ -44,6 +44,11 @@ export const validate = (
   }
   const { from, proposal, project } = ctx
 
+  if (proposal.status !== 'executing') {
+    response.reason = `Project is not executing (current: ${proposal.status})`
+    return response
+  }
+
   if (!proposal.committeeAddresses.includes(tx.from)) {
     response.reason = 'Only a committee member can end a project'
     return response
