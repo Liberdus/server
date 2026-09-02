@@ -29,11 +29,35 @@ export interface EndorsementCheck {
 }
 
 /**
+ * Write-once: rejects a second proposal for a value that already has one pending.
+ *
+ * Applied by the milestone paths before endorsing, and deliberately not inside applyEndorsement,
+ * because the contractor address path must not have it. There, `proposedAddress` is cleared only on
+ * a successful commit, so a first proposal nobody endorses would freeze the contractor address for
+ * the life of the project — and changing that address is the remedy for a lost or compromised
+ * contractor key. Policy line 353 provides for re-proposal there for exactly that reason.
+ *
+ * On a milestone the rule is safe because a bad value still has an escape:
+ * dao_project_milestone_terminate accepts a milestone in `pending` state. What it buys is that a
+ * pending time cannot be replaced, so an endorsement cannot end up counting toward a time its
+ * sender never saw. It also enforces the policy's "the contractor can only call this once", which
+ * the contractor check in applyEndorsement does not cover — nothing there stops them re-proposing,
+ * and every proposal resets the count, so they could stall their own milestone indefinitely.
+ */
+export function writeOnceError(hasPendingValue: boolean, isProposingNewValue: boolean): string | undefined {
+  if (isProposingNewValue && hasPendingValue) return 'A value has already been proposed; it can only be endorsed'
+  return undefined
+}
+
+/**
  * Applies one propose-or-endorse submission to an endorsement list, in place.
  *
  * The three project paths that need agreement — milestone start, milestone end, contractor address
- * — share this shape exactly: a submission carrying a value replaces whatever was pending and
- * re-seeds the endorsements with its sender; a submission without one endorses what is pending.
+ * — share this shape: a submission carrying a value replaces whatever was pending and re-seeds the
+ * endorsements with its sender; a submission without one endorses what is pending.
+ *
+ * Whether a second proposal is allowed at all is the caller's decision, not this function's — see
+ * writeOnceError, which the milestone paths apply and the address path deliberately does not.
  *
  * `endorsements` is the live array and is mutated. Callers own the proposed value itself, because
  * its type differs per path (a timestamp or an address).
@@ -53,9 +77,7 @@ export function applyEndorsement(
   if (!isCommittee && !isContractor) {
     return { error: 'Only a committee member or the contractor may submit this transaction' }
   }
-  // The contractor gets exactly one move: opening a proposal. Letting them endorse would let them
-  // occupy two of the three slots, and letting them re-propose would let them reset the count every
-  // time the committee got close to agreeing.
+  // Letting the contractor endorse would let them occupy two of the three slots.
   if (isContractor && !isCommittee && !isProposingNewValue) {
     return { error: 'The contractor may propose a value but not endorse one' }
   }

@@ -1,4 +1,4 @@
-import { applyEndorsement, PROJECT_ENDORSEMENT_THRESHOLD, requiredEndorsements } from '../src/utils/daoProjectEndorsement'
+import { applyEndorsement, PROJECT_ENDORSEMENT_THRESHOLD, requiredEndorsements, writeOnceError } from '../src/utils/daoProjectEndorsement'
 
 const C1 = 'c1'
 const C2 = 'c2'
@@ -70,16 +70,16 @@ describe('applyEndorsement', () => {
     expect(e).toEqual([])
   })
 
-  test('re-proposing clears the list and re-seeds it with the new proposer', () => {
-    // A new value is a different question — endorsements of the old one must not carry over.
+  test('a second proposal replaces the pending value and re-seeds the endorsements', () => {
+    // applyEndorsement itself allows this — whether a path may re-propose at all is writeOnceError's
+    // decision, applied by the caller. This is the contractor address path's behaviour, per policy.
     const e: string[] = []
     applyEndorsement(e, C1, true, COMMITTEE, undefined, false)
     applyEndorsement(e, C2, false, COMMITTEE, undefined, true)
     expect(e).toEqual([C1, C2])
 
-    const result = applyEndorsement(e, C3, true, COMMITTEE, undefined, true)
+    applyEndorsement(e, C3, true, COMMITTEE, undefined, true)
     expect(e).toEqual([C3])
-    expect(result.committed).toBe(false)
   })
 
   test('the same address cannot endorse twice', () => {
@@ -123,5 +123,34 @@ describe('applyEndorsement', () => {
   test('C4 exists so the committee is larger than the threshold', () => {
     expect(COMMITTEE).toContain(C4)
     expect(COMMITTEE.length).toBeGreaterThan(PROJECT_ENDORSEMENT_THRESHOLD)
+  })
+})
+
+describe('writeOnceError', () => {
+  // The milestone paths apply this; the contractor address path deliberately does not.
+  test('allows the first proposal', () => {
+    expect(writeOnceError(false, true)).toBeUndefined()
+  })
+
+  test('rejects a second proposal', () => {
+    expect(writeOnceError(true, true)).toMatch('already been proposed')
+  })
+
+  test('applies to the contractor too, which is what the policy requires', () => {
+    // "The contractor can only call this once". applyEndorsement's contractor check only blocks
+    // endorsing, so without this they could re-propose each time the committee neared three,
+    // resetting the count and stalling their own milestone indefinitely. The rule is sender-blind,
+    // so it covers them by construction rather than by a separate case.
+    const e: string[] = []
+    applyEndorsement(e, CONTRACTOR, true, COMMITTEE, CONTRACTOR, false)
+    applyEndorsement(e, C1, false, COMMITTEE, CONTRACTOR, true)
+    expect(e).toEqual([CONTRACTOR, C1])
+    expect(writeOnceError(true, true)).toMatch('already been proposed')
+  })
+
+  test('never blocks an endorsement', () => {
+    // Endorsing a pending value is the whole point of the rule, so it must pass either way.
+    expect(writeOnceError(true, false)).toBeUndefined()
+    expect(writeOnceError(false, false)).toBeUndefined()
   })
 })
