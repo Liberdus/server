@@ -9,7 +9,7 @@ import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGua
 import { daoProposalsMetaId } from '../../accounts/daoProposalsMetaAccount'
 import { recordProposalStatus } from '../../utils/daoProposalIndex'
 import { getApplyEligibleAt } from '../../accounts/daoProposalAccount'
-import { exceedsMintThreshold, maxMintThresholdWei, projectMintAmountWei } from '../../utils/daoProjectMint'
+import { degenerateMilestoneAtRate, exceedsMintThreshold, maxMintThresholdWei, projectMintAmountWei } from '../../utils/daoProjectMint'
 import { appendProjectLog } from '../../utils/daoProjectLog'
 
 export const validate_fields = (tx: Tx.DaoProjectStart, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
@@ -84,6 +84,15 @@ export const validate = (
     mintWei = projectMintAmountWei(proposal.project.milestones, (usdStr) => utils.usdStrToWei(usdStr, network))
     if (exceedsMintThreshold(mintWei)) {
       response.reason = `Project would mint ${mintWei} wei, exceeding the maximum of ${maxMintThresholdWei()} wei`
+      return response
+    }
+    // The rate is fixed for the project's life at apply() below, so this is the last point at which
+    // a milestone that converts to a zero payout can be caught. A project can therefore pass
+    // creation and still fail to start: the remedy is a new proposal with amounts that survive
+    // conversion, which is better than minting escrow against milestones that cannot pay out.
+    const degenerate = degenerateMilestoneAtRate(proposal.project.milestones, (usdStr) => utils.usdStrToWei(usdStr, network))
+    if (degenerate) {
+      response.reason = `Project cannot start: ${degenerate}`
       return response
     }
   } catch (err) {
