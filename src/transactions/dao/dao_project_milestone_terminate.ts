@@ -56,6 +56,11 @@ export const validate = (
   }
   const { from, proposal, project, milestone } = ctx
 
+  if (proposal.status !== 'executing') {
+    response.reason = `Project is not executing (current: ${proposal.status})`
+    return response
+  }
+
   // A milestone can be abandoned before or during work, but not after it has already resolved.
   if (milestone.status !== 'pending' && milestone.status !== 'executing') {
     response.reason = `Milestone ${tx.milestoneNumber} cannot be terminated (current: ${milestone.status})`

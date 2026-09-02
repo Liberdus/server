@@ -2,30 +2,44 @@ import { WrappedStates, UserAccount, DaoProposalAccount, DaoProjectData, DaoMile
 import { isUserAccount, isDaoProposalAccount } from '../@types/accountTypeGuards'
 import { resolveMilestone } from './daoProjectMilestoneState'
 
-export interface ProjectTxContext {
-  from?: UserAccount
-  proposal?: DaoProposalAccount
-  project?: DaoProjectData
+interface ProjectTxContextError {
+  error: string
+  from?: undefined
+  proposal?: undefined
+  project?: undefined
+  milestone?: undefined
+  milestoneIndex?: undefined
+}
+
+interface ProjectTxContextLoaded {
+  error?: undefined
+  from: UserAccount
+  proposal: DaoProposalAccount
+  project: DaoProjectData
   milestone?: DaoMilestone
   milestoneIndex?: number
-  error?: string
 }
 
 /**
- * The preamble every milestone transaction repeats: load the accounts, confirm this really is a
- * running project, and resolve the milestone number.
+ * Either the loaded accounts or the reason they could not be loaded, never a mix of both.
  *
- * Shared so the six milestone transactions cannot drift apart on what "a valid project transaction"
- * means — a mismatch between, say, start and claim on which statuses are acceptable is exactly the
- * kind of gap that lets a payment through on a project that should be finished.
+ * A union rather than a bag of optionals so a caller cannot reach `project` without having handled
+ * `error` first — previously the early return carried all the safety by convention, with no help
+ * from the type.
  */
-export function loadProjectTxContext(
-  wrappedStates: WrappedStates,
-  fromAddress: string,
-  proposalId: string,
-  milestoneNumber?: unknown,
-  allowedStatuses: string[] = ['executing'],
-): ProjectTxContext {
+export type ProjectTxContext = ProjectTxContextError | ProjectTxContextLoaded
+
+/**
+ * The preamble every project transaction repeats: load the accounts, confirm this really is a
+ * project proposal, and resolve the milestone number when one was supplied.
+ *
+ * Deliberately says nothing about project status. The eight project transactions use five different
+ * status rules between them, so a shared default served half of them and had to be overridden by the
+ * rest — and that default caused the bug this helper was meant to prevent, silently applying
+ * `executing` to the claim handler and blocking the post-end claim the balance is trimmed for. Each
+ * handler now states its own rule inline, where a reviewer reads it alongside the other guards.
+ */
+export function loadProjectTxContext(wrappedStates: WrappedStates, fromAddress: string, proposalId: string, milestoneNumber?: unknown): ProjectTxContext {
   const from = wrappedStates[fromAddress]?.data as UserAccount
   const proposal = wrappedStates[proposalId]?.data as DaoProposalAccount
 
@@ -41,19 +55,11 @@ export function loadProjectTxContext(
   if (!proposal.project) {
     return { error: 'Project proposal is missing its project data' }
   }
-  // Most milestone transactions only make sense on a running project, but claiming is deliberately
-  // allowed after it ends: dao_project_end trims the balance to what completed-but-unclaimed
-  // milestones still owe precisely so the contractor can collect it.
-  if (!allowedStatuses.includes(proposal.status)) {
-    return { error: `Project status ${proposal.status} does not allow this transaction (expected ${allowedStatuses.join(' or ')})` }
-  }
 
-  const context: ProjectTxContext = { from, proposal, project: proposal.project }
-  if (milestoneNumber !== undefined) {
-    const resolved = resolveMilestone(proposal.project, milestoneNumber)
-    if (resolved.error) return { error: resolved.error }
-    context.milestone = resolved.milestone
-    context.milestoneIndex = resolved.index
+  if (milestoneNumber === undefined) {
+    return { from, proposal, project: proposal.project }
   }
-  return context
+  const resolved = resolveMilestone(proposal.project, milestoneNumber)
+  if (resolved.error) return { error: resolved.error }
+  return { from, proposal, project: proposal.project, milestone: resolved.milestone, milestoneIndex: resolved.index }
 }

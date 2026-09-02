@@ -5,12 +5,12 @@ import { NetworkAccount, UserAccount, WrappedStates, Tx, AppReceiptData, DaoProp
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
-import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
 import { daoProposalsMetaId } from '../../accounts/daoProposalsMetaAccount'
 import { recordProposalStatus } from '../../utils/daoProposalIndex'
 import { getApplyEligibleAt } from '../../accounts/daoProposalAccount'
 import { degenerateMilestoneAtRate, exceedsMintThreshold, maxMintThresholdWei, projectMintAmountWei } from '../../utils/daoProjectMint'
 import { appendProjectLog } from '../../utils/daoProjectLog'
+import { loadProjectTxContext } from '../../utils/daoProjectTxContext'
 
 export const validate_fields = (tx: Tx.DaoProjectStart, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -38,32 +38,20 @@ export const validate = (
   wrappedStates: WrappedStates,
   response: ShardusTypes.IncomingTransactionResult,
 ): ShardusTypes.IncomingTransactionResult => {
-  const from = wrappedStates[tx.from]?.data as UserAccount
-  const proposal = wrappedStates[tx.proposalId]?.data as DaoProposalAccount
   const network = wrappedStates[config.networkAccount]?.data as NetworkAccount
+  const ctx = loadProjectTxContext(wrappedStates, tx.from, tx.proposalId)
+  if (ctx.error) {
+    response.reason = ctx.error
+    return response
+  }
+  const { from, proposal } = ctx
 
-  if (!from || !isUserAccount(from)) {
-    response.reason = 'from account not found or is not a UserAccount'
-    return response
-  }
-  if (!proposal || !isDaoProposalAccount(proposal)) {
-    response.reason = 'Proposal account not found or is not a DaoProposalAccount'
-    return response
-  }
   if (!network) {
     response.reason = 'Network account not found'
     return response
   }
-  if (proposal.proposalType !== 'project') {
-    response.reason = `Proposal type "${proposal.proposalType}" is not a project`
-    return response
-  }
   if (proposal.status !== 'accepted') {
     response.reason = `Proposal is not in accepted status (current: ${proposal.status})`
-    return response
-  }
-  if (!proposal.project) {
-    response.reason = 'Project proposal is missing its project data'
     return response
   }
   // Committee-only. This transaction mints, so it is deliberately not open to anyone the way
