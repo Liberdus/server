@@ -143,14 +143,49 @@ export const apply = (
       committed,
     },
   }
-  applyResponse.appReceiptDataHash = crypto.hashObj(appReceiptData)
-  applyResponse.appReceiptData = appReceiptData
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 
   dapp.log('Applied dao_project_milestone_terminate tx', from.id, tx.proposalId, tx.milestoneNumber)
 }
 
-export const createFailedAppReceiptData = (tx: Tx.DaoProjectMilestoneTerminate, txId: string, txTimestamp: number, reason: string): AppReceiptData => {
-  return { txId, timestamp: txTimestamp, success: false, from: tx.from, to: tx.proposalId, type: tx.type, transactionFee: 0n, additionalInfo: { reason } }
+export const createFailedAppReceiptData = (
+  tx: Tx.DaoProjectMilestoneTerminate,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+  reason: string,
+): void => {
+  // A failed transaction still costs its sender the fee, or their whole balance if it is smaller —
+  // otherwise failing is free and can be repeated without cost.
+  const from = wrappedStates[tx.from]?.data as UserAccount
+  let transactionFee = BigInt(0)
+  if (from) {
+    const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+    if (from.data.balance >= txFeeWei) {
+      transactionFee = txFeeWei
+      from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
+    } else {
+      transactionFee = from.data.balance
+      from.data.balance = BigInt(0)
+    }
+    from.timestamp = txTimestamp
+  }
+
+  const appReceiptData: AppReceiptData = {
+    txId,
+    timestamp: txTimestamp,
+    success: false,
+    reason,
+    from: tx.from,
+    to: tx.proposalId,
+    type: tx.type,
+    transactionFee,
+  }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
 export const keys = (tx: Tx.DaoProjectMilestoneTerminate, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
