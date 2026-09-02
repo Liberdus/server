@@ -1,7 +1,7 @@
 import { ethers } from 'ethers'
 import { LiberdusFlags } from '../src/config'
 import { DaoMilestone } from '../src/@types'
-import { exceedsMintThreshold, maxMintThresholdWei, projectMintAmountWei } from '../src/utils/daoProjectMint'
+import { degenerateMilestoneAtRate, exceedsMintThreshold, maxMintThresholdWei, projectMintAmountWei } from '../src/utils/daoProjectMint'
 
 const original = LiberdusFlags.daoMaxMintThresholdLibStr
 
@@ -88,5 +88,44 @@ describe('projectMintAmountWei', () => {
   test('propagates a malformed amount rather than silently skipping it', () => {
     // Never mint on a total we could not compute.
     expect(() => projectMintAmountWei([milestone('abc', '0')], toWei)).toThrow()
+  })
+})
+
+describe('degenerateMilestoneAtRate', () => {
+  function milestone(costUsdStr: string, penaltyUsdStr: string): DaoMilestone {
+    return { costUsdStr, penaltyUsdStr, bonusUsdStr: '0' } as DaoMilestone
+  }
+
+  // Converts USD to wei the way the handler does: parseEther(usd) * 1e18 / parseEther(rate),
+  // one truncating division per amount, which is where distinct USD values can collapse together.
+  const atRate =
+    (rateUsdStr: string) =>
+    (usdStr: string): bigint =>
+      (ethers.parseEther(usdStr) * 10n ** 18n) / ethers.parseEther(rateUsdStr)
+
+  test('accepts milestones that convert to distinct wei values', () => {
+    expect(degenerateMilestoneAtRate([milestone('1000', '100')], atRate('1'))).toBeUndefined()
+  })
+
+  test('rejects a pair that is valid in USD but collapses to the same wei value', () => {
+    // The case the creation-time rule cannot see: penalty < cost as decimal strings, yet both
+    // truncate to zero once divided by a large rate.
+    const milestones = [milestone('0.000000000000000002', '0.000000000000000001')]
+    expect(degenerateMilestoneAtRate(milestones, atRate('1'))).toBeUndefined()
+    expect(degenerateMilestoneAtRate(milestones, atRate('1000000'))).toMatch('zero payout')
+  })
+
+  test('rejects when both amounts truncate to zero', () => {
+    const error = degenerateMilestoneAtRate([milestone('0.000000000000000001', '0.000000000000000001')], atRate('1000000'))
+    expect(error).toMatch('0 wei')
+  })
+
+  test('names the offending milestone index', () => {
+    const milestones = [milestone('1000', '100'), milestone('10', '20')]
+    expect(degenerateMilestoneAtRate(milestones, atRate('1'))).toMatch('milestones[1]')
+  })
+
+  test('propagates a malformed amount rather than passing the milestone', () => {
+    expect(() => degenerateMilestoneAtRate([milestone('abc', '1')], atRate('1'))).toThrow()
   })
 })

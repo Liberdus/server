@@ -45,3 +45,26 @@ export function exceedsMintThreshold(amountWei: bigint): boolean {
 export function projectMintAmountWei(milestones: DaoMilestone[], usdStrToWei: (usdStr: string) => bigint): bigint {
   return milestones.reduce((total, m) => total + usdStrToWei(m.costUsdStr) + usdStrToWei(m.bonusUsdStr), 0n)
 }
+
+/**
+ * Repeats the creation-time `penalty < cost` rule in wei, at the rate the project is about to fix.
+ *
+ * Creation compares USD strings, but every payout is a truncating division by the project's rate.
+ * Amounts that differ in USD can therefore land on the same wei value — cost "0.000000000000000002"
+ * and penalty "0.000000000000000001" both truncate to 0 at a large enough rate — which would make a
+ * late payout zero and leave the milestone claimable forever under `paid > 0n`.
+ *
+ * The rate is unknown at creation but known here, and it is fixed for the project's life once
+ * snapshotted, so checking once at start covers every later payout. Returns the reason a milestone
+ * fails, or undefined when all of them convert soundly.
+ */
+export function degenerateMilestoneAtRate(milestones: DaoMilestone[], usdStrToWei: (usdStr: string) => bigint): string | undefined {
+  for (const [i, m] of milestones.entries()) {
+    const costWei = usdStrToWei(m.costUsdStr)
+    const penaltyWei = usdStrToWei(m.penaltyUsdStr)
+    if (penaltyWei >= costWei) {
+      return `milestones[${i}] converts to a penalty of ${penaltyWei} wei against a cost of ${costWei} wei at the current rate, which would allow a zero payout`
+    }
+  }
+  return undefined
+}
