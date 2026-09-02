@@ -3246,16 +3246,19 @@ vorpal
     callback()
   })
 
+// No milestone argument: the server acts on the next pending milestone for a start and the
+// executing one for an end, as the policy specifies.
 for (const [command, type, verb] of [
-  ['dao milestone start <number> <milestone>', 'dao_project_milestone_start', 'start'],
-  ['dao milestone end <number> <milestone>', 'dao_project_milestone_end', 'end'],
+  ['dao milestone start <number>', 'dao_project_milestone_start', 'start'],
+  ['dao milestone end <number>', 'dao_project_milestone_end', 'end'],
 ]) {
   vorpal.command(command, `propose or endorse a milestone ${verb} time (contractor or committee)`).action(async function (args, callback) {
-    // Blank endorses the pending time; a value proposes one and resets endorsements. The time may
-    // not be in the future — the server rejects that rather than crediting unserved duration.
+    // Blank endorses the pending time; the first value proposes one. A time can only be proposed
+    // once per milestone, and may not be in the future — the server rejects both rather than
+    // resetting the endorsements or crediting unserved duration.
     const answers = await this.prompt([{ type: 'input', name: 'proposedTime', message: `Proposed ${verb} time in ms since epoch (blank to endorse):` }])
     const extra = answers.proposedTime?.trim() ? { proposedTime: Number(answers.proposedTime.trim()) } : {}
-    await submitProjectTx(this, projectTx(type, args.number, { milestoneNumber: args.milestone, ...extra }))
+    await submitProjectTx(this, projectTx(type, args.number, extra))
     callback()
   })
 }
