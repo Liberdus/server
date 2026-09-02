@@ -61,3 +61,17 @@ describe('appendProjectLog', () => {
     expect(p.logs[0].params).not.toHaveProperty('paidWei')
   })
 })
+
+describe('address-change entries record the address supported', () => {
+  // The mode is not recoverable from an entry and deliberately is not recorded; who backed which
+  // address is what a dispute turns on, so that must survive on both paths.
+  test('a blank endorsement records the pending address, not undefined', () => {
+    const pendingAddress = 'pending-address'
+    const tx: { proposedAddress?: string } = {}
+    const supported = tx.proposedAddress ?? pendingAddress
+    const p = project([])
+    appendProjectLog(p, 'committee-1', 1000, 'dao_project_change_address', { proposedAddress: supported })
+    expect(p.logs[0].params.proposedAddress).toBe(pendingAddress)
+    expect(Object.values(p.logs[0].params)).not.toContain(undefined)
+  })
+})

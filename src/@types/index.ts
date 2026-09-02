@@ -902,7 +902,6 @@ export interface DaoTerminateVote {
   timestamp: number
 }
 
-/** Append-only audit trail, started when the project enters `executing`. Uncapped by decision. */
 /** The eight transactions that can append to a project's audit trail. */
 export type DaoProjectTxType =
   | 'dao_project_start'
@@ -914,6 +913,7 @@ export type DaoProjectTxType =
   | 'dao_project_end'
   | 'dao_project_reclaim_balance'
 
+/** Append-only audit trail entry. The trail starts when the project enters `executing`. */
 export interface DaoProjectLogEntry {
   caller: string
   timestamp: number

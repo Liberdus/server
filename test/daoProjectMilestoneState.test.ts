@@ -96,3 +96,18 @@ describe('findExecutingMilestone', () => {
     expect(canStartMilestone(p, 1)).toBeDefined()
   })
 })
+
+describe('findExecutingMilestone uniqueness', () => {
+  test('fails closed when more than one milestone is executing', () => {
+    // Unreachable while canStartMilestone holds. Asserted because "the current milestone" has to
+    // resolve to one milestone: silently taking the earliest would end the wrong one and write a
+    // payout against it.
+    const error = findExecutingMilestone(project('executing', 'executing')).error
+    expect(error).toMatch('are all executing')
+    expect(error).toMatch('1, 2')
+  })
+
+  test('still resolves the single executing milestone', () => {
+    expect(findExecutingMilestone(project('completed', 'executing', 'pending')).index).toBe(1)
+  })
+})

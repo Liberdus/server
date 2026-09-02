@@ -60,11 +60,17 @@ export function findNextPendingMilestone(project: DaoProjectData): { milestone?:
  * "the current milestone" resolves unambiguously without the sender naming it.
  */
 export function findExecutingMilestone(project: DaoProjectData): { milestone?: DaoMilestone; index?: number; error?: string } {
-  const index = project.milestones.findIndex((m) => m.status === 'executing')
-  if (index === -1) {
+  const executing = project.milestones.reduce<number[]>((found, m, i) => (m.status === 'executing' ? [...found, i] : found), [])
+  if (executing.length === 0) {
     return { error: 'No milestone is executing; there is nothing to end' }
   }
-  return { milestone: project.milestones[index], index }
+  // Unreachable while canStartMilestone holds, but this is consensus code and "the current
+  // milestone" has to mean one milestone. Failing closed beats silently ending the earliest of
+  // several and writing a payout against it.
+  if (executing.length > 1) {
+    return { error: `Milestones ${executing.map((i) => i + 1).join(', ')} are all executing; cannot resolve the current one` }
+  }
+  return { milestone: project.milestones[executing[0]], index: executing[0] }
 }
 
 /** True when no milestone remains that could still start or finish. */

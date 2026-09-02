@@ -111,6 +111,10 @@ export const apply = (
   // pending value this transaction just created.
   const isProposing = tx.proposedAddress !== undefined
   const hadPendingAddress = project.proposedAddress !== undefined
+  // The address this sender backed, whichever way they submitted it. Captured before the mutation
+  // below and before a commit clears proposedAddress, so a blank endorsement still records what it
+  // endorsed — that, not the mode, is what a dispute turns on.
+  const supportedAddress = tx.proposedAddress ?? project.proposedAddress
   if (isProposing) project.proposedAddress = tx.proposedAddress
   // No contractor slot here — passing undefined keeps the threshold clamped to the committee size.
   const result = applyEndorsement(project.endorsedAddress, tx.from, isProposing, proposal.committeeAddresses, undefined, hadPendingAddress)
@@ -125,7 +129,7 @@ export const apply = (
     project.endorsedAddress = []
   }
 
-  appendProjectLog(project, tx.from, txTimestamp, 'dao_project_change_address', { proposedAddress: tx.proposedAddress })
+  appendProjectLog(project, tx.from, txTimestamp, 'dao_project_change_address', { proposedAddress: supportedAddress })
 
   from.timestamp = txTimestamp
   proposal.timestamp = txTimestamp
