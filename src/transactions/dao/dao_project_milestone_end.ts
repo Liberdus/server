@@ -164,7 +164,7 @@ export const apply = (
     tx.from,
     txTimestamp,
     'dao_project_milestone_end',
-    `milestone=${milestoneNumber} proposed=${tx.proposedTime ?? ''} committed=${result.committed === true}`,
+    tx.proposedTime === undefined ? { milestoneNumber } : { milestoneNumber, proposedTime: tx.proposedTime },
   )
 
   from.timestamp = txTimestamp

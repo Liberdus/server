@@ -162,7 +162,9 @@ export const apply = (
     tx.from,
     txTimestamp,
     'dao_project_milestone_start',
-    `milestone=${milestoneNumber} proposed=${tx.proposedTime ?? ''} committed=${result.committed === true}`,
+    // milestoneNumber is derived rather than sent, but an audit entry that cannot say which
+    // milestone was acted on is not much of an audit entry.
+    tx.proposedTime === undefined ? { milestoneNumber } : { milestoneNumber, proposedTime: tx.proposedTime },
   )
 
   from.timestamp = txTimestamp

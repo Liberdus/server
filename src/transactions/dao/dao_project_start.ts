@@ -131,7 +131,7 @@ export const apply = (
   proposal.status = 'executing'
   proposal.timestamp = txTimestamp
 
-  appendProjectLog(project, tx.from, txTimestamp, 'dao_project_start', `mint=${mintWei} rate=${project.rateUsdStr}`)
+  appendProjectLog(project, tx.from, txTimestamp, 'dao_project_start')
 
   // Always a real transition (accepted -> executing), but the guard is kept so every handler reads
   // the same way and stays correct if the branches ever change.

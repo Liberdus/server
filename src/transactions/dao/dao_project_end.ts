@@ -108,7 +108,7 @@ export const apply = (
   proposal.status = lastMilestone.status === 'terminated' ? 'terminated' : 'completed'
   proposal.timestamp = txTimestamp
 
-  appendProjectLog(project, tx.from, txTimestamp, 'dao_project_end', `status=${proposal.status} owed=${owedWei}`)
+  appendProjectLog(project, tx.from, txTimestamp, 'dao_project_end')
 
   if (proposal.status !== previousStatus) {
     recordProposalStatus(meta, proposal.number, proposal.status, proposal.emergency, txTimestamp)

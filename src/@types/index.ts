@@ -903,11 +903,30 @@ export interface DaoTerminateVote {
 }
 
 /** Append-only audit trail, started when the project enters `executing`. Uncapped by decision. */
+/** The eight transactions that can append to a project's audit trail. */
+export type DaoProjectTxType =
+  | 'dao_project_start'
+  | 'dao_project_milestone_start'
+  | 'dao_project_milestone_end'
+  | 'dao_project_milestone_terminate'
+  | 'dao_project_milestone_claim'
+  | 'dao_project_change_address'
+  | 'dao_project_end'
+  | 'dao_project_reclaim_balance'
+
 export interface DaoProjectLogEntry {
   caller: string
   timestamp: number
-  txType: string
-  params?: string
+  txType: DaoProjectTxType
+  /**
+   * What identifies the action, never what resulted from it.
+   *
+   * In practice the sender's own fields, plus an identifier the handler had to derive to know what
+   * it was acting on. Outcomes stay out: amounts minted, paid, owed or reclaimed are products of
+   * the handler and are already recoverable from the account state and the transaction receipt.
+   * Keeping them out also means no value here is ever a bigint.
+   */
+  params: Record<string, string | number | boolean>
 }
 
 export interface DaoMilestone {
