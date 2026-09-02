@@ -161,23 +161,48 @@ export const apply = (
     },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
-  applyResponse.appReceiptDataHash = appReceiptDataHash
-  applyResponse.appReceiptData = appReceiptData
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 
   dapp.log('Applied dao_project_start tx', from.id, tx.proposalId, 'minted', mintWei)
 }
 
-export const createFailedAppReceiptData = (tx: Tx.DaoProjectStart, txId: string, txTimestamp: number, reason: string): AppReceiptData => {
-  return {
+export const createFailedAppReceiptData = (
+  tx: Tx.DaoProjectStart,
+  txTimestamp: number,
+  txId: string,
+  wrappedStates: WrappedStates,
+  dapp: Shardus,
+  applyResponse: ShardusTypes.ApplyResponse,
+  reason: string,
+): void => {
+  // A failed transaction still costs its sender the fee, or their whole balance if it is smaller —
+  // otherwise failing is free and can be repeated without cost.
+  const from = wrappedStates[tx.from]?.data as UserAccount
+  let transactionFee = BigInt(0)
+  if (from) {
+    const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+    if (from.data.balance >= txFeeWei) {
+      transactionFee = txFeeWei
+      from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
+    } else {
+      transactionFee = from.data.balance
+      from.data.balance = BigInt(0)
+    }
+    from.timestamp = txTimestamp
+  }
+
+  const appReceiptData: AppReceiptData = {
     txId,
     timestamp: txTimestamp,
     success: false,
+    reason,
     from: tx.from,
     to: tx.proposalId,
     type: tx.type,
-    transactionFee: 0n,
-    additionalInfo: { reason },
+    transactionFee,
   }
+  const appReceiptDataHash = crypto.hashObj(appReceiptData)
+  dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
 export const keys = (tx: Tx.DaoProjectStart, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
