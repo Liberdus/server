@@ -379,6 +379,14 @@ interface StepSortKey {
  * In --parallel mode all setupSteps across all scenarios run first (sequentially),
  * then all bodySteps run concurrently.
  */
+/**
+ * Extra fields a Scenario 21 transaction may carry.
+ *
+ * The keys sc21Tx owns are typed `never`, so passing one is a compile error rather than a silent
+ * override of the proposal, sender or type the helper is there to fix.
+ */
+type Sc21TxExtra = { [key: string]: unknown } & { [K in 'type' | 'networkId' | 'from' | 'proposalId' | 'timestamp']?: never }
+
 interface ScenarioDef {
   num: number
   name: string
@@ -5110,8 +5118,12 @@ async function main(): Promise<void> {
    *
    * No timestamp: injectAndAssert and injectExpectReject stamp it at injection. What is left is the
    * sender and whatever the transaction is actually about.
+   *
+   * `extra` cannot carry the fields this helper owns. Spreading it last would let a caller silently
+   * retarget the transaction at another proposal or sender; typing those keys as `never` makes the
+   * attempt a compile error instead, which is the version that tells you.
    */
-  const sc21Tx = (type: string, from: TestAccount, extra: Record<string, unknown> = {}): Record<string, unknown> => ({
+  const sc21Tx = (type: string, from: TestAccount, extra: Sc21TxExtra = {}): Record<string, unknown> => ({
     type,
     networkId: currentNetworkId,
     from: from.address,
