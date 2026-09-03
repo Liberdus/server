@@ -5,13 +5,12 @@ import { DaoMilestone } from '../@types'
 /**
  * The configured per-project mint ceiling, in wei.
  *
- * Parsed rather than stored as a bigint so the flag stays JSON-safe on /debug-liberdus-flags and
- * settable through the debug endpoint. Parsing is exact — no float rounding — because
- * ethers.parseEther works on the decimal string directly.
+ * Stored as a decimal string so the flag stays JSON-safe and settable through the debug endpoint;
+ * parseEther reads it exactly, with no float rounding.
  *
- * Throws on a malformed value rather than falling back to a default: a mint ceiling that silently
- * becomes something other than what an operator configured is worse than a failed transaction. The
- * throw surfaces inside transaction validation, so a bad value stops mints instead of widening them.
+ * Throws on a malformed value rather than defaulting. A ceiling that silently becomes something
+ * other than what an operator configured is worse than a failed transaction, and the throw surfaces
+ * in validation — so a bad value stops mints rather than widening them.
  */
 export function maxMintThresholdWei(): bigint {
   const configured = LiberdusFlags.daoMaxMintThresholdLibStr
@@ -35,14 +34,12 @@ export function exceedsMintThreshold(amountWei: bigint): boolean {
 /**
  * The most a project could ever owe: every milestone's cost plus its early-delivery bonus.
  *
- * Penalties are deliberately excluded. A penalty only ever reduces what a contractor is paid, so
- * folding it in here would inflate the escrow and mint more than the project can legitimately pay
- * out. The policy's phrase "including early bonuses" means exactly this sum.
+ * Penalties are excluded — a penalty only reduces what a contractor is paid, so folding it in would
+ * mint more escrow than the project can legitimately pay out.
  *
- * The USD-to-wei converter is injected rather than imported so this module stays clear of the utils
- * barrel, which drags in the config/utils import cycle. That is why this differs from
- * milestonePayoutWei, which takes the project: the mint converts at the *live* rate, which only the
- * caller can reach, while a payout converts at the rate the project already stores.
+ * The converter is injected rather than imported to keep this module clear of the utils barrel and
+ * its config/utils cycle. That is why this differs from milestonePayoutWei, which takes the project:
+ * the mint converts at the *live* rate, which only the caller can reach.
  */
 export function projectMintAmountWei(milestones: DaoMilestone[], usdStrToWei: (usdStr: string) => bigint): bigint {
   return milestones.reduce((total, m) => total + usdStrToWei(m.costUsdStr) + usdStrToWei(m.bonusUsdStr), 0n)
@@ -51,14 +48,13 @@ export function projectMintAmountWei(milestones: DaoMilestone[], usdStrToWei: (u
 /**
  * Repeats the creation-time `penalty < cost` rule in wei, at the rate the project is about to fix.
  *
- * Creation compares USD strings, but every payout is a truncating division by the project's rate.
- * Amounts that differ in USD can therefore land on the same wei value — cost "0.000000000000000002"
- * and penalty "0.000000000000000001" both truncate to 0 at a large enough rate — which would make a
- * late payout zero and leave the milestone claimable forever under `paid > 0n`.
+ * Creation compares USD strings, but payouts are truncating divisions by the rate, so two amounts
+ * that differ in USD can land on the same wei value — "0.000000000000000002" and
+ * "0.000000000000000001" both truncate to 0 at a large enough rate. That would make a late payout
+ * zero and leave the milestone claimable forever under `paid > 0n`.
  *
- * The rate is unknown at creation but known here, and it is fixed for the project's life once
- * snapshotted, so checking once at start covers every later payout. Returns the reason a milestone
- * fails, or undefined when all of them convert soundly.
+ * The rate is unknown at creation but known here, and fixed for the project's life once snapshotted,
+ * so one check covers every later payout.
  */
 export function degenerateMilestoneAtRate(milestones: DaoMilestone[], usdStrToWei: (usdStr: string) => bigint): string | undefined {
   for (const [i, m] of milestones.entries()) {

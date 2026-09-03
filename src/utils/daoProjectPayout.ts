@@ -4,12 +4,11 @@ import { DaoMilestone, DaoProjectData } from '../@types'
 const WEI = 10n ** 18n
 
 /**
- * Converts a USD string to wei at a *fixed* rate, not the live one.
+ * Converts USD to wei at a fixed rate, not the live one.
  *
- * Every project payout uses the rate snapshotted when the balance was minted, so the DAO's exposure
- * stays capped at what it actually minted and the contractor carries the LIB price movement. Mirrors
- * utils.usdStrToWei's arithmetic, but takes the rate as an argument instead of reading the network
- * account — which also keeps this module clear of the utils barrel and its import cycle.
+ * Payouts use the rate snapshotted at mint, so the DAO's exposure stays capped at what it minted and
+ * the contractor carries the price movement. Taking the rate as an argument rather than reading the
+ * network account also keeps this module clear of the utils barrel and its import cycle.
  */
 export function usdToWeiAtRate(usdStr: string, rateUsdStr: string): bigint {
   const rate = ethers.parseEther(rateUsdStr)
@@ -22,12 +21,8 @@ export type MilestoneDeliverySpeed = 'early' | 'ontime' | 'late'
 /**
  * Classifies a completed milestone against its planned duration.
  *
- * The policy sets the thresholds as a percentage of the planned duration: finishing more than
- * `bonusPercentage` faster earns the bonus, running more than `penaltyPercentage` over incurs the
- * penalty, and anything between is on time and paid the plain cost.
- *
- * Both comparisons are strict, so landing exactly on a threshold is "on time". That is the
- * conservative reading: the DAO neither pays a bonus nor levies a penalty for a boundary case.
+ * Both comparisons are strict, so landing exactly on a threshold is on time — the DAO neither pays a
+ * bonus nor levies a penalty for a boundary case.
  */
 export function classifyDelivery(actualDuration: number, plannedDuration: number, bonusPercentage: number, penaltyPercentage: number): MilestoneDeliverySpeed {
   const earlyCutoff = plannedDuration * (1 - bonusPercentage / 100)
@@ -46,29 +41,21 @@ export interface MilestonePayout {
 /**
  * What a completed milestone pays out.
  *
- * A late milestone earns no bonus, so the penalty is deducted from the cost alone. It floors at
- * zero so a penalty larger than the cost can never invert into a credit against the DAO.
- *
- * The floor is defence in depth rather than a reachable branch: `penalty < cost` is enforced at
- * proposal creation and repeated in wei at dao_project_start, so a payout of zero cannot occur.
- * That is what lets `paid > 0n` serve as the settled marker in dao_project_milestone_claim. Keep
- * the floor anyway — it is the only thing standing between a future gap in those checks and a
- * negative payout.
- *
  * Takes the project rather than a rate or a converter, so a payout cannot be computed at the live
- * rate by mistake — the DAO's exposure was fixed at the amount minted, and that error has been made
- * here once already.
+ * rate by mistake. That error has been made here once already.
+ *
+ * A payout of zero is unreachable — `penalty < cost` is enforced at proposal creation and repeated
+ * in wei at dao_project_start — which is what lets `paid > 0n` mean "settled" in
+ * dao_project_milestone_claim. The zero floor below is kept as the only thing between a future gap
+ * in those checks and a negative payout.
  */
 export function milestonePayoutWei(milestone: DaoMilestone, project: DaoProjectData): MilestonePayout {
   const usdStrToWei = (usdStr: string): bigint => usdToWeiAtRate(usdStr, project.rateUsdStr)
 
-  // Fail closed on a milestone that cannot state how long it took. Defaulting a missing timestamp
-  // to zero made the duration hugely negative, which classifies as `early` and pays cost *plus*
-  // bonus — the most generous outcome for the least trustworthy data.
-  //
-  // endTime >= startTime is not implied by the two being present: both are proposed and endorsed
-  // separately, and the end time is only bounded above by the transaction timestamp. Equal times
-  // are a legitimate zero-length milestone; inverted ones are not.
+  // Fail closed: defaulting a missing timestamp to zero made the duration negative, which reads as
+  // `early` and pays cost plus bonus. The inversion check is separate because the two times are
+  // proposed and endorsed independently and nothing else compares them — equal times are a
+  // legitimate zero-length milestone, inverted ones are not.
   if (milestone.startTime === undefined || milestone.endTime === undefined) {
     throw new Error('Milestone is missing a start or end time; cannot compute a payout')
   }

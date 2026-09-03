@@ -3,9 +3,9 @@ import { DaoMilestone, DaoProjectData } from '../@types'
 /**
  * Resolves a transaction's 1-based milestone number to its array index.
  *
- * Transactions number milestones from 1 to match how proposals are already addressed externally
- * ("dao proposal #N"); storage is a zero-indexed array. An off-by-one here misroutes a payment, so
- * both boundaries are rejected explicitly rather than left to produce `undefined`.
+ * Transactions number from 1 to match how proposals are addressed externally; storage is 0-indexed.
+ * An off-by-one here misroutes a payment, so both boundaries are rejected explicitly rather than
+ * left to produce `undefined`.
  */
 export function resolveMilestone(project: DaoProjectData, milestoneNumber: unknown): { milestone?: DaoMilestone; index?: number; error?: string } {
   if (typeof milestoneNumber !== 'number' || !Number.isInteger(milestoneNumber)) {
@@ -19,16 +19,12 @@ export function resolveMilestone(project: DaoProjectData, milestoneNumber: unkno
 }
 
 /**
- * Milestones run strictly in order: a milestone may only start once every earlier one has finished,
- * one way or the other. The policy states it as "the previous milestone should be in the completed
- * or terminated state or this must be the first milestone in pending status".
+ * Milestones run strictly in order: one may only start once every earlier one has finished, either
+ * completed or terminated. Checking all of them rather than just the previous one costs nothing.
  *
- * Checking every earlier milestone rather than only the immediately preceding one costs nothing and
- * closes the case where an earlier milestone was somehow left pending.
- *
- * This runs after findNextPendingMilestone, and catches what that cannot: the next `pending`
- * milestone may still sit behind one that is `executing`. That rejection is what makes deriving the
- * milestone safe, so do not drop it on the assumption that "next pending" already means "startable".
+ * Runs after findNextPendingMilestone and catches what that cannot: the next `pending` milestone may
+ * still sit behind one that is `executing`. That rejection is what makes deriving the milestone
+ * safe, so do not drop it as redundant.
  */
 export function canStartMilestone(project: DaoProjectData, index: number): string | undefined {
   for (let i = 0; i < index; i++) {
@@ -43,14 +39,11 @@ export function canStartMilestone(project: DaoProjectData, index: number): strin
 /**
  * The milestone a start transaction acts on: the first one still `pending`.
  *
- * The policy says "start the next milestone" rather than naming one, so the sender does not supply
- * a number. A pure function of the project data, so every node derives the same milestone.
+ * The policy says "start the next milestone" rather than naming one, so the sender supplies no
+ * number. A pure function of the project data, so every node derives the same milestone.
  *
- * `canStartMilestone` still runs at the call site: this says which milestone is next in line, not
- * that it may start yet. The gap is real rather than theoretical — the first `pending` milestone can
- * still be blocked by an earlier one that is `executing` rather than finished, which is exactly the
- * case that keeps a stale start transaction from acting on the wrong milestone once the derived
- * target moves.
+ * This says which milestone is next in line, not that it may start — `canStartMilestone` still runs
+ * at the call site, and rejects one whose predecessor is merely `executing`.
  */
 export function findNextPendingMilestone(project: DaoProjectData): { milestone?: DaoMilestone; index?: number; error?: string } {
   const index = project.milestones.findIndex((m) => m.status === 'pending')
@@ -63,8 +56,8 @@ export function findNextPendingMilestone(project: DaoProjectData): { milestone?:
 /**
  * The milestone an end transaction acts on: the one currently `executing`.
  *
- * At most one can be, because a milestone cannot start while an earlier one is unfinished, so
- * "the current milestone" resolves unambiguously without the sender naming it.
+ * At most one can be, since a milestone cannot start while an earlier one is unfinished, so "the
+ * current milestone" resolves without the sender naming it.
  */
 export function findExecutingMilestone(project: DaoProjectData): { milestone?: DaoMilestone; index?: number; error?: string } {
   const executing = project.milestones.reduce<number[]>((found, m, i) => (m.status === 'executing' ? [...found, i] : found), [])
