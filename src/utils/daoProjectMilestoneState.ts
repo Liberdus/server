@@ -25,6 +25,10 @@ export function resolveMilestone(project: DaoProjectData, milestoneNumber: unkno
  *
  * Checking every earlier milestone rather than only the immediately preceding one costs nothing and
  * closes the case where an earlier milestone was somehow left pending.
+ *
+ * This runs after findNextPendingMilestone, and catches what that cannot: the next `pending`
+ * milestone may still sit behind one that is `executing`. That rejection is what makes deriving the
+ * milestone safe, so do not drop it on the assumption that "next pending" already means "startable".
  */
 export function canStartMilestone(project: DaoProjectData, index: number): string | undefined {
   for (let i = 0; i < index; i++) {
@@ -42,8 +46,11 @@ export function canStartMilestone(project: DaoProjectData, index: number): strin
  * The policy says "start the next milestone" rather than naming one, so the sender does not supply
  * a number. A pure function of the project data, so every node derives the same milestone.
  *
- * `canStartMilestone` still runs at the call site: this only says which milestone is next in line,
- * not that it may start yet.
+ * `canStartMilestone` still runs at the call site: this says which milestone is next in line, not
+ * that it may start yet. The gap is real rather than theoretical — the first `pending` milestone can
+ * still be blocked by an earlier one that is `executing` rather than finished, which is exactly the
+ * case that keeps a stale start transaction from acting on the wrong milestone once the derived
+ * target moves.
  */
 export function findNextPendingMilestone(project: DaoProjectData): { milestone?: DaoMilestone; index?: number; error?: string } {
   const index = project.milestones.findIndex((m) => m.status === 'pending')

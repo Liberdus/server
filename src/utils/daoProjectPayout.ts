@@ -61,7 +61,21 @@ export interface MilestonePayout {
  */
 export function milestonePayoutWei(milestone: DaoMilestone, project: DaoProjectData): MilestonePayout {
   const usdStrToWei = (usdStr: string): bigint => usdToWeiAtRate(usdStr, project.rateUsdStr)
-  const actualDuration = (milestone.endTime ?? 0) - (milestone.startTime ?? 0)
+
+  // Fail closed on a milestone that cannot state how long it took. Defaulting a missing timestamp
+  // to zero made the duration hugely negative, which classifies as `early` and pays cost *plus*
+  // bonus — the most generous outcome for the least trustworthy data.
+  //
+  // endTime >= startTime is not implied by the two being present: both are proposed and endorsed
+  // separately, and the end time is only bounded above by the transaction timestamp. Equal times
+  // are a legitimate zero-length milestone; inverted ones are not.
+  if (milestone.startTime === undefined || milestone.endTime === undefined) {
+    throw new Error('Milestone is missing a start or end time; cannot compute a payout')
+  }
+  if (milestone.endTime < milestone.startTime) {
+    throw new Error(`Milestone end time (${milestone.endTime}) is before its start time (${milestone.startTime}); cannot compute a payout`)
+  }
+  const actualDuration = milestone.endTime - milestone.startTime
   const speed = classifyDelivery(actualDuration, milestone.duration, project.durationBonusPercentage, project.durationPenaltyPercentage)
 
   const cost = usdStrToWei(milestone.costUsdStr)

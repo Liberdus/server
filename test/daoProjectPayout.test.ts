@@ -96,3 +96,30 @@ describe('the payout always uses the project rate', () => {
     expect(milestonePayoutWei(m, project({ rateUsdStr: '0.5' })).amountWei).toBe(ethers.parseEther('2000'))
   })
 })
+
+describe('a milestone that cannot state its duration pays nothing', () => {
+  // Fail closed. Defaulting a missing timestamp to zero made the duration hugely negative, which
+  // classifies as `early` — so the least trustworthy data earned the most generous payout.
+  test('a missing start or end time throws rather than defaulting', () => {
+    expect(() => milestonePayoutWei(milestone({ startTime: undefined }), project())).toThrow('missing a start or end time')
+    expect(() => milestonePayoutWei(milestone({ endTime: undefined }), project())).toThrow('missing a start or end time')
+  })
+
+  test('an end time before the start time throws', () => {
+    // Not implied by both being present: the two are proposed and endorsed separately, and nothing
+    // else compares them.
+    expect(() => milestonePayoutWei(milestone({ startTime: 5 * DAY, endTime: DAY }), project())).toThrow('is before its start time')
+  })
+
+  test('equal times are a legitimate zero-length milestone, not an error', () => {
+    const result = milestonePayoutWei(milestone({ startTime: DAY, endTime: DAY }), project())
+    expect(result.speed).toBe('early')
+    expect(result.amountWei).toBe(ethers.parseEther('1100'))
+  })
+
+  test('what the old default would have paid', () => {
+    // A missing start time used to read as duration = endTime - 0, and a missing end time as
+    // -startTime. Both landed in the early band. This pins that the throw replaces a payout.
+    expect(() => milestonePayoutWei(milestone({ endTime: undefined }), project())).toThrow()
+  })
+})
