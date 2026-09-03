@@ -5120,6 +5120,22 @@ async function main(): Promise<void> {
   })
 
   /**
+   * What a milestone is worth, derived from the fixture rather than restated.
+   *
+   * Each conversion is separate because the handler converts each amount separately — summing or
+   * subtracting in USD first truncates once instead of once per amount, and drifts by a wei.
+   * Deriving also means changing a fixture amount cannot leave an assertion quietly describing a
+   * milestone that no longer exists.
+   */
+  const sc21Cost = (n: number, rateUsdStr: string): bigint => usdStrToLibWei(sc21Milestones[n - 1].costUsdStr, rateUsdStr)
+  const sc21Bonus = (n: number, rateUsdStr: string): bigint => usdStrToLibWei(sc21Milestones[n - 1].bonusUsdStr, rateUsdStr)
+  const sc21Penalty = (n: number, rateUsdStr: string): bigint => usdStrToLibWei(sc21Milestones[n - 1].penaltyUsdStr, rateUsdStr)
+  /** Early delivery, and the amount escrowed per milestone: cost + bonus. */
+  const sc21EarlyPayout = (n: number, rateUsdStr: string): bigint => sc21Cost(n, rateUsdStr) + sc21Bonus(n, rateUsdStr)
+  /** Late delivery: no bonus, penalty off the cost. */
+  const sc21LatePayout = (n: number, rateUsdStr: string): bigint => sc21Cost(n, rateUsdStr) - sc21Penalty(n, rateUsdStr)
+
+  /**
    * Drives a milestone time to commitment: the first signer proposes it, the rest endorse.
    *
    * The proposer counts as endorsement #1, which is why only the first carries `proposedTime` — a
@@ -5388,7 +5404,7 @@ async function main(): Promise<void> {
           'Only the contractor',
         )
 
-        const expectedPay = usdSumToLibWei(before.project.rateUsdStr, '100', '10') // cost + bonus
+        const expectedPay = sc21EarlyPayout(1, before.project.rateUsdStr)
         const { receipt } = await injectAndAssert(
           sc21Tx('dao_project_milestone_claim', voter16, { milestoneNumber: 1 }),
           voter16,
@@ -5439,7 +5455,7 @@ async function main(): Promise<void> {
         // Escrow released must mirror exactly what was minted for it: cost 200 + bonus 20, at the
         // project's stored rate rather than the live one.
         const after = await getProject(proposalN.sc21Project)
-        const released = usdSumToLibWei(before.project.rateUsdStr, '200', '20')
+        const released = sc21EarlyPayout(2, before.project.rateUsdStr)
         assert(asBigInt(after.project.balance) === asBigInt(before.project.balance) - released, 'Terminating should release cost + bonus from the balance')
 
         // And the contractor cannot be paid for it.
@@ -5472,9 +5488,7 @@ async function main(): Promise<void> {
           { expectedBalanceDelta: r => asBigInt(r.additionalInfo.paidWei) - asBigInt(r.transactionFee ?? 0n) },
         )
         assert(receipt.additionalInfo?.deliverySpeed === 'late', `Expected late delivery, got ${receipt.additionalInfo?.deliverySpeed}`)
-        // Late payout mirrors the handler: convert cost and penalty separately, then subtract.
-        // That preserves the same per-term truncation used for minting and claiming.
-        const expectedLatePayout = usdStrToLibWei('50', before.project.rateUsdStr) - usdStrToLibWei('10', before.project.rateUsdStr)
+        const expectedLatePayout = sc21LatePayout(3, before.project.rateUsdStr)
         assert(
           asBigInt(receipt.additionalInfo.paidWei) === expectedLatePayout,
           `Expected a late payout of ${expectedLatePayout}, got ${receipt.additionalInfo.paidWei}`,
@@ -5524,7 +5538,7 @@ async function main(): Promise<void> {
         // The balance is trimmed to exactly what milestone 4 is still owed — early delivery, so
         // cost 80 + bonus 8. Everything already paid or terminated releases.
         const view = await getProject(proposalN.sc21Project)
-        const stillOwed = usdSumToLibWei(view.project.rateUsdStr, '80', '8')
+        const stillOwed = sc21EarlyPayout(4, view.project.rateUsdStr)
         assert(asBigInt(receipt.additionalInfo.remainingBalanceWei) === stillOwed, `Expected ${stillOwed} still owed, got ${receipt.additionalInfo.remainingBalanceWei}`)
         assert(asBigInt(view.project.balance) === stillOwed, 'Project balance should equal what is still owed')
       },
@@ -5538,7 +5552,7 @@ async function main(): Promise<void> {
         assert(proposal.status === 'completed', `Expected a completed project, got ${proposal.status}`)
 
         const before = await getProject(proposalN.sc21Project)
-        const expectedPay = usdSumToLibWei(before.project.rateUsdStr, '80', '8')
+        const expectedPay = sc21EarlyPayout(4, before.project.rateUsdStr)
         const { receipt } = await injectAndAssert(
           sc21Tx('dao_project_milestone_claim', voter16, { milestoneNumber: 4 }),
           voter16,
