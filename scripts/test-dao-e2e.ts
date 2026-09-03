@@ -498,6 +498,14 @@ function assert(condition: boolean, message: string): asserts condition {
   if (!condition) throw new Error(message)
 }
 
+/**
+ * Stamps the transaction at injection time.
+ *
+ * This overwrites whatever `timestamp` the caller set, so transaction literals must not carry one —
+ * it would read as meaningful and be silently discarded. A test that needs a *specific* timestamp
+ * cannot use injectAndAssert/injectExpectReject; it has to build and sign the transaction itself,
+ * as fundAccount does.
+ */
 function refreshTxTimestamp<T extends object>(tx: T): void {
   const timestampedTx = tx as { timestamp?: number }
   timestampedTx.timestamp = Date.now()
@@ -1590,7 +1598,6 @@ async function createDaoProposal(opts: ProposalCreateOptions): Promise<number> {
       gracePeriod: opts.gracePeriodMs,
       // Projects carry milestones and never reach the change-set validator.
       ...(proposalType === 'project' ? { project: opts.project } : { [proposalPayloadKey(proposalType)]: { changes: asChangeSets(opts.changes ?? []) } }),
-      timestamp: Date.now(),
     }
     if (opts.startTime !== undefined) tx.startTime = opts.startTime
     await injectAndAssert(tx, opts.proposer, { expectedBalanceDelta: opts.expectedBalanceDelta })
@@ -1624,7 +1631,6 @@ async function committeeAcceptToVoting(
         from: committee[i].address,
         proposalId: daoProposalId(proposalNumber),
         vote: 'accept',
-        timestamp: Date.now(),
       },
       committee[i],
     )
@@ -1637,7 +1643,6 @@ async function committeeAcceptToVoting(
       networkId: currentNetworkId,
       from: actor.address,
       proposalId: daoProposalId(proposalNumber),
-      timestamp: Date.now(),
     },
     actor,
   )
@@ -1660,7 +1665,6 @@ async function castVote(
       proposalId: daoProposalId(proposalNumber),
       weights,
       spend: libToWei(spendLib),
-      timestamp: Date.now(),
     },
     voter,
     { expectedBalanceDelta },
@@ -1676,7 +1680,6 @@ async function finalizeVote(proposalNumber: number, actor: TestAccount, sleepBuf
       networkId: currentNetworkId,
       from: actor.address,
       proposalId: daoProposalId(proposalNumber),
-      timestamp: Date.now(),
     },
     actor,
   )
@@ -1698,7 +1701,7 @@ async function attemptApplyAndVerify(
   verifyParameterEffect: (receipt: any) => Promise<void>,
 ): Promise<ApplyAttempt> {
   const result = await injectAndAssert(
-    { type: 'dao_apply_parameters', networkId: currentNetworkId, from: actor.address, proposalId: daoProposalId(proposalNumber), timestamp: Date.now() },
+    { type: 'dao_apply_parameters', networkId: currentNetworkId, from: actor.address, proposalId: daoProposalId(proposalNumber) },
     actor,
   )
   assert((await getProposal(proposalNumber)).status === 'applied', `Expected proposal #${proposalNumber} status 'applied'`)
@@ -1806,7 +1809,7 @@ async function applyAcceptedProposal(
 
   for (const voter of eligibleVoters.slice(0, votesNeeded)) {
     await injectAndAssert(
-      { type: 'dao_unapply_parameters', networkId: currentNetworkId, from: voter.address, proposalId: daoProposalId(proposalNumber), timestamp: Date.now() },
+      { type: 'dao_unapply_parameters', networkId: currentNetworkId, from: voter.address, proposalId: daoProposalId(proposalNumber) },
       voter,
     )
   }
@@ -1888,7 +1891,6 @@ async function claimAndAssertRewards(proposalNumber: number, claimers: TestAccou
         networkId: currentNetworkId,
         from: claimant.address,
         proposalId: daoProposalId(proposalNumber),
-        timestamp: Date.now(),
       },
       claimant,
       { expectedBalanceDelta: receipt => asBigInt(receipt.additionalInfo.reward) - asBigInt(receipt.transactionFee ?? 0n) },
@@ -2320,8 +2322,9 @@ async function main(): Promise<void> {
   // dao_vote_result being submitted late by whoever happens to call them.
   const LATE_TRANSITION_DELAY_MS = 20_000
   // Sleeps well past targetMs, then injects tx — used by Scenario 18 to submit
-  // dao_committee_result/dao_vote_result deliberately late. Takes a builder, not a pre-built tx,
-  // so `timestamp: Date.now()` inside it is captured after the sleep, not before.
+  // dao_committee_result/dao_vote_result deliberately late. The lateness comes from the sleep: the
+  // transaction is stamped at injection, after it. Takes a builder rather than a pre-built tx so
+  // anything else time-dependent would also be captured after the wait.
   async function injectLate<T extends object>(targetMs: number, label: string, buildTx: () => T, actor: TestAccount): Promise<any> {
     await sleepUntilTimestamp(targetMs, `${label} (deliberately late)`, SLEEP_BUFFER_MS + LATE_TRANSITION_DELAY_MS)
     return injectAndAssert(buildTx(), actor)
@@ -2416,7 +2419,6 @@ async function main(): Promise<void> {
             from: committee[0].address,
             proposalId: daoProposalId(proposalN.sc1),
             vote: 'accept',
-            timestamp: Date.now(),
           },
           committee[0],
         )
@@ -2437,7 +2439,6 @@ async function main(): Promise<void> {
             from: committee[1].address,
             proposalId: daoProposalId(proposalN.sc1),
             vote: 'accept',
-            timestamp: Date.now(),
           },
           committee[1],
         )
@@ -2458,7 +2459,6 @@ async function main(): Promise<void> {
             from: committee[2].address,
             proposalId: daoProposalId(proposalN.sc1),
             vote: 'accept',
-            timestamp: Date.now(),
           },
           committee[2],
         )
@@ -2482,7 +2482,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: proposer.address,
             proposalId: daoProposalId(proposalN.sc1),
-            timestamp: Date.now(),
           },
           proposer,
         )
@@ -2516,7 +2515,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: proposer.address,
             proposalId: daoProposalId(proposalN.sc1),
-            timestamp: Date.now(),
           },
           proposer,
         )
@@ -2550,7 +2548,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: proposer.address,
             proposalId: daoProposalId(proposalN.sc1),
-            timestamp: Date.now(),
           },
           proposer,
           'did not vote',
@@ -2581,7 +2578,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter1.address,
             proposalId: daoProposalId(proposalN.sc1),
-            timestamp: Date.now(),
           },
           voter1,
           'already claimed',
@@ -2615,7 +2611,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter3.address,
             proposalId: daoProposalId(proposalN.sc1),
-            timestamp: Date.now(),
           },
           voter3,
           { expectedBalanceDelta: receipt => -asBigInt(receipt.transactionFee ?? 0n) },
@@ -2631,7 +2626,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter3.address,
             proposalId: daoProposalId(proposalN.sc1),
-            timestamp: Date.now(),
           },
           voter3,
           'Nothing left to burn',
@@ -2678,7 +2672,6 @@ async function main(): Promise<void> {
               proposalId: daoProposalId(proposalN.sc2),
               vote: 'withhold',
               withheldReason: 'Test withhold',
-              timestamp: Date.now(),
             },
             committee[i],
           )
@@ -2696,7 +2689,7 @@ async function main(): Promise<void> {
         const proposalBefore = await getProposal(proposalN.sc2)
         await sleepUntilTimestamp(proposalBefore.reviewEnd, 'reviewEnd', SLEEP_BUFFER_MS)
         await injectAndAssert(
-          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer.address, proposalId: daoProposalId(proposalN.sc2), timestamp: Date.now() },
+          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer.address, proposalId: daoProposalId(proposalN.sc2) },
           proposer,
         )
         const proposal = await getProposal(proposalN.sc2)
@@ -2733,7 +2726,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: proposer.address,
             proposalId: daoProposalId(proposalN.sc2),
-            timestamp: Date.now(),
           },
           proposer,
           'withheld',
@@ -2784,7 +2776,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: proposer.address,
             proposalId: daoProposalId(proposalN.sc3),
-            timestamp: Date.now(),
           },
           proposer,
         )
@@ -2801,7 +2792,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: proposer.address,
             proposalId: daoProposalId(proposalN.sc3),
-            timestamp: Date.now(),
           },
           proposer,
           'not in review status',
@@ -2819,7 +2809,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: proposer.address,
             proposalId: daoProposalId(proposalN.sc3),
-            timestamp: Date.now(),
           },
           proposer,
         )
@@ -2858,7 +2847,6 @@ async function main(): Promise<void> {
             governance: {
               changes: [[{ key: 'pctBurned', value: '70', current: '50' }]],
             },
-            timestamp: Date.now(),
           }),
           voter1,
           'committee',
@@ -2888,7 +2876,6 @@ async function main(): Promise<void> {
                 [{ key: 'pctBurned', value: '65', current: '50' }],
               ],
             },
-            timestamp: Date.now(),
           }),
           committee[0],
           'emergency',
@@ -2929,7 +2916,6 @@ async function main(): Promise<void> {
               from: committee[i].address,
               proposalId: daoProposalId(proposalN.sc4),
               vote: 'accept',
-              timestamp: Date.now(),
             },
             committee[i],
           )
@@ -2984,7 +2970,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter1.address,
             proposalId: daoProposalId(proposalN.sc4),
-            timestamp: Date.now(),
           },
           voter1,
           'committee member',
@@ -3019,7 +3004,6 @@ async function main(): Promise<void> {
               networkId: currentNetworkId,
               from: actor.address,
               proposalId: daoProposalId(proposalN.sc4),
-              timestamp: Date.now(),
             },
             actor,
             'Nothing left to burn',
@@ -3058,7 +3042,6 @@ async function main(): Promise<void> {
             from: voter1.address,
             proposalId: daoProposalId(proposalN.sc5),
             vote: 'accept',
-            timestamp: Date.now(),
           },
           voter1,
           'committee',
@@ -3078,7 +3061,6 @@ async function main(): Promise<void> {
             proposalId: daoProposalId(proposalN.sc5),
             weights: [1, 0],
             spend: libToWei(minVoteSpendLib),
-            timestamp: Date.now(),
           },
           voter1,
           'voting',
@@ -3095,7 +3077,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: proposer.address,
             proposalId: daoProposalId(proposalN.sc5),
-            timestamp: Date.now(),
           },
           proposer,
           'voting',
@@ -3161,7 +3142,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter9.address,
             proposalId: daoProposalId(proposalN.sc6),
-            timestamp: Date.now(),
           },
           voter9,
         )
@@ -3184,7 +3164,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter10.address,
             proposalId: daoProposalId(proposalN.sc6),
-            timestamp: Date.now(),
           },
           voter10,
         )
@@ -3204,7 +3183,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: proposer4.address,
             proposalId: daoProposalId(proposalN.sc6),
-            timestamp: Date.now(),
           },
           proposer4,
           'accepted status',
@@ -3331,7 +3309,6 @@ async function main(): Promise<void> {
             options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             governance: { changes: [[{ key: 'nodeRewardAmountUsdStr', value: '1.5', current: '1.0' }]] },
-            timestamp: Date.now(),
           }),
           proposer6,
           'governance parameters',
@@ -3355,7 +3332,6 @@ async function main(): Promise<void> {
             options: ['no', 'yes'],
             gracePeriod: graceDurationMs,
             protocol: { changes: [[{ key: 'nodeRewardAmountUsdStr', value: '1.5', current: '1.25' }]] },
-            timestamp: Date.now(),
           }),
           proposer7,
           'protocol parameters',
@@ -3506,7 +3482,6 @@ async function main(): Promise<void> {
                 { key: 'countEndpointStart', value: '-3', current: '-1' },
               ]],
             },
-            timestamp: Date.now(),
           }),
           proposer7,
           'overlapping targets',
@@ -3668,7 +3643,6 @@ async function main(): Promise<void> {
             from: committee[1].address,
             proposalId: daoProposalId(proposalN.sc9),
             vote: 'accept',
-            timestamp: Date.now(),
           },
           committee[1],
           'has not started',
@@ -3687,7 +3661,6 @@ async function main(): Promise<void> {
             from: committee[1].address,
             proposalId: daoProposalId(proposalN.sc9),
             vote: 'accept',
-            timestamp: Date.now(),
           },
           committee[1],
         )
@@ -3724,7 +3697,7 @@ async function main(): Promise<void> {
       '10.2 Committee member switches accept → withhold',
       async () => {
         await injectAndAssert(
-          { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[3].address, proposalId: daoProposalId(proposalN.sc10), vote: 'accept', timestamp: Date.now() },
+          { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[3].address, proposalId: daoProposalId(proposalN.sc10), vote: 'accept' },
           committee[3],
         )
         await injectAndAssert(
@@ -3735,7 +3708,6 @@ async function main(): Promise<void> {
             proposalId: daoProposalId(proposalN.sc10),
             vote: 'withhold',
             withheldReason: 'Need more analysis',
-            timestamp: Date.now(),
           },
           committee[3],
         )
@@ -3757,7 +3729,6 @@ async function main(): Promise<void> {
               proposalId: daoProposalId(proposalN.sc10),
               vote: 'withhold',
               withheldReason: 'Committee withhold regression test',
-              timestamp: Date.now(),
             },
             committee[i],
           )
@@ -3774,7 +3745,7 @@ async function main(): Promise<void> {
         const proposalBefore = await getProposal(proposalN.sc10)
         await sleepUntilTimestamp(proposalBefore.reviewEnd, 'reviewEnd', SLEEP_BUFFER_MS)
         await injectAndAssert(
-          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer3.address, proposalId: daoProposalId(proposalN.sc10), timestamp: Date.now() },
+          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer3.address, proposalId: daoProposalId(proposalN.sc10) },
           proposer3,
         )
         const proposal = await getProposal(proposalN.sc10)
@@ -3811,7 +3782,7 @@ async function main(): Promise<void> {
       async () => {
         for (const i of [2, 4]) {
           await injectAndAssert(
-            { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[i].address, proposalId: daoProposalId(proposalN.sc11), vote: 'accept', timestamp: Date.now() },
+            { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[i].address, proposalId: daoProposalId(proposalN.sc11), vote: 'accept' },
             committee[i],
           )
         }
@@ -3824,7 +3795,6 @@ async function main(): Promise<void> {
               proposalId: daoProposalId(proposalN.sc11),
               vote: 'withhold',
               withheldReason: 'Tie regression test',
-              timestamp: Date.now(),
             },
             committee[i],
           )
@@ -3839,7 +3809,7 @@ async function main(): Promise<void> {
         const proposalBefore = await getProposal(proposalN.sc11)
         await sleepUntilTimestamp(proposalBefore.reviewEnd, 'reviewEnd', SLEEP_BUFFER_MS)
         await injectAndAssert(
-          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer9.address, proposalId: daoProposalId(proposalN.sc11), timestamp: Date.now() },
+          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer9.address, proposalId: daoProposalId(proposalN.sc11) },
           proposer9,
         )
         const proposal = await getProposal(proposalN.sc11)
@@ -3942,7 +3912,6 @@ async function main(): Promise<void> {
             options: ['no', 'yes', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
             gracePeriod: graceDurationMs,
             governance: { changes: [[{ key: 'pctBurned', value: '59', current: '50' }]] },
-            timestamp: Date.now(),
           }),
           proposer10,
         )
@@ -3977,7 +3946,6 @@ async function main(): Promise<void> {
               proposalId: daoProposalId(proposalN.sc13),
               weights: c.weights,
               spend: c.spend,
-              timestamp: Date.now(),
             },
             voter12,
             c.reason,
@@ -3993,7 +3961,7 @@ async function main(): Promise<void> {
         const matchesRejectedChange = (change: any) => String(change?.appData?.dao?.pctBurned) === '58'
         const matchingChangesBefore = (await getProposalListOfChanges()).filter(matchesRejectedChange).length
         await injectExpectReject(
-          { type: 'dao_apply_parameters', networkId: currentNetworkId, from: proposer10.address, proposalId: daoProposalId(proposalN.sc13), timestamp: Date.now() },
+          { type: 'dao_apply_parameters', networkId: currentNetworkId, from: proposer10.address, proposalId: daoProposalId(proposalN.sc13) },
           proposer10,
           'Grace period',
         )
@@ -4060,7 +4028,6 @@ async function main(): Promise<void> {
               proposalId: daoProposalId(proposalN.sc14EmergencyWithhold),
               vote: 'withhold',
               withheldReason: 'Emergency withhold E2E test',
-              timestamp: Date.now(),
             },
             committee[i],
           )
@@ -4086,7 +4053,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter13.address,
             proposalId: daoProposalId(proposalN.sc14EmergencyWithhold),
-            timestamp: Date.now(),
           },
           voter13,
           'current: withheld',
@@ -4102,7 +4068,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter13.address,
             proposalId: daoProposalId(proposalN.sc14EmergencyWithhold),
-            timestamp: Date.now(),
           },
           voter13,
           'already burned',
@@ -4140,7 +4105,6 @@ async function main(): Promise<void> {
             from: committee[4].address,
             proposalId: daoProposalId(proposalN.sc15A),
             vote: 'accept',
-            timestamp: Date.now(),
           },
           committee[4],
           'has not started',
@@ -4161,7 +4125,6 @@ async function main(): Promise<void> {
             from: committee[4].address,
             proposalId: daoProposalId(proposalN.sc15A),
             vote: 'accept',
-            timestamp: Date.now(),
           },
           committee[4],
           'review period has ended',
@@ -4178,7 +4141,6 @@ async function main(): Promise<void> {
             from: committee[4].address,
             proposalId: daoProposalId(proposalN.sc15A),
             vote: 'withhold',
-            timestamp: Date.now(),
           },
           committee[4],
           'withheldReason',
@@ -4191,7 +4153,6 @@ async function main(): Promise<void> {
             proposalId: daoProposalId(proposalN.sc15A),
             vote: 'withhold',
             withheldReason: '',
-            timestamp: Date.now(),
           },
           committee[4],
           'withheldReason',
@@ -4294,7 +4255,6 @@ async function main(): Promise<void> {
               options: c.options,
               gracePeriod: c.gracePeriod,
               governance: { changes: c.useRawChanges ? c.changes : asChangeSets(c.changes) },
-              timestamp: Date.now(),
             }),
             c.account,
             c.reason,
@@ -4322,7 +4282,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter14.address,
             proposalId: daoProposalId(proposalN.sc15B),
-            timestamp: Date.now(),
           },
           voter14,
           'Claim period has not ended yet',
@@ -4340,7 +4299,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter13.address,
             proposalId: daoProposalId(proposalN.sc15B),
-            timestamp: Date.now(),
           },
           voter13,
           'Claim period has ended',
@@ -4368,7 +4326,6 @@ async function main(): Promise<void> {
             governance: {
               changes: [[{ key: 'committeeAddresses', value: JSON.stringify(invalidCommitteeAddresses), current: JSON.stringify(daoParams.committeeAddresses) }]],
             },
-            timestamp: Date.now(),
           }),
           proposer3,
           'committeeAddresses must contain between',
@@ -4409,7 +4366,7 @@ async function main(): Promise<void> {
       '16.2 Non-decisive emergency committee split leaves status review',
       async () => {
         await injectAndAssert(
-          { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[4].address, proposalId: daoProposalId(proposalN.sc16EmergencyTimeout), vote: 'accept', timestamp: Date.now() },
+          { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[4].address, proposalId: daoProposalId(proposalN.sc16EmergencyTimeout), vote: 'accept' },
           committee[4],
         )
         await injectAndAssert(
@@ -4420,7 +4377,6 @@ async function main(): Promise<void> {
             proposalId: daoProposalId(proposalN.sc16EmergencyTimeout),
             vote: 'withhold',
             withheldReason: 'Emergency timeout split test',
-            timestamp: Date.now(),
           },
           committee[2],
         )
@@ -4434,7 +4390,7 @@ async function main(): Promise<void> {
         const proposalBefore = await getProposal(proposalN.sc16EmergencyTimeout)
         await sleepUntilTimestamp(proposalBefore.reviewEnd, 'reviewEnd', SLEEP_BUFFER_MS)
         await injectAndAssert(
-          { type: 'dao_committee_result', networkId: currentNetworkId, from: voter14.address, proposalId: daoProposalId(proposalN.sc16EmergencyTimeout), timestamp: Date.now() },
+          { type: 'dao_committee_result', networkId: currentNetworkId, from: voter14.address, proposalId: daoProposalId(proposalN.sc16EmergencyTimeout) },
           voter14,
         )
         const proposal = await getProposal(proposalN.sc16EmergencyTimeout)
@@ -4452,7 +4408,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter16.address,
             proposalId: daoProposalId(proposalN.sc16EmergencyTimeout),
-            timestamp: Date.now(),
           },
           voter16,
           'accepted status',
@@ -4508,7 +4463,6 @@ async function main(): Promise<void> {
               from: committee[i].address,
               proposalId: daoProposalId(proposalN.sc17EmergencyRecovery),
               vote: 'accept',
-              timestamp: Date.now(),
             },
             committee[i],
           )
@@ -4543,7 +4497,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter5.address,
             proposalId: daoProposalId(proposalN.sc17EmergencyRecovery),
-            timestamp: Date.now(),
           },
           voter5,
           'committee member',
@@ -4564,7 +4517,6 @@ async function main(): Promise<void> {
               networkId: currentNetworkId,
               from: committee[i].address,
               proposalId: daoProposalId(proposalN.sc17EmergencyRecovery),
-              timestamp: Date.now(),
             },
             committee[i],
             { expectedBalanceDelta: receipt => -asBigInt(receipt.transactionFee ?? 0n) },
@@ -4605,7 +4557,6 @@ async function main(): Promise<void> {
                 networkId: currentNetworkId,
                 from: committee[0].address,
                 proposalId: daoProposalId(proposalN.sc17EmergencyRecovery),
-                timestamp: Date.now(),
               },
               committee[0],
               'already submitted',
@@ -4625,7 +4576,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: committee[1].address,
             proposalId: daoProposalId(proposalN.sc17EmergencyRecovery),
-            timestamp: Date.now(),
           },
           committee[1],
           'not in applied status',
@@ -4678,7 +4628,7 @@ async function main(): Promise<void> {
       async () => {
         for (const i of [0, 1, 2]) {
           await injectAndAssert(
-            { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[i].address, proposalId: daoProposalId(proposalN.sc18LateTransition), vote: 'accept', timestamp: Date.now() },
+            { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[i].address, proposalId: daoProposalId(proposalN.sc18LateTransition), vote: 'accept' },
             committee[i],
           )
         }
@@ -4687,7 +4637,7 @@ async function main(): Promise<void> {
         await injectLate(
           reviewEnd,
           'reviewEnd',
-          () => ({ type: 'dao_committee_result', networkId: currentNetworkId, from: proposer5.address, proposalId: daoProposalId(proposalN.sc18LateTransition), timestamp: Date.now() }),
+          () => ({ type: 'dao_committee_result', networkId: currentNetworkId, from: proposer5.address, proposalId: daoProposalId(proposalN.sc18LateTransition) }),
           proposer5,
         )
         const proposal = await getProposal(proposalN.sc18LateTransition)
@@ -4716,7 +4666,7 @@ async function main(): Promise<void> {
         await injectLate(
           votingEnd,
           'votingEnd',
-          () => ({ type: 'dao_vote_result', networkId: currentNetworkId, from: proposer5.address, proposalId: daoProposalId(proposalN.sc18LateTransition), timestamp: Date.now() }),
+          () => ({ type: 'dao_vote_result', networkId: currentNetworkId, from: proposer5.address, proposalId: daoProposalId(proposalN.sc18LateTransition) }),
           proposer5,
         )
         const proposal = await getProposal(proposalN.sc18LateTransition)
@@ -4823,7 +4773,7 @@ async function main(): Promise<void> {
         assert(Date.now() < proposalBefore.startTime, 'Expected sc19CancelReview to still be before its startTime at cancel time')
 
         const { receipt } = await injectAndAssert(
-          { type: 'dao_cancel', networkId: currentNetworkId, from: committee[3].address, proposalId: daoProposalId(proposalN.sc19CancelReview), timestamp: Date.now() },
+          { type: 'dao_cancel', networkId: currentNetworkId, from: committee[3].address, proposalId: daoProposalId(proposalN.sc19CancelReview) },
           committee[3],
         )
         assert(receipt.additionalInfo?.proposalStatus === 'canceled', `Expected receipt proposalStatus 'canceled', got ${JSON.stringify(receipt.additionalInfo)}`)
@@ -4839,7 +4789,7 @@ async function main(): Promise<void> {
       '19.2b dao_claim_reward rejected on the canceled sc19CancelReview (no voters, empty pool)',
       async () => {
         await injectExpectReject(
-          { type: 'dao_claim_reward', networkId: currentNetworkId, from: voter1.address, proposalId: daoProposalId(proposalN.sc19CancelReview), timestamp: Date.now() },
+          { type: 'dao_claim_reward', networkId: currentNetworkId, from: voter1.address, proposalId: daoProposalId(proposalN.sc19CancelReview) },
           voter1,
           'did not vote',
         )
@@ -4855,13 +4805,13 @@ async function main(): Promise<void> {
         // expiring while an earlier proposal's longer flow is still running.
         for (const i of [0, 1, 2]) {
           await injectAndAssert(
-            { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[i].address, proposalId: daoProposalId(proposalN.sc19CancelVoting), vote: 'accept', timestamp: Date.now() },
+            { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[i].address, proposalId: daoProposalId(proposalN.sc19CancelVoting), vote: 'accept' },
             committee[i],
           )
         }
         for (const i of [1, 2, 3]) {
           await injectAndAssert(
-            { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[i].address, proposalId: daoProposalId(proposalN.sc19CancelAccepted), vote: 'accept', timestamp: Date.now() },
+            { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[i].address, proposalId: daoProposalId(proposalN.sc19CancelAccepted), vote: 'accept' },
             committee[i],
           )
         }
@@ -4871,7 +4821,7 @@ async function main(): Promise<void> {
         // any other committee vote, so they must be cast here too, not deferred to a later step.
         for (const i of [1, 2, 3]) {
           await injectAndAssert(
-            { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[i].address, proposalId: daoProposalId(proposalN.sc19CancelApplied), vote: 'accept', timestamp: Date.now() },
+            { type: 'dao_committee_vote', networkId: currentNetworkId, from: committee[i].address, proposalId: daoProposalId(proposalN.sc19CancelApplied), vote: 'accept' },
             committee[i],
           )
         }
@@ -4884,14 +4834,14 @@ async function main(): Promise<void> {
         await sleepUntilTimestamp(acceptedBeforeResult.reviewEnd, 'reviewEnd', SLEEP_BUFFER_MS)
 
         await injectAndAssert(
-          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer8.address, proposalId: daoProposalId(proposalN.sc19CancelVoting), timestamp: Date.now() },
+          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer8.address, proposalId: daoProposalId(proposalN.sc19CancelVoting) },
           proposer8,
         )
         const voting = await getProposal(proposalN.sc19CancelVoting)
         assert(voting.status === 'voting', `Expected status 'voting', got '${voting.status}'`)
 
         await injectAndAssert(
-          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer9.address, proposalId: daoProposalId(proposalN.sc19CancelAccepted), timestamp: Date.now() },
+          { type: 'dao_committee_result', networkId: currentNetworkId, from: proposer9.address, proposalId: daoProposalId(proposalN.sc19CancelAccepted) },
           proposer9,
         )
         const votingAccepted = await getProposal(proposalN.sc19CancelAccepted)
@@ -4913,7 +4863,7 @@ async function main(): Promise<void> {
       '19.4b dao_cancel rejected from a non-committee sender while sc19CancelVoting is voting',
       async () => {
         await injectExpectReject(
-          { type: 'dao_cancel', networkId: currentNetworkId, from: voter1.address, proposalId: daoProposalId(proposalN.sc19CancelVoting), timestamp: Date.now() },
+          { type: 'dao_cancel', networkId: currentNetworkId, from: voter1.address, proposalId: daoProposalId(proposalN.sc19CancelVoting) },
           voter1,
           'committee member',
         )
@@ -4928,7 +4878,7 @@ async function main(): Promise<void> {
         const expectedBurn = (poolBeforeCancel * BigInt(Math.round(pctBurned))) / 100n
 
         const { receipt } = await injectAndAssert(
-          { type: 'dao_cancel', networkId: currentNetworkId, from: committee[3].address, proposalId: daoProposalId(proposalN.sc19CancelVoting), timestamp: Date.now() },
+          { type: 'dao_cancel', networkId: currentNetworkId, from: committee[3].address, proposalId: daoProposalId(proposalN.sc19CancelVoting) },
           committee[3],
         )
         assert(receipt.additionalInfo?.proposalStatus === 'canceled', `Expected receipt proposalStatus 'canceled', got ${JSON.stringify(receipt.additionalInfo)}`)
@@ -4950,7 +4900,7 @@ async function main(): Promise<void> {
         // flow for sc19CancelApplied below — sc19CancelVoting's own claimEnd is fixed relative to
         // its cancel timestamp (19.5), not to how long unrelated later steps take to run.
         const { receipt } = await injectAndAssert(
-          { type: 'dao_claim_reward', networkId: currentNetworkId, from: voter13.address, proposalId: daoProposalId(proposalN.sc19CancelVoting), timestamp: Date.now() },
+          { type: 'dao_claim_reward', networkId: currentNetworkId, from: voter13.address, proposalId: daoProposalId(proposalN.sc19CancelVoting) },
           voter13,
         )
         const reward = asBigInt(receipt.additionalInfo.reward)
@@ -4963,7 +4913,7 @@ async function main(): Promise<void> {
       '19.7  dao_cancel from committee cancels sc19CancelAccepted (from accepted), no additional burn',
       async () => {
         const { receipt } = await injectAndAssert(
-          { type: 'dao_cancel', networkId: currentNetworkId, from: committee[4].address, proposalId: daoProposalId(proposalN.sc19CancelAccepted), timestamp: Date.now() },
+          { type: 'dao_cancel', networkId: currentNetworkId, from: committee[4].address, proposalId: daoProposalId(proposalN.sc19CancelAccepted) },
           committee[4],
         )
         assert(receipt.additionalInfo?.proposalStatus === 'canceled', `Expected receipt proposalStatus 'canceled', got ${JSON.stringify(receipt.additionalInfo)}`)
@@ -4995,7 +4945,7 @@ async function main(): Promise<void> {
       '19.9  dao_cancel rejected against sc19CancelApplied (already applied)',
       async () => {
         await injectExpectReject(
-          { type: 'dao_cancel', networkId: currentNetworkId, from: committee[1].address, proposalId: daoProposalId(proposalN.sc19CancelApplied), timestamp: Date.now() },
+          { type: 'dao_cancel', networkId: currentNetworkId, from: committee[1].address, proposalId: daoProposalId(proposalN.sc19CancelApplied) },
           committee[1],
           'voting or accepted',
         )
@@ -5008,7 +4958,7 @@ async function main(): Promise<void> {
         await sleepUntilTimestamp(proposalBefore.claimEnd, 'claimEnd', SLEEP_BUFFER_MS)
         const remainingBeforeBurn = asBigInt(proposalBefore.voterRewardPool) - asBigInt(proposalBefore.claimedReward)
         const { receipt } = await injectAndAssert(
-          { type: 'dao_burn_reward', networkId: currentNetworkId, from: voter14.address, proposalId: daoProposalId(proposalN.sc19CancelAccepted), timestamp: Date.now() },
+          { type: 'dao_burn_reward', networkId: currentNetworkId, from: voter14.address, proposalId: daoProposalId(proposalN.sc19CancelAccepted) },
           voter14,
         )
         assert(asBigInt(receipt.additionalInfo.burned) === remainingBeforeBurn, `Expected burned ${remainingBeforeBurn}, got ${receipt.additionalInfo.burned}`)
@@ -5020,18 +4970,18 @@ async function main(): Promise<void> {
       '19.11 Sanity: dao_vote/dao_vote_result reject sc19CancelVoting, dao_apply_parameters rejects sc19CancelAccepted',
       async () => {
         await injectExpectReject(
-          { type: 'dao_vote', networkId: currentNetworkId, from: voter13.address, proposalId: daoProposalId(proposalN.sc19CancelVoting), weights: [0, 1], spend: libToWei(minVoteSpendLib), timestamp: Date.now() },
+          { type: 'dao_vote', networkId: currentNetworkId, from: voter13.address, proposalId: daoProposalId(proposalN.sc19CancelVoting), weights: [0, 1], spend: libToWei(minVoteSpendLib) },
           voter13,
           'voting',
         )
         await injectExpectReject(
-          { type: 'dao_vote_result', networkId: currentNetworkId, from: committee[3].address, proposalId: daoProposalId(proposalN.sc19CancelVoting), timestamp: Date.now() },
+          { type: 'dao_vote_result', networkId: currentNetworkId, from: committee[3].address, proposalId: daoProposalId(proposalN.sc19CancelVoting) },
           committee[3],
           'voting',
         )
         const matchesRejectedChange = (change: any) => String(change?.appData?.dao?.pctBurned) === '68'
         await expectPreCrackRejectNoGlobalChange(
-          { type: 'dao_apply_parameters', networkId: currentNetworkId, from: committee[4].address, proposalId: daoProposalId(proposalN.sc19CancelAccepted), timestamp: Date.now() },
+          { type: 'dao_apply_parameters', networkId: currentNetworkId, from: committee[4].address, proposalId: daoProposalId(proposalN.sc19CancelAccepted) },
           committee[4],
           'accepted status',
           proposalN.sc19CancelAccepted,
@@ -5157,7 +5107,6 @@ async function main(): Promise<void> {
             networkId: currentNetworkId,
             from: voter15.address,
             proposalId: daoProposalId(proposalN.sc20Lifecycle),
-            timestamp: Date.now(),
           },
           voter15,
           { expectedBalanceDelta: receipt => asBigInt(receipt.additionalInfo.reward) - asBigInt(receipt.transactionFee ?? 0n) },
@@ -5258,13 +5207,13 @@ async function main(): Promise<void> {
         }
         // Projects mint, so they must always face a community vote.
         await expectProposalCreateReject(
-          n => ({ ...base, from: committee[0].address, emergency: true, options: ['no', 'yes'], proposalId: daoProposalId(n), timestamp: Date.now() }),
+          n => ({ ...base, from: committee[0].address, emergency: true, options: ['no', 'yes'], proposalId: daoProposalId(n) }),
           committee[0],
           'cannot be emergency',
         )
         // A project has one flat milestone array, so a third option would select nothing.
         await expectProposalCreateReject(
-          n => ({ ...base, emergency: false, options: ['no', 'a', 'b'], proposalId: daoProposalId(n), timestamp: Date.now() }),
+          n => ({ ...base, emergency: false, options: ['no', 'a', 'b'], proposalId: daoProposalId(n) }),
           proposer3,
           'exactly 2 entries',
         )
@@ -5282,7 +5231,6 @@ async function main(): Promise<void> {
               options: ['no', 'yes'],
               project: { milestones: [{ ...sc21Milestones[0], ...bad }], address: voter16.address },
               proposalId: daoProposalId(n),
-              timestamp: Date.now(),
             }),
             proposer3,
             'must be less than',
@@ -5294,7 +5242,7 @@ async function main(): Promise<void> {
       '21.3  Reject dao_project_start before the vote, then drive the proposal to accepted',
       async () => {
         await injectExpectReject(
-          { type: 'dao_project_start', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project), timestamp: Date.now() },
+          { type: 'dao_project_start', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project) },
           committee[0],
           'not in accepted status',
         )
@@ -5314,12 +5262,12 @@ async function main(): Promise<void> {
         await sleepUntilTimestamp(proposal.applyEligibleAt, 'applyEligibleAt', SLEEP_BUFFER_MS)
         // Minting is committee-only; the proposer has no special standing here.
         await injectExpectReject(
-          { type: 'dao_project_start', networkId: currentNetworkId, from: proposer3.address, proposalId: daoProposalId(proposalN.sc21Project), timestamp: Date.now() },
+          { type: 'dao_project_start', networkId: currentNetworkId, from: proposer3.address, proposalId: daoProposalId(proposalN.sc21Project) },
           proposer3,
           'Only a committee member',
         )
         const { receipt } = await injectAndAssert(
-          { type: 'dao_project_start', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project), timestamp: Date.now() },
+          { type: 'dao_project_start', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project) },
           committee[0],
         )
         assert(receipt.additionalInfo?.proposalStatus === 'executing', `Expected executing, got ${JSON.stringify(receipt.additionalInfo)}`)
@@ -5356,7 +5304,7 @@ async function main(): Promise<void> {
         // boundary checks now belong to claim and terminate, which the policy says must name one.
         for (const milestoneNumber of [0, sc21Milestones.length + 1]) {
           await injectExpectReject(
-            { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber, timestamp: Date.now() },
+            { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber },
             voter16,
             milestoneNumber === 0 ? 'positive integer' : 'outside the range',
           )
@@ -5368,12 +5316,12 @@ async function main(): Promise<void> {
       async () => {
         const startTime = Date.now()
         await injectAndAssert(
-          { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), proposedTime: startTime, timestamp: Date.now() },
+          { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), proposedTime: startTime },
           voter16,
         )
         // The contractor holds slot 0 and may not endorse their own proposal.
         await injectExpectReject(
-          { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), timestamp: Date.now() },
+          { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project) },
           voter16,
           'not endorse',
         )
@@ -5381,12 +5329,12 @@ async function main(): Promise<void> {
         // re-proposal landing mid-flight would convert an endorsement of one time into another's,
         // and the contractor could reset the count each time the committee neared agreement.
         await injectExpectReject(
-          { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: committee[2].address, proposalId: daoProposalId(proposalN.sc21Project), proposedTime: startTime - 5_000, timestamp: Date.now() },
+          { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: committee[2].address, proposalId: daoProposalId(proposalN.sc21Project), proposedTime: startTime - 5_000 },
           committee[2],
           'already been proposed',
         )
         await injectExpectReject(
-          { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), proposedTime: startTime - 5_000, timestamp: Date.now() },
+          { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), proposedTime: startTime - 5_000 },
           voter16,
           'already been proposed',
         )
@@ -5396,7 +5344,7 @@ async function main(): Promise<void> {
           `Rejected re-proposals must leave the original proposedTime ${startTime}, got ${stillPending.project.milestones[0].proposedTime}`,
         )
         await injectAndAssert(
-          { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project), timestamp: Date.now() },
+          { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project) },
           committee[0],
         )
         // Two of three so far — still pending.
@@ -5404,7 +5352,7 @@ async function main(): Promise<void> {
         assert(partway.project.milestones[0].status === 'pending', 'Milestone should not commit on two endorsements')
 
         await injectAndAssert(
-          { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: committee[1].address, proposalId: daoProposalId(proposalN.sc21Project), timestamp: Date.now() },
+          { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: committee[1].address, proposalId: daoProposalId(proposalN.sc21Project) },
           committee[1],
         )
         const milestone = await waitForMilestoneStatus(proposalN.sc21Project, 1, 'executing')
@@ -5423,7 +5371,7 @@ async function main(): Promise<void> {
         const addressB = voter14.address
 
         await injectAndAssert(
-          { type: 'dao_project_change_address', networkId: currentNetworkId, from: committee[0].address, proposalId, proposedAddress: addressA, timestamp: Date.now() },
+          { type: 'dao_project_change_address', networkId: currentNetworkId, from: committee[0].address, proposalId, proposedAddress: addressA },
           committee[0],
         )
         let view = await getProject(proposalN.sc21Project)
@@ -5431,7 +5379,7 @@ async function main(): Promise<void> {
 
         // Policy line 352: called without an address, it endorses whatever is pending.
         await injectAndAssert(
-          { type: 'dao_project_change_address', networkId: currentNetworkId, from: committee[1].address, proposalId, timestamp: Date.now() },
+          { type: 'dao_project_change_address', networkId: currentNetworkId, from: committee[1].address, proposalId },
           committee[1],
         )
         view = await getProject(proposalN.sc21Project)
@@ -5439,7 +5387,7 @@ async function main(): Promise<void> {
 
         // Policy line 353: called with an address, it re-proposes and resets the count to zero.
         await injectAndAssert(
-          { type: 'dao_project_change_address', networkId: currentNetworkId, from: committee[2].address, proposalId, proposedAddress: addressB, timestamp: Date.now() },
+          { type: 'dao_project_change_address', networkId: currentNetworkId, from: committee[2].address, proposalId, proposedAddress: addressB },
           committee[2],
         )
         view = await getProject(proposalN.sc21Project)
@@ -5448,13 +5396,13 @@ async function main(): Promise<void> {
 
         // A member cannot endorse the same pending value twice.
         await injectExpectReject(
-          { type: 'dao_project_change_address', networkId: currentNetworkId, from: committee[2].address, proposalId, timestamp: Date.now() },
+          { type: 'dao_project_change_address', networkId: currentNetworkId, from: committee[2].address, proposalId },
           committee[2],
           'already endorsed',
         )
         // Only committee members may take part, and the contractor is not one of them here.
         await injectExpectReject(
-          { type: 'dao_project_change_address', networkId: currentNetworkId, from: voter16.address, proposalId, timestamp: Date.now() },
+          { type: 'dao_project_change_address', networkId: currentNetworkId, from: voter16.address, proposalId },
           voter16,
           'Only a committee member',
         )
@@ -5471,12 +5419,12 @@ async function main(): Promise<void> {
         const endTime = startedAt + 1_000
 
         await injectAndAssert(
-          { type: 'dao_project_milestone_end', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), proposedTime: endTime, timestamp: Date.now() },
+          { type: 'dao_project_milestone_end', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), proposedTime: endTime },
           voter16,
         )
         for (const member of [committee[0], committee[1]]) {
           await injectAndAssert(
-            { type: 'dao_project_milestone_end', networkId: currentNetworkId, from: member.address, proposalId: daoProposalId(proposalN.sc21Project), timestamp: Date.now() },
+            { type: 'dao_project_milestone_end', networkId: currentNetworkId, from: member.address, proposalId: daoProposalId(proposalN.sc21Project) },
             member,
           )
         }
@@ -5484,14 +5432,14 @@ async function main(): Promise<void> {
 
         // Only the contractor is paid.
         await injectExpectReject(
-          { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 1, timestamp: Date.now() },
+          { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 1 },
           committee[0],
           'Only the contractor',
         )
 
         const expectedPay = usdSumToLibWei(before.project.rateUsdStr, '100', '10') // cost + bonus
         const { receipt } = await injectAndAssert(
-          { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 1, timestamp: Date.now() },
+          { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 1 },
           voter16,
           { expectedBalanceDelta: r => asBigInt(r.additionalInfo.paidWei) - asBigInt(r.transactionFee ?? 0n) },
         )
@@ -5503,7 +5451,7 @@ async function main(): Promise<void> {
         // paid records the amount and settles the milestone, which is what blocks a second claim.
         assert(asBigInt(after.project.milestones[0].paid) === expectedPay, 'paid should record the amount')
         await injectExpectReject(
-          { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 1, timestamp: Date.now() },
+          { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 1 },
           voter16,
           'already been claimed',
         )
@@ -5515,24 +5463,24 @@ async function main(): Promise<void> {
         const before = await getProject(proposalN.sc21Project)
         // Committee only, and a reason is required on every submission.
         await injectExpectReject(
-          { type: 'dao_project_milestone_terminate', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 2, reason: 'contractor asks', timestamp: Date.now() },
+          { type: 'dao_project_milestone_terminate', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 2, reason: 'contractor asks' },
           voter16,
           'Only a committee member',
         )
         for (const member of [committee[0], committee[1]]) {
           await injectAndAssert(
-            { type: 'dao_project_milestone_terminate', networkId: currentNetworkId, from: member.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 2, reason: 'scope dropped', timestamp: Date.now() },
+            { type: 'dao_project_milestone_terminate', networkId: currentNetworkId, from: member.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 2, reason: 'scope dropped' },
             member,
           )
         }
         // The same member cannot vote twice to reach the threshold alone.
         await injectExpectReject(
-          { type: 'dao_project_milestone_terminate', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 2, reason: 'again', timestamp: Date.now() },
+          { type: 'dao_project_milestone_terminate', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 2, reason: 'again' },
           committee[0],
           'already voted',
         )
         await injectAndAssert(
-          { type: 'dao_project_milestone_terminate', networkId: currentNetworkId, from: committee[2].address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 2, reason: 'scope dropped', timestamp: Date.now() },
+          { type: 'dao_project_milestone_terminate', networkId: currentNetworkId, from: committee[2].address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 2, reason: 'scope dropped' },
           committee[2],
         )
         await waitForMilestoneStatus(proposalN.sc21Project, 2, 'terminated')
@@ -5545,7 +5493,7 @@ async function main(): Promise<void> {
 
         // And the contractor cannot be paid for it.
         await injectExpectReject(
-          { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 2, timestamp: Date.now() },
+          { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 2 },
           voter16,
           'not in completed status',
         )
@@ -5556,12 +5504,12 @@ async function main(): Promise<void> {
       async () => {
         const startTime = Date.now()
         await injectAndAssert(
-          { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), proposedTime: startTime, timestamp: Date.now() },
+          { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), proposedTime: startTime },
           voter16,
         )
         for (const member of [committee[0], committee[1]]) {
           await injectAndAssert(
-            { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: member.address, proposalId: daoProposalId(proposalN.sc21Project), timestamp: Date.now() },
+            { type: 'dao_project_milestone_start', networkId: currentNetworkId, from: member.address, proposalId: daoProposalId(proposalN.sc21Project) },
             member,
           )
         }
@@ -5572,12 +5520,12 @@ async function main(): Promise<void> {
         const endTime = startTime + Math.round(LATE_MILESTONE_DURATION_MS * 1.5)
         await sleepUntilTimestamp(endTime, 'milestone 3 late end', SLEEP_BUFFER_MS)
         await injectAndAssert(
-          { type: 'dao_project_milestone_end', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), proposedTime: endTime, timestamp: Date.now() },
+          { type: 'dao_project_milestone_end', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), proposedTime: endTime },
           voter16,
         )
         for (const member of [committee[0], committee[1]]) {
           await injectAndAssert(
-            { type: 'dao_project_milestone_end', networkId: currentNetworkId, from: member.address, proposalId: daoProposalId(proposalN.sc21Project), timestamp: Date.now() },
+            { type: 'dao_project_milestone_end', networkId: currentNetworkId, from: member.address, proposalId: daoProposalId(proposalN.sc21Project) },
             member,
           )
         }
@@ -5586,7 +5534,7 @@ async function main(): Promise<void> {
         const before = await getProject(proposalN.sc21Project)
         // Late, so no bonus applies and the penalty comes off the cost: 50 - 10.
         const { receipt } = await injectAndAssert(
-          { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 3, timestamp: Date.now() },
+          { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 3 },
           voter16,
           { expectedBalanceDelta: r => asBigInt(r.additionalInfo.paidWei) - asBigInt(r.transactionFee ?? 0n) },
         )
@@ -5606,7 +5554,7 @@ async function main(): Promise<void> {
         )
         assert(asBigInt(after.project.milestones[2].paid) === expectedLatePayout, 'paid records the amount and settles the milestone')
         await injectExpectReject(
-          { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 3, timestamp: Date.now() },
+          { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 3 },
           voter16,
           'already been claimed',
         )
@@ -5624,7 +5572,6 @@ async function main(): Promise<void> {
               from: member.address,
               proposalId: daoProposalId(proposalN.sc21Project),
               ...(i === 0 ? { proposedTime: startTime } : {}),
-              timestamp: Date.now(),
             },
             member,
           )
@@ -5643,7 +5590,6 @@ async function main(): Promise<void> {
               from: member.address,
               proposalId: daoProposalId(proposalN.sc21Project),
               ...(i === 0 ? { proposedTime: endTime } : {}),
-              timestamp: Date.now(),
             },
             member,
           )
@@ -5657,7 +5603,7 @@ async function main(): Promise<void> {
       '21.10 End the project with milestone 4 still owed',
       async () => {
         const { receipt } = await injectAndAssert(
-          { type: 'dao_project_end', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project), timestamp: Date.now() },
+          { type: 'dao_project_end', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project) },
           committee[0],
         )
         // Milestone 4 was last and completed, so the project reads completed (D4) even though
@@ -5683,7 +5629,7 @@ async function main(): Promise<void> {
         const before = await getProject(proposalN.sc21Project)
         const expectedPay = usdSumToLibWei(before.project.rateUsdStr, '80', '8')
         const { receipt } = await injectAndAssert(
-          { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 4, timestamp: Date.now() },
+          { type: 'dao_project_milestone_claim', networkId: currentNetworkId, from: voter16.address, proposalId: daoProposalId(proposalN.sc21Project), milestoneNumber: 4 },
           voter16,
           { expectedBalanceDelta: r => asBigInt(r.additionalInfo.paidWei) - asBigInt(r.transactionFee ?? 0n) },
         )
@@ -5693,7 +5639,7 @@ async function main(): Promise<void> {
         assert(asBigInt(after.project.balance) === 0n, 'Balance should be empty once the last milestone is paid')
         // And with nothing left, reclaim has nothing to take.
         await injectExpectReject(
-          { type: 'dao_project_reclaim_balance', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project), timestamp: Date.now() },
+          { type: 'dao_project_reclaim_balance', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project) },
           committee[0],
           'already zero',
         )
@@ -5711,7 +5657,7 @@ async function main(): Promise<void> {
 
         await sleepUntilTimestamp(proposal.claimEnd, 'claimEnd', SLEEP_BUFFER_MS)
         const { receipt } = await injectAndAssert(
-          { type: 'dao_burn_reward', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project), timestamp: Date.now() },
+          { type: 'dao_burn_reward', networkId: currentNetworkId, from: committee[0].address, proposalId: daoProposalId(proposalN.sc21Project) },
           committee[0],
           { expectedBalanceDelta: r => -asBigInt(r.transactionFee ?? 0n) },
         )
