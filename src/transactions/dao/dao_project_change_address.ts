@@ -6,7 +6,7 @@ import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { appendProjectLog } from '../../utils/daoProjectLog'
 import { loadProjectTxContext } from '../../utils/daoProjectTxContext'
-import { applyEndorsement } from '../../utils/daoProjectEndorsement'
+import { planAddressEndorsement } from '../../utils/daoProjectEndorsement'
 
 export const validate_fields = (tx: Tx.DaoProjectChangeAddress, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -67,16 +67,10 @@ export const validate = (
     return response
   }
 
-  const dryRun = applyEndorsement(
-    [...project.endorsedAddress],
-    tx.from,
-    tx.proposedAddress !== undefined,
-    proposal.committeeAddresses,
-    undefined,
-    project.proposedAddress !== undefined,
-  )
-  if (dryRun.error) {
-    response.reason = dryRun.error
+  // The same call apply() makes, so the two cannot disagree about what this transaction does.
+  const plan = planAddressEndorsement(tx, proposal.committeeAddresses, project)
+  if (plan.error) {
+    response.reason = plan.error
     return response
   }
 
@@ -106,21 +100,17 @@ export const apply = (
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
 
-  // Presence, per policy line 352: "if called without an address it is endorsing the proposed
-  // address". Read hadPendingAddress before the assignment below so the endorse branch cannot see a
-  // pending value this transaction just created.
-  const isProposing = tx.proposedAddress !== undefined
-  const hadPendingAddress = project.proposedAddress !== undefined
-  // The address this sender backed, whichever way they submitted it. Captured before the mutation
-  // below and before a commit clears proposedAddress, so a blank endorsement still records what it
-  // endorsed — that, not the mode, is what a dispute turns on.
+  // The address this sender backed, whichever way they submitted it — read before anything is
+  // written, and before a commit clears proposedAddress, so a blank endorsement still records what
+  // it endorsed. That, not the mode, is what a dispute turns on.
   const supportedAddress = tx.proposedAddress ?? project.proposedAddress
-  if (isProposing) project.proposedAddress = tx.proposedAddress
-  // No contractor slot here — passing undefined keeps the threshold clamped to the committee size.
-  const result = applyEndorsement(project.endorsedAddress, tx.from, isProposing, proposal.committeeAddresses, undefined, hadPendingAddress)
-  // validate() dry-runs the same call against a copy, so an error here means the two disagreed.
-  // Throwing rather than continuing keeps a half-applied endorsement out of consensus state.
+
+  // Decide first, then apply what comes back. validate() ran the same call against the same
+  // wrappedStates, so an error here means the two disagreed.
+  const result = planAddressEndorsement(tx, proposal.committeeAddresses, project)
   if (result.error) throw new Error(`dao_project_change_address endorsement failed after validation: ${result.error}`)
+  project.proposedAddress = result.nextProposedAddress
+  project.endorsedAddress = result.nextEndorsements
 
   const previousAddress = project.address
   if (result.committed) {

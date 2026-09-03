@@ -6,7 +6,7 @@ import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { appendProjectLog } from '../../utils/daoProjectLog'
-import { applyEndorsement, writeOnceError } from '../../utils/daoProjectEndorsement'
+import { planMilestoneTimeEndorsement } from '../../utils/daoProjectEndorsement'
 import { findExecutingMilestone } from '../../utils/daoProjectMilestoneState'
 import { loadProjectTxContext } from '../../utils/daoProjectTxContext'
 
@@ -73,26 +73,11 @@ export const validate = (
     return response
   }
 
-  // Write-once, applied here rather than inside applyEndorsement because the address path must not
-  // have it.
-  const writeOnce = writeOnceError(milestone.proposedTime !== undefined, tx.proposedTime !== undefined)
-  if (writeOnce) {
-    response.reason = writeOnce
-    return response
-  }
-
-  // Dry-run the endorsement against a copy so validate() reports the same rejection apply() would,
-  // without mutating consensus state here.
-  const dryRun = applyEndorsement(
-    [...milestone.endorsedTime],
-    tx.from,
-    tx.proposedTime !== undefined,
-    proposal.committeeAddresses,
-    project.address,
-    milestone.proposedTime !== undefined,
-  )
-  if (dryRun.error) {
-    response.reason = dryRun.error
+  // The same call apply() makes, so the two cannot disagree about what this transaction does.
+  // Nothing is mutated here: the plan is discarded and recomputed in apply().
+  const plan = planMilestoneTimeEndorsement(tx, proposal.committeeAddresses, project.address, milestone)
+  if (plan.error) {
+    response.reason = plan.error
     return response
   }
 
@@ -127,25 +112,13 @@ export const apply = (
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
 
-  const isProposing = tx.proposedTime !== undefined
-  // Read before the assignment below. Taken afterwards it would always be true when proposing, so
-  // write-once would reject the very first proposal and leave endorsedTime empty.
-  const hadPendingTime = milestone.proposedTime !== undefined
-  const writeOnceViolation = writeOnceError(hadPendingTime, isProposing)
-  if (isProposing) milestone.proposedTime = tx.proposedTime
-  const result = applyEndorsement(
-    milestone.endorsedTime,
-    tx.from,
-    isProposing,
-    proposal.committeeAddresses,
-    project.address,
-    hadPendingTime,
-  )
-  // validate() checks both of these against the same wrappedStates, so reaching either here means
-  // the two disagreed. Throwing rather than continuing keeps a half-applied endorsement out of
-  // consensus state.
-  if (writeOnceViolation) throw new Error(`dao_project_milestone_end accepted a second proposal: ${writeOnceViolation}`)
+  // Decide first, then apply what comes back. validate() ran the same call against the same
+  // wrappedStates, so an error here means the two disagreed — throwing keeps a half-applied
+  // endorsement out of consensus state.
+  const result = planMilestoneTimeEndorsement(tx, proposal.committeeAddresses, project.address, milestone)
   if (result.error) throw new Error(`dao_project_milestone_end endorsement failed after validation: ${result.error}`)
+  milestone.proposedTime = result.nextProposedTime
+  milestone.endorsedTime = result.nextEndorsements
 
   if (result.committed) {
     milestone.endTime = milestone.proposedTime

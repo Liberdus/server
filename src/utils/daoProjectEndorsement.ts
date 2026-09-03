@@ -100,3 +100,86 @@ export function applyEndorsement(
   const required = requiredEndorsements(committeeAddresses.length, contractorMayPropose)
   return { committed: endorsements.length >= required }
 }
+
+export interface EndorsementPlan {
+  error?: string
+  isProposing: boolean
+  committed: boolean
+  /** Replaces the endorsement list wholesale. A fresh array, never the one that was read. */
+  nextEndorsements: string[]
+}
+
+export interface MilestoneTimePlan extends EndorsementPlan {
+  nextProposedTime?: number
+}
+
+export interface AddressPlan extends EndorsementPlan {
+  nextProposedAddress?: string
+}
+
+/**
+ * Decides what a milestone start or end submission does, without changing anything.
+ *
+ * The helper reads the pending time and endorsement list itself and returns the state that should
+ * replace them. It deliberately does not accept a "is something pending" flag: a caller that
+ * computed one after writing `proposedTime` turned every first proposal into a rejected
+ * re-proposal, and because validate() and apply() each built the arguments separately, nothing but
+ * a live network caught it. Reading the state here and applying what comes back leaves no window
+ * for the two to disagree.
+ *
+ * Milestone times are write-once and the contractor may open one. Addresses differ on both counts —
+ * see planAddressEndorsement.
+ */
+export function planMilestoneTimeEndorsement(
+  tx: { from: string; proposedTime?: number },
+  committeeAddresses: string[],
+  contractorAddress: string | undefined,
+  milestone: { proposedTime?: number; endorsedTime: string[] },
+): MilestoneTimePlan {
+  const isProposing = tx.proposedTime !== undefined
+  const hasPendingValue = milestone.proposedTime !== undefined
+  const nextEndorsements = [...milestone.endorsedTime]
+
+  const writeOnce = writeOnceError(hasPendingValue, isProposing)
+  if (writeOnce) return { error: writeOnce, isProposing, committed: false, nextEndorsements }
+
+  const result = applyEndorsement(nextEndorsements, tx.from, isProposing, committeeAddresses, contractorAddress, hasPendingValue)
+  if (result.error) return { error: result.error, isProposing, committed: false, nextEndorsements }
+
+  return {
+    isProposing,
+    committed: result.committed === true,
+    nextProposedTime: isProposing ? tx.proposedTime : milestone.proposedTime,
+    nextEndorsements,
+  }
+}
+
+/**
+ * The same for a contractor address change, with the two policy differences made explicit.
+ *
+ * No write-once: `proposedAddress` is cleared only on a successful commit, so refusing a second
+ * proposal would freeze the contractor address for the life of the project — and changing it is the
+ * remedy for a lost or compromised key. Policy line 353 provides for re-proposal for that reason.
+ *
+ * No contractor slot: the committee alone decides who replaces them, so `undefined` is passed as
+ * the contractor and the threshold clamps to the committee size.
+ */
+export function planAddressEndorsement(
+  tx: { from: string; proposedAddress?: string },
+  committeeAddresses: string[],
+  project: { proposedAddress?: string; endorsedAddress: string[] },
+): AddressPlan {
+  const isProposing = tx.proposedAddress !== undefined
+  const hasPendingValue = project.proposedAddress !== undefined
+  const nextEndorsements = [...project.endorsedAddress]
+
+  const result = applyEndorsement(nextEndorsements, tx.from, isProposing, committeeAddresses, undefined, hasPendingValue)
+  if (result.error) return { error: result.error, isProposing, committed: false, nextEndorsements }
+
+  return {
+    isProposing,
+    committed: result.committed === true,
+    nextProposedAddress: isProposing ? tx.proposedAddress : project.proposedAddress,
+    nextEndorsements,
+  }
+}

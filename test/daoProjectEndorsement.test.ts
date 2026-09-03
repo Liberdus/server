@@ -1,4 +1,11 @@
-import { applyEndorsement, PROJECT_ENDORSEMENT_THRESHOLD, requiredEndorsements, writeOnceError } from '../src/utils/daoProjectEndorsement'
+import {
+  applyEndorsement,
+  planAddressEndorsement,
+  planMilestoneTimeEndorsement,
+  PROJECT_ENDORSEMENT_THRESHOLD,
+  requiredEndorsements,
+  writeOnceError,
+} from '../src/utils/daoProjectEndorsement'
 
 const C1 = 'c1'
 const C2 = 'c2'
@@ -152,5 +159,107 @@ describe('writeOnceError', () => {
     // Endorsing a pending value is the whole point of the rule, so it must pass either way.
     expect(writeOnceError(true, false)).toBeUndefined()
     expect(writeOnceError(false, false)).toBeUndefined()
+  })
+})
+
+describe('planMilestoneTimeEndorsement', () => {
+  // These target the function the handlers actually call. The applyEndorsement tests above cannot
+  // stand in for them: they take hasPendingValue as a parameter, so they passed throughout the bug
+  // where a caller computed it after mutating, and would pass again if it returned.
+  const milestone = (over: { proposedTime?: number; endorsedTime?: string[] } = {}) => ({
+    proposedTime: over.proposedTime,
+    endorsedTime: over.endorsedTime ?? [],
+  })
+
+  test('a first proposed time seeds endorsement #1 and is not a write-once violation', () => {
+    // The exact regression. Reading the pending value after writing proposedTime made every opening
+    // proposal look like a re-proposal, so endorsedTime was never seeded and no milestone committed.
+    const plan = planMilestoneTimeEndorsement({ from: CONTRACTOR, proposedTime: 500 }, COMMITTEE, CONTRACTOR, milestone())
+    expect(plan.error).toBeUndefined()
+    expect(plan.isProposing).toBe(true)
+    expect(plan.nextProposedTime).toBe(500)
+    expect(plan.nextEndorsements).toEqual([CONTRACTOR])
+  })
+
+  test('a second proposed time is rejected and changes nothing', () => {
+    const plan = planMilestoneTimeEndorsement({ from: C1, proposedTime: 900 }, COMMITTEE, CONTRACTOR, milestone({ proposedTime: 500, endorsedTime: [CONTRACTOR] }))
+    expect(plan.error).toMatch('already been proposed')
+    expect(plan.nextEndorsements).toEqual([CONTRACTOR])
+  })
+
+  test('a submission without a time endorses the pending one and keeps it', () => {
+    const plan = planMilestoneTimeEndorsement({ from: C1 }, COMMITTEE, CONTRACTOR, milestone({ proposedTime: 500, endorsedTime: [CONTRACTOR] }))
+    expect(plan.error).toBeUndefined()
+    expect(plan.isProposing).toBe(false)
+    expect(plan.nextProposedTime).toBe(500)
+    expect(plan.nextEndorsements).toEqual([CONTRACTOR, C1])
+  })
+
+  test('the third endorsement commits', () => {
+    const plan = planMilestoneTimeEndorsement({ from: C2 }, COMMITTEE, CONTRACTOR, milestone({ proposedTime: 500, endorsedTime: [CONTRACTOR, C1] }))
+    expect(plan.committed).toBe(true)
+  })
+
+  test('the contractor may open a proposal but not endorse one', () => {
+    const plan = planMilestoneTimeEndorsement({ from: CONTRACTOR }, COMMITTEE, CONTRACTOR, milestone({ proposedTime: 500, endorsedTime: [C1] }))
+    expect(plan.error).toMatch('may propose a value but not endorse')
+  })
+
+  test('the same address cannot endorse twice', () => {
+    const plan = planMilestoneTimeEndorsement({ from: C1 }, COMMITTEE, CONTRACTOR, milestone({ proposedTime: 500, endorsedTime: [C1] }))
+    expect(plan.error).toMatch('already endorsed')
+  })
+
+  test('nextEndorsements is a fresh array, so applying it cannot alias live state', () => {
+    const m = milestone({ proposedTime: 500, endorsedTime: [CONTRACTOR] })
+    const plan = planMilestoneTimeEndorsement({ from: C1 }, COMMITTEE, CONTRACTOR, m)
+    expect(plan.nextEndorsements).not.toBe(m.endorsedTime)
+    expect(m.endorsedTime).toEqual([CONTRACTOR])
+  })
+
+  test('deciding never mutates what it was given', () => {
+    // The property the whole shape exists for: validate() can call this freely.
+    const m = milestone({ proposedTime: 500, endorsedTime: [CONTRACTOR] })
+    planMilestoneTimeEndorsement({ from: C1, proposedTime: 900 }, COMMITTEE, CONTRACTOR, m)
+    expect(m).toEqual({ proposedTime: 500, endorsedTime: [CONTRACTOR] })
+  })
+})
+
+describe('planAddressEndorsement', () => {
+  const project = (over: { proposedAddress?: string; endorsedAddress?: string[] } = {}) => ({
+    proposedAddress: over.proposedAddress,
+    endorsedAddress: over.endorsedAddress ?? [],
+  })
+  const ADDRESS_A = 'address-a'
+  const ADDRESS_B = 'address-b'
+
+  test('a second proposal is accepted and reseeds, unlike the milestone path', () => {
+    // Policy line 353. This is the difference the two helpers exist to make visible.
+    const plan = planAddressEndorsement({ from: C2, proposedAddress: ADDRESS_B }, COMMITTEE, project({ proposedAddress: ADDRESS_A, endorsedAddress: [C1] }))
+    expect(plan.error).toBeUndefined()
+    expect(plan.nextProposedAddress).toBe(ADDRESS_B)
+    expect(plan.nextEndorsements).toEqual([C2])
+  })
+
+  test('a blank submission endorses the pending address', () => {
+    const plan = planAddressEndorsement({ from: C2 }, COMMITTEE, project({ proposedAddress: ADDRESS_A, endorsedAddress: [C1] }))
+    expect(plan.nextProposedAddress).toBe(ADDRESS_A)
+    expect(plan.nextEndorsements).toEqual([C1, C2])
+  })
+
+  test('three distinct committee members commit the change', () => {
+    const plan = planAddressEndorsement({ from: C3 }, COMMITTEE, project({ proposedAddress: ADDRESS_A, endorsedAddress: [C1, C2] }))
+    expect(plan.committed).toBe(true)
+  })
+
+  test('the contractor has no say — only the committee may submit', () => {
+    const plan = planAddressEndorsement({ from: CONTRACTOR, proposedAddress: ADDRESS_A }, COMMITTEE, project())
+    expect(plan.error).toMatch('committee member or the contractor')
+  })
+
+  test('deciding never mutates what it was given', () => {
+    const p = project({ proposedAddress: ADDRESS_A, endorsedAddress: [C1] })
+    planAddressEndorsement({ from: C2, proposedAddress: ADDRESS_B }, COMMITTEE, p)
+    expect(p).toEqual({ proposedAddress: ADDRESS_A, endorsedAddress: [C1] })
   })
 })
