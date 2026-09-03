@@ -40,7 +40,9 @@ export function exceedsMintThreshold(amountWei: bigint): boolean {
  * out. The policy's phrase "including early bonuses" means exactly this sum.
  *
  * The USD-to-wei converter is injected rather than imported so this module stays clear of the utils
- * barrel, which drags in the config/utils import cycle.
+ * barrel, which drags in the config/utils import cycle. That is why this differs from
+ * milestonePayoutWei, which takes the project: the mint converts at the *live* rate, which only the
+ * caller can reach, while a payout converts at the rate the project already stores.
  */
 export function projectMintAmountWei(milestones: DaoMilestone[], usdStrToWei: (usdStr: string) => bigint): bigint {
   return milestones.reduce((total, m) => total + usdStrToWei(m.costUsdStr) + usdStrToWei(m.bonusUsdStr), 0n)

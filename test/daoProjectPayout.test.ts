@@ -1,12 +1,17 @@
 import { ethers } from 'ethers'
-import { DaoMilestone } from '../src/@types'
+import { DaoMilestone, DaoProjectData } from '../src/@types'
 import { classifyDelivery, milestonePayoutWei, usdToWeiAtRate } from '../src/utils/daoProjectPayout'
 
 const DAY = 86_400_000
-const at1to1 = (usdStr: string): bigint => usdToWeiAtRate(usdStr, '1')
 
 function milestone(over: Partial<DaoMilestone> = {}): DaoMilestone {
   return { duration: 10 * DAY, costUsdStr: '1000', bonusUsdStr: '100', penaltyUsdStr: '200', startTime: 0, endTime: 10 * DAY, ...over } as DaoMilestone
+}
+
+// The payout reads its rate and both percentages from the project, so rate variation is expressed
+// by varying rateUsdStr — the same way the handlers do it.
+function project(over: Partial<DaoProjectData> = {}): DaoProjectData {
+  return { rateUsdStr: '1', durationBonusPercentage: 20, durationPenaltyPercentage: 20, ...over } as DaoProjectData
 }
 
 describe('classifyDelivery', () => {
@@ -33,39 +38,39 @@ describe('classifyDelivery', () => {
 
 describe('milestonePayoutWei', () => {
   test('early pays cost plus bonus', () => {
-    const result = milestonePayoutWei(milestone({ endTime: 5 * DAY }), 20, 20, at1to1)
+    const result = milestonePayoutWei(milestone({ endTime: 5 * DAY }), project())
     expect(result.speed).toBe('early')
     expect(result.amountWei).toBe(ethers.parseEther('1100'))
   })
 
   test('on time pays the plain cost', () => {
-    const result = milestonePayoutWei(milestone(), 20, 20, at1to1)
+    const result = milestonePayoutWei(milestone(), project())
     expect(result.speed).toBe('ontime')
     expect(result.amountWei).toBe(ethers.parseEther('1000'))
   })
 
   test('late pays cost minus penalty, with no bonus', () => {
-    const result = milestonePayoutWei(milestone({ endTime: 20 * DAY }), 20, 20, at1to1)
+    const result = milestonePayoutWei(milestone({ endTime: 20 * DAY }), project())
     expect(result.speed).toBe('late')
     expect(result.amountWei).toBe(ethers.parseEther('800'))
   })
 
   test('a penalty larger than the cost floors at zero rather than inverting', () => {
     // Without the floor the subtraction would go negative and read as a credit to the contractor.
-    const result = milestonePayoutWei(milestone({ endTime: 20 * DAY, penaltyUsdStr: '5000' }), 20, 20, at1to1)
+    const result = milestonePayoutWei(milestone({ endTime: 20 * DAY, penaltyUsdStr: '5000' }), project())
     expect(result.amountWei).toBe(0n)
   })
 
   test('a penalty exactly equal to the cost also pays zero', () => {
-    const result = milestonePayoutWei(milestone({ endTime: 20 * DAY, penaltyUsdStr: '1000' }), 20, 20, at1to1)
+    const result = milestonePayoutWei(milestone({ endTime: 20 * DAY, penaltyUsdStr: '1000' }), project())
     expect(result.amountWei).toBe(0n)
   })
 
   test('percentages are per-project, so the same timing can pay differently', () => {
     // 12 days against a 10-day plan: on time at ±20%, late at ±10%.
     const m = milestone({ endTime: 12 * DAY })
-    expect(milestonePayoutWei(m, 20, 20, at1to1).speed).toBe('ontime')
-    expect(milestonePayoutWei(m, 10, 10, at1to1).speed).toBe('late')
+    expect(milestonePayoutWei(m, project()).speed).toBe('ontime')
+    expect(milestonePayoutWei(m, project({ durationBonusPercentage: 10, durationPenaltyPercentage: 10 })).speed).toBe('late')
   })
 })
 
@@ -78,5 +83,16 @@ describe('usdToWeiAtRate', () => {
 
   test('rejects a zero rate instead of dividing by it', () => {
     expect(() => usdToWeiAtRate('100', '0')).toThrow('rate is zero')
+  })
+})
+
+describe('the payout always uses the project rate', () => {
+  test('the same milestone pays differently under a different stored rate', () => {
+    // The regression this guards: computing a payout at the live rate instead of the one snapshotted
+    // at mint. That shipped once. Taking the project rather than a converter makes it unexpressible,
+    // and this pins the rate as the thing that moves the number.
+    const m = milestone()
+    expect(milestonePayoutWei(m, project({ rateUsdStr: '1' })).amountWei).toBe(ethers.parseEther('1000'))
+    expect(milestonePayoutWei(m, project({ rateUsdStr: '0.5' })).amountWei).toBe(ethers.parseEther('2000'))
   })
 })

@@ -6,7 +6,7 @@ import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { appendProjectLog } from '../../utils/daoProjectLog'
-import { milestonePayoutWei, usdToWeiAtRate } from '../../utils/daoProjectPayout'
+import { milestonePayoutWei } from '../../utils/daoProjectPayout'
 import { loadProjectTxContext } from '../../utils/daoProjectTxContext'
 
 export const validate_fields = (tx: Tx.DaoProjectMilestoneClaim, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
@@ -71,9 +71,7 @@ export const validate = (
 
   let payoutWei: bigint
   try {
-    payoutWei = milestonePayoutWei(milestone, project.durationBonusPercentage, project.durationPenaltyPercentage, (usdStr) =>
-      usdToWeiAtRate(usdStr, project.rateUsdStr),
-    ).amountWei
+    payoutWei = milestonePayoutWei(milestone, project).amountWei
   } catch (err) {
     response.reason = err instanceof Error ? err.message : String(err)
     return response
@@ -112,9 +110,7 @@ export const apply = (
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
 
-  const payout = milestonePayoutWei(milestone, project.durationBonusPercentage, project.durationPenaltyPercentage, (usdStr) =>
-    usdToWeiAtRate(usdStr, project.rateUsdStr),
-  )
+  const payout = milestonePayoutWei(milestone, project)
   project.balance = SafeBigIntMath.subtract(project.balance, payout.amountWei)
   from.data.balance = SafeBigIntMath.add(from.data.balance, payout.amountWei)
   milestone.paid = payout.amountWei

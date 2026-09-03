@@ -8,7 +8,7 @@ import { daoProposalsMetaId } from '../../accounts/daoProposalsMetaAccount'
 import { recordProposalStatus } from '../../utils/daoProposalIndex'
 import { appendProjectLog } from '../../utils/daoProjectLog'
 import { allMilestonesFinished } from '../../utils/daoProjectMilestoneState'
-import { milestonePayoutWei, usdToWeiAtRate } from '../../utils/daoProjectPayout'
+import { milestonePayoutWei } from '../../utils/daoProjectPayout'
 import { loadProjectTxContext } from '../../utils/daoProjectTxContext'
 
 export const validate_fields = (tx: Tx.DaoProjectEnd, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
@@ -92,11 +92,7 @@ export const apply = (
   // is trimmed rather than zeroed.
   const owedWei = project.milestones.reduce((total, m) => {
     if (m.status !== 'completed' || m.paid > 0n) return total
-    return (
-      total +
-      milestonePayoutWei(m, project.durationBonusPercentage, project.durationPenaltyPercentage, (usdStr) => usdToWeiAtRate(usdStr, project.rateUsdStr))
-        .amountWei
-    )
+    return total + milestonePayoutWei(m, project).amountWei
   }, 0n)
   project.balance = owedWei
   project.endTime = txTimestamp

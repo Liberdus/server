@@ -1,5 +1,5 @@
 import { ethers } from 'ethers'
-import { DaoMilestone } from '../@types'
+import { DaoMilestone, DaoProjectData } from '../@types'
 
 const WEI = 10n ** 18n
 
@@ -55,17 +55,14 @@ export interface MilestonePayout {
  * the floor anyway — it is the only thing standing between a future gap in those checks and a
  * negative payout.
  *
- * The USD-to-wei converter is injected, and callers must supply one bound to the project's stored
- * rate rather than the live one — the DAO's exposure was fixed at the amount minted.
+ * Takes the project rather than a rate or a converter, so a payout cannot be computed at the live
+ * rate by mistake — the DAO's exposure was fixed at the amount minted, and that error has been made
+ * here once already.
  */
-export function milestonePayoutWei(
-  milestone: DaoMilestone,
-  bonusPercentage: number,
-  penaltyPercentage: number,
-  usdStrToWei: (usdStr: string) => bigint,
-): MilestonePayout {
+export function milestonePayoutWei(milestone: DaoMilestone, project: DaoProjectData): MilestonePayout {
+  const usdStrToWei = (usdStr: string): bigint => usdToWeiAtRate(usdStr, project.rateUsdStr)
   const actualDuration = (milestone.endTime ?? 0) - (milestone.startTime ?? 0)
-  const speed = classifyDelivery(actualDuration, milestone.duration, bonusPercentage, penaltyPercentage)
+  const speed = classifyDelivery(actualDuration, milestone.duration, project.durationBonusPercentage, project.durationPenaltyPercentage)
 
   const cost = usdStrToWei(milestone.costUsdStr)
   if (speed === 'early') {
