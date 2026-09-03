@@ -47,7 +47,18 @@ export const validate = (
     response.reason = 'Proposal account not found or is not a DaoProposalAccount'
     return response
   }
-  if (proposal.status !== 'accepted' && proposal.status !== 'applied' && proposal.status !== 'rejected' && proposal.status !== 'canceled') {
+  // Project proposals leave 'accepted' at dao_project_start and never return, so omitting the
+  // three project statuses would strand their voter reward pool permanently — unclaimable and
+  // unburnable. This list is hand-maintained: widening DaoProposalStatus does not flag it.
+  if (
+    proposal.status !== 'accepted' &&
+    proposal.status !== 'applied' &&
+    proposal.status !== 'rejected' &&
+    proposal.status !== 'canceled' &&
+    proposal.status !== 'executing' &&
+    proposal.status !== 'completed' &&
+    proposal.status !== 'terminated'
+  ) {
     response.reason = `Proposal voting has not been finalised (current status: ${proposal.status})`
     return response
   }

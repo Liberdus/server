@@ -12,6 +12,23 @@ import { recordProposalStatus } from '../../utils/daoProposalIndex'
 // import { backfillProposalIndex } from '../../utils/daoProposalIndex'   // disabled with its call in apply()
 import { validateDaoOptions } from '../../utils/daoBallotOptions'
 import { validateProposalChangeSets } from '../../utils/daoProposalChangeSets'
+import { validateProjectMilestones } from '../../utils/daoProjectMilestones'
+
+/**
+ * Routes payload validation by proposal type. Parameter proposals carry nested `changes`; projects
+ * carry `milestones` and never reach validateProposalChangeSets, which would reject them for having
+ * no change sets at all.
+ */
+function validateProposalPayload(tx: Tx.DaoProposalCreate, network: NetworkAccount | undefined, dapp: Shardus): string | undefined {
+  if (tx.proposalType === 'project') {
+    if (typeof tx.project?.address !== 'string' || utils.isValidAddress(tx.project.address) === false) {
+      return 'tx "project.address" must be a valid contractor address'
+    }
+    return validateProjectMilestones(tx.project.milestones)
+  }
+  const payload = tx[tx.proposalType as 'governance' | 'economic' | 'protocol']
+  return validateProposalChangeSets(tx.proposalType, tx.options, payload?.changes ?? [], network, dapp, tx.emergency)
+}
 
 export const validate_fields = (
   tx: Tx.DaoProposalCreate,
@@ -34,8 +51,13 @@ export const validate_fields = (
     response.reason = 'tx "emergency" must be a boolean'
     return response
   }
-  if (!['governance', 'economic', 'protocol'].includes(tx.proposalType)) {
-    response.reason = 'tx "proposalType" must be one of: governance, economic, protocol'
+  if (!['governance', 'economic', 'protocol', 'project'].includes(tx.proposalType)) {
+    response.reason = 'tx "proposalType" must be one of: governance, economic, protocol, project'
+    return response
+  }
+  // Projects mint new coins, so they must always face a community vote — no committee-only path.
+  if (tx.proposalType === 'project' && tx.emergency === true) {
+    response.reason = 'tx "project" proposals cannot be emergency proposals'
     return response
   }
   if (tx.gracePeriod !== undefined && (typeof tx.gracePeriod !== 'number' || tx.gracePeriod < 0)) {
@@ -50,7 +72,7 @@ export const validate_fields = (
     response.reason = 'tx "description" must be a non-empty string of at most 10000 characters'
     return response
   }
-  const optionsError = validateDaoOptions(tx.options)
+  const optionsError = validateDaoOptions(tx.options, tx.proposalType)
   if (optionsError) {
     response.reason = optionsError
     return response
@@ -64,10 +86,9 @@ export const validate_fields = (
     response.reason = `tx "startTime" (${tx.startTime}) cannot be earlier than the creation time (${tx.timestamp})`
     return response
   }
-  const payload = tx[tx.proposalType as 'governance' | 'economic' | 'protocol']
-  const changesError = validateProposalChangeSets(tx.proposalType, tx.options, payload?.changes ?? [], AccountsStorage.cachedNetworkAccount, dapp, tx.emergency)
-  if (changesError) {
-    response.reason = changesError
+  const payloadError = validateProposalPayload(tx, AccountsStorage.cachedNetworkAccount, dapp)
+  if (payloadError) {
+    response.reason = payloadError
     return response
   }
   if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
@@ -138,10 +159,9 @@ export const validate = (
   }
 
   // Recheck with live wrappedStates — validate_fields ran against the cached network account.
-  const txPayload = tx[tx.proposalType as 'governance' | 'economic' | 'protocol']
-  const changesError = validateProposalChangeSets(tx.proposalType, tx.options, txPayload?.changes ?? [], network, dapp, tx.emergency)
-  if (changesError) {
-    response.reason = changesError
+  const payloadError = validateProposalPayload(tx, network, dapp)
+  if (payloadError) {
+    response.reason = payloadError
     return response
   }
 
@@ -220,6 +240,20 @@ export const apply = async (
   if (tx.governance) proposal.governance = tx.governance
   if (tx.economic) proposal.economic = tx.economic
   if (tx.protocol) proposal.protocol = tx.protocol
+  if (tx.proposalType === 'project' && tx.project) {
+    // Only the proposer-supplied fields come from the tx. balance/rate are set by
+    // dao_project_start; times, endorsements and logs accrue as the project runs.
+    proposal.project = {
+      milestones: tx.project.milestones.map((m) => ({ ...m, status: 'pending', paid: 0n, endorsedTime: [], terminateVotes: [] })),
+      balance: 0n,
+      rateUsdStr: '0',
+      address: tx.project.address,
+      endorsedAddress: [],
+      durationBonusPercentage: config.LiberdusFlags.daoProjectDurationBonusPercentage,
+      durationPenaltyPercentage: config.LiberdusFlags.daoProjectDurationPenaltyPercentage,
+      logs: [],
+    }
+  }
 
   proposal.status = 'review'
 

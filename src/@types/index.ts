@@ -86,6 +86,14 @@ export enum AJVSchemaEnum {
   dao_claim_reward = 'dao_claim_reward',
   dao_burn_reward = 'dao_burn_reward',
   dao_cancel = 'dao_cancel',
+  dao_project_start = 'dao_project_start',
+  dao_project_milestone_start = 'dao_project_milestone_start',
+  dao_project_milestone_end = 'dao_project_milestone_end',
+  dao_project_milestone_terminate = 'dao_project_milestone_terminate',
+  dao_project_milestone_claim = 'dao_project_milestone_claim',
+  dao_project_reclaim_balance = 'dao_project_reclaim_balance',
+  dao_project_end = 'dao_project_end',
+  dao_project_change_address = 'dao_project_change_address',
 }
 
 export enum TXTypes {
@@ -154,6 +162,14 @@ export enum TXTypes {
   dao_claim_reward = 'dao_claim_reward',
   dao_burn_reward = 'dao_burn_reward',
   dao_cancel = 'dao_cancel',
+  dao_project_start = 'dao_project_start',
+  dao_project_milestone_start = 'dao_project_milestone_start',
+  dao_project_milestone_end = 'dao_project_milestone_end',
+  dao_project_milestone_terminate = 'dao_project_milestone_terminate',
+  dao_project_milestone_claim = 'dao_project_milestone_claim',
+  dao_project_reclaim_balance = 'dao_project_reclaim_balance',
+  dao_project_end = 'dao_project_end',
+  dao_project_change_address = 'dao_project_change_address',
 }
 
 export interface BaseLiberdusTx {
@@ -521,6 +537,11 @@ export namespace Tx {
     governance?: DaoGovernanceData
     economic?: DaoEconomicData
     protocol?: DaoProtocolData
+    /**
+     * Project proposals supply only what the proposer chooses; every other DaoProjectData field is
+     * set by the network (balance and rate at project start, times and endorsements as it runs).
+     */
+    project?: { milestones: DaoMilestone[]; address: string }
     // Optional: when committee review should begin. Must be >= tx.timestamp (creation time);
     // defaults to tx.timestamp (creationTime) when omitted. See dao_proposal_create.validate.
     startTime?: number
@@ -577,6 +598,59 @@ export namespace Tx {
   }
 
   export interface DaoCancel extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+  }
+
+  export interface DaoProjectStart extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+  }
+
+  /**
+   * No milestone number: the policy says "start the next milestone", so the handler derives it as
+   * the first one still pending rather than taking it from the sender.
+   */
+  export interface DaoProjectMilestoneStart extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+    /** Present when proposing a time; absent when endorsing the pending one. */
+    proposedTime?: number
+  }
+
+  /** Likewise derived — "end the current milestone", the one that is executing. */
+  export interface DaoProjectMilestoneEnd extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+    proposedTime?: number
+  }
+
+  export interface DaoProjectMilestoneTerminate extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+    milestoneNumber: number
+    reason: string
+  }
+
+  export interface DaoProjectMilestoneClaim extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+    milestoneNumber: number
+  }
+
+  export interface DaoProjectChangeAddress extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+    /** Present when proposing a replacement; absent when endorsing the pending one. */
+    proposedAddress?: string
+  }
+
+  export interface DaoProjectEnd extends BaseLiberdusTx {
+    from: string
+    proposalId: string
+  }
+
+  export interface DaoProjectReclaimBalance extends BaseLiberdusTx {
     from: string
     proposalId: string
   }
@@ -794,8 +868,14 @@ export interface DevAccount {
 }
 
 // New DAO account types (Phase 1: governance/economic/protocol proposals)
-export type DaoProposalStatus = 'review' | 'withheld' | 'voting' | 'rejected' | 'accepted' | 'applied' | 'canceled'
-export type DaoProposalType = 'governance' | 'economic' | 'protocol'
+/**
+ * `applied` is reachable only by parameter proposals; `executing`/`completed`/`terminated` only by
+ * project proposals. Widening this union does NOT flag the hand-maintained status allowlists in
+ * dao_claim_reward/dao_burn_reward — they are string comparisons TypeScript cannot check.
+ */
+export type DaoProposalStatus = 'review' | 'withheld' | 'voting' | 'rejected' | 'accepted' | 'canceled' | 'applied' | 'executing' | 'completed' | 'terminated'
+export type DaoProposalType = 'governance' | 'economic' | 'protocol' | 'project'
+export type DaoMilestoneStatus = 'pending' | 'executing' | 'completed' | 'terminated'
 export interface DaoParamChange {
   key: string
   value: string
@@ -813,6 +893,88 @@ export interface DaoEconomicData {
 
 export interface DaoProtocolData {
   changes: DaoParamChanges
+}
+
+/** One committee submission toward terminating a milestone. The reason is required by policy. */
+export interface DaoTerminateVote {
+  address: string
+  reason: string
+  timestamp: number
+}
+
+/** The eight transactions that can append to a project's audit trail. */
+export type DaoProjectTxType =
+  | 'dao_project_start'
+  | 'dao_project_milestone_start'
+  | 'dao_project_milestone_end'
+  | 'dao_project_milestone_terminate'
+  | 'dao_project_milestone_claim'
+  | 'dao_project_change_address'
+  | 'dao_project_end'
+  | 'dao_project_reclaim_balance'
+
+/** Append-only audit trail entry. The trail starts when the project enters `executing`. */
+export interface DaoProjectLogEntry {
+  caller: string
+  timestamp: number
+  txType: DaoProjectTxType
+  /**
+   * What identifies the action, never what resulted from it.
+   *
+   * In practice the sender's own fields, plus an identifier the handler had to derive to know what
+   * it was acting on. Outcomes stay out: amounts minted, paid, owed or reclaimed are products of
+   * the handler and are already recoverable from the account state and the transaction receipt.
+   * Keeping them out also means no value here is ever a bigint.
+   */
+  params: Record<string, string | number | boolean>
+}
+
+export interface DaoMilestone {
+  title: string
+  description: string
+  deliverable: string
+  /** Planned duration in ms; bonus/penalty compare the actual elapsed time against this. */
+  duration: number
+  costUsdStr: string
+  penaltyUsdStr: string
+  bonusUsdStr: string
+  startTime?: number
+  endTime?: number
+  /**
+   * Staged start or end time awaiting endorsement. Cleared on each commit, so endorsements
+   * collected for a start cannot carry into the end — the two share these fields.
+   */
+  proposedTime?: number
+  /** Endorsers, proposer first. Index 0 may be the contractor; later entries must be committee. */
+  endorsedTime: string[]
+  terminateVotes: DaoTerminateVote[]
+  status: DaoMilestoneStatus
+  /**
+   * Amount paid out, in wei, and the settled marker: non-zero means claimed.
+   *
+   * A zero payout is unreachable, so the two meanings cannot diverge. `penalty < cost` is enforced
+   * at proposal creation and repeated in wei at dao_project_start, which together keep every payout
+   * branch strictly positive.
+   */
+  paid: bigint
+}
+
+export interface DaoProjectData {
+  milestones: DaoMilestone[]
+  startTime?: number
+  endTime?: number
+  /** LIB minted at project start, in wei; drawn down by milestone claims. */
+  balance: bigint
+  /** USD/LIB rate fixed when balance was minted. Every payout converts at this, not the live rate. */
+  rateUsdStr: string
+  /** Contractor address permitted to claim completed milestones. */
+  address: string
+  proposedAddress?: string
+  /** Endorsers of proposedAddress, proposer first. Committee only — the contractor cannot propose. */
+  endorsedAddress: string[]
+  durationBonusPercentage: number
+  durationPenaltyPercentage: number
+  logs: DaoProjectLogEntry[]
 }
 
 /**
@@ -902,6 +1064,7 @@ export interface DaoProposalAccount {
   governance?: DaoGovernanceData
   economic?: DaoEconomicData
   protocol?: DaoProtocolData
+  project?: DaoProjectData
   hash: string
   timestamp: number
 }

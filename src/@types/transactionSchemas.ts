@@ -764,7 +764,7 @@ export const schemaDaoProposalCreateTX = {
     proposalId: { type: 'string', minLength: 64, maxLength: 64 },
     metaId: { type: 'string', minLength: 64, maxLength: 64 },
     emergency: { type: 'boolean' },
-    proposalType: { enum: ['governance', 'economic', 'protocol'] },
+    proposalType: { enum: ['governance', 'economic', 'protocol', 'project'] },
     gracePeriod: { type: 'number', minimum: 0 },
     title: { type: 'string', minLength: 1, maxLength: 100 },
     description: { type: 'string', maxLength: 10000 },
@@ -777,6 +777,7 @@ export const schemaDaoProposalCreateTX = {
     governance: { type: 'object' },
     economic: { type: 'object' },
     protocol: { type: 'object' },
+    project: { type: 'object' },
     startTime: { type: 'number', minimum: 0 },
     networkId: { type: 'string' },
   },
@@ -892,6 +893,74 @@ export const schemaDaoBurnRewardTX = {
   additionalProperties: false,
 }
 
+// Shared by milestone start and end: both propose or endorse a single timestamp.
+export const schemaDaoProjectMilestoneTimeTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    proposedTime: { type: 'number', minimum: 0 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId'],
+  additionalProperties: false,
+}
+
+// dao_project_end and dao_project_reclaim_balance carry no extra fields, so they reuse
+// schemaDaoProjectStartTX rather than duplicating an identical shape three times.
+export const schemaDaoProjectChangeAddressTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    proposedAddress: { type: 'string', minLength: 64, maxLength: 64 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId'],
+  additionalProperties: false,
+}
+
+export const schemaDaoProjectMilestoneClaimTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    milestoneNumber: { type: 'number', minimum: 1 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId', 'milestoneNumber'],
+  additionalProperties: false,
+}
+
+export const schemaDaoProjectMilestoneTerminateTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    milestoneNumber: { type: 'number', minimum: 1 },
+    reason: { type: 'string', minLength: 1, maxLength: 500 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId', 'milestoneNumber', 'reason'],
+  additionalProperties: false,
+}
+
+export const schemaDaoProjectStartTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    networkId: { type: 'string' },
+  },
+  required: [...baseTxRequired, 'from', 'proposalId'],
+  additionalProperties: false,
+}
+
 export const schemaDaoCancelTX = {
   type: 'object',
   properties: {
@@ -983,6 +1052,14 @@ function addSchemas(): void {
     [TXTypes.dao_claim_reward]: schemaDaoClaimRewardTX,
     [TXTypes.dao_burn_reward]: schemaDaoBurnRewardTX,
     [TXTypes.dao_cancel]: schemaDaoCancelTX,
+    [TXTypes.dao_project_start]: schemaDaoProjectStartTX,
+    [TXTypes.dao_project_milestone_start]: schemaDaoProjectMilestoneTimeTX,
+    [TXTypes.dao_project_milestone_end]: schemaDaoProjectMilestoneTimeTX,
+    [TXTypes.dao_project_milestone_terminate]: schemaDaoProjectMilestoneTerminateTX,
+    [TXTypes.dao_project_milestone_claim]: schemaDaoProjectMilestoneClaimTX,
+    [TXTypes.dao_project_change_address]: schemaDaoProjectChangeAddressTX,
+    [TXTypes.dao_project_end]: schemaDaoProjectStartTX,
+    [TXTypes.dao_project_reclaim_balance]: schemaDaoProjectStartTX,
   }
   // Loop through TXTypes and register corresponding schemas
   Object.entries(txSchemaMap).forEach(([txType, schema]) => {
