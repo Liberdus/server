@@ -31,18 +31,14 @@ export interface EndorsementCheck {
 /**
  * Write-once: rejects a second proposal for a value that already has one pending.
  *
- * Applied by the milestone paths before endorsing, and deliberately not inside applyEndorsement,
- * because the contractor address path must not have it. There, `proposedAddress` is cleared only on
- * a successful commit, so a first proposal nobody endorses would freeze the contractor address for
- * the life of the project — and changing that address is the remedy for a lost or compromised
- * contractor key. Policy line 353 provides for re-proposal there for exactly that reason.
+ * Milestone paths only. A pending time that cannot be replaced is what stops an endorsement counting
+ * toward a time its sender never saw, and it enforces the policy's "the contractor can only call
+ * this once" — applyEndorsement's contractor check blocks endorsing but not re-proposing, and every
+ * proposal resets the count.
  *
- * On a milestone the rule is safe because a bad value still has an escape:
- * dao_project_milestone_terminate accepts a milestone in `pending` state. What it buys is that a
- * pending time cannot be replaced, so an endorsement cannot end up counting toward a time its
- * sender never saw. It also enforces the policy's "the contractor can only call this once", which
- * the contractor check in applyEndorsement does not cover — nothing there stops them re-proposing,
- * and every proposal resets the count, so they could stall their own milestone indefinitely.
+ * Safe on a milestone because a bad value still has an escape: terminate accepts a `pending` one.
+ * The address path has none — `proposedAddress` is cleared only on commit, so this would freeze the
+ * contractor address for the life of the project, and changing it is the remedy for a lost key.
  */
 export function writeOnceError(hasPendingValue: boolean, isProposingNewValue: boolean): string | undefined {
   if (isProposingNewValue && hasPendingValue) return 'A value has already been proposed; it can only be endorsed'
@@ -52,15 +48,11 @@ export function writeOnceError(hasPendingValue: boolean, isProposingNewValue: bo
 /**
  * Applies one propose-or-endorse submission to an endorsement list, in place.
  *
- * The three project paths that need agreement — milestone start, milestone end, contractor address
- * — share this shape: a submission carrying a value replaces whatever was pending and re-seeds the
- * endorsements with its sender; a submission without one endorses what is pending.
+ * A submission carrying a value replaces whatever was pending and re-seeds the endorsements with its
+ * sender; one without endorses what is pending. Whether a second proposal is allowed at all is the
+ * caller's decision — see writeOnceError.
  *
- * Whether a second proposal is allowed at all is the caller's decision, not this function's — see
- * writeOnceError, which the milestone paths apply and the address path deliberately does not.
- *
- * `endorsements` is the live array and is mutated. Callers own the proposed value itself, because
- * its type differs per path (a timestamp or an address).
+ * `endorsements` is mutated. Prefer the plan* functions below, which decide without mutating.
  */
 export function applyEndorsement(
   endorsements: string[],
@@ -120,15 +112,12 @@ export interface AddressPlan extends EndorsementPlan {
 /**
  * Decides what a milestone start or end submission does, without changing anything.
  *
- * The helper reads the pending time and endorsement list itself and returns the state that should
- * replace them. It deliberately does not accept a "is something pending" flag: a caller that
- * computed one after writing `proposedTime` turned every first proposal into a rejected
- * re-proposal, and because validate() and apply() each built the arguments separately, nothing but
- * a live network caught it. Reading the state here and applying what comes back leaves no window
- * for the two to disagree.
+ * Reads the pending time and endorsement list itself and returns what should replace them. It takes
+ * no "is something pending" flag on purpose: a caller that computed one *after* writing
+ * `proposedTime` turned every opening proposal into a rejected re-proposal, and since validate() and
+ * apply() built those arguments separately, only a live network caught it.
  *
- * Milestone times are write-once and the contractor may open one. Addresses differ on both counts —
- * see planAddressEndorsement.
+ * Milestone times are write-once and the contractor may open one — addresses differ on both counts.
  */
 export function planMilestoneTimeEndorsement(
   tx: { from: string; proposedTime?: number },
@@ -155,14 +144,13 @@ export function planMilestoneTimeEndorsement(
 }
 
 /**
- * The same for a contractor address change, with the two policy differences made explicit.
+ * The same for a contractor address change, differing on both policy points.
  *
- * No write-once: `proposedAddress` is cleared only on a successful commit, so refusing a second
- * proposal would freeze the contractor address for the life of the project — and changing it is the
- * remedy for a lost or compromised key. Policy line 353 provides for re-proposal for that reason.
+ * No write-once, per policy line 353: refusing a second proposal would freeze the contractor address
+ * for the life of the project, and changing it is the remedy for a lost key.
  *
- * No contractor slot: the committee alone decides who replaces them, so `undefined` is passed as
- * the contractor and the threshold clamps to the committee size.
+ * No contractor slot: the committee alone decides who replaces them, so the threshold clamps to the
+ * committee size.
  */
 export function planAddressEndorsement(
   tx: { from: string; proposedAddress?: string },

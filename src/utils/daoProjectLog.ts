@@ -1,17 +1,15 @@
 import { DaoProjectData, DaoProjectLogEntry, DaoProjectTxType } from '../@types'
 
 /**
- * Appends to the project's audit trail. Every project transaction records who called, when, and
- * what it did — the policy keeps this "in case of any dispute between the contractor and DAO".
+ * Appends to the project's audit trail — who called, when, and what they did. The policy keeps this
+ * "in case of any dispute between the contractor and DAO".
  *
- * `params` is a structured object rather than a formatted string so a reader can query the trail
- * without parsing it, and so the shape of an entry is checked at the call site. It carries what
- * identifies the action, not what resulted from it — see DaoProjectLogEntry.
+ * `params` is structured rather than a formatted string so the trail can be queried without parsing
+ * it. It carries what identifies the action, not what resulted from it — see DaoProjectLogEntry.
  *
- * Deliberately uncapped for now. The log grows with committee behaviour rather than with the
- * milestone count: every attempt to propose or endorse appends. Bounding the milestones does not
- * bound this. Acceptable because every appender is a committee member or the contractor, so growth
- * needs insiders being persistent or adversarial.
+ * Uncapped by decision. Growth follows committee behaviour, not the milestone count — every propose
+ * or endorse appends — so bounding milestones does not bound this. Acceptable because only the
+ * committee and contractor can append.
  * TODO: cap with oldest-first eviction if project accounts get large.
  */
 export function appendProjectLog(
