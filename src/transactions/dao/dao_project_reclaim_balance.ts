@@ -42,7 +42,7 @@ export const validate = (
   const { from, proposal, project } = ctx
 
   if (proposal.status !== 'completed' && proposal.status !== 'terminated') {
-    response.reason = `Project has not ended (current: ${proposal.status})`
+    response.reason = `Project is not in completed or terminated status (current: ${proposal.status})`
     return response
   }
   if (!proposal.committeeAddresses.includes(tx.from)) {

@@ -49,7 +49,7 @@ export const validate = (
   // Claiming is deliberately allowed after the project ends: dao_project_end trims the balance to
   // exactly what completed-but-unclaimed milestones still owe, so the contractor can collect it.
   if (proposal.status !== 'executing' && proposal.status !== 'completed' && proposal.status !== 'terminated') {
-    response.reason = `Project status ${proposal.status} does not allow claiming (expected executing, completed or terminated)`
+    response.reason = `Project is not in executing, completed or terminated status (current: ${proposal.status})`
     return response
   }
 
@@ -59,7 +59,7 @@ export const validate = (
     return response
   }
   if (milestone.status !== 'completed') {
-    response.reason = `Milestone ${tx.milestoneNumber} is not completed (current: ${milestone.status})`
+    response.reason = `Milestone ${tx.milestoneNumber} is not in completed status (current: ${milestone.status})`
     return response
   }
   // Sound as a settled marker because a zero payout cannot occur: `penalty < cost` at creation,

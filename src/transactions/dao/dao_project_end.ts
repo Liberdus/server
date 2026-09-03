@@ -45,7 +45,7 @@ export const validate = (
   const { from, proposal, project } = ctx
 
   if (proposal.status !== 'executing') {
-    response.reason = `Project is not executing (current: ${proposal.status})`
+    response.reason = `Project is not in executing status (current: ${proposal.status})`
     return response
   }
 
