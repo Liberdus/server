@@ -4,12 +4,12 @@ import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount, Dao
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
+import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
 import { daoProposalsMetaId } from '../../accounts/daoProposalsMetaAccount'
 import { recordProposalStatus } from '../../utils/daoProposalIndex'
 import { appendProjectLog } from '../../utils/daoProjectLog'
 import { allMilestonesFinished } from '../../utils/daoProjectMilestoneState'
 import { milestonePayoutWei } from '../../utils/daoProjectPayout'
-import { loadProjectTxContext } from '../../utils/daoProjectTxContext'
 
 export const validate_fields = (tx: Tx.DaoProjectEnd, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -37,12 +37,26 @@ export const validate = (
   wrappedStates: WrappedStates,
   response: ShardusTypes.IncomingTransactionResult,
 ): ShardusTypes.IncomingTransactionResult => {
-  const ctx = loadProjectTxContext(wrappedStates, tx.from, tx.proposalId)
-  if (ctx.error) {
-    response.reason = ctx.error
+  const from = wrappedStates[tx.from]?.data as UserAccount
+  const proposal = wrappedStates[tx.proposalId]?.data as DaoProposalAccount
+
+  if (!from || !isUserAccount(from)) {
+    response.reason = 'from account not found or is not a UserAccount'
     return response
   }
-  const { from, proposal, project } = ctx
+  if (!proposal || !isDaoProposalAccount(proposal)) {
+    response.reason = 'Proposal account not found or is not a DaoProposalAccount'
+    return response
+  }
+  if (proposal.proposalType !== 'project') {
+    response.reason = `Proposal type "${proposal.proposalType}" is not a project`
+    return response
+  }
+  if (!proposal.project) {
+    response.reason = 'Project proposal is missing its project data'
+    return response
+  }
+  const project = proposal.project
 
   if (proposal.status !== 'executing') {
     response.reason = `Project is not in executing status (current: ${proposal.status})`

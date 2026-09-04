@@ -5,9 +5,10 @@ import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } fr
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
+import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
+import { resolveMilestone } from '../../utils/daoProjectMilestoneState'
 import { appendProjectLog } from '../../utils/daoProjectLog'
 import { milestonePayoutWei } from '../../utils/daoProjectPayout'
-import { loadProjectTxContext } from '../../utils/daoProjectTxContext'
 
 export const validate_fields = (tx: Tx.DaoProjectMilestoneClaim, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -40,12 +41,32 @@ export const validate = (
   response: ShardusTypes.IncomingTransactionResult,
 ): ShardusTypes.IncomingTransactionResult => {
   // Claiming outlives the project: dao_project_end leaves a balance for exactly this.
-  const ctx = loadProjectTxContext(wrappedStates, tx.from, tx.proposalId, tx.milestoneNumber)
-  if (ctx.error) {
-    response.reason = ctx.error
+  const from = wrappedStates[tx.from]?.data as UserAccount
+  const proposal = wrappedStates[tx.proposalId]?.data as DaoProposalAccount
+
+  if (!from || !isUserAccount(from)) {
+    response.reason = 'from account not found or is not a UserAccount'
     return response
   }
-  const { from, proposal, project, milestone } = ctx
+  if (!proposal || !isDaoProposalAccount(proposal)) {
+    response.reason = 'Proposal account not found or is not a DaoProposalAccount'
+    return response
+  }
+  if (proposal.proposalType !== 'project') {
+    response.reason = `Proposal type "${proposal.proposalType}" is not a project`
+    return response
+  }
+  if (!proposal.project) {
+    response.reason = 'Project proposal is missing its project data'
+    return response
+  }
+  const project = proposal.project
+  const resolved = resolveMilestone(project, tx.milestoneNumber)
+  if (resolved.error) {
+    response.reason = resolved.error
+    return response
+  }
+  const milestone = resolved.milestone
   // Claiming is deliberately allowed after the project ends: dao_project_end trims the balance to
   // exactly what completed-but-unclaimed milestones still owe, so the contractor can collect it.
   if (proposal.status !== 'executing' && proposal.status !== 'completed' && proposal.status !== 'terminated') {
