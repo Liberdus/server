@@ -627,33 +627,6 @@ async function queryParameters() {
   }
 }
 
-// QUERY'S THE CURRENT PHASE OF THE DYNAMIC PARAMETER SYSTEM
-async function queryWindow() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/network/windows/all`)
-  if (res.data.error) {
-    return res.data.error
-  } else {
-    const { windows, devWindows } = res.data
-    const timestamp = Date.now()
-    let windowTime, devWindowTime
-    if (inRange(timestamp, windows.proposalWindow)) windowTime = { proposals: Math.round((windows.proposalWindow[1] - timestamp) / 1000) }
-    else if (inRange(timestamp, windows.votingWindow)) windowTime = { voting: Math.round((windows.votingWindow[1] - timestamp) / 1000) }
-    else if (inRange(timestamp, windows.graceWindow)) windowTime = { grace: Math.round((windows.graceWindow[1] - timestamp) / 1000) }
-    else if (inRange(timestamp, windows.applyWindow)) windowTime = { apply: Math.round((windows.applyWindow[1] - timestamp) / 1000) }
-    else windowTime = { apply: Math.round((windows.proposalWindow[0] - timestamp) / 1000) }
-
-    if (inRange(timestamp, devWindows.devProposalWindow)) devWindowTime = { devProposals: Math.round((devWindows.devProposalWindow[1] - timestamp) / 1000) }
-    else if (inRange(timestamp, devWindows.devVotingWindow)) devWindowTime = { devVoting: Math.round((devWindows.devVotingWindow[1] - timestamp) / 1000) }
-    else if (inRange(timestamp, devWindows.devGraceWindow)) devWindowTime = { devGrace: Math.round((devWindows.devGraceWindow[1] - timestamp) / 1000) }
-    else if (inRange(timestamp, devWindows.devApplyWindow)) devWindowTime = { devApply: Math.round((devWindows.devApplyWindow[1] - timestamp) / 1000) }
-    else devWindowTime = { devApply: Math.round((devWindows.devProposalWindow[0] - timestamp) / 1000) }
-    return { window: windowTime, devWindow: devWindowTime }
-  }
-
-  function inRange(now, times) {
-    return now > times[0] && now < times[1]
-  }
-}
 
 // QUERY'S THE CURRENT NETWORK PARAMETERS ON HOST NODE (TESTING)
 async function queryNodeParameters() {
@@ -1426,26 +1399,6 @@ vorpal.command('get <type>', 'query the network for <type> account').action(asyn
       }
       break
     }
-    case 'issueCount': {
-      this.log(await getIssueCount())
-      break
-    }
-    case 'devIssueCount': {
-      this.log(await getDevIssueCount())
-      break
-    }
-    case 'proposalCount': {
-      this.log(await getProposalCount())
-      break
-    }
-    case 'devProposalCount': {
-      this.log(await getDevProposalCount())
-      break
-    }
-    case 'windows': {
-      this.log(await queryWindow())
-      break
-    }
     case 'nodeParams': {
       this.log(await queryNodeParameters())
       break
@@ -1460,38 +1413,6 @@ vorpal.command('get <type>', 'query the network for <type> account').action(asyn
       if (address) {
         this.log(await getAccountData(address))
       }
-      break
-    }
-    case 'latestIssue': {
-      this.log(await queryLatestIssue())
-      break
-    }
-    case 'latestDevIssue': {
-      this.log(await queryLatestDevIssue())
-      break
-    }
-    case 'issues': {
-      this.log(await queryIssues())
-      break
-    }
-    case 'devIssues': {
-      this.log(await queryDevIssues())
-      break
-    }
-    case 'latestProposals': {
-      this.log(await queryLatestProposals())
-      break
-    }
-    case 'latestDevProposals': {
-      this.log(await queryLatestDevProposals())
-      break
-    }
-    case 'proposals': {
-      this.log(await queryProposals())
-      break
-    }
-    case 'devProposals': {
-      this.log(await queryDevProposals())
       break
     }
     default: {
