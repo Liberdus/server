@@ -53,10 +53,10 @@ export function calculateAccountHash(account: Accounts): string {
 }
 
 /**
- * Removes state owned by the retired legacy DAO system when the coordinated
- * migration is active. This deliberately mutates an account only from a
- * consensus-ordered apply path; hashing and account verification must remain
- * side-effect free.
+ * Removes state owned by the retired legacy DAO system once the coordinated migration
+ * is active. Never call it from calculateAccountHash: core hashes already-persisted
+ * accounts to verify them, so stripping there would fail every account the migration
+ * has not yet touched.
  */
 export function stripLegacyDaoState(account: NetworkAccount | UserAccount): void {
   if (LiberdusFlags.versionFlags.removeLegacyDaoState === true) {
@@ -64,7 +64,7 @@ export function stripLegacyDaoState(account: NetworkAccount | UserAccount): void
     if (legacyAccount.type === 'UserAccount' && legacyAccount.data != null) {
       delete (legacyAccount.data as Record<string, unknown>).payments
     }
-    if (legacyAccount.type === 'NetworkAccount') {
+    if (legacyAccount.type === 'NetworkAccount' && legacyAccount.current != null) {
       const network = legacyAccount as NetworkAccount & Record<string, unknown>
       delete network.next
       delete network.windows

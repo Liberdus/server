@@ -6,6 +6,7 @@ import * as utils from '../utils'
 import * as crypto from '../crypto'
 import * as AccountsStorage from '../storage/accountStorage'
 import { isDevAccount, isNetworkAccount } from '../@types/accountTypeGuards'
+import { backfillNetworkAccount } from './apply_change_network_param'
 
 export const validate_fields = (
   tx: Tx.ChangeConfig,
@@ -141,6 +142,9 @@ export const apply = (
   const clonedNetworkAccount = utils.deepCopy(network)
   clonedNetworkAccount.listOfChanges.push(value.change)
   clonedNetworkAccount.timestamp = when
+  // The apply path normalizes the network account before it lands, so the hash promised
+  // here must be taken against the same shape or the archiver sees a mismatch.
+  backfillNetworkAccount(clonedNetworkAccount)
   const afterStateHash = utils.calculateAccountHash(clonedNetworkAccount)
 
   const ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData
