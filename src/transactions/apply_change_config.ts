@@ -4,6 +4,7 @@ import { Shardus, ShardusTypes } from '@shardus/core'
 import * as crypto from '../crypto'
 import * as config from '../config'
 import { NetworkAccount, WrappedStates, Tx, UserAccount, AppReceiptData } from '../@types'
+import { backfillNetworkAccount } from './apply_change_network_param'
 
 export const validate_fields = (tx: Tx.ApplyChangeConfig, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   response.success = true
@@ -30,6 +31,7 @@ export const apply = (
   applyResponse: ShardusTypes.ApplyResponse,
 ): void => {
   const network: NetworkAccount = wrappedStates[config.networkAccount].data
+  backfillNetworkAccount(network)
   network.listOfChanges.push(tx.change)
   network.timestamp = txTimestamp
   const appReceiptData: AppReceiptData = {
