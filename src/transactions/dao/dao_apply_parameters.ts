@@ -13,6 +13,7 @@ import { getApplyEligibleAt } from '../../accounts/daoProposalAccount'
 import { buildNestedChange, mergeNestedChange, resolveChanges, ResolvedChange } from '../../utils/daoParamResolver'
 import { coerce, validateChangesPayload } from '../../utils/daoParamValidation'
 import { getSelectedChanges } from '../../utils/daoProposalChangeSets'
+import { backfillNetworkAccount } from '../apply_change_network_param'
 
 export const validate_fields = (tx: Tx.DaoApplyParameters, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
@@ -156,6 +157,9 @@ export const apply = (
   const clonedNetworkAccount = utils.deepCopy(network)
   clonedNetworkAccount.listOfChanges.push(value.change)
   clonedNetworkAccount.timestamp = when
+  // Both global messages this emits (apply_change_config / apply_change_network_param)
+  // normalize the network account when they apply, so hash the shape they will produce.
+  backfillNetworkAccount(clonedNetworkAccount)
   const afterStateHash = utils.calculateAccountHash(clonedNetworkAccount as any)
 
   const ourAppDefinedData = applyResponse.appDefinedData as OurAppDefinedData

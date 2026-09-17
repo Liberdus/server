@@ -27,31 +27,6 @@ const daoClaimDurationMs = process.env.DAO_CLAIM_DURATION_MS ? Number(process.en
 // MIGHT BE USEFUL TO HAVE TIME CONSTANTS IN THE FORM OF CYCLES
 export const cycleDuration = process.env.CYCLE_DURATION ? Number(process.env.CYCLE_DURATION) : 60
 const reduceTimeFromTxTimestamp = cycleDuration * ONE_SECOND
-const halfCycleDuration = (cycleDuration * 1000) / 2
-
-// DEV SETTINGS
-export const TIME_FOR_PROPOSALS = 2 * cycleDuration * 1000 + halfCycleDuration
-export const TIME_FOR_VOTING = 2 * cycleDuration * 1000 + halfCycleDuration
-export const TIME_FOR_GRACE = 2 * cycleDuration * 1000 + halfCycleDuration
-export const TIME_FOR_APPLY = 2 * cycleDuration * 1000 + halfCycleDuration
-
-export const TIME_FOR_DEV_PROPOSALS = 2 * cycleDuration * 1000 + halfCycleDuration
-export const TIME_FOR_DEV_VOTING = 2 * cycleDuration * 1000 + halfCycleDuration
-export const TIME_FOR_DEV_GRACE = 2 * cycleDuration * 1000 + halfCycleDuration
-export const TIME_FOR_DEV_APPLY = 2 * cycleDuration * 1000 + halfCycleDuration
-
-export const TOTAL_DAO_DURATION = TIME_FOR_PROPOSALS + TIME_FOR_VOTING + TIME_FOR_GRACE + TIME_FOR_APPLY
-
-// PROD SETTINGS
-// export const TIME_FOR_PROPOSALS = ONE_DAY
-// export const TIME_FOR_VOTING = 3 * ONE_DAY
-// export const TIME_FOR_GRACE = ONE_DAY
-// export const TIME_FOR_APPLY = 2 * ONE_DAY
-
-// export const TIME_FOR_DEV_PROPOSALS = ONE_DAY
-// export const TIME_FOR_DEV_VOTING = 3 * ONE_DAY
-// export const TIME_FOR_DEV_GRACE = ONE_DAY
-// export const TIME_FOR_DEV_APPLY = 2 * ONE_DAY
 
 // INITIAL NETWORK PARAMETERS FOR LIBERDUS
 export const INITIAL_PARAMETERS: NetworkParameters = {
@@ -65,16 +40,14 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   transactionFee: utils.libToWei(0.1),
   maintenanceInterval: ONE_DAY,
   maintenanceFee: utils.libToWei(0),
-  proposalFee: utils.libToWei(50),
-  devProposalFee: utils.libToWei(50),
   faucetAmount: utils.libToWei(10),
   defaultToll: utils.libToWei(1),
   minToll: utils.libToWei(1),
   tollNetworkTaxPercent: 1, // 1%
   tollTimeout: 7 * ONE_DAY,
-  minVersion: '2.5.1',
-  activeVersion: '2.5.1',
-  latestVersion: '2.5.1',
+  minVersion: '2.5.2',
+  activeVersion: '2.5.2',
+  latestVersion: '2.5.2',
   archiver: {
     minVersion: '3.8.1',
     activeVersion: '3.8.1',
@@ -260,7 +233,6 @@ interface LiberdusFlags {
   messageSizeLimit: number
   fetchNetworkAccountFromArchiver: boolean
   enableArchiverNetworkAccountValidation: boolean
-  enableDAOTransactions: boolean
   enableNewDAOTransactions: boolean
   // Kill-switch for dao_cancel, independent of enableNewDAOTransactions. Affects transaction
   // validity, so it must stay identical across all active nodes.
@@ -291,6 +263,7 @@ interface LiberdusFlags {
     includeTxToKeyInReadTx: boolean
     updateTollRequiredTxInChatHistory: boolean
     supportDeductTxFeeFromAmount: boolean
+    removeLegacyDaoState: boolean
   }
 }
 
@@ -319,7 +292,6 @@ export const LiberdusFlags: LiberdusFlags = {
   messageSizeLimit: 100, // 100kb
   fetchNetworkAccountFromArchiver: true,
   enableArchiverNetworkAccountValidation: false,
-  enableDAOTransactions: false,
   enableNewDAOTransactions: true, // turned on by migration 2.5.1
   enableDaoCancel: true,
   daoUnapplyCommitteeThreshold: 3,
@@ -344,6 +316,7 @@ export const LiberdusFlags: LiberdusFlags = {
     includeTxToKeyInReadTx: true, // turn on by 2.4.8
     updateTollRequiredTxInChatHistory: true, // turn on by 2.4.9
     supportDeductTxFeeFromAmount: true, // turn on by 2.4.9
+    removeLegacyDaoState: false, // turn on by 2.5.2
   },
 }
 
