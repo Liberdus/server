@@ -3,6 +3,7 @@ import { Accounts, NetworkAccount, UserAccount } from '../src/@types'
 import * as crypto from '../src/crypto'
 import { calculateAccountHash, stripLegacyDaoState } from '../src/utils'
 import { backfillNetworkAccount } from '../src/transactions/apply_change_network_param'
+import { onActiveVersionChange } from '../src/versioning'
 
 describe('legacy DAO state migration', () => {
   const originalFlag = LiberdusFlags.versionFlags.removeLegacyDaoState
@@ -13,6 +14,22 @@ describe('legacy DAO state migration', () => {
 
   beforeAll(() => {
     crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
+  })
+
+  test('the 2.5.2 migration is registered and activates the flag', async () => {
+    // Snapshot every versionFlag: onActiveVersionChange replays all migrations up to the
+    // given version, not just 2.5.2.
+    const snapshot = { ...LiberdusFlags.versionFlags }
+    LiberdusFlags.versionFlags.removeLegacyDaoState = false
+
+    try {
+      await onActiveVersionChange('2.5.2')
+      expect(LiberdusFlags.versionFlags.removeLegacyDaoState).toBe(true)
+    } finally {
+      // Restore even on failure: onActiveVersionChange flips flags for every migration
+      // up to 2.5.2, and leaking those would corrupt later tests.
+      Object.assign(LiberdusFlags.versionFlags, snapshot)
+    }
   })
 
   test('removes retired fields when the migration is active', () => {
