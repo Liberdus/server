@@ -79,6 +79,9 @@ export function backfillNetworkAccount(network: NetworkAccount): void {
     if (network.current.goldenTicketServerUrl === undefined || network.current.goldenTicketServerUrl === null) {
       network.current.goldenTicketServerUrl = 'http://localhost:3456/golden/ticket'
     }
+    if (network.current.goldenTicketRetryInterval === undefined || network.current.goldenTicketRetryInterval === null) {
+      network.current.goldenTicketRetryInterval = 10 * config.ONE_MINUTE
+    }
     if (network.current.messageRetentionDays === undefined || network.current.messageRetentionDays === null) {
       network.current.messageRetentionDays = 7
     }
