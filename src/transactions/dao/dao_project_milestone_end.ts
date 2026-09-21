@@ -19,6 +19,19 @@ export const validate_fields = (tx: Tx.DaoProjectMilestoneEnd, response: Shardus
     response.reason = 'tx "proposalId" is not a valid address'
     return response
   }
+  if (!Number.isInteger(tx.milestoneNumber) || tx.milestoneNumber < 1) {
+    response.reason = 'tx "milestoneNumber" must be a positive integer'
+    return response
+  }
+  if (tx.proposedTime !== undefined && tx.expectedProposedTime !== undefined) {
+    response.reason = 'Cannot propose and endorse a milestone time in the same transaction'
+    return response
+  }
+  if (tx.proposedTime === undefined &&
+      (typeof tx.expectedProposedTime !== 'number' || !Number.isFinite(tx.expectedProposedTime) || tx.expectedProposedTime <= 0)) {
+    response.reason = 'tx "expectedProposedTime" must be a positive finite number when endorsing'
+    return response
+  }
   if (tx.proposedTime !== undefined) {
     if (typeof tx.proposedTime !== 'number' || !Number.isFinite(tx.proposedTime) || tx.proposedTime <= 0) {
       response.reason = 'tx "proposedTime" must be a positive finite number if provided'
@@ -66,7 +79,11 @@ export const validate = (
     response.reason = current.error
     return response
   }
-  const { milestone } = current
+  const { milestone, index: milestoneIndex } = current
+  if (tx.milestoneNumber !== milestoneIndex + 1) {
+    response.reason = 'The executing milestone no longer matches the signed milestone number'
+    return response
+  }
   // An end before the start would produce a negative duration and invert the bonus/penalty test.
   if (tx.proposedTime !== undefined && milestone.startTime !== undefined && tx.proposedTime < milestone.startTime) {
     response.reason = `tx "proposedTime" (${tx.proposedTime}) cannot be earlier than the milestone start (${milestone.startTime})`
@@ -108,15 +125,16 @@ export const apply = (
   // has already rejected the no-match case, which is why this destructure is not re-checked.
   const { milestone, index: milestoneIndex } = findExecutingMilestone(project)
   const milestoneNumber = milestoneIndex + 1
-
-  const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
-  from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
+  if (tx.milestoneNumber !== milestoneNumber) throw new Error('dao_project_milestone_end target changed after validation')
 
   // Decide first, then apply what comes back. validate() ran the same call against the same
   // wrappedStates, so an error here means the two disagreed — throwing keeps a half-applied
   // endorsement out of consensus state.
   const result = planMilestoneTimeEndorsement(tx, proposal.committeeAddresses, project.address, milestone)
   if (result.error) throw new Error(`dao_project_milestone_end endorsement failed after validation: ${result.error}`)
+
+  const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
   milestone.proposedTime = result.nextProposedTime
   milestone.endorsedTime = result.nextEndorsements
 

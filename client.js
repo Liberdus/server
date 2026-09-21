@@ -3177,6 +3177,13 @@ async function submitProjectTx(ctx, tx) {
   }
 }
 
+async function loadProjectForTransaction(proposalNumber) {
+  const response = await axios.get(`${PROTOCOL}://${HOST}/dao/projects/${proposalNumber}`)
+  const body = parseDaoApiBody(response.data)
+  if (!body?.project || body.error) throw new Error(body?.error ?? `Project #${proposalNumber} not found`)
+  return body.project
+}
+
 vorpal.command('dao project <number>', 'show a project proposal: milestones, balance and rate').action(async function (args, callback) {
   try {
     const res = await axios.get(`${PROTOCOL}://${HOST}/dao/projects/${args.number}`)
@@ -3245,26 +3252,47 @@ vorpal.command('dao project reclaim <number>', 'reclaim an unclaimed project bal
 vorpal
   .command('dao project address <number>', 'propose or endorse a new contractor address (committee only)')
   .action(async function (args, callback) {
-    // Blank endorses whatever is pending; a value proposes a replacement and resets endorsements.
-    const answers = await this.prompt([{ type: 'input', name: 'proposedAddress', message: 'New contractor address (blank to endorse the pending one):' }])
-    const extra = answers.proposedAddress?.trim() ? { proposedAddress: answers.proposedAddress.trim() } : {}
-    await submitProjectTx(this, projectTx('dao_project_change_address', args.number, extra))
+    try {
+      const project = await loadProjectForTransaction(args.number)
+      const message = project.proposedAddress
+        ? `New contractor address (blank to endorse ${project.proposedAddress}):`
+        : 'New contractor address:'
+      const answers = await this.prompt([{ type: 'input', name: 'proposedAddress', message }])
+      const proposedAddress = answers.proposedAddress?.trim()
+      if (!proposedAddress && !project.proposedAddress) throw new Error('No contractor address is pending')
+      const extra = proposedAddress ? { proposedAddress } : { expectedProposedAddress: project.proposedAddress }
+      await submitProjectTx(this, projectTx('dao_project_change_address', args.number, extra))
+    } catch (err) {
+      this.log('Error:', err.message)
+    }
     callback()
   })
 
-// No milestone argument: the server acts on the next pending milestone for a start and the
-// executing one for an end, as the policy specifies.
+// The server still enforces next/current ordering; the signed number prevents stale retargeting.
 for (const [command, type, verb] of [
-  ['dao milestone start <number>', 'dao_project_milestone_start', 'start'],
-  ['dao milestone end <number>', 'dao_project_milestone_end', 'end'],
+  ['dao milestone start <number> <milestone>', 'dao_project_milestone_start', 'start'],
+  ['dao milestone end <number> <milestone>', 'dao_project_milestone_end', 'end'],
 ]) {
   vorpal.command(command, `propose or endorse a milestone ${verb} time (contractor or committee)`).action(async function (args, callback) {
-    // Blank endorses the pending time; the first value proposes one. A time can only be proposed
-    // once per milestone, and may not be in the future — the server rejects both rather than
-    // resetting the endorsements or crediting unserved duration.
-    const answers = await this.prompt([{ type: 'input', name: 'proposedTime', message: `Proposed ${verb} time in ms since epoch (blank to endorse):` }])
-    const extra = answers.proposedTime?.trim() ? { proposedTime: Number(answers.proposedTime.trim()) } : {}
-    await submitProjectTx(this, projectTx(type, args.number, extra))
+    try {
+      const project = await loadProjectForTransaction(args.number)
+      const milestoneNumber = Number(args.milestone)
+      if (!Number.isInteger(milestoneNumber) || milestoneNumber < 1 || milestoneNumber > project.milestones.length) {
+        throw new Error('Milestone number is outside the project range')
+      }
+      const milestone = project.milestones[milestoneNumber - 1]
+      const pendingTime = milestone.proposedTime
+      const message = pendingTime !== undefined
+        ? `Milestone ${milestoneNumber} ${verb} time in ms (blank to endorse ${pendingTime}):`
+        : `Milestone ${milestoneNumber} ${verb} time in ms since epoch:`
+      const answers = await this.prompt([{ type: 'input', name: 'proposedTime', message }])
+      const proposedTime = answers.proposedTime?.trim()
+      if (!proposedTime && pendingTime === undefined) throw new Error('No milestone time is pending')
+      const extra = proposedTime ? { proposedTime: Number(proposedTime) } : { expectedProposedTime: pendingTime }
+      await submitProjectTx(this, projectTx(type, args.number, { milestoneNumber, ...extra }))
+    } catch (err) {
+      this.log('Error:', err.message)
+    }
     callback()
   })
 }

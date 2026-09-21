@@ -120,7 +120,7 @@ export interface AddressPlan extends EndorsementPlan {
  * Milestone times are write-once and the contractor may open one — addresses differ on both counts.
  */
 export function planMilestoneTimeEndorsement(
-  tx: { from: string; proposedTime?: number },
+  tx: { from: string; proposedTime?: number; expectedProposedTime?: number },
   committeeAddresses: string[],
   contractorAddress: string | undefined,
   milestone: { proposedTime?: number; endorsedTime: string[] },
@@ -128,6 +128,13 @@ export function planMilestoneTimeEndorsement(
   const isProposing = tx.proposedTime !== undefined
   const hasPendingValue = milestone.proposedTime !== undefined
   const nextEndorsements = [...milestone.endorsedTime]
+
+  if (isProposing && tx.expectedProposedTime !== undefined) {
+    return { error: 'Cannot propose and endorse a milestone time in the same transaction', isProposing, committed: false, nextEndorsements }
+  }
+  if (!isProposing && (tx.expectedProposedTime === undefined || tx.expectedProposedTime !== milestone.proposedTime)) {
+    return { error: 'Expected proposed time does not match the pending milestone time', isProposing, committed: false, nextEndorsements }
+  }
 
   const writeOnce = writeOnceError(hasPendingValue, isProposing)
   if (writeOnce) return { error: writeOnce, isProposing, committed: false, nextEndorsements }
@@ -153,13 +160,20 @@ export function planMilestoneTimeEndorsement(
  * committee size.
  */
 export function planAddressEndorsement(
-  tx: { from: string; proposedAddress?: string },
+  tx: { from: string; proposedAddress?: string; expectedProposedAddress?: string },
   committeeAddresses: string[],
   project: { proposedAddress?: string; endorsedAddress: string[] },
 ): AddressPlan {
   const isProposing = tx.proposedAddress !== undefined
   const hasPendingValue = project.proposedAddress !== undefined
   const nextEndorsements = [...project.endorsedAddress]
+
+  if (isProposing && tx.expectedProposedAddress !== undefined) {
+    return { error: 'Cannot propose and endorse a contractor address in the same transaction', isProposing, committed: false, nextEndorsements }
+  }
+  if (!isProposing && (tx.expectedProposedAddress === undefined || tx.expectedProposedAddress !== project.proposedAddress)) {
+    return { error: 'Expected proposed address does not match the pending contractor address', isProposing, committed: false, nextEndorsements }
+  }
 
   const result = applyEndorsement(nextEndorsements, tx.from, isProposing, committeeAddresses, undefined, hasPendingValue)
   if (result.error) return { error: result.error, isProposing, committed: false, nextEndorsements }

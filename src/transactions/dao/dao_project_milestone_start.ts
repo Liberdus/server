@@ -19,6 +19,19 @@ export const validate_fields = (tx: Tx.DaoProjectMilestoneStart, response: Shard
     response.reason = 'tx "proposalId" is not a valid address'
     return response
   }
+  if (!Number.isInteger(tx.milestoneNumber) || tx.milestoneNumber < 1) {
+    response.reason = 'tx "milestoneNumber" must be a positive integer'
+    return response
+  }
+  if (tx.proposedTime !== undefined && tx.expectedProposedTime !== undefined) {
+    response.reason = 'Cannot propose and endorse a milestone time in the same transaction'
+    return response
+  }
+  if (tx.proposedTime === undefined &&
+      (typeof tx.expectedProposedTime !== 'number' || !Number.isFinite(tx.expectedProposedTime) || tx.expectedProposedTime <= 0)) {
+    response.reason = 'tx "expectedProposedTime" must be a positive finite number when endorsing'
+    return response
+  }
   if (tx.proposedTime !== undefined) {
     if (typeof tx.proposedTime !== 'number' || !Number.isFinite(tx.proposedTime) || tx.proposedTime <= 0) {
       response.reason = 'tx "proposedTime" must be a positive finite number if provided'
@@ -59,14 +72,17 @@ export const validate = (
     return response
   }
 
-  // The policy says "start the next milestone", so the sender does not name one. Derived from
-  // wrappedStates, which Shardus snapshots identically for every node.
+  // Derive the next milestone, then require it to match the target the sender signed.
   const next = findNextPendingMilestone(project)
   if (next.error) {
     response.reason = next.error
     return response
   }
   const { milestone, index: milestoneIndex } = next
+  if (tx.milestoneNumber !== milestoneIndex + 1) {
+    response.reason = 'The next pending milestone no longer matches the signed milestone number'
+    return response
+  }
 
   const orderError = canStartMilestone(project, milestoneIndex)
   if (orderError) {
@@ -109,15 +125,16 @@ export const apply = (
   // has already rejected the no-match case, which is why this destructure is not re-checked.
   const { milestone, index: milestoneIndex } = findNextPendingMilestone(project)
   const milestoneNumber = milestoneIndex + 1
-
-  const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
-  from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
+  if (tx.milestoneNumber !== milestoneNumber) throw new Error('dao_project_milestone_start target changed after validation')
 
   // Decide first, then apply what comes back. validate() ran the same call against the same
   // wrappedStates, so an error here means the two disagreed — throwing keeps a half-applied
   // endorsement out of consensus state.
   const result = planMilestoneTimeEndorsement(tx, proposal.committeeAddresses, project.address, milestone)
   if (result.error) throw new Error(`dao_project_milestone_start endorsement failed after validation: ${result.error}`)
+
+  const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
   milestone.proposedTime = result.nextProposedTime
   milestone.endorsedTime = result.nextEndorsements
 
@@ -135,8 +152,6 @@ export const apply = (
     tx.from,
     txTimestamp,
     'dao_project_milestone_start',
-    // milestoneNumber is derived rather than sent, but an audit entry that cannot say which
-    // milestone was acted on is not much of an audit entry.
     tx.proposedTime === undefined ? { milestoneNumber } : { milestoneNumber, proposedTime: tx.proposedTime },
   )
 

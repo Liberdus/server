@@ -23,8 +23,8 @@ export function resolveMilestone(project: DaoProjectData, milestoneNumber: unkno
  * completed or terminated. Checking all of them rather than just the previous one costs nothing.
  *
  * Runs after findNextPendingMilestone and catches what that cannot: the next `pending` milestone may
- * still sit behind one that is `executing`. That rejection is what makes deriving the milestone
- * safe, so do not drop it as redundant.
+ * still sit behind one that is `executing`. The signed milestone number does not replace this
+ * ordering check.
  */
 export function canStartMilestone(project: DaoProjectData, index: number): string | undefined {
   for (let i = 0; i < index; i++) {
@@ -39,8 +39,8 @@ export function canStartMilestone(project: DaoProjectData, index: number): strin
 /**
  * The milestone a start transaction acts on: the first one still `pending`.
  *
- * The policy says "start the next milestone" rather than naming one, so the sender supplies no
- * number. A pure function of the project data, so every node derives the same milestone.
+ * Every node derives the same milestone from project data. The caller checks the sender's signed
+ * milestone number against this result so a stale transaction cannot move to the next milestone.
  *
  * This says which milestone is next in line, not that it may start — `canStartMilestone` still runs
  * at the call site, and rejects one whose predecessor is merely `executing`.
@@ -57,7 +57,7 @@ export function findNextPendingMilestone(project: DaoProjectData): { milestone?:
  * The milestone an end transaction acts on: the one currently `executing`.
  *
  * At most one can be, since a milestone cannot start while an earlier one is unfinished, so "the
- * current milestone" resolves without the sender naming it.
+ * current milestone" resolves unambiguously. The caller checks it against the signed target.
  */
 export function findExecutingMilestone(project: DaoProjectData): { milestone?: DaoMilestone; index?: number; error?: string } {
   const executing = project.milestones.reduce<number[]>((found, m, i) => (m.status === 'executing' ? [...found, i] : found), [])
