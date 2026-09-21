@@ -33,7 +33,7 @@ export const userAccount = (accountId: string, timestamp: number): UserAccount =
     type: 'UserAccount',
     data: {
       balance: utils.libToWei(50),
-      toll: AccountsStorage.cachedNetworkAccount ? utils.getDefaultTollWei(AccountsStorage.cachedNetworkAccount) : INITIAL_PARAMETERS.defaultToll,
+      toll: AccountsStorage.cachedNetworkAccount ? utils.getDefaultTollWei(AccountsStorage.cachedNetworkAccount) : utils.usdStrToWei(INITIAL_PARAMETERS.defaultTollUsdStr, AccountsStorage.cachedNetworkAccount),
       tollUnit: TollUnit.lib,
       chats: {},
       chatTimestamp: 0,
