@@ -900,10 +900,13 @@ export const schemaDaoProjectMilestoneTimeTX = {
     ...baseTxProperties,
     from: { type: 'string' },
     proposalId: { type: 'string', minLength: 64, maxLength: 64 },
+    milestoneNumber: { type: 'integer', minimum: 1 },
     proposedTime: { type: 'number', minimum: 0 },
+    expectedProposedTime: { type: 'number', exclusiveMinimum: 0 },
     networkId: { type: 'string' },
   },
-  required: [...baseTxRequired, 'from', 'proposalId'],
+  required: [...baseTxRequired, 'from', 'proposalId', 'milestoneNumber'],
+  oneOf: [{ required: ['proposedTime'] }, { required: ['expectedProposedTime'] }],
   additionalProperties: false,
 }
 
@@ -916,9 +919,11 @@ export const schemaDaoProjectChangeAddressTX = {
     from: { type: 'string' },
     proposalId: { type: 'string', minLength: 64, maxLength: 64 },
     proposedAddress: { type: 'string', minLength: 64, maxLength: 64 },
+    expectedProposedAddress: { type: 'string', minLength: 64, maxLength: 64 },
     networkId: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'proposalId'],
+  oneOf: [{ required: ['proposedAddress'] }, { required: ['expectedProposedAddress'] }],
   additionalProperties: false,
 }
 
