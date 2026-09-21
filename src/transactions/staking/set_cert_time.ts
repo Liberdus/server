@@ -7,6 +7,7 @@ import { getRandom, scaleByStabilityFactor, InjectTxToConsensor, getStakeRequire
 import * as crypto from '../../crypto'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import { isUserAccount, isNodeAccount } from '../../@types/accountTypeGuards'
+import { ethers } from 'ethers';
 
 export function getCertCycleDuration(): number {
   if (AccountsStorage.cachedNetworkAccount && AccountsStorage.cachedNetworkAccount.current.certCycleDuration !== null) {
@@ -198,7 +199,7 @@ export const apply = (
 
   let costTxFee = BigInt(0)
   if (shouldChargeTxFee) {
-    costTxFee = scaleByStabilityFactor(BigInt(AccountsStorage.cachedNetworkAccount.current.transactionFee), AccountsStorage.cachedNetworkAccount)
+    costTxFee = scaleByStabilityFactor(ethers.parseEther(AccountsStorage.cachedNetworkAccount.current.transactionFeeUsdStr), AccountsStorage.cachedNetworkAccount)
     operatorAccount.data.balance = SafeBigIntMath.subtract(operatorAccount.data.balance, costTxFee)
   }
 
