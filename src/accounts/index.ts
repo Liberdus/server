@@ -10,6 +10,8 @@ import { deserializeNodeAccount, nodeAccount, serializeNodeAccount } from './nod
 import { deserializeProposalAccount, proposalAccount, serializeProposalAccount } from './proposalAccount'
 import { daoProposalsMetaAccount, deserializeDaoProposalsMetaAccount, serializeDaoProposalsMetaAccount } from './daoProposalsMetaAccount'
 import { daoProposalAccount, deserializeDaoProposalAccount, serializeDaoProposalAccount } from './daoProposalAccount'
+import { deserializeGroupAccount, groupAccount, serializeGroupAccount } from './groupAccount'
+import { deserializeGroupTreeAccount, groupTreeAccount, serializeGroupTreeAccount } from './groupTreeAccount'
 import { VectorBufferStream } from '@shardus/core'
 import {
   DeveloperPayment,
@@ -26,6 +28,8 @@ import {
   DevAccount,
   DaoProposalsMeta,
   DaoProposalAccount,
+  GroupAccount,
+  GroupTreeAccount,
 } from '../@types'
 import { Utils } from '@shardus/lib-types'
 
@@ -45,6 +49,9 @@ export enum SerdeTypeIdent {
   Fallback,
   DaoProposalsMeta,
   DaoProposalAccount,
+  GroupAccount,
+  // Appended, never reordered: these ordinals are on the wire.
+  GroupTreeAccount,
 }
 
 export const serializeAccounts = (inp: AccountVariant): VectorBufferStream => {
@@ -86,6 +93,16 @@ export const serializeAccounts = (inp: AccountVariant): VectorBufferStream => {
     case 'DaoProposalAccount':
       serializeDaoProposalAccount(stream, inp as DaoProposalAccount, true)
       break
+    // NOTE: the cases above use camelCase type strings while the account
+    // constructors set PascalCase ('chatAccount' vs 'ChatAccount'), so those
+    // accounts silently fall through to fallbackSerializer. GroupAccount is
+    // registered with the string it actually carries, so it uses this path.
+    case 'GroupAccount':
+      serializeGroupAccount(stream, inp as GroupAccount, true)
+      break
+    case 'GroupTreeAccount':
+      serializeGroupTreeAccount(stream, inp as GroupTreeAccount, true)
+      break
     default:
       fallbackSerializer(stream, inp, true)
       break
@@ -122,6 +139,10 @@ export const deserializeAccounts = (buffer: Buffer): AccountVariant => {
       return deserializeDaoProposalsMetaAccount(stream)
     case SerdeTypeIdent.DaoProposalAccount:
       return deserializeDaoProposalAccount(stream)
+    case SerdeTypeIdent.GroupAccount:
+      return deserializeGroupAccount(stream)
+    case SerdeTypeIdent.GroupTreeAccount:
+      return deserializeGroupTreeAccount(stream)
     default:
       return fallbackDeserializer(stream)
   }
@@ -218,4 +239,6 @@ export default {
   userAccount,
   daoProposalsMetaAccount,
   daoProposalAccount,
+  groupAccount,
+  groupTreeAccount,
 }

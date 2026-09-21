@@ -77,6 +77,36 @@ const daoPreCrackTxTypes = new Set([
   TXTypes.dao_cancel,
 ])
 
+/** MLS group chat transaction family, gated by LiberdusFlags.enableGroupChat. */
+const groupChatTxTypes = new Set([
+  TXTypes.group_create,
+  TXTypes.group_keypackage_publish,
+  TXTypes.group_message,
+  TXTypes.group_commit,
+  TXTypes.group_leave,
+  TXTypes.group_maintenance_fund,
+])
+
+/**
+ * Group transactions that are worth screening before they enter the queue.
+ *
+ * A group_commit names the epoch it was built against, and the network accepts
+ * exactly one commit per epoch. Members therefore lose ordinary races -- and
+ * because that check needs the GroupAccount, it can only run in validate(),
+ * which apply() reaches AFTER consensus, where a rejection still costs the
+ * sender a full fee. Screening here turns the loser's fee into a pre-queue
+ * rejection that costs nothing.
+ *
+ * This is an optimization for honest senders, NOT a security boundary. It runs
+ * only on the node a client injects to: a transaction arriving by gossip goes
+ * through handleSharedTX, which calls app.validate and never precracks. Nothing
+ * downstream may assume a hostile node ran this.
+ *
+ * group_message is deliberately absent. It is by far the highest-volume group
+ * transaction and precracking it would add an account fetch to every message.
+ */
+const groupPreCrackTxTypes = new Set([TXTypes.group_commit, TXTypes.group_leave])
+
 let isReadyToJoinLatestValue = false
 let mustUseAdminCert = false
 
@@ -277,6 +307,12 @@ const shardusSetup = (): void => {
         // 3.7. Reject dao_cancel specifically when its own kill-switch flag is off
         if (tx.type === TXTypes.dao_cancel && !LiberdusFlags.enableDaoCancel) {
           validationResult.reason = 'dao_cancel is not enabled on this network'
+          return validationResult
+        }
+
+        // 3.8. Reject MLS group chat transactions while the feature is off
+        if (!LiberdusFlags.enableGroupChat && groupChatTxTypes.has(tx.type)) {
+          validationResult.reason = 'Group chat transactions are not enabled on this network yet'
           return validationResult
         }
 
@@ -893,6 +929,7 @@ const shardusSetup = (): void => {
         TXTypes.claim_reward,
         TXTypes.apply_penalty,
         ...(LiberdusFlags.enableNewDAOTransactions ? daoPreCrackTxTypes : []),
+        ...(LiberdusFlags.enableGroupChat ? groupPreCrackTxTypes : []),
       ]
       if (preCrackableTxTypes.includes(tx.type) === false) {
         return { status: true, reason: 'Tx PreCrack Skipped' }
@@ -909,10 +946,41 @@ const shardusSetup = (): void => {
         let from = tx.from
         let to = tx.to
         const isDaoPreCrack = daoPreCrackTxTypes.has(tx.type)
+        const isGroupPreCrack = groupPreCrackTxTypes.has(tx.type)
 
         if (isDaoPreCrack) {
           from = undefined
           to = undefined
+        }
+
+        /*
+         * Group commits need the GroupAccount for the epoch fence, and the
+         * sender's UserAccount for membership and the fee checks -- `from`
+         * above already fetches the latter.
+         *
+         * The GroupTreeAccount is deliberately NOT fetched. The fence needs
+         * group.epoch and nothing else, and the ratchet tree runs to ~112 kB at
+         * 32 members; pulling it through getLocalOrRemoteAccount on every
+         * commit injection would cost far more than the fee it saves. That is
+         * why these types use validatePreCrack rather than validate() below:
+         * validate() dereferences the tree account and would throw here.
+         */
+        if (isGroupPreCrack && tx.groupId) {
+          promises.push(
+            dapp.getLocalOrRemoteAccount(tx.groupId).then((queuedWrappedState) => {
+              // A missing group is left absent so validatePreCrack can report
+              // it in its own words, rather than surfacing as an exception.
+              if (!queuedWrappedState) return
+              wrappedStates[tx.groupId] = {
+                accountId: queuedWrappedState.accountId,
+                stateId: queuedWrappedState.stateId,
+                data: queuedWrappedState.data as LiberdusTypes.Accounts,
+                timestamp: queuedWrappedState.timestamp,
+                accountCreated: false,
+                isPartial: false,
+              }
+            }),
+          )
         }
 
         if (
@@ -1059,7 +1127,20 @@ const shardusSetup = (): void => {
 
         console.log('Running txPreCrackData', tx, wrappedStates)
 
-        const res = transactions[tx.type].validate(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp)
+        /*
+         * Some transaction types validate against a smaller account set here
+         * than apply() uses, and expose validatePreCrack to say so -- see
+         * group_commit, which must not pull the ratchet tree just to check an
+         * epoch. The module-namespace union cannot express "present on some
+         * members", hence the cast.
+         */
+        const txModule = transactions[tx.type] as unknown as {
+          validate: typeof transactions[TXTypes.transfer]['validate']
+          validatePreCrack?: typeof transactions[TXTypes.transfer]['validate']
+        }
+        const validateForPreCrack = txModule.validatePreCrack ?? txModule.validate
+
+        const res = validateForPreCrack(tx, wrappedStates, { success: false, reason: 'Tx Validation Fails' }, dapp)
         if (res.success === false) {
           return { status: false, reason: res.reason }
         } else {

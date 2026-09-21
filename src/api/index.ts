@@ -10,6 +10,7 @@ import node from './node'
 import { handlePutAdminCertificate } from './admin_certificate'
 import { debug_liberdus_flags, set_liberdus_flag } from './liberdus_flags'
 import dao from './dao'
+import group from './group'
 import { Shardus } from '@shardus/core'
 export default (dapp: Shardus): void => {
   dapp.registerExternalPost('inject', inject(dapp))
@@ -51,6 +52,18 @@ export default (dapp: Shardus): void => {
   dapp.registerExternalGet('account/:id/recentMessages', accounts.recentMessages(dapp))
   dapp.registerExternalGet('account/:id/chats/:timestamp', accounts.chats(dapp))
   // dapp.registerExternalGet('accounts', accounts.all(dapp))
+
+  // MLS group chat. Same LIFO caveat as the DAO routes above: register the
+  // broadest path first so the specific ones win.
+  dapp.registerExternalGet('group/:groupId', group.info(dapp))
+  dapp.registerExternalGet('group/:groupId/checkpoint', group.checkpoint(dapp))
+  dapp.registerExternalGet('group/:groupId/messages/:timestamp', group.messages(dapp))
+  dapp.registerExternalGet('group/:groupId/tree', group.tree(dapp))
+  dapp.registerExternalGet('group/:groupId/requests', group.joinRequests(dapp))
+  dapp.registerExternalGet('group/:groupId/handshakes/:epoch', group.handshakes(dapp))
+  dapp.registerExternalGet('group/:groupId/welcome/:address', group.welcome(dapp))
+  dapp.registerExternalGet('account/:id/keypackages', group.keyPackages(dapp))
+  dapp.registerExternalGet('account/:id/groups', group.accountGroups(dapp))
 
   dapp.registerExternalGet('transaction/:id', accounts.transactions(dapp))
 
