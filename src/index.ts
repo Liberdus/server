@@ -1237,6 +1237,11 @@ const shardusSetup = (): void => {
 
         const appJoinData = data.appJoinData as LiberdusTypes.AppJoinData
 
+        if (!AccountsStorage.cachedNetworkAccount?.current) {
+          /* prettier-ignore */ if (logFlags.verbose) console.log('[config-enforced] join-waiting-network-account')
+          return { success: false, reason: 'Network account is not ready; retry joining later', fatal: false }
+        }
+
         const minVersion = AccountsStorage.cachedNetworkAccount.current.minVersion
         if (!utils.isEqualOrNewerVersion(minVersion, appJoinData.version)) {
           /* prettier-ignore */
@@ -1519,6 +1524,10 @@ const shardusSetup = (): void => {
           }
         }
         const { appData } = data
+        if (!AccountsStorage.cachedNetworkAccount?.current) {
+          /* prettier-ignore */ if (logFlags.verbose) console.log('[config-enforced] archiver-join-waiting-network-account')
+          return { success: false, reason: 'Network account is not ready; retry joining later', fatal: false }
+        }
         const { minVersion } = AccountsStorage.cachedNetworkAccount.current.archiver
         if (!utils.isEqualOrNewerVersion(minVersion, appData.version)) {
           /* prettier-ignore */

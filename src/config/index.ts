@@ -467,6 +467,8 @@ config = merge(config, {
   server: {
     p2p: {
       cycleDuration: cycleDuration,
+      netConfigV2: true,
+      networkConfigHashEnforcement: true,
       minNodesToAllowTxs: 1, // to allow single node networks
       baselineNodes: process.env.baselineNodes ? parseInt(process.env.baselineNodes) : 10, // config used for baseline for entering recovery, restore, and safety. Should be equivalient to minNodes on network startup
       minNodes: process.env.minNodes ? parseInt(process.env.minNodes) : 10,
