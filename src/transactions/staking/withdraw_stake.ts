@@ -6,7 +6,6 @@ import * as AccountsStorage from '../../storage/accountStorage'
 import { UserAccount, WrappedStates, Tx, NodeAccount, AppReceiptData } from './../../@types'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import { isUserAccount, isNodeAccount } from '../../@types/accountTypeGuards'
-import { ethers } from 'ethers'
 
 export const validate_fields = (tx: Tx.WithdrawStake, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.nominator) === false) {
@@ -188,11 +187,11 @@ export const createFailedAppReceiptData = (
   const from: UserAccount = wrappedStates[tx.nominator].data
   let transactionFee = BigInt(0)
   if (from !== undefined && from !== null) {
-    const txFeeUsd = ethers.parseEther(AccountsStorage.cachedNetworkAccount.current.transactionFeeUsdStr)
+    const txFeeUsd = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
     let txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
 
     if (utils.isEqualOrNewerVersion('2.4.0', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
-      txFee = ethers.parseEther(AccountsStorage.cachedNetworkAccount.current.transactionFeeUsdStr)
+      txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
     }
 
     if (from.data.balance >= txFee) {
