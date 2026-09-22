@@ -7,7 +7,6 @@ import create from './../../accounts'
 import { UserAccount, WrappedStates, Tx, NodeAccount, AppReceiptData } from './../../@types'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import { isUserAccount, isNodeAccount } from '../../@types/accountTypeGuards'
-import { ethers } from 'ethers';
 
 export const validate_fields = (tx: Tx.DepositStake, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.nominator) === false) {
@@ -183,7 +182,7 @@ export const createFailedAppReceiptData = (
   const from: UserAccount = wrappedStates[tx.nominator].data
   let transactionFee = BigInt(0)
   if (from !== undefined && from !== null) {
-    const txFeeUsd = ethers.parseEther(AccountsStorage.cachedNetworkAccount.current.transactionFeeUsdStr)
+    const txFeeUsd = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
     let txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
     if (utils.isEqualOrNewerVersion('2.4.3', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
       txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
