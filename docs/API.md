@@ -60,27 +60,6 @@ Returns address information for the given name.
 **Parameters:**
 - `name`: Account name
 
-### GET /account/:id/:friendId/toll
-⚠️ **DEPRECATED** - Deprecated in version 2.5.0. This endpoint will be removed in a future version.
-
-Returns toll information between two accounts.
-
-**Parameters:**
-- `id`: Account identifier
-- `friendId`: Friend's account identifier
-
-**Note:** This endpoint is deprecated because the friend functionality has been removed. Use `/account/:id/toll` instead.
-
-### GET /account/:id/friends
-⚠️ **DEPRECATED** - Deprecated in version 2.5.0. This endpoint will be removed in a future version.
-
-Returns friends list for the given account ID.
-
-**Parameters:**
-- `id`: Account identifier
-
-**Note:** This endpoint is deprecated because the friend functionality has been removed.
-
 ### GET /account/:id/recentMessages
 Returns recent messages for the given account ID.
 
@@ -157,9 +136,6 @@ Network Management:
 - `apply_change_config`: Apply configuration changes
 
 Account Management:
-- `email`: Email-related operations
-- `gossip_email_hash`: Propagate email hash
-- `verify`: Verify account
 - `register`: Register new account
 - `create`: Create account
 - `transfer`: Transfer between accounts
@@ -168,8 +144,6 @@ Account Management:
 Messaging and Social:
 - `message`: Send messages
 - `toll`: Manage toll operations
-- `friend`: Add friend
-- `remove_friend`: Remove friend
 
 Staking and Rewards:
 - `stake`: Stake tokens
@@ -346,91 +320,6 @@ The transaction will:
 3. Deduct transaction fee from source account when `deductTxFeeFromAmount` is false or omitted
 4. Update timestamps for both accounts
 
-#### `email` ⚠️ DEPRECATED
-**Deprecated in version 2.5.0** - This transaction type is deprecated and will be removed in a future version. New transactions of this type will be rejected when network version >= 2.5.0.
-
-Initiates the email verification process for an account.
-
-**Transaction Parameters:**
-```json
-{
-  "type": "email",
-  "email": string,    // Email address (max 30 characters)
-  "signedTx": {
-    "from": string,   // Account ID to verify
-    "emailHash": string, // Hash of the email address
-    "sign": {
-      "owner": string // Must match 'from' field
-    }
-  },
-  "timestamp": number
-}
-```
-
-Requirements:
-- Email must be less than 31 characters
-- Account must exist
-- Email hash must match the provided email
-- Must be signed by the account owner
-- Signature must be cryptographically valid
-
-The transaction will:
-1. Send verification email to the provided address
-2. Generate verification code
-3. Store email hash and verification code hash
-4. Trigger gossip_email_hash transaction
-
-#### `gossip_email_hash` ⚠️ DEPRECATED
-**Deprecated in version 2.5.0** - This transaction type is deprecated and will be removed in a future version. New transactions of this type will be rejected when network version >= 2.5.0.
-
-Internal transaction to propagate email verification data across nodes.
-
-**Transaction Parameters:**
-```json
-{
-  "type": "gossip_email_hash",
-  "nodeId": string,   // ID of node handling verification
-  "from": string,     // Node address
-  "account": string,  // Account being verified
-  "emailHash": string, // Hash of the email
-  "verified": string, // Hash of verification code
-  "timestamp": number
-}
-```
-
-This transaction is automatically triggered by the system after an email transaction and should not be manually created.
-
-#### `verify` ⚠️ DEPRECATED
-**Deprecated in version 2.5.0** - This transaction type is deprecated and will be removed in a future version. New transactions of this type will be rejected when network version >= 2.5.0.
-
-Completes the email verification process using the code received via email.
-
-**Transaction Parameters:**
-```json
-{
-  "type": "verify",
-  "from": string,    // Account ID being verified
-  "code": string,    // 6-digit verification code
-  "timestamp": number,
-  "sign": {
-    "owner": string  // Must match 'from' field
-  }
-}
-```
-
-Requirements:
-- Account must have pending verification (email transaction processed)
-- Code must be exactly 6 digits
-- Code must match the verification code sent via email
-- Account must not be already verified
-- Must be signed by the account owner
-- Signature must be cryptographically valid
-
-The transaction will:
-1. Mark account as verified
-2. Add faucet amount to account balance
-3. Update account timestamp
-
 #### `distribute`
 Distributes tokens to multiple recipients in a single transaction.
 
@@ -469,7 +358,7 @@ The transaction will:
 
 ## Messaging and Social Transactions
 
-Note: Messaging and social transactions handle user interactions, friend relationships, and messaging fees. These transactions typically require valid signatures and may involve toll payments for messaging non-friends.
+Note: Messaging and social transactions handle user interactions and messaging fees. These transactions typically require valid signatures and may involve toll payments for messaging.
 
 #### `message`
 Sends a message to another user.
@@ -494,51 +383,20 @@ Requirements:
 - Message size must be less than 5kb
 - Sender must have sufficient balance to cover:
   - Transaction fee
-  - Toll fee (if recipient is not a friend)
+  - Toll fee (when required)
   - Maintenance amount
 - Must be signed by the sender account
 - Signature must be cryptographically valid
 
 The transaction will:
 1. Deduct fees from sender account
-2. Add toll payment to recipient account (if not friends)
+2. Add toll payment to recipient account (when required)
 3. Store message in chat history
 4. Update chat references for both users
 5. Update timestamps for all affected accounts
 
-#### `friend` ⚠️ DEPRECATED
-**Deprecated in version 2.5.0** - This transaction type is deprecated and will be removed in a future version. New transactions of this type will be rejected when network version >= 2.5.0.
-
-Adds another user as a friend to avoid toll payments for messaging.
-
-**Transaction Parameters:**
-```json
-{
-  "type": "friend",
-  "from": string,    // Account ID adding the friend
-  "to": string,      // Friend's account ID
-  "alias": string,   // Friend's alias
-  "timestamp": number,
-  "sign": {
-    "owner": string  // Must match 'from' field
-  }
-}
-```
-
-Requirements:
-- Source account must exist
-- Source account must have sufficient balance for transaction fee
-- Must be signed by the source account
-- Signature must be cryptographically valid
-
-The transaction will:
-1. Deduct transaction fee from source account
-2. Add friend to source account's friend list
-3. Store friend's alias
-4. Update account timestamp
-
 #### `toll`
-Sets the toll amount required for non-friends to send messages.
+Sets the toll amount required for senders to send messages.
 
 **Transaction Parameters:**
 ```json
@@ -565,40 +423,7 @@ The transaction will:
 2. Set new toll amount for the account
 3. Update account timestamp
 
-Note: If a user has not set a toll amount, the system's default toll will be used for messages from non-friends.
-
-#### `remove_friend` ⚠️ DEPRECATED
-**Deprecated in version 2.5.0** - This transaction type is deprecated and will be removed in a future version. New transactions of this type will be rejected when network version >= 2.5.0.
-
-Removes a friend from the user's friend list, requiring toll payments for future messages.
-
-**Transaction Parameters:**
-```json
-{
-  "type": "remove_friend",
-  "from": string,    // Account ID removing the friend
-  "to": string,      // Friend's account ID to remove
-  "timestamp": number,
-  "sign": {
-    "owner": string  // Must match 'from' field
-  }
-}
-```
-
-Requirements:
-- Both accounts must exist
-- Must be signed by the source account
-- Signature must be cryptographically valid
-
-The transaction will:
-1. Remove friend from source account's friend list
-2. Update account timestamp
-
-Note: After removing a friend, future messages to that account will require toll payments according to their toll settings.
-
-## Staking and Rewards Transactions
-
-Note: Staking transactions handle node operation stakes, rewards, and penalties. These transactions typically require valid signatures and sufficient balances.
+Note: If a user has not set a toll amount, the system's default toll will be used for messages.
 
 #### `stake`
 Stakes tokens to participate in node operations.

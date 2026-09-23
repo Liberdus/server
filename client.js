@@ -275,15 +275,6 @@ function makeTxGenerator(accounts, total = 0, type) {
           })
           break
         }
-        case 'friend': {
-          yield txBuilder({
-            type: 'friend',
-            from: account1,
-            to: account2,
-            amount: 1,
-          })
-          break
-        }
         case 'message': {
           const message = stringify({
             body: 'spam1234',
@@ -353,17 +344,6 @@ function buildTx({ type, from = {}, to, handle, id, amount, message, toll }) {
         timestamp: Date.now(),
         to: to.address,
         amount: Number(amount),
-      }
-      break
-    }
-    case 'friend': {
-      actualTx = {
-        type,
-        from: from.address,
-        to: to.address,
-        handle: `${to.address.slice(0, 5)}`,
-        amount: Number(amount),
-        timestamp: Date.now(),
       }
       break
     }
@@ -749,66 +729,6 @@ vorpal.command('change network parameters', 'Send a stringified JSON config obje
   }
 })
 
-vorpal.command('email', 'registers your email address to the network').action(async function (_, callback) {
-  const answer = await this.prompt({
-    type: 'input',
-    name: 'email',
-    message: 'Enter your email address: ',
-    validate: (result) => {
-      const regex = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/
-      if (!regex.test(result)) {
-        return 'You need to provide a valid email address'
-      } else {
-        return true
-      }
-    },
-  })
-  const signedTx = {
-    emailHash: crypto.hash(answer.email),
-    from: USER.address,
-  }
-  signTransaction(signedTx)
-  const tx = {
-    type: 'email',
-    signedTx,
-    email: answer.email,
-    timestamp: Date.now(),
-    networkId,
-  }
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
-vorpal.command('verify', 'verifies your email address').action(async function (_, callback) {
-  const answer = await this.prompt({
-    type: 'input',
-    name: 'code',
-    message: 'Enter the verification code sent to your email address: ',
-    validate: (result) => {
-      result = result.split` `.join``
-      if (typeof result === 'string' && result.length === 6) {
-        return true
-      } else {
-        return 'You need to provide the 6 digit code'
-      }
-    },
-  })
-  const tx = {
-    type: 'verify',
-    from: USER.address,
-    code: answer.code,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
-// COMMAND TO REGISTER AN ALIAS FOR A USER ACCOUNT
 vorpal.command('register', 'registers a unique alias for your account').action(async function (args, callback) {
   const answers = await this.prompt([
     {
@@ -1241,58 +1161,6 @@ vorpal.command('toll', 'sets a toll people must you in order to send you message
 })
 
 // COMMAND TO ADD A FRIEND TO YOUR USER ACCOUNT'S FRIEND LIST
-vorpal.command('add friend', 'adds a friend to your account').action(async function (args, callback) {
-  const answer = await this.prompt({
-    type: 'input',
-    name: 'friend',
-    message: 'Enter the alias or publicKey of the friend: ',
-  })
-  const to = await getAddress(answer.friend)
-  if (to === undefined || to === null) {
-    this.log("Target account doesn't exist for: ", answer.friend)
-    callback()
-  }
-  const tx = {
-    type: 'friend',
-    alias: answer.friend,
-    from: USER.address,
-    to: to,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
-// COMMAND TO REMOVE A FRIEND FROM YOUR USER ACCOUNT'S FRIEND LIST
-vorpal.command('remove friend', 'removes a friend from your account').action(async function (_, callback) {
-  const answer = await this.prompt({
-    type: 'input',
-    name: 'friend',
-    message: 'Enter the alias or publicKey of the friend to remove: ',
-  })
-  const to = await getAddress(answer.friend)
-  if (to === undefined || to === null) {
-    this.log("Target account doesn't exist for: ", answer.friend)
-    callback()
-  }
-  const tx = {
-    type: 'remove_friend',
-    from: USER.address,
-    to: to,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
-// COMMAND TO STAKE TOKENS IN ORDER TO RUN A NODE
-// TODO
 vorpal.command('stake', 'stakes tokens in order to operate a node').action(async function (args, callback) {
   const parameters = await queryParameters()
   const answer = await this.prompt({

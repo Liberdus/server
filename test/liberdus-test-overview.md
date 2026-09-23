@@ -5,12 +5,9 @@ This document describes all the key features of Liberdus application and steps t
 - Sign up + Sign In
 - Account import
 - Account export
-- Email verification
 - Coin transfer
 - Change toll amount
 - Sending message
-- Adding friend
-- Removing friend
 - Staking coin
 - Submit economy proposal
 - Submit funding proposal
@@ -59,25 +56,6 @@ This document describes all the key features of Liberdus application and steps t
     - click `@username` button
 - click `Copy Secret Key` button and store it somewhere safe
 
-## Email verification
-### CLI
- - enter `email`
- - enter your email address
- - open your mail box and copy 6 digits code
- - back to CLI tool and enter `verify`
- - enter 6-digits code
-### Browser
-- follow `Sign In` steps
-- visit `email/register` page
-    - click user icon + username at the top right corner of home page
-    - click `Register Email` button
-- enter your email address
-- click `Register Email` button
-- open your email inbox and copy registration code from liberdus email
-- switch back to liberdus app (`email/verify`)
-- enter verification code
-- click `Submit Verification` button
-
 ## Coin transfer
 ### CLI
 - enter `transfer`
@@ -106,7 +84,7 @@ This document describes all the key features of Liberdus application and steps t
 - enter `message`
 - enter alias/username or public key of other account
 - enter the message to send
-- use arrow to select `yes` for spending toll if other account is not a friend
+- use arrow to select `yes` for spending toll if a toll is required
 
 ### Browser
 - follow `Sign In` steps
@@ -115,30 +93,6 @@ This document describes all the key features of Liberdus application and steps t
 - enter `username` of the target account
 
 - type your message and click `Send` button
-
-## Adding friend
-### CLI
-- enter `add friend`
-- enter alias/username or public key of friend's account
-
-### Browser
-- follow `Sign In` steps
-- click `Friends` button from the menu on the left of home page
-- on `/setting/friends` page, enter `username` of friend's account
-- when account is found, click `(+)` button to add as friend
-- click `OK` when confirm message box is shown
-
-## Removing friend
-### CLI
-- enter `remove friend`
-- enter alias/username or public key of friend's account
-
-### Browser
-- follow `Sign In` steps
-- click `Friends` button from the menu on the left of home page
-- on `/setting/friends` page, list of user's friends will be shown
-- click `(x)` button beside friend's name to remove from friend list
-- click `OK` when confirm message box is shown
 
 ## Staking coin
 ### CLI
