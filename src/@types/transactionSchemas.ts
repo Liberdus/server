@@ -153,55 +153,6 @@ export const schemaDistributeTX = {
   additionalProperties: false,
 }
 
-// @deprecated Deprecated in version 2.5.0 - will be removed in a future version
-export const schemaEmailTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    signedTx: {
-      type: 'object',
-      properties: {
-        emailHash: { type: 'string' },
-        from: { type: 'string' },
-        sign: SignatureSchema,
-      },
-      required: ['emailHash', 'from', 'sign'],
-      additionalProperties: false,
-    },
-    email: { type: 'string' },
-  },
-  required: [...baseTxRequired, 'signedTx', 'email'],
-  additionalProperties: false,
-}
-
-// @deprecated Deprecated in version 2.5.0 - will be removed in a future version
-export const schemaFriendTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    to: { type: 'string' },
-    alias: { type: 'string' },
-  },
-  required: [...baseTxRequired, 'from', 'to', 'alias'],
-  additionalProperties: false,
-}
-
-// @deprecated Deprecated in version 2.5.0 - will be removed in a future version
-export const schemaGossipEmailHashTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    nodeId: { type: 'string' },
-    account: { type: 'string' },
-    emailHash: { type: 'string' },
-    verified: { type: 'string' },
-  },
-  required: [...baseTxRequired, 'from', 'nodeId', 'account', 'emailHash', 'verified'],
-  additionalProperties: false,
-}
-
 export const schemaInitNetworkTX = {
   type: 'object',
   properties: {
@@ -340,18 +291,6 @@ export const schemaRegisterTX = {
   additionalProperties: false,
 }
 
-// @deprecated Deprecated in version 2.5.0 - will be removed in a future version
-export const schemaRemoveFriendTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    to: { type: 'string' },
-  },
-  required: [...baseTxRequired, 'from', 'to'],
-  additionalProperties: false,
-}
-
 export const schemaRemoveStakeRequestTX = {
   type: 'object',
   properties: {
@@ -414,18 +353,6 @@ export const schemaTollTX = {
     toll: { isBigInt: true },
   },
   required: [...baseTxRequired, 'from', 'toll'],
-  additionalProperties: false,
-}
-
-// @deprecated Deprecated in version 2.5.0 - will be removed in a future version
-export const schemaVerifyTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    code: { type: 'string' },
-  },
-  required: [...baseTxRequired, 'from', 'code'],
   additionalProperties: false,
 }
 
@@ -688,9 +615,6 @@ function addSchemas(): void {
     [TXTypes.transfer]: schemaTransferTX,
     [TXTypes.create]: schemaCreateTX,
     [TXTypes.distribute]: schemaDistributeTX,
-    [TXTypes.email]: schemaEmailTX,
-    [TXTypes.friend]: schemaFriendTX,
-    [TXTypes.gossip_email_hash]: schemaGossipEmailHashTX,
     [TXTypes.init_network]: schemaInitNetworkTX,
     [TXTypes.message]: schemaMessageTX,
     [TXTypes.read]: schemaReadTX,
@@ -702,14 +626,12 @@ function addSchemas(): void {
     [TXTypes.change_network_param]: schemaChangeNetworkParamTX,
     [TXTypes.apply_change_network_param]: schemaApplyChangeNetworkParamTX,
     [TXTypes.register]: schemaRegisterTX,
-    [TXTypes.remove_friend]: schemaRemoveFriendTX,
     [TXTypes.remove_stake_request]: schemaRemoveStakeRequestTX,
     [TXTypes.remove_stake]: schemaRemoveStakeTX,
     [TXTypes.snapshot_claim]: schemaSnapshotClaimTX,
     [TXTypes.snapshot]: schemaSnapshotTX,
     [TXTypes.stake]: schemaStakeTX,
     [TXTypes.toll]: schemaTollTX,
-    [TXTypes.verify]: schemaVerifyTX,
     [TXTypes.set_cert_time]: schemaSetCertTimeTX,
     [TXTypes.deposit_stake]: schemaDepositStakeTX,
     [TXTypes.withdraw_stake]: schemaWithdrawStakeTX,
