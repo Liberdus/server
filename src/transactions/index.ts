@@ -1,8 +1,5 @@
 import * as init_network from './init_network'
 import * as snapshot from './snapshot'
-import * as email from './email'
-import * as gossip_email_hash from './gossip_email_hash'
-import * as verify from './verify'
 import * as register from './register'
 import * as create from './create'
 import * as transfer from './transfer'
@@ -12,8 +9,6 @@ import * as read from './read'
 import * as update_toll_required from './update_toll_required'
 import * as reclaim_toll from './reclaim_toll'
 import * as toll from './toll'
-import * as friend from './friend'
-import * as remove_friend from './remove_friend'
 import * as stake from './stake'
 import * as remove_stake from './remove_stake'
 import * as remove_stake_request from './remove_stake_request'
@@ -52,9 +47,6 @@ import * as dao_project_reclaim_balance from './dao/dao_project_reclaim_balance'
 export default {
   init_network,
   snapshot,
-  email,
-  gossip_email_hash,
-  verify,
   register,
   create,
   transfer,
@@ -64,8 +56,6 @@ export default {
   update_toll_required,
   reclaim_toll,
   toll,
-  friend,
-  remove_friend,
   stake,
   remove_stake,
   remove_stake_request,

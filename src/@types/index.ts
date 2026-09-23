@@ -22,12 +22,6 @@ export enum AJVSchemaEnum {
   // Transaction types with snake case values matching TXTypes
   init_network = 'init_network',
   snapshot = 'snapshot',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  email = 'email',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  gossip_email_hash = 'gossip_email_hash',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  verify = 'verify',
   register = 'register',
   create = 'create',
   transfer = 'transfer',
@@ -38,10 +32,6 @@ export enum AJVSchemaEnum {
   update_chat_toll = 'update_chat_toll',
   update_toll_required = 'update_toll_required',
   toll = 'toll',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  friend = 'friend',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  remove_friend = 'remove_friend',
   stake = 'stake',
   remove_stake = 'remove_stake',
   remove_stake_request = 'remove_stake_request',
@@ -82,12 +72,6 @@ export enum AJVSchemaEnum {
 export enum TXTypes {
   init_network = 'init_network',
   snapshot = 'snapshot',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  email = 'email',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  gossip_email_hash = 'gossip_email_hash',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  verify = 'verify',
   register = 'register',
   create = 'create',
   transfer = 'transfer',
@@ -98,10 +82,6 @@ export enum TXTypes {
   update_chat_toll = 'update_chat_toll',
   update_toll_required = 'update_toll_required',
   toll = 'toll',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  friend = 'friend',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  remove_friend = 'remove_friend',
   stake = 'stake',
   remove_stake = 'remove_stake',
   remove_stake_request = 'remove_stake_request',
@@ -156,29 +136,6 @@ export namespace Tx {
     from: string
     recipients: string[]
     amount: bigint
-  }
-
-  export interface Email extends BaseLiberdusTx {
-    signedTx: {
-      emailHash: string
-      from: string
-      sign: Signature
-    }
-    email: string
-  }
-
-  export interface Friend extends BaseLiberdusTx {
-    alias: string
-    from: string
-    to: string
-  }
-
-  export interface GossipEmailHash extends BaseLiberdusTx {
-    nodeId: string
-    account: string
-    from: string
-    emailHash: string
-    verified: string
   }
 
   export interface InitNetwork extends BaseLiberdusTx {
@@ -271,11 +228,6 @@ export namespace Tx {
     private?: boolean
   }
 
-  export interface RemoveFriend extends BaseLiberdusTx {
-    from: string
-    to: string
-  }
-
   export interface RemoveStakeRequest extends BaseLiberdusTx {
     from: string
     stake: bigint
@@ -318,11 +270,6 @@ export namespace Tx {
     chatId: string
     fee?: bigint // Optional fee for the transfer
     deductTxFeeFromAmount?: boolean // Optional, defaults to false. If true, tx fee is deducted from the transfer amount.
-  }
-
-  export interface Verify extends BaseLiberdusTx {
-    from: string
-    code: string
   }
 
   export interface SetCertTime extends BaseLiberdusTx {
