@@ -394,19 +394,6 @@ export async function _sleep(ms = 0): Promise<NodeJS.Timeout> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-// NODE_REWARD TRANSACTION FUNCTION
-export function nodeReward(address: string, nodeId: string, dapp: Shardus): void {
-  const tx = {
-    type: 'node_reward',
-    nodeId: nodeId,
-    from: address,
-    to: process.env.PAY_ADDRESS || address,
-    timestamp: dapp.shardusGetTime(),
-  }
-  dapp.put(tx)
-  dapp.log('GENERATED_NODE_REWARD: ', nodeId)
-}
-
 export function getAccountType(data): string {
   if (data == null) {
     return 'undetermined'

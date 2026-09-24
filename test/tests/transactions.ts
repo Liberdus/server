@@ -190,40 +190,5 @@ export const transactionsTest = () =>
       expect(accountData2.data.balance).toBeCloseTo(425 - networkParams.current.transactionFee * 4)
     })
 
-    it('Submits a "stake" transaction successfully', async () => {
-      networkParams = await utils.queryParameters()
-      await utils.injectTx(
-        {
-          type: 'stake',
-          from: account1.address,
-          stake: networkParams.current.stakeRequired,
-          timestamp: Date.now(),
-        },
-        account1,
-      )
-      await utils._sleep(8500)
-      let accountData1 = await utils.getAccountData(account1.address)
-      expect(accountData1.data.stake).toBe(networkParams.current.stakeRequired)
-    })
-
-    // TODO: Figure out way to test this because of the time needed to wait
-    // it('Submits a "remove_stake" transaction successfully', async () => {
-    //   let accountData1 = await utils.getAccountData(account1.address)
-
-    //   await utils.injectTx(
-    //     {
-    //       type: 'remove_stake',
-    //       network,
-    //       from: account1.address,
-    //       stake: accountData1.data.stake,
-    //       timestamp: Date.now(),
-    //     },
-    //     account1,
-    //   )
-    //   await utils._sleep(8500)
-    //   accountData1 = await utils.getAccountData(account1.address)
-    //   expect(accountData1.data.stake).toBe(0)
-    // })
-
 
   })

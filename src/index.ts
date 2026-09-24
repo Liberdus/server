@@ -848,7 +848,6 @@ const shardusSetup = (): void => {
         TXTypes.init_network,
         TXTypes.apply_change_config,
         TXTypes.apply_change_network_param,
-        TXTypes.node_reward,
         TXTypes.set_cert_time,
         TXTypes.init_reward,
         TXTypes.claim_reward,
