@@ -138,21 +138,6 @@ export const schemaCreateTX = {
   additionalProperties: false,
 }
 
-export const schemaDistributeTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    recipients: {
-      type: 'array',
-      items: { type: 'string' },
-    },
-    amount: { isBigInt: true },
-  },
-  required: [...baseTxRequired, 'from', 'recipients', 'amount'],
-  additionalProperties: false,
-}
-
 export const schemaInitNetworkTX = {
   type: 'object',
   properties: {
@@ -210,18 +195,6 @@ export const schemeReclaimTollTX = {
     chatId: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'to', 'chatId'],
-  additionalProperties: false,
-}
-
-export const schemaNodeRewardTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    nodeId: { type: 'string' },
-    to: { type: 'string' },
-  },
-  required: [...baseTxRequired, 'from', 'nodeId', 'to'],
   additionalProperties: false,
 }
 
@@ -288,60 +261,6 @@ export const schemaRegisterTX = {
     pqPublicKey: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'aliasHash', 'alias', 'publicKey'],
-  additionalProperties: false,
-}
-
-export const schemaRemoveStakeRequestTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    stake: { isBigInt: true },
-  },
-  required: [...baseTxRequired, 'from', 'stake'],
-  additionalProperties: false,
-}
-
-export const schemaRemoveStakeTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    stake: { isBigInt: true },
-  },
-  required: [...baseTxRequired, 'from', 'stake'],
-  additionalProperties: false,
-}
-
-export const schemaSnapshotClaimTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-  },
-  required: [...baseTxRequired, 'from'],
-  additionalProperties: false,
-}
-
-export const schemaSnapshotTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    snapshot: { type: 'object' },
-  },
-  required: [...baseTxRequired, 'from', 'snapshot'],
-  additionalProperties: false,
-}
-
-export const schemaStakeTX = {
-  type: 'object',
-  properties: {
-    ...baseTxProperties,
-    from: { type: 'string' },
-    stake: { isBigInt: true },
-  },
-  required: [...baseTxRequired, 'from', 'stake'],
   additionalProperties: false,
 }
 
@@ -683,23 +602,16 @@ function addSchemas(): void {
   const txSchemaMap = {
     [TXTypes.transfer]: schemaTransferTX,
     [TXTypes.create]: schemaCreateTX,
-    [TXTypes.distribute]: schemaDistributeTX,
     [TXTypes.init_network]: schemaInitNetworkTX,
     [TXTypes.message]: schemaMessageTX,
     [TXTypes.read]: schemaReadTX,
     [TXTypes.reclaim_toll]: schemeReclaimTollTX,
     [TXTypes.update_chat_toll]: schemaUpdateChatTollTX,
-    [TXTypes.node_reward]: schemaNodeRewardTX,
     [TXTypes.change_config]: schemaChangeConfigTX,
     [TXTypes.apply_change_config]: schemaApplyChangeConfigTX,
     [TXTypes.change_network_param]: schemaChangeNetworkParamTX,
     [TXTypes.apply_change_network_param]: schemaApplyChangeNetworkParamTX,
     [TXTypes.register]: schemaRegisterTX,
-    [TXTypes.remove_stake_request]: schemaRemoveStakeRequestTX,
-    [TXTypes.remove_stake]: schemaRemoveStakeTX,
-    [TXTypes.snapshot_claim]: schemaSnapshotClaimTX,
-    [TXTypes.snapshot]: schemaSnapshotTX,
-    [TXTypes.stake]: schemaStakeTX,
     [TXTypes.toll]: schemaTollTX,
     [TXTypes.set_cert_time]: schemaSetCertTimeTX,
     [TXTypes.deposit_stake]: schemaDepositStakeTX,

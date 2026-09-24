@@ -1,19 +1,12 @@
 import * as init_network from './init_network'
-import * as snapshot from './snapshot'
 import * as register from './register'
 import * as create from './create'
 import * as transfer from './transfer'
-import * as distribute from './distribute'
 import * as message from './message'
 import * as read from './read'
 import * as update_toll_required from './update_toll_required'
 import * as reclaim_toll from './reclaim_toll'
 import * as toll from './toll'
-import * as stake from './stake'
-import * as remove_stake from './remove_stake'
-import * as remove_stake_request from './remove_stake_request'
-import * as node_reward from './node_reward'
-import * as snapshot_claim from './snapshot_claim'
 import * as change_config from './change_config'
 import * as apply_change_config from './apply_change_config'
 import * as change_network_param from './change_network_param'
@@ -46,21 +39,14 @@ import * as dao_project_reclaim_balance from './dao/dao_project_reclaim_balance'
 
 export default {
   init_network,
-  snapshot,
   register,
   create,
   transfer,
-  distribute,
   message,
   read,
   update_toll_required,
   reclaim_toll,
   toll,
-  stake,
-  remove_stake,
-  remove_stake_request,
-  node_reward,
-  snapshot_claim,
   change_config,
   apply_change_config,
   change_network_param,
