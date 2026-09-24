@@ -94,16 +94,6 @@ This document describes all the key features of Liberdus application and steps t
 
 - type your message and click `Send` button
 
-## Staking coin
-### CLI
-- enter `stake`
-- use arrow to select `yes` when confirmation is asked
-
-### Browser
-- follow `Sign In` steps
-- click `Stake` button from the menu on the left of home page
-- on `/setting/stake` page, click `Add Stake` button
-
 ## Submit economy proposal
 ### CLI
 - wait until proposal window is open
