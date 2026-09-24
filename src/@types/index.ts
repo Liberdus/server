@@ -21,22 +21,15 @@ export enum AJVSchemaEnum {
   remove_node_cert = 'remove_node_cert',
   // Transaction types with snake case values matching TXTypes
   init_network = 'init_network',
-  snapshot = 'snapshot',
   register = 'register',
   create = 'create',
   transfer = 'transfer',
-  distribute = 'distribute',
   message = 'message',
   read = 'read',
   reclaim_toll = 'reclaim_toll',
   update_chat_toll = 'update_chat_toll',
   update_toll_required = 'update_toll_required',
   toll = 'toll',
-  stake = 'stake',
-  remove_stake = 'remove_stake',
-  remove_stake_request = 'remove_stake_request',
-  node_reward = 'node_reward',
-  snapshot_claim = 'snapshot_claim',
   change_config = 'change_config',
   apply_change_config = 'apply_change_config',
   change_network_param = 'change_network_param',
@@ -71,22 +64,15 @@ export enum AJVSchemaEnum {
 
 export enum TXTypes {
   init_network = 'init_network',
-  snapshot = 'snapshot',
   register = 'register',
   create = 'create',
   transfer = 'transfer',
-  distribute = 'distribute',
   message = 'message',
   read = 'read',
   reclaim_toll = 'reclaim_toll',
   update_chat_toll = 'update_chat_toll',
   update_toll_required = 'update_toll_required',
   toll = 'toll',
-  stake = 'stake',
-  remove_stake = 'remove_stake',
-  remove_stake_request = 'remove_stake_request',
-  node_reward = 'node_reward',
-  snapshot_claim = 'snapshot_claim',
   change_config = 'change_config',
   apply_change_config = 'apply_change_config',
   change_network_param = 'change_network_param',
@@ -129,12 +115,6 @@ export namespace Tx {
   export interface Create extends BaseLiberdusTx {
     from: string
     to: string
-    amount: bigint
-  }
-
-  export interface Distribute extends BaseLiberdusTx {
-    from: string
-    recipients: string[]
     amount: bigint
   }
 
@@ -189,12 +169,6 @@ export namespace Tx {
     timestamp: number // timestamp up to which messages are considered read
   }
 
-  export interface NodeReward extends BaseLiberdusTx {
-    nodeId: string
-    from: string
-    to: string
-  }
-
   export interface ChangeConfig extends BaseLiberdusTx {
     from: string
     cycle: number
@@ -226,30 +200,6 @@ export namespace Tx {
     publicKey: string
     pqPublicKey?: string
     private?: boolean
-  }
-
-  export interface RemoveStakeRequest extends BaseLiberdusTx {
-    from: string
-    stake: bigint
-  }
-
-  export interface RemoveStake extends BaseLiberdusTx {
-    from: string
-    stake: bigint
-  }
-
-  export interface SnapshotClaim extends BaseLiberdusTx {
-    from: string
-  }
-
-  export interface Snapshot extends BaseLiberdusTx {
-    from: string
-    snapshot: any
-  }
-
-  export interface Stake extends BaseLiberdusTx {
-    from: string
-    stake: bigint
   }
 
   export interface Toll extends BaseLiberdusTx {
@@ -581,7 +531,6 @@ export interface NetworkAccount {
   current: NetworkParameters
   hash: string
   timestamp: number
-  snapshot?: object
 }
 
 export interface DevAccount {

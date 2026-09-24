@@ -130,8 +130,6 @@ The inject endpoint allows you to submit transactions to the system. The transac
 
 Network Management:
 - `init_network`: Initialize the network
-- `snapshot`: Create network snapshot
-- `snapshot_claim`: Claim from snapshot
 - `change_config`: Change network configuration
 - `apply_change_config`: Apply configuration changes
 
@@ -139,17 +137,12 @@ Account Management:
 - `register`: Register new account
 - `create`: Create account
 - `transfer`: Transfer between accounts
-- `distribute`: Distribute resources
 
 Messaging and Social:
 - `message`: Send messages
 - `toll`: Manage toll operations
 
 Staking and Rewards:
-- `stake`: Stake tokens
-- `remove_stake`: Remove stake
-- `remove_stake_request`: Request stake removal
-- `node_reward`: Node rewards
 - `deposit_stake`: Deposit stake
 - `withdraw_stake`: Withdraw stake
 - `set_cert_time`: Set certificate time
@@ -162,7 +155,7 @@ Each transaction type requires specific parameters and follows a particular form
 
 ## Network Management Transactions
 
-Note: All network management transactions interact with the network account, which maintains global parameters and snapshots. These transactions typically require appropriate permissions and valid signatures.
+Note: All network management transactions interact with the network account, which maintains global parameters. These transactions typically require appropriate permissions and valid signatures.
 
 #### `init_network`
 Initializes the network account with initial configuration.
@@ -174,29 +167,6 @@ Initializes the network account with initial configuration.
   "timestamp": number
 }
 ```
-
-#### `snapshot`
-Creates a network snapshot of the current state.
-
-**Transaction Parameters:**
-```json
-{
-  "type": "snapshot",
-  "from": string,  // Account ID initiating snapshot
-  "snapshot": object,  // Snapshot data
-  "sign": {
-    "owner": string  // Must match 'from' field
-  }
-}
-```
-
-Requirements:
-- Must be signed by the account specified in 'from' field
-- Signature must be cryptographically valid
-- Account must exist in the system
-
-#### `snapshot_claim`
-Allows claiming assets or state from a previously created snapshot.
 
 #### `change_config`
 Submits configuration changes to be applied to the network at a specified cycle.
@@ -320,42 +290,6 @@ The transaction will:
 3. Deduct transaction fee from source account when `deductTxFeeFromAmount` is false or omitted
 4. Update timestamps for both accounts
 
-#### `distribute`
-Distributes tokens to multiple recipients in a single transaction.
-
-**Transaction Parameters:**
-```json
-{
-  "type": "distribute",
-  "from": string,      // Source account ID
-  "recipients": string[], // Array of recipient account IDs
-  "amount": bigint,    // Amount to send to each recipient
-  "timestamp": number,
-  "sign": {
-    "owner": string    // Must match 'from' field
-  }
-}
-```
-
-Requirements:
-- Source account must exist
-- All recipient accounts must exist
-- Amount must be greater than 0
-- Source account must have sufficient balance to cover:
-  - Amount × number of recipients
-  - Transaction fee
-  - Maintenance amount
-- Must be signed by the source account
-- Signature must be cryptographically valid
-
-The transaction will:
-1. Deduct transaction fee from source account
-2. For each recipient:
-   - Deduct amount from source account
-   - Add amount to recipient account
-3. Deduct maintenance amount from source account
-4. Update timestamps for all affected accounts
-
 ## Messaging and Social Transactions
 
 Note: Messaging and social transactions handle user interactions and messaging fees. These transactions typically require valid signatures and may involve toll payments for messaging.
@@ -425,34 +359,6 @@ The transaction will:
 
 Note: If a user has not set a toll amount, the system's default toll will be used for messages.
 
-#### `stake`
-Stakes tokens to participate in node operations.
-
-**Transaction Parameters:**
-```json
-{
-  "type": "stake",
-  "from": string,    // Account ID staking tokens
-  "stake": bigint,   // Amount to stake
-  "timestamp": number,
-  "sign": {
-    "owner": string  // Must match 'from' field
-  }
-}
-```
-
-Requirements:
-- Account must exist
-- Account must have sufficient balance to cover stake amount
-- Stake amount must be greater than or equal to required stake amount
-- Must be signed by the account owner
-- Signature must be cryptographically valid
-
-The transaction will:
-1. Deduct required stake amount from account
-2. Set account's stake amount
-3. Update account timestamp
-
 #### `deposit_stake`
 Deposits stake for a node operator (nominee) from a nominator.
 
@@ -521,94 +427,6 @@ The transaction will:
 6. Update timestamps for both accounts
 
 Note: Force withdrawal may be allowed in certain conditions based on system flags.
-
-#### `remove_stake_request`
-Initiates a request to remove stake from node operations.
-
-**Transaction Parameters:**
-```json
-{
-  "type": "remove_stake_request",
-  "from": string,    // Account ID requesting stake removal
-  "stake": bigint,   // Amount of stake to remove
-  "timestamp": number,
-  "sign": {
-    "owner": string  // Must match 'from' field
-  }
-}
-```
-
-Requirements:
-- Account must exist
-- Account must have sufficient stake (>= required stake amount)
-- Requested stake amount must not exceed required stake amount
-- Must be signed by the account owner
-- Signature must be cryptographically valid
-
-The transaction will:
-1. Mark account with remove stake request timestamp
-2. Update account timestamp
-
-#### `remove_stake`
-Completes the stake removal process after a waiting period.
-
-**Transaction Parameters:**
-```json
-{
-  "type": "remove_stake",
-  "from": string,    // Account ID removing stake
-  "stake": bigint,   // Amount of stake to remove
-  "timestamp": number,
-  "sign": {
-    "owner": string  // Must match 'from' field
-  }
-}
-```
-
-Requirements:
-- Account must exist
-- Account must have sufficient stake (>= required stake amount)
-- Account must have an active remove stake request
-- Requested stake amount must not exceed required stake amount
-- Must wait for 2 × nodeRewardInterval after request
-- Must be signed by the account owner
-- Signature must be cryptographically valid
-
-The transaction will:
-1. Return stake amount to account balance
-2. Clear account's stake amount
-3. Clear remove stake request
-4. Update account timestamp
-
-Note: The two-step removal process (request followed by removal) ensures proper handling of node rewards and network stability.
-
-#### `node_reward`
-Distributes rewards to node operators for their participation in the network.
-
-**Transaction Parameters:**
-```json
-{
-  "type": "node_reward",
-  "from": string,    // Node account ID
-  "nodeId": string,  // Node identifier
-  "to": string,      // Recipient account ID
-  "timestamp": number
-}
-```
-
-Requirements:
-- Node must exist in the network
-- Must wait for nodeRewardInterval after node activation
-- If node has previous rewards, must wait for nodeRewardInterval since last reward
-- If recipient has stake, it must meet minimum stake requirement
-
-The transaction will:
-1. Add reward amount to node balance
-2. If recipient is different from node:
-   - Transfer node balance to recipient if they meet stake requirements
-   - Reset node balance to 0
-3. Update node reward timestamp
-4. Update timestamps for affected accounts
 
 #### `init_reward`
 Initializes reward tracking for a node when it becomes active in the network.

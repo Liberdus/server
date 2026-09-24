@@ -626,23 +626,6 @@ vorpal.command('use host <host>', 'uses <host> as the node for queries and trans
 })
 
 // COMMAND TO SUBMIT A SNAPSHOT OF THE ULT CONTRACT (ADMIN ONLY)
-vorpal.command('snapshot', 'submits the snapshot the ULT contract').action(function (_, callback) {
-  const snapshot = require(resolve('snapshot.json'))
-  this.log(snapshot)
-  const tx = {
-    type: 'snapshot',
-    from: USER.address,
-    to: '0'.repeat(64),
-    snapshot,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
 vorpal.command('change config', 'Send a stringified JSON config object to be updated by shardus').action(async function (args, callback) {
   const answers = await this.prompt([
     {
@@ -912,36 +895,6 @@ vorpal.command('withdraw stake', 'withdraw the stake from the node').action(asyn
 })
 
 // COMMAND TO SEND SOME AMOUNT OF TOKENS TO MULTIPLE ACCOUNTS
-vorpal.command('distribute', 'distributes tokens to multiple accounts').action(async function (_, callback) {
-  const answers = await this.prompt([
-    {
-      type: 'input',
-      name: 'targets',
-      message: 'Enter the target accounts separated by spaces: ',
-      filter: (values) => values.split` `.map((target) => walletEntries[target].address),
-    },
-    {
-      type: 'number',
-      name: 'amount',
-      message: 'How many tokens do you want to send each target: ',
-      filter: (value) => parseInt(value),
-    },
-  ])
-  const tx = {
-    type: 'distribute',
-    from: USER.address,
-    recipients: answers.targets,
-    amount: answers.amount,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
-// COMMAND TO SEND A MESSAGE TO ANOTHER USER ON THE NETWORK
 vorpal.command('message', 'sends a message to another user').action(async function (_, callback) {
   const answers = await this.prompt([
     {
@@ -1161,51 +1114,6 @@ vorpal.command('toll', 'sets a toll people must you in order to send you message
 })
 
 // COMMAND TO ADD A FRIEND TO YOUR USER ACCOUNT'S FRIEND LIST
-vorpal.command('stake', 'stakes tokens in order to operate a node').action(async function (args, callback) {
-  const parameters = await queryParameters()
-  const answer = await this.prompt({
-    type: 'list',
-    name: 'confirm',
-    message: `The required staking amount is ${parameters.current.stakeRequired}, continue? `,
-    choices: [
-      { name: 'yes', value: true, short: true },
-      { name: 'no', value: false, short: false },
-    ],
-  })
-  if (answer.confirm) {
-    const tx = {
-      type: 'stake',
-      from: USER.address,
-      stake: parameters.current.stakeRequired,
-      timestamp: Date.now(),
-    }
-    signTransaction(tx)
-    injectTx(tx).then((res) => {
-      this.log(res)
-      callback()
-    })
-  } else {
-    this.log('cancelled')
-    callback()
-  }
-})
-
-// COMMAND TO CLAIM THE TOKENS FROM THE ULT SNAPSHOT
-// TODO VALIDATE ETHEREUM ADDRESS SOMEHOW
-vorpal.command('claim', 'submits a claim transaction for the snapshot').action(function (_, callback) {
-  const tx = {
-    type: 'snapshot_claim',
-    from: USER.address,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
-// COMMAND TO POLL FOR MESSAGES BETWEEN 2 USERS AFTER A SPECIFIED TIMESTAMP
 vorpal.command('message poll <to>', 'gets messages between you and <to>').action(async function (args, callback) {
   const to = await getAddress(args.to)
   let messages = await queryMessages(USER.address, to)
