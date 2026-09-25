@@ -625,7 +625,7 @@ vorpal.command('use host <host>', 'uses <host> as the node for queries and trans
   callback()
 })
 
-// COMMAND TO SUBMIT A SNAPSHOT OF THE ULT CONTRACT (ADMIN ONLY)
+// COMMAND TO CHANGE SHARDUS CONFIGURATION
 vorpal.command('change config', 'Send a stringified JSON config object to be updated by shardus').action(async function (args, callback) {
   const answers = await this.prompt([
     {
@@ -712,6 +712,7 @@ vorpal.command('change network parameters', 'Send a stringified JSON config obje
   }
 })
 
+// COMMAND TO REGISTER AN ALIAS FOR A USER ACCOUNT
 vorpal.command('register', 'registers a unique alias for your account').action(async function (args, callback) {
   const answers = await this.prompt([
     {
@@ -894,7 +895,7 @@ vorpal.command('withdraw stake', 'withdraw the stake from the node').action(asyn
   })
 })
 
-// COMMAND TO SEND SOME AMOUNT OF TOKENS TO MULTIPLE ACCOUNTS
+// COMMAND TO SEND A MESSAGE TO ANOTHER USER ON THE NETWORK
 vorpal.command('message', 'sends a message to another user').action(async function (_, callback) {
   const answers = await this.prompt([
     {
@@ -1083,7 +1084,7 @@ vorpal.command('reclaim toll', 'Reclaim the toll from unread message').action(as
   }
 })
 
-// COMMAND TO SET A TOLL FOR PEOPLE NOT ON YOUR FRIENDS LIST THAT SEND YOU MESSAGES
+// COMMAND TO SET THE TOLL FOR INCOMING MESSAGES
 vorpal.command('toll', 'sets a toll people must you in order to send you messages').action(async function (_, callback) {
   const answer = await this.prompt([
     {
@@ -1113,7 +1114,7 @@ vorpal.command('toll', 'sets a toll people must you in order to send you message
   })
 })
 
-// COMMAND TO ADD A FRIEND TO YOUR USER ACCOUNT'S FRIEND LIST
+// COMMAND TO POLL FOR MESSAGES BETWEEN TWO USERS
 vorpal.command('message poll <to>', 'gets messages between you and <to>').action(async function (args, callback) {
   const to = await getAddress(args.to)
   let messages = await queryMessages(USER.address, to)

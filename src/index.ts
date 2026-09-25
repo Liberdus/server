@@ -1,5 +1,6 @@
 import { DevSecurityLevel, nestedCountersInstance, Shardus, shardusFactory, ShardusTypes } from '@shardus/core'
-import account, { deserializeAccounts, serializeAccounts } from './accounts'
+import account from './accounts'
+import { deserializeAppData, serializeAppData } from './accounts/appDataSerialization'
 import { P2P, Utils } from '@shardus/lib-types'
 import { getFinalArchiverList, setupArchiverDiscovery } from '@shardus/lib-archiver-discovery'
 import axios from 'axios'
@@ -2162,28 +2163,10 @@ const shardusSetup = (): void => {
       return utils.verifyMultiSigs(rawPayload, sigs, allowedPubkeys, minSigRequired, requiredSecurityLevel)
     },
     binarySerializeObject(identifier: string, obj): Buffer {
-      try {
-        switch (identifier) {
-          case 'AppData':
-            return serializeAccounts(obj).getBuffer()
-          default:
-            return Buffer.from(Utils.safeStringify(obj), 'utf8')
-        }
-      } catch (e) {
-        return Buffer.from(Utils.safeStringify(obj), 'utf8')
-      }
+      return serializeAppData(identifier, obj)
     },
     binaryDeserializeObject(identifier: string, buffer: Buffer) {
-      try {
-        switch (identifier) {
-          case 'AppData':
-            return deserializeAccounts(buffer)
-          default:
-            return Utils.safeJsonParse(buffer.toString('utf8'))
-        }
-      } catch (e) {
-        return Utils.safeJsonParse(buffer.toString('utf8'))
-      }
+      return deserializeAppData(identifier, buffer)
     },
     beforeStateAccountFilter(account: ShardusTypes.WrappedData) {
       return false
