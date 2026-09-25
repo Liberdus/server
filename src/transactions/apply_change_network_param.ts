@@ -3,7 +3,7 @@ import { Shardus, ShardusTypes } from '@shardus/core'
 import * as config from '../config'
 import { AppReceiptData, NetworkAccount, NodeAccount, Tx, WrappedStates } from '../@types'
 import * as crypto from '../crypto'
-import { stripLegacyDaoState } from '../utils'
+import { stripRetiredState } from '../utils'
 
 export const validate_fields = (tx: Tx.ApplyChangeNetworkParam, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   response.success = true
@@ -57,7 +57,7 @@ export const apply = (
  * identical state when the archiver verifies the global message.
  */
 export function backfillNetworkAccount(network: NetworkAccount): void {
-  stripLegacyDaoState(network)
+  stripRetiredState(network)
 
   if (config.LiberdusFlags.enableNewDAOTransactions === true) {
     if (network.current.dao == null) {

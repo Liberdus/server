@@ -344,15 +344,9 @@ export interface UserAccount {
     tollUnit: TollUnit
     chats: chatMessages
     chatTimestamp: number
-    friends: object
-    stake?: bigint
-    remove_stake_request: number | null
   }
   alias: string | null
-  emailHash: string | null
-  verified: string | boolean
   lastMaintenance: number
-  claimedSnapshot: boolean
   timestamp: number
   hash: string
   operatorAccountInfo?: OperatorAccountInfo
