@@ -182,11 +182,9 @@ export const createFailedAppReceiptData = (
   const from: UserAccount = wrappedStates[tx.nominator].data
   let transactionFee = BigInt(0)
   if (from !== undefined && from !== null) {
-    const txFeeUsd = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
-    let txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
-    if (utils.isEqualOrNewerVersion('2.4.3', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
-      txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
-    }
+   
+    const txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+    
     if (from.data.balance >= txFee) {
       transactionFee = txFee
       from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
