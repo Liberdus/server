@@ -199,7 +199,7 @@ export const apply = (
 
   let costTxFee = BigInt(0)
   if (shouldChargeTxFee) {
-    costTxFee = scaleByStabilityFactor(utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount), AccountsStorage.cachedNetworkAccount)
+    costTxFee =  utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
     operatorAccount.data.balance = SafeBigIntMath.subtract(operatorAccount.data.balance, costTxFee)
   }
 
