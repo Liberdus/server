@@ -6,6 +6,25 @@ import * as utils from '../utils'
 import * as AccountsStorage from '../storage/accountStorage'
 import { INITIAL_PARAMETERS, LiberdusFlags } from '../config'
 
+const populatedRetiredFieldsError = 'UserAccount binary codec does not support populated retired fields'
+
+const hasPopulatedRetiredFields = (account: UserAccount): boolean => {
+  const legacyAccount = account as UserAccount & Record<string, unknown>
+  const legacyData = account.data as Record<string, unknown>
+  return (
+    ('friends' in legacyData &&
+      (legacyData.friends == null ||
+        typeof legacyData.friends !== 'object' ||
+        Array.isArray(legacyData.friends) ||
+        Object.keys(legacyData.friends).length !== 0)) ||
+    ('stake' in legacyData && legacyData.stake !== 0n) ||
+    ('remove_stake_request' in legacyData && legacyData.remove_stake_request !== null) ||
+    ('emailHash' in legacyAccount && legacyAccount.emailHash !== null) ||
+    ('verified' in legacyAccount && legacyAccount.verified !== false) ||
+    ('claimedSnapshot' in legacyAccount && legacyAccount.claimedSnapshot !== false)
+  )
+}
+
 export const userAccount = (accountId: string, timestamp: number): UserAccount => {
   // Ensure lowercase accountId
   accountId = accountId.toLowerCase()
@@ -36,21 +55,8 @@ export const userAccount = (accountId: string, timestamp: number): UserAccount =
 export const serializeUserAccount = (stream: VectorBufferStream, inp: UserAccount, root = false): void => {
   // Normal UserAccount objects use the JSON fallback. Keep this legacy binary
   // layout for direct callers, but never discard populated retired fields.
-  const legacyAccount = inp as UserAccount & Record<string, unknown>
-  const legacyData = inp.data as Record<string, unknown>
-  if (
-    ('friends' in legacyData &&
-      (legacyData.friends == null ||
-        typeof legacyData.friends !== 'object' ||
-        Array.isArray(legacyData.friends) ||
-        Object.keys(legacyData.friends).length !== 0)) ||
-    ('stake' in legacyData && legacyData.stake !== 0n) ||
-    ('remove_stake_request' in legacyData && legacyData.remove_stake_request !== null) ||
-    ('emailHash' in legacyAccount && legacyAccount.emailHash !== null) ||
-    ('verified' in legacyAccount && legacyAccount.verified !== false) ||
-    ('claimedSnapshot' in legacyAccount && legacyAccount.claimedSnapshot !== false)
-  ) {
-    throw new Error('UserAccount binary codec does not support populated retired fields')
+  if (hasPopulatedRetiredFields(inp)) {
+    throw new Error(populatedRetiredFieldsError)
   }
   if (root) {
     stream.writeUInt16(SerdeTypeIdent.UserAccount)
@@ -139,8 +145,18 @@ export const deserializeUserAccount = (stream: VectorBufferStream, root = false)
 
   // The retired slots must contain exactly the default bytes. Populated values
   // have no lossless representation in this compatibility-only decoder.
-  if (stream.readUInt32() !== 0 || stream.readUInt8() !== 1 || stream.readBigUInt64() !== 0n || stream.readUInt8() !== 0) {
-    throw new Error('UserAccount binary codec does not support populated retired fields')
+  const friendsCount = stream.readUInt32()
+  if (friendsCount !== 0) {
+    throw new Error(populatedRetiredFieldsError)
+  }
+  const stakePresent = stream.readUInt8()
+  if (stakePresent !== 1) {
+    throw new Error(populatedRetiredFieldsError)
+  }
+  const stakeAmount = stream.readBigUInt64()
+  const removeStakeRequestPresent = stream.readUInt8()
+  if (stakeAmount !== 0n || removeStakeRequestPresent !== 0) {
+    throw new Error(populatedRetiredFieldsError)
   }
 
   // The migrated state contains only an empty payment slot. Consume its length to
@@ -156,15 +172,18 @@ export const deserializeUserAccount = (stream: VectorBufferStream, root = false)
     alias = stream.readString()
   }
 
-  if (stream.readUInt8() !== 0 || stream.readUInt8() !== 0) {
-    throw new Error('UserAccount binary codec does not support populated retired fields')
+  const emailHashPresent = stream.readUInt8()
+  const verifiedFlag = stream.readUInt8()
+  if (emailHashPresent !== 0 || verifiedFlag !== 0) {
+    throw new Error(populatedRetiredFieldsError)
   }
 
   // Deserialize lastMaintenance
   const lastMaintenance = stream.readUInt32()
 
-  if (stream.readUInt8() !== 0) {
-    throw new Error('UserAccount binary codec does not support populated retired fields')
+  const claimedSnapshotFlag = stream.readUInt8()
+  if (claimedSnapshotFlag !== 0) {
+    throw new Error(populatedRetiredFieldsError)
   }
 
   // Deserialize timestamp

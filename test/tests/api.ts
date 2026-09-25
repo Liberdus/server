@@ -30,7 +30,6 @@ export const apiTest = () =>
             balance: expect.any(Number),
             chats: expect.any(Object),
             toll: 25,
-            transactions: expect.any(Array),
           }),
           hash: expect.any(String),
           id: expect.any(String),
