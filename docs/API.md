@@ -20,6 +20,12 @@ Returns current network parameters.
 ### GET /account/:id
 Returns account information for the given ID.
 
+The account is returned as stored. After the 2.5.2 migration, user accounts
+may retain or omit the retired `data.friends`, `data.stake`,
+`data.remove_stake_request`, `emailHash`, `verified`, and `claimedSnapshot`
+fields depending on whether they have been written since activation. Clients
+should treat those fields as optional.
+
 **Parameters:**
 - `id`: Account identifier
 

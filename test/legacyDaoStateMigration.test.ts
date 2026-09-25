@@ -1,19 +1,24 @@
 import { LiberdusFlags } from '../src/config'
 import { Accounts, NetworkAccount, UserAccount } from '../src/@types'
 import * as crypto from '../src/crypto'
-import { calculateAccountHash, stripLegacyDaoState } from '../src/utils'
+import { calculateAccountHash, stripRetiredState } from '../src/utils'
 import { backfillNetworkAccount } from '../src/transactions/apply_change_network_param'
 import { onActiveVersionChange } from '../src/versioning'
+import { userAccount } from '../src/accounts/userAccount'
+import { Utils } from '@shardus/lib-types'
 
 describe('legacy DAO state migration', () => {
   const originalFlag = LiberdusFlags.versionFlags.removeLegacyDaoState
+  const originalUnusedTxFlag = LiberdusFlags.versionFlags.removeUnusedTxState
 
   afterEach(() => {
     LiberdusFlags.versionFlags.removeLegacyDaoState = originalFlag
+    LiberdusFlags.versionFlags.removeUnusedTxState = originalUnusedTxFlag
   })
 
   beforeAll(() => {
     crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
+    crypto.setCustomStringifier(Utils.safeStringify, 'shardus_safeStringify')
   })
 
   test('the 2.5.2 migration is registered and activates the flag', async () => {
@@ -21,10 +26,12 @@ describe('legacy DAO state migration', () => {
     // given version, not just 2.5.2.
     const snapshot = { ...LiberdusFlags.versionFlags }
     LiberdusFlags.versionFlags.removeLegacyDaoState = false
+    LiberdusFlags.versionFlags.removeUnusedTxState = false
 
     try {
       await onActiveVersionChange('2.5.2')
       expect(LiberdusFlags.versionFlags.removeLegacyDaoState).toBe(true)
+      expect(LiberdusFlags.versionFlags.removeUnusedTxState).toBe(true)
     } finally {
       // Restore even on failure: onActiveVersionChange flips flags for every migration
       // up to 2.5.2, and leaking those would corrupt later tests.
@@ -82,8 +89,49 @@ describe('legacy DAO state migration', () => {
       data: { payments: [{ amount: 1n }] },
     } as unknown as UserAccount
 
-    stripLegacyDaoState(account)
+    stripRetiredState(account)
 
     expect(account.data).not.toHaveProperty('payments')
+  })
+
+  test('unused-tx fields remain until the flag is active, then leave on the apply-state path', () => {
+    const account = {
+      id: 'user',
+      type: 'UserAccount',
+      hash: '',
+      data: { balance: 50n, friends: {}, stake: 0n, remove_stake_request: null },
+      emailHash: null,
+      verified: false,
+      claimedSnapshot: false,
+    } as unknown as UserAccount
+    LiberdusFlags.versionFlags.removeUnusedTxState = false
+    stripRetiredState(account)
+    expect(account.data).toHaveProperty('friends')
+    expect(account).toHaveProperty('verified')
+
+    LiberdusFlags.versionFlags.removeUnusedTxState = true
+    calculateAccountHash(account as Accounts)
+    expect(account.data).toHaveProperty('friends')
+    stripRetiredState(account)
+    expect(account.data).not.toHaveProperty('friends')
+    expect(account.data).not.toHaveProperty('stake')
+    expect(account.data).not.toHaveProperty('remove_stake_request')
+    expect(account).not.toHaveProperty('emailHash')
+    expect(account).not.toHaveProperty('verified')
+    expect(account).not.toHaveProperty('claimedSnapshot')
+  })
+
+  test('new users omit retired fields only after activation', () => {
+    LiberdusFlags.versionFlags.removeUnusedTxState = false
+    const before = userAccount('user', 1)
+    expect(before.data).toHaveProperty('stake', 0n)
+    expect(before.data).toHaveProperty('friends')
+    expect(before).toHaveProperty('verified', false)
+
+    LiberdusFlags.versionFlags.removeUnusedTxState = true
+    const after = userAccount('user', 1)
+    expect(after.data).not.toHaveProperty('stake')
+    expect(after.data).not.toHaveProperty('friends')
+    expect(after).not.toHaveProperty('verified')
   })
 })
