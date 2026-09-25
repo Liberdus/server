@@ -21,6 +21,7 @@ import { daoProposalsMetaId } from '../src/accounts/daoProposalsMetaAccount'
 describe('global network-account afterStateHash parity', () => {
   const devAddress = 'a'.repeat(64)
   const originalFlag = LiberdusFlags.versionFlags.removeLegacyDaoState
+  const originalUnusedFlag = LiberdusFlags.versionFlags.removeUnusedTxState
 
   beforeAll(() => {
     crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
@@ -33,6 +34,7 @@ describe('global network-account afterStateHash parity', () => {
 
   afterEach(() => {
     LiberdusFlags.versionFlags.removeLegacyDaoState = originalFlag
+    LiberdusFlags.versionFlags.removeUnusedTxState = originalUnusedFlag
     // assertParity overwrites this module global; put it back so the suite is self-contained.
     AccountsStorage.setCachedNetworkAccount(originalCachedNetworkAccount)
   })
@@ -183,6 +185,7 @@ describe('global network-account afterStateHash parity', () => {
   describe('with the 2.5.2 migration active', () => {
     beforeEach(() => {
       LiberdusFlags.versionFlags.removeLegacyDaoState = true
+      LiberdusFlags.versionFlags.removeUnusedTxState = true
     })
 
     test('change_config promises the hash apply_change_config produces', () => {
@@ -207,6 +210,7 @@ describe('global network-account afterStateHash parity', () => {
   describe('before the 2.5.2 migration activates', () => {
     beforeEach(() => {
       LiberdusFlags.versionFlags.removeLegacyDaoState = false
+      LiberdusFlags.versionFlags.removeUnusedTxState = false
     })
 
     test('change_config parity holds with retired state still present', () => {

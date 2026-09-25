@@ -8,7 +8,7 @@ This document describes all the key features of Liberdus application and steps t
 - Coin transfer
 - Change toll amount
 - Sending message
-- Staking coin
+- Node staking
 - Submit economy proposal
 - Submit funding proposal
 - Voting proposals
@@ -93,6 +93,11 @@ This document describes all the key features of Liberdus application and steps t
 - enter `username` of the target account
 
 - type your message and click `Send` button
+
+## Node staking
+### CLI
+- enter `deposit stake` to stake for a node operator
+- enter `withdraw stake` to withdraw the current operator stake
 
 ## Submit economy proposal
 ### CLI
