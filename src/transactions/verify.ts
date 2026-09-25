@@ -7,6 +7,8 @@ import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 import { isUserAccount } from '../@types/accountTypeGuards'
 
+const FAUCET_AMOUNT = BigInt(0)
+
 export const validate_fields = (tx: Tx.Verify, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address.'
@@ -75,7 +77,7 @@ export const apply = (
   const from: UserAccount = wrappedStates[tx.from].data
   const network = AccountsStorage.cachedNetworkAccount
   from.verified = true
-  from.data.balance = SafeBigIntMath.add(from.data.balance, network.current.faucetAmount)
+  from.data.balance = SafeBigIntMath.add(from.data.balance, FAUCET_AMOUNT)
   from.timestamp = txTimestamp
 
   const appReceiptData: AppReceiptData = {
@@ -87,7 +89,7 @@ export const apply = (
     type: tx.type,
     transactionFee: BigInt(0),
     additionalInfo: {
-      faucetAmount: network.current.faucetAmount,
+      faucetAmount: FAUCET_AMOUNT,
     },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)

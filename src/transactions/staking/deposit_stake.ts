@@ -126,15 +126,7 @@ export const apply = (
       },
     }
   }
-  let txFee
-  if (utils.isEqualOrNewerVersion('2.4.3', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
-    txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
-  } else if (utils.isEqualOrNewerVersion('2.4.0', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
-    txFee = AccountsStorage.cachedNetworkAccount.current.transactionFee
-  } else {
-    const txFeeUsd = AccountsStorage.cachedNetworkAccount.current.transactionFee
-    txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
-  }
+  let txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   // [TODO] check if the maintainance fee is also needed in deposit_stake tx
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, nominatorAccount, AccountsStorage.cachedNetworkAccount)
   let totalAmountToDeduct = SafeBigIntMath.add(tx.stake, txFee)
@@ -190,11 +182,9 @@ export const createFailedAppReceiptData = (
   const from: UserAccount = wrappedStates[tx.nominator].data
   let transactionFee = BigInt(0)
   if (from !== undefined && from !== null) {
-    const txFeeUsd = AccountsStorage.cachedNetworkAccount.current.transactionFee
-    let txFee = utils.scaleByStabilityFactor(txFeeUsd, AccountsStorage.cachedNetworkAccount)
-    if (utils.isEqualOrNewerVersion('2.4.3', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
-      txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
-    }
+   
+    const txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+    
     if (from.data.balance >= txFee) {
       transactionFee = txFee
       from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)

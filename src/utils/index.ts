@@ -22,19 +22,9 @@ import { Utils } from '@shardus/lib-types'
 import { ethers } from 'ethers'
 
 const WEI = 10n ** 18n
+const MAINTENANCE_AMOUNT = BigInt(0)
 
-export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): bigint => {
-  let amount: bigint
-  if (timestamp - account.lastMaintenance < network.current.maintenanceInterval) {
-    amount = BigInt(0)
-  } else {
-    const maintenanceFee = 1 - Math.pow(1 - Number(network.current.maintenanceFee), (timestamp - account.lastMaintenance) / network.current.maintenanceInterval)
-    amount = account.data.balance * BigInt(maintenanceFee)
-    account.lastMaintenance = timestamp
-  }
-  if (typeof amount === 'bigint') return amount
-  else return BigInt(0)
-}
+export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): bigint => MAINTENANCE_AMOUNT
 
 export function generateTxId(tx: any): string {
   let txId: string
@@ -512,51 +502,27 @@ export function getRandom<T>(arr: T[], n: number): T[] {
 }
 
 export function getNodeRewardRateWei(networkAccount: NetworkAccount): bigint {
-  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
-    return usdStrToWei(networkAccount.current.nodeRewardAmountUsdStr, networkAccount)
-  } else {
-    return networkAccount.current.nodeRewardAmountUsd
-  }
+  return usdStrToWei(networkAccount.current.nodeRewardAmountUsdStr, networkAccount)
 }
 
 export function getStakeRequiredWei(networkAccount: NetworkAccount): bigint {
-  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
     return usdStrToWei(networkAccount.current.stakeRequiredUsdStr, networkAccount)
-  } else {
-    return networkAccount.current.stakeRequiredUsd
-  }
 }
 
 export function getPenaltyWei(networkAccount: NetworkAccount): bigint {
-  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
-    return usdStrToWei(networkAccount.current.nodePenaltyUsdStr, networkAccount)
-  } else {
-    return networkAccount.current.nodePenaltyUsd
-  }
+  return usdStrToWei(networkAccount.current.nodePenaltyUsdStr, networkAccount)
 }
 
 export function getTransactionFeeWei(networkAccount: NetworkAccount): bigint {
-  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
-    return usdStrToWei(networkAccount.current.transactionFeeUsdStr, networkAccount)
-  } else {
-    return networkAccount.current.transactionFee
-  }
+  return usdStrToWei(networkAccount.current.transactionFeeUsdStr, networkAccount)
 }
 
 export function getMinTollWei(networkAccount: NetworkAccount): bigint {
-  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
     return usdStrToWei(networkAccount.current.minTollUsdStr, networkAccount)
-  } else {
-    return networkAccount.current.minToll
-  }
 }
 
 export function getDefaultTollWei(networkAccount: NetworkAccount): bigint {
-  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
-    return usdStrToWei(networkAccount.current.defaultTollUsdStr, networkAccount)
-  } else {
-    return networkAccount.current.defaultToll
-  }
+  return usdStrToWei(networkAccount.current.defaultTollUsdStr, networkAccount)
 }
 
 export function usdStrToWei(usdStr: string, networkAccount: NetworkAccount): bigint {

@@ -113,6 +113,10 @@ const shardusSetup = (): void => {
         await utils._sleep(configs.ONE_SECOND * 10)
         const when = dapp.shardusGetTime()
         const newNetworkAccount = create.networkAccount(configs.networkAccount, when, dapp)
+
+        // Cache the network account ( needed for the genesis user accounts creation for default toll calculation)
+        AccountsStorage.setCachedNetworkAccount(newNetworkAccount)
+
         const afterStateHash = newNetworkAccount.hash
         const value = {
           type: 'init_network',

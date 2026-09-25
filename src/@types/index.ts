@@ -709,13 +709,6 @@ export interface NetworkParameters {
   title: string
   description: string
   nodeRewardInterval: number
-  transactionFee: bigint
-  maintenanceInterval: number
-  maintenanceFee: bigint
-  faucetAmount: bigint
-  nodeRewardAmountUsd: bigint
-  nodePenaltyUsd: bigint
-  stakeRequiredUsd: bigint
   restakeCooldown: number
   stabilityScaleMul: number
   stabilityScaleDiv: number
@@ -730,8 +723,6 @@ export interface NetworkParameters {
   txPause: boolean
   certCycleDuration: number
   enableNodeSlashing: boolean
-  defaultToll: bigint
-  minToll: bigint
   tollNetworkTaxPercent: number
   tollTimeout: number
   messageMaxLength: number // Maximum length of chat message
