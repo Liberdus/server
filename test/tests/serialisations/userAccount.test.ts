@@ -4,6 +4,7 @@ import { deserializeAccounts, SerdeTypeIdent, serializeAccounts } from '../../..
 import { TollUnit, UserAccount } from '../../../src/@types'
 import { LiberdusFlags } from '../../../src/config'
 import { deserializeUserAccount, serializeUserAccount } from '../../../src/accounts/userAccount'
+import { deserializeAppData, serializeAppData } from '../../../src/accounts/appDataSerialization'
 
 // Captured from the pre-removal serializer for a default UserAccount.
 const defaultAccountHex =
@@ -78,6 +79,21 @@ describe('UserAccount serialization dispatch', () => {
     LiberdusFlags.versionFlags.removeLegacyDaoState = false
     const decoded = deserializeUserAccount(VectorBufferStream.fromBuffer(encodeDirect(strippedAccount())), true)
     expect(decoded).toEqual(defaultLegacyAccount())
+  })
+
+  test('Shardus AppData serialization falls back to JSON for populated legacy binary fields', () => {
+    const base = defaultLegacyAccount()
+    const account = { ...base, type: 'userAccount', data: { ...base.data, friends: { recipient: 'alias' } } } as UserAccount
+    const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+    try {
+      const encoded = serializeAppData('AppData', account)
+      expect(encoded.toString('utf8')).toBe(Utils.safeStringify(account))
+      expect(deserializeAppData('AppData', encoded)).toEqual(account)
+      expect(warning).toHaveBeenNthCalledWith(1, 'AppData binary serialization failed; using JSON fallback', expect.any(Error))
+      expect(warning).toHaveBeenNthCalledWith(2, 'AppData binary deserialization failed; using JSON fallback', expect.any(Error))
+    } finally {
+      warning.mockRestore()
+    }
   })
 
   test.each([
