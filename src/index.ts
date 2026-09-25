@@ -394,7 +394,7 @@ const shardusSetup = (): void => {
           // path. Do not move this into calculateAccountHash: core also calls
           // that hook to verify persisted account data.
           if (transactionApplied) {
-            utils.stripLegacyDaoState(wrappedStates[accountId].data)
+            utils.stripRetiredState(wrappedStates[accountId].data)
           }
 
           // Update the stateId by calculating the hash for the update accounts for the global txs

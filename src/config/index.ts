@@ -282,6 +282,7 @@ interface LiberdusFlags {
     updateTollRequiredTxInChatHistory: boolean
     supportDeductTxFeeFromAmount: boolean
     removeLegacyDaoState: boolean
+    removeUnusedTxState: boolean
   }
 }
 
@@ -340,6 +341,7 @@ export const LiberdusFlags: LiberdusFlags = {
     updateTollRequiredTxInChatHistory: true, // turn on by 2.4.9
     supportDeductTxFeeFromAmount: true, // turn on by 2.4.9
     removeLegacyDaoState: false, // turn on by 2.5.2
+    removeUnusedTxState: false, // turn on by 2.5.2
   },
 }
 

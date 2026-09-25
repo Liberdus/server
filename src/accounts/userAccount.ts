@@ -14,20 +14,16 @@ export const userAccount = (accountId: string, timestamp: number): UserAccount =
     type: 'UserAccount',
     data: {
       balance: utils.libToWei(50),
-      stake: BigInt(0),
-      remove_stake_request: null,
       toll: AccountsStorage.cachedNetworkAccount ? utils.getDefaultTollWei(AccountsStorage.cachedNetworkAccount) : INITIAL_PARAMETERS.defaultToll,
       tollUnit: TollUnit.lib,
       chats: {},
       chatTimestamp: 0,
-      friends: {},
       ...(LiberdusFlags.versionFlags.removeLegacyDaoState ? {} : { payments: [] }),
+      ...(LiberdusFlags.versionFlags.removeUnusedTxState ? {} : { stake: BigInt(0), remove_stake_request: null, friends: {} }),
     },
     alias: null,
-    emailHash: null,
-    verified: false,
+    ...(LiberdusFlags.versionFlags.removeUnusedTxState ? {} : { emailHash: null, verified: false, claimedSnapshot: false }),
     hash: '',
-    claimedSnapshot: false,
     lastMaintenance: timestamp,
     timestamp: 0,
     publicKey: '',
@@ -38,6 +34,24 @@ export const userAccount = (accountId: string, timestamp: number): UserAccount =
 }
 
 export const serializeUserAccount = (stream: VectorBufferStream, inp: UserAccount, root = false): void => {
+  // Normal UserAccount objects use the JSON fallback. Keep this legacy binary
+  // layout for direct callers, but never discard populated retired fields.
+  const legacyAccount = inp as UserAccount & Record<string, unknown>
+  const legacyData = inp.data as Record<string, unknown>
+  if (
+    ('friends' in legacyData &&
+      (legacyData.friends == null ||
+        typeof legacyData.friends !== 'object' ||
+        Array.isArray(legacyData.friends) ||
+        Object.keys(legacyData.friends).length !== 0)) ||
+    ('stake' in legacyData && legacyData.stake !== 0n) ||
+    ('remove_stake_request' in legacyData && legacyData.remove_stake_request !== null) ||
+    ('emailHash' in legacyAccount && legacyAccount.emailHash !== null) ||
+    ('verified' in legacyAccount && legacyAccount.verified !== false) ||
+    ('claimedSnapshot' in legacyAccount && legacyAccount.claimedSnapshot !== false)
+  ) {
+    throw new Error('UserAccount binary codec does not support populated retired fields')
+  }
   if (root) {
     stream.writeUInt16(SerdeTypeIdent.UserAccount)
   }
@@ -63,25 +77,11 @@ export const serializeUserAccount = (stream: VectorBufferStream, inp: UserAccoun
   }
   stream.writeUInt32(inp.data.chatTimestamp)
 
-  stream.writeUInt32(Object.keys(inp.data.friends).length)
-  for (const key in inp.data.friends) {
-    stream.writeString(key)
-    stream.writeString(inp.data.friends[key])
-  }
-
-  if (inp.data.stake !== null) {
-    stream.writeUInt8(1)
-    stream.writeBigUInt64(inp.data.stake)
-  } else {
-    stream.writeUInt8(0)
-  }
-
-  if (inp.data.remove_stake_request !== null) {
-    stream.writeUInt8(1)
-    stream.writeUInt32(inp.data.remove_stake_request)
-  } else {
-    stream.writeUInt8(0)
-  }
+  // Preserve positional slots and the bytes emitted for default legacy state.
+  stream.writeUInt32(0) // friends
+  stream.writeUInt8(1) // stake present
+  stream.writeBigUInt64(0n)
+  stream.writeUInt8(0) // remove_stake_request absent
 
   // Legacy user accounts contain only an empty payments array. Preserve its
   // positional slot without retaining the retired payment type or serializer.
@@ -91,14 +91,10 @@ export const serializeUserAccount = (stream: VectorBufferStream, inp: UserAccoun
   if (inp.alias) {
     stream.writeString(inp.alias)
   }
-  stream.writeUInt8(inp.emailHash ? 1 : 0)
-  if (inp.emailHash) {
-    stream.writeString(inp.emailHash)
-  }
-
-  stream.writeUInt8(inp.verified ? 1 : 0)
+  stream.writeUInt8(0) // emailHash absent
+  stream.writeUInt8(0) // verified false
   stream.writeUInt32(inp.lastMaintenance)
-  stream.writeUInt8(inp.claimedSnapshot ? 1 : 0)
+  stream.writeUInt8(0) // claimedSnapshot false
   stream.writeUInt32(inp.timestamp)
   stream.writeString(inp.hash)
   stream.writeString(inp.publicKey)
@@ -141,25 +137,10 @@ export const deserializeUserAccount = (stream: VectorBufferStream, root = false)
   // Deserialize chatTimestamp
   const chatTimestamp = stream.readUInt32()
 
-  // Deserialize friends
-  const friends: Record<string, string> = {}
-  const friendsCount = stream.readUInt32()
-  for (let i = 0; i < friendsCount; i++) {
-    const key = stream.readString()
-    const value = stream.readString()
-    friends[key] = value
-  }
-
-  // Optional stake
-  let stake = null
-  if (stream.readUInt8() === 1) {
-    stake = stream.readBigUInt64()
-  }
-
-  // Optional remove_stake_request
-  let remove_stake_request = null
-  if (stream.readUInt8() === 1) {
-    remove_stake_request = stream.readUInt32()
+  // The retired slots must contain exactly the default bytes. Populated values
+  // have no lossless representation in this compatibility-only decoder.
+  if (stream.readUInt32() !== 0 || stream.readUInt8() !== 1 || stream.readBigUInt64() !== 0n || stream.readUInt8() !== 0) {
+    throw new Error('UserAccount binary codec does not support populated retired fields')
   }
 
   // The migrated state contains only an empty payment slot. Consume its length to
@@ -175,20 +156,16 @@ export const deserializeUserAccount = (stream: VectorBufferStream, root = false)
     alias = stream.readString()
   }
 
-  // Optional emailHash
-  let emailHash = null
-  if (stream.readUInt8() === 1) {
-    emailHash = stream.readString()
+  if (stream.readUInt8() !== 0 || stream.readUInt8() !== 0) {
+    throw new Error('UserAccount binary codec does not support populated retired fields')
   }
-
-  // Deserialize verified flag
-  const verified = stream.readUInt8() === 1
 
   // Deserialize lastMaintenance
   const lastMaintenance = stream.readUInt32()
 
-  // Deserialize claimedSnapshot
-  const claimedSnapshot = stream.readUInt8() === 1
+  if (stream.readUInt8() !== 0) {
+    throw new Error('UserAccount binary codec does not support populated retired fields')
+  }
 
   // Deserialize timestamp
   const timestamp = stream.readUInt32()
@@ -211,20 +188,16 @@ export const deserializeUserAccount = (stream: VectorBufferStream, root = false)
     type,
     data: {
       balance,
-      stake,
-      remove_stake_request,
       toll,
       tollUnit,
       chats,
       chatTimestamp,
-      friends,
       ...(LiberdusFlags.versionFlags.removeLegacyDaoState ? {} : { payments: [] }),
+      ...(LiberdusFlags.versionFlags.removeUnusedTxState ? {} : { stake: BigInt(0), remove_stake_request: null, friends: {} }),
     },
     alias,
-    emailHash,
-    verified,
+    ...(LiberdusFlags.versionFlags.removeUnusedTxState ? {} : { emailHash: null, verified: false, claimedSnapshot: false }),
     hash,
-    claimedSnapshot,
     lastMaintenance,
     timestamp,
     publicKey,

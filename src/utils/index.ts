@@ -53,19 +53,19 @@ export function calculateAccountHash(account: Accounts): string {
 }
 
 /**
- * Removes state owned by the retired legacy DAO system once the coordinated migration
+ * Removes state owned by retired features once the coordinated migration
  * is active. Never call it from calculateAccountHash: core hashes already-persisted
  * accounts to verify them, so stripping there would fail every account the migration
  * has not yet touched.
  */
-export function stripLegacyDaoState(account: NetworkAccount | UserAccount): void {
+export function stripRetiredState(account: NetworkAccount | UserAccount): void {
+  const storedAccount = account as Accounts & Record<string, unknown>
   if (LiberdusFlags.versionFlags.removeLegacyDaoState === true) {
-    const legacyAccount = account as Accounts & Record<string, unknown>
-    if (legacyAccount.type === 'UserAccount' && legacyAccount.data != null) {
-      delete (legacyAccount.data as Record<string, unknown>).payments
+    if (storedAccount.type === 'UserAccount' && storedAccount.data != null) {
+      delete (storedAccount.data as Record<string, unknown>).payments
     }
-    if (legacyAccount.type === 'NetworkAccount' && legacyAccount.current != null) {
-      const network = legacyAccount as NetworkAccount & Record<string, unknown>
+    if (storedAccount.type === 'NetworkAccount' && storedAccount.current != null) {
+      const network = storedAccount as NetworkAccount & Record<string, unknown>
       delete network.next
       delete network.windows
       delete network.nextWindows
@@ -78,6 +78,15 @@ export function stripLegacyDaoState(account: NetworkAccount | UserAccount): void
       delete (network.current as unknown as Record<string, unknown>).proposalFee
       delete (network.current as unknown as Record<string, unknown>).devProposalFee
     }
+  }
+  if (LiberdusFlags.versionFlags.removeUnusedTxState === true && storedAccount.type === 'UserAccount' && storedAccount.data != null) {
+    const data = storedAccount.data as Record<string, unknown>
+    delete data.friends
+    delete data.stake
+    delete data.remove_stake_request
+    delete storedAccount.emailHash
+    delete storedAccount.verified
+    delete storedAccount.claimedSnapshot
   }
 }
 

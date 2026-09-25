@@ -23,26 +23,22 @@ export const apiTest = () =>
       var {
         data: { account },
       } = await axios.get(`${HOST}/account/${wallets.testWallet1.address}`)
-      expect(account).toEqual({
-        alias: 'testWallet1',
-        claimedSnapshot: false,
-        data: {
-          balance: expect.any(Number),
-          chats: expect.any(Object),
-          friends: expect.any(Object),
-          remove_stake_request: null,
-          stake: 5,
-          toll: 25,
-          transactions: expect.any(Array),
-        },
-        emailHash: null,
-        hash: expect.any(String),
-        id: expect.any(String),
-        lastMaintenance: expect.any(Number),
-        timestamp: expect.any(Number),
-        type: 'UserAccount',
-        verified: false,
-      })
+      expect(account).toEqual(
+        expect.objectContaining({
+          alias: 'testWallet1',
+          data: expect.objectContaining({
+            balance: expect.any(Number),
+            chats: expect.any(Object),
+            toll: 25,
+            transactions: expect.any(Array),
+          }),
+          hash: expect.any(String),
+          id: expect.any(String),
+          lastMaintenance: expect.any(Number),
+          timestamp: expect.any(Number),
+          type: 'UserAccount',
+        }),
+      )
     })
 
     it('Should be able to query message data properly', async () => {
