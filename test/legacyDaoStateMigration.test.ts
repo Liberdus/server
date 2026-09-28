@@ -10,10 +10,12 @@ import { Utils } from '@shardus/lib-types'
 describe('legacy DAO state migration', () => {
   const originalFlag = LiberdusFlags.versionFlags.removeLegacyDaoState
   const originalUnusedTxFlag = LiberdusFlags.versionFlags.removeUnusedTxState
+  const originalNetworkParamsFlag = LiberdusFlags.versionFlags.removeLegacyNetworkParams
 
   afterEach(() => {
     LiberdusFlags.versionFlags.removeLegacyDaoState = originalFlag
     LiberdusFlags.versionFlags.removeUnusedTxState = originalUnusedTxFlag
+    LiberdusFlags.versionFlags.removeLegacyNetworkParams = originalNetworkParamsFlag
   })
 
   beforeAll(() => {
@@ -27,11 +29,13 @@ describe('legacy DAO state migration', () => {
     const snapshot = { ...LiberdusFlags.versionFlags }
     LiberdusFlags.versionFlags.removeLegacyDaoState = false
     LiberdusFlags.versionFlags.removeUnusedTxState = false
+    LiberdusFlags.versionFlags.removeLegacyNetworkParams = false
 
     try {
       await onActiveVersionChange('2.5.2')
       expect(LiberdusFlags.versionFlags.removeLegacyDaoState).toBe(true)
       expect(LiberdusFlags.versionFlags.removeUnusedTxState).toBe(true)
+      expect(LiberdusFlags.versionFlags.removeLegacyNetworkParams).toBe(true)
     } finally {
       // Restore even on failure: onActiveVersionChange flips flags for every migration
       // up to 2.5.2, and leaking those would corrupt later tests.
@@ -119,6 +123,44 @@ describe('legacy DAO state migration', () => {
     expect(account).not.toHaveProperty('emailHash')
     expect(account).not.toHaveProperty('verified')
     expect(account).not.toHaveProperty('claimedSnapshot')
+  })
+
+  test('legacy network parameters remain until activation and then leave the stored account', () => {
+    const network = {
+      type: 'NetworkAccount',
+      current: {
+        transactionFee: 1n,
+        maintenanceInterval: 86_400_000,
+        maintenanceFee: 0n,
+        faucetAmount: 10n,
+        nodeRewardAmountUsd: 1n,
+        nodePenaltyUsd: 10n,
+        stakeRequiredUsd: 10n,
+        defaultToll: 1n,
+        minToll: 1n,
+        transactionFeeUsdStr: '0.01',
+      },
+    } as unknown as NetworkAccount
+    const legacyKeys = [
+      'transactionFee',
+      'maintenanceInterval',
+      'maintenanceFee',
+      'faucetAmount',
+      'nodeRewardAmountUsd',
+      'nodePenaltyUsd',
+      'stakeRequiredUsd',
+      'defaultToll',
+      'minToll',
+    ]
+
+    LiberdusFlags.versionFlags.removeLegacyNetworkParams = false
+    backfillNetworkAccount(network)
+    for (const key of legacyKeys) expect(network.current).toHaveProperty(key)
+
+    LiberdusFlags.versionFlags.removeLegacyNetworkParams = true
+    backfillNetworkAccount(network)
+    for (const key of legacyKeys) expect(network.current).not.toHaveProperty(key)
+    expect(network.current.transactionFeeUsdStr).toBe('0.01')
   })
 
   test('new users omit retired fields only after activation', () => {
