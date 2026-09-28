@@ -1,4 +1,4 @@
-import { TollUnit, UserAccount } from '../@types'
+import { NetworkAccount, TollUnit, UserAccount } from '../@types'
 import { VectorBufferStream } from '@shardus/core'
 import * as crypto from '@shardus/lib-crypto-utils'
 import { SerdeTypeIdent } from '.'
@@ -33,7 +33,7 @@ export const userAccount = (accountId: string, timestamp: number): UserAccount =
     type: 'UserAccount',
     data: {
       balance: utils.libToWei(50),
-      toll: AccountsStorage.cachedNetworkAccount ? utils.getDefaultTollWei(AccountsStorage.cachedNetworkAccount) : utils.usdStrToWei(INITIAL_PARAMETERS.defaultTollUsdStr, AccountsStorage.cachedNetworkAccount),
+      toll: utils.getDefaultTollWei(AccountsStorage.cachedNetworkAccount ?? ({ current: INITIAL_PARAMETERS } as NetworkAccount)),
       tollUnit: TollUnit.lib,
       chats: {},
       chatTimestamp: 0,
