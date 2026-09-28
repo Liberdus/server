@@ -6,7 +6,6 @@ import minimist from 'minimist'
 import { NetworkParameters } from '../@types'
 import { Utils } from '@shardus/lib-types'
 import { DevSecurityLevel, ShardusTypes } from '@shardus/core'
-import * as utils from '../utils'
 
 export const networkAccount = '0'.repeat(64)
 
@@ -257,6 +256,7 @@ interface LiberdusFlags {
     supportDeductTxFeeFromAmount: boolean
     removeLegacyDaoState: boolean
     removeUnusedTxState: boolean
+    removeLegacyNetworkParams: boolean
   }
 }
 
@@ -312,6 +312,7 @@ export const LiberdusFlags: LiberdusFlags = {
     supportDeductTxFeeFromAmount: true, // turn on by 2.4.9
     removeLegacyDaoState: false, // turn on by 2.5.2
     removeUnusedTxState: false, // turn on by 2.5.2
+    removeLegacyNetworkParams: false, // turn on by 2.5.2
   },
 }
 
