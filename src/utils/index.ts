@@ -78,6 +78,18 @@ export function stripRetiredState(account: NetworkAccount | UserAccount): void {
     delete storedAccount.verified
     delete storedAccount.claimedSnapshot
   }
+  if (LiberdusFlags.versionFlags.removeLegacyNetworkParams === true && storedAccount.type === 'NetworkAccount' && storedAccount.current != null) {
+    const current = storedAccount.current as unknown as Record<string, unknown>
+    delete current.transactionFee
+    delete current.maintenanceInterval
+    delete current.maintenanceFee
+    delete current.faucetAmount
+    delete current.nodeRewardAmountUsd
+    delete current.nodePenaltyUsd
+    delete current.stakeRequiredUsd
+    delete current.defaultToll
+    delete current.minToll
+  }
 }
 
 export function isMessageRecord(message: Tx.ChatMessageRecord): message is Tx.MessageRecord {

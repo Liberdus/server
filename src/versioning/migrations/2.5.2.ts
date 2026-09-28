@@ -8,4 +8,5 @@ export const migrate: Migration = async () => {
   nestedCountersInstance.countEvent('migrate', 'calling migrate 2.5.2')
   LiberdusFlags.versionFlags.removeLegacyDaoState = true
   LiberdusFlags.versionFlags.removeUnusedTxState = true
+  LiberdusFlags.versionFlags.removeLegacyNetworkParams = true
 }
