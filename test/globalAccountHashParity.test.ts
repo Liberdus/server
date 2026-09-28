@@ -22,6 +22,18 @@ describe('global network-account afterStateHash parity', () => {
   const devAddress = 'a'.repeat(64)
   const originalFlag = LiberdusFlags.versionFlags.removeLegacyDaoState
   const originalUnusedFlag = LiberdusFlags.versionFlags.removeUnusedTxState
+  const originalNetworkParamsFlag = LiberdusFlags.versionFlags.removeLegacyNetworkParams
+  const retiredNetworkParamKeys = [
+    'transactionFee',
+    'maintenanceInterval',
+    'maintenanceFee',
+    'faucetAmount',
+    'nodeRewardAmountUsd',
+    'nodePenaltyUsd',
+    'stakeRequiredUsd',
+    'defaultToll',
+    'minToll',
+  ]
 
   beforeAll(() => {
     crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
@@ -35,6 +47,7 @@ describe('global network-account afterStateHash parity', () => {
   afterEach(() => {
     LiberdusFlags.versionFlags.removeLegacyDaoState = originalFlag
     LiberdusFlags.versionFlags.removeUnusedTxState = originalUnusedFlag
+    LiberdusFlags.versionFlags.removeLegacyNetworkParams = originalNetworkParamsFlag
     // assertParity overwrites this module global; put it back so the suite is self-contained.
     AccountsStorage.setCachedNetworkAccount(originalCachedNetworkAccount)
   })
@@ -50,7 +63,21 @@ describe('global network-account afterStateHash parity', () => {
       networkId: 'n'.repeat(64),
       type: 'NetworkAccount',
       listOfChanges: [],
-      current: { ...utils.deepCopy(INITIAL_PARAMETERS), proposalFee: 50n, devProposalFee: 50n },
+      current: {
+        ...utils.deepCopy(INITIAL_PARAMETERS),
+        activeVersion: LiberdusFlags.versionFlags.removeLegacyNetworkParams ? '2.5.2' : '2.5.1',
+        proposalFee: 50n,
+        devProposalFee: 50n,
+        transactionFee: 10n ** 17n,
+        maintenanceInterval: 86_400_000,
+        maintenanceFee: 0n,
+        faucetAmount: 10n,
+        nodeRewardAmountUsd: 1n,
+        nodePenaltyUsd: 10n,
+        stakeRequiredUsd: 10n,
+        defaultToll: 1n,
+        minToll: 1n,
+      },
       next: {},
       windows: null,
       nextWindows: {},
@@ -108,6 +135,10 @@ describe('global network-account afterStateHash parity', () => {
     const applyResponse = { appDefinedData: {} } as unknown as ShardusTypes.ApplyResponse
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(applyHandler.apply as any)(value, when, 'global-tx-id', wrap(applied), stubDapp(), applyResponse)
+
+    for (const key of retiredNetworkParamKeys) {
+      expect(Object.prototype.hasOwnProperty.call(applied.current, key)).toBe(!LiberdusFlags.versionFlags.removeLegacyNetworkParams)
+    }
 
     expect(utils.calculateAccountHash(applied as unknown as Accounts)).toEqual(afterStateHash)
     return globalMsg
@@ -186,6 +217,7 @@ describe('global network-account afterStateHash parity', () => {
     beforeEach(() => {
       LiberdusFlags.versionFlags.removeLegacyDaoState = true
       LiberdusFlags.versionFlags.removeUnusedTxState = true
+      LiberdusFlags.versionFlags.removeLegacyNetworkParams = true
     })
 
     test('change_config promises the hash apply_change_config produces', () => {
@@ -211,6 +243,7 @@ describe('global network-account afterStateHash parity', () => {
     beforeEach(() => {
       LiberdusFlags.versionFlags.removeLegacyDaoState = false
       LiberdusFlags.versionFlags.removeUnusedTxState = false
+      LiberdusFlags.versionFlags.removeLegacyNetworkParams = false
     })
 
     test('change_config parity holds with retired state still present', () => {
