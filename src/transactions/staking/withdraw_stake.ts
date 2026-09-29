@@ -113,8 +113,7 @@ export const apply = (
     reward = BigInt(0)
   }
   const penalty = nodeAccount.penalty
-  
-  let txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+  const txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, nominatorAccount, AccountsStorage.cachedNetworkAccount)
   console.log('currentBalance', currentBalance, 'stake', stake, 'reward', reward, 'txFee', txFee, 'maintenanceFee', maintenanceFee)
   let newBalance = SafeBigIntMath.add(currentBalance, stake)
@@ -187,8 +186,9 @@ export const createFailedAppReceiptData = (
   const from: UserAccount = wrappedStates[tx.nominator].data
   let transactionFee = BigInt(0)
   if (from !== undefined && from !== null) {
-    
-    const txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+    const network = AccountsStorage.cachedNetworkAccount
+    // Failed withdrawals charged the stored LIB fee before 2.5.2.
+    const txFee = LiberdusFlags.versionFlags.removeLegacyNetworkParams ? utils.getTransactionFeeWei(network) : utils.getLegacyTransactionFeeWei(network)
 
     if (from.data.balance >= txFee) {
       transactionFee = txFee
