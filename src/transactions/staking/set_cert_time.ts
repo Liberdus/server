@@ -1,13 +1,27 @@
 import { nestedCountersInstance, Shardus, ShardusTypes } from '@shardus/core'
 import config, { ONE_SECOND, LiberdusFlags } from '../../config'
 import { getAccountWithRetry } from './query_certificate'
-import { AccountQueryResponse, TXTypes, WrappedStates, InjectTxResponse, NodeAccount, UserAccount, Tx, AppReceiptData } from '../../@types'
+import { AccountQueryResponse, TXTypes, WrappedStates, InjectTxResponse, NodeAccount, UserAccount, Tx, AppReceiptData, NetworkAccount } from '../../@types'
 import * as AccountsStorage from '../../storage/accountStorage'
-import { getRandom, scaleByStabilityFactor, InjectTxToConsensor, getStakeRequiredWei, isValidAddress } from '../../utils'
+import {
+  getRandom,
+  scaleByStabilityFactor,
+  InjectTxToConsensor,
+  getStakeRequiredWei,
+  isValidAddress,
+  getTransactionFeeWei,
+  getLegacyTransactionFeeWei,
+} from '../../utils'
 import * as crypto from '../../crypto'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import { isUserAccount, isNodeAccount } from '../../@types/accountTypeGuards'
-import * as utils from '../../utils'
+
+/** Keep the pre-2.5.2 fee until the network activates the new parameters. */
+export function getSetCertTimeFeeWei(network: NetworkAccount): bigint {
+  return LiberdusFlags.versionFlags.removeLegacyNetworkParams
+    ? getTransactionFeeWei(network)
+    : scaleByStabilityFactor(getLegacyTransactionFeeWei(network), network)
+}
 
 export function getCertCycleDuration(): number {
   if (AccountsStorage.cachedNetworkAccount && AccountsStorage.cachedNetworkAccount.current.certCycleDuration !== null) {
@@ -199,7 +213,7 @@ export const apply = (
 
   let costTxFee = BigInt(0)
   if (shouldChargeTxFee) {
-    costTxFee =  utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+    costTxFee = getSetCertTimeFeeWei(AccountsStorage.cachedNetworkAccount)
     operatorAccount.data.balance = SafeBigIntMath.subtract(operatorAccount.data.balance, costTxFee)
   }
 
