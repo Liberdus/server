@@ -126,7 +126,7 @@ export const apply = (
       },
     }
   }
-  let txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+  const txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
   // [TODO] check if the maintainance fee is also needed in deposit_stake tx
   const maintenanceFee = utils.maintenanceAmount(txTimestamp, nominatorAccount, AccountsStorage.cachedNetworkAccount)
   let totalAmountToDeduct = SafeBigIntMath.add(tx.stake, txFee)
@@ -182,9 +182,7 @@ export const createFailedAppReceiptData = (
   const from: UserAccount = wrappedStates[tx.nominator].data
   let transactionFee = BigInt(0)
   if (from !== undefined && from !== null) {
-   
     const txFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
-    
     if (from.data.balance >= txFee) {
       transactionFee = txFee
       from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)

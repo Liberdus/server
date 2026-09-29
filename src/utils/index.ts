@@ -24,7 +24,23 @@ import { ethers } from 'ethers'
 const WEI = 10n ** 18n
 const MAINTENANCE_AMOUNT = BigInt(0)
 
-export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): bigint => MAINTENANCE_AMOUNT
+/**
+ * Maintenance is free (maintenanceFee is 0), but before 2.5.2 this also advanced
+ * account.lastMaintenance once per interval, which changes the account hash.
+ * Keep that legacy behavior until the 2.5.2 removal flag activates so nodes on
+ * the rotating network agree; afterwards return zero without touching the account.
+ * New 2.5.2 networks must start with the flag enabled (they lack the legacy params).
+ */
+export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): bigint => {
+  if (LiberdusFlags.versionFlags.removeLegacyNetworkParams) return MAINTENANCE_AMOUNT
+
+  const legacy = network.current as NetworkAccount['current'] & { maintenanceInterval: number; maintenanceFee: bigint }
+  if (timestamp - account.lastMaintenance < legacy.maintenanceInterval) return 0n
+  const maintenanceFee = 1 - Math.pow(1 - Number(legacy.maintenanceFee), (timestamp - account.lastMaintenance) / legacy.maintenanceInterval)
+  const amount = account.data.balance * BigInt(maintenanceFee)
+  account.lastMaintenance = timestamp
+  return amount
+}
 
 export function generateTxId(tx: any): string {
   let txId: string
@@ -514,7 +530,7 @@ export function getNodeRewardRateWei(networkAccount: NetworkAccount): bigint {
 }
 
 export function getStakeRequiredWei(networkAccount: NetworkAccount): bigint {
-    return usdStrToWei(networkAccount.current.stakeRequiredUsdStr, networkAccount)
+  return usdStrToWei(networkAccount.current.stakeRequiredUsdStr, networkAccount)
 }
 
 export function getPenaltyWei(networkAccount: NetworkAccount): bigint {
@@ -525,8 +541,15 @@ export function getTransactionFeeWei(networkAccount: NetworkAccount): bigint {
   return usdStrToWei(networkAccount.current.transactionFeeUsdStr, networkAccount)
 }
 
+/** Transitional read for networks that have not activated the 2.5.2 parameter removal. */
+export function getLegacyTransactionFeeWei(networkAccount: NetworkAccount): bigint {
+  const fee = (networkAccount.current as NetworkAccount['current'] & { transactionFee?: bigint }).transactionFee
+  if (fee === undefined) throw new Error('Legacy transactionFee is missing before the 2.5.2 activation')
+  return fee
+}
+
 export function getMinTollWei(networkAccount: NetworkAccount): bigint {
-    return usdStrToWei(networkAccount.current.minTollUsdStr, networkAccount)
+  return usdStrToWei(networkAccount.current.minTollUsdStr, networkAccount)
 }
 
 export function getDefaultTollWei(networkAccount: NetworkAccount): bigint {
@@ -538,10 +561,7 @@ export function usdStrToWei(usdStr: string, networkAccount: NetworkAccount): big
   const stabilityFactor = ethers.parseEther(networkAccount.current.stabilityFactorStr)
   const usdBigInt = ethers.parseEther(usdStr)
   // Multiply by 10^18 first to maintain precision, then divide
-  if (isEqualOrNewerVersion('2.4.3', networkAccount.current.activeVersion)) {
-    return (usdBigInt * WEI) / stabilityFactor
-  }
-  return (usdBigInt * BigInt(10 ** 18)) / stabilityFactor
+  return (usdBigInt * WEI) / stabilityFactor
 }
 
 export function libToWei(lib: number): bigint {
