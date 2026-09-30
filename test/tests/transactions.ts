@@ -14,6 +14,7 @@ const walletFile = resolve('./wallet.json')
 let walletEntries = {}
 
 let networkParams: any
+const transactionFeeInLib = (): number => Number(networkParams.current.transactionFeeUsdStr) / Number(networkParams.current.stabilityFactorStr)
 
 const wallet1 = 'testWallet1'
 const wallet2 = 'testWallet2'
@@ -126,8 +127,8 @@ export const transactionsTest = () =>
       await utils._sleep(8500)
       let accountData1 = await utils.getAccountData(account1.address)
       let accountData2 = await utils.getAccountData(account2.address)
-      expect(accountData1.data.balance).toBeCloseTo(400 - networkParams.current.transactionFee * 3)
-      expect(accountData2.data.balance).toBeCloseTo(500 - networkParams.current.transactionFee * 2)
+      expect(accountData1.data.balance).toBeCloseTo(400 - transactionFeeInLib() * 3)
+      expect(accountData2.data.balance).toBeCloseTo(500 - transactionFeeInLib() * 2)
 
       await utils.injectTx(
         {
@@ -143,8 +144,8 @@ export const transactionsTest = () =>
       await utils._sleep(8500)
       accountData1 = await utils.getAccountData(account1.address)
       accountData2 = await utils.getAccountData(account2.address)
-      expect(accountData1.data.balance).toBeCloseTo(450 - networkParams.current.transactionFee * 3)
-      expect(accountData2.data.balance).toBeCloseTo(450 - networkParams.current.transactionFee * 3)
+      expect(accountData1.data.balance).toBeCloseTo(450 - transactionFeeInLib() * 3)
+      expect(accountData2.data.balance).toBeCloseTo(450 - transactionFeeInLib() * 3)
     })
 
     it('Submits a "Toll" transaction successfully', async () => {
@@ -186,9 +187,7 @@ export const transactionsTest = () =>
       await utils._sleep(8500)
       let accountData1 = await utils.getAccountData(account1.address)
       let accountData2 = await utils.getAccountData(account2.address)
-      expect(accountData1.data.balance).toBeCloseTo(475 - networkParams.current.transactionFee * 3)
-      expect(accountData2.data.balance).toBeCloseTo(425 - networkParams.current.transactionFee * 4)
+      expect(accountData1.data.balance).toBeCloseTo(475 - transactionFeeInLib() * 3)
+      expect(accountData2.data.balance).toBeCloseTo(425 - transactionFeeInLib() * 4)
     })
-
-
   })

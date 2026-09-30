@@ -7,39 +7,31 @@ export const startupTest = () =>
       execa.commandSync('shardus create-net 10', { stdio: [0, 1, 2] })
       await utils.waitForNetworkParameters()
       const networkParams = await utils.queryParameters()
-      expect(networkParams.current).toEqual({
-        title: 'Initial parameters',
-        description: 'These are the initial network parameters liberdus started with',
-        nodeRewardInterval: 3600000,
-        nodeRewardAmount: 1,
-        nodePenalty: 10,
-        transactionFee: 0.001,
-        stakeRequired: 5,
-        maintenanceInterval: 86400000,
-        maintenanceFee: 0,
-        proposalFee: 50,
-        devProposalFee: 50,
-        faucetAmount: 10,
-        defaultToll: 1,
-      })
-      expect(networkParams.next).toEqual({})
-      expect(networkParams.developerFund).toEqual([])
-      expect(networkParams.nextDeveloperFund).toEqual([])
-      expect(networkParams.windows).toEqual({
-        proposalWindow: [expect.any(Number), expect.any(Number)],
-        votingWindow: [expect.any(Number), expect.any(Number)],
-        graceWindow: [expect.any(Number), expect.any(Number)],
-        applyWindow: [expect.any(Number), expect.any(Number)],
-      })
-      expect(networkParams.devWindows).toEqual({
-        devProposalWindow: [expect.any(Number), expect.any(Number)],
-        devVotingWindow: [expect.any(Number), expect.any(Number)],
-        devGraceWindow: [expect.any(Number), expect.any(Number)],
-        devApplyWindow: [expect.any(Number), expect.any(Number)],
-      })
-      expect(networkParams.nextWindows).toEqual({})
-      expect(networkParams.nextDevWindows).toEqual({})
-      expect(networkParams.issue).toBe(1)
-      expect(networkParams.devIssue).toBe(1)
+      expect(networkParams.current).toEqual(
+        expect.objectContaining({
+          activeVersion: '2.5.2',
+          nodeRewardAmountUsdStr: '1.0',
+          nodePenaltyUsdStr: '10.0',
+          stakeRequiredUsdStr: '10.0',
+          transactionFeeUsdStr: '0.01',
+          stabilityFactorStr: '0.013',
+          minTollUsdStr: '0.2',
+          defaultTollUsdStr: '0.2',
+        }),
+      )
+      for (const key of [
+        'transactionFee',
+        'maintenanceInterval',
+        'maintenanceFee',
+        'faucetAmount',
+        'nodeRewardAmountUsd',
+        'nodePenaltyUsd',
+        'stakeRequiredUsd',
+        'defaultToll',
+        'minToll',
+      ]) {
+        expect(networkParams.current).not.toHaveProperty(key)
+      }
+      expect(networkParams.listOfChanges).toEqual([])
     })
   })
