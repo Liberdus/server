@@ -5,6 +5,14 @@
 ### GET /network/parameters
 Returns current network parameters.
 
+The `*UsdStr` fields are the source of truth for transaction fees, staking,
+rewards, penalties, and tolls. After the 2.5.2 migration, a stored network
+account may still contain retired `transactionFee`, `maintenanceInterval`,
+`maintenanceFee`, `faucetAmount`, `nodeRewardAmountUsd`, `nodePenaltyUsd`,
+`stakeRequiredUsd`, `defaultToll`, and `minToll` keys. An apply-path write to
+the network account strips them; change-queue updates alone may leave them.
+Clients should treat these keys as optional.
+
 **Response:**
 ```json
 {
@@ -364,6 +372,8 @@ The transaction will:
 3. Update account timestamp
 
 Note: If a user has not set a toll amount, the system's default toll will be used for messages.
+
+## Staking and Rewards Transactions
 
 #### `deposit_stake`
 Deposits stake for a node operator (nominee) from a nominator.
