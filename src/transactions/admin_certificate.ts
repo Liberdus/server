@@ -1,4 +1,6 @@
 import { Shardus, ShardusTypes, nestedCountersInstance } from '@shardus/core'
+import { logFlags } from '@shardus/core/dist/logger'
+import { Utils } from '@shardus/lib-types'
 import config, { LiberdusFlags } from '../config'
 import * as crypto from '../crypto'
 import { Request } from 'express'
@@ -38,6 +40,10 @@ export interface PutAdminCertResult {
 
 export let adminCert: AdminCert = null
 export let isRequestedAdminCert: boolean = false
+
+let nextGoldenTicketRetryAt = 0
+let isGoldenTicketRetry = false
+let isGoldenTicketFetchInProgress = false
 
 export function isTerminalGoldenTicketError(error?: string): boolean {
   if (!error) return false
@@ -113,12 +119,7 @@ export async function putAdminCertificateHandler(req: Request, shardus: Shardus)
   return { success: true }
 }
 
-export async function tryAndFetchGoldenTicket(
-  publicKey: string,
-  network: NetworkAccount,
-  dapp: Shardus,
-  isRetry = false,
-): Promise<GoldenTicketFetchResult> {
+export async function tryAndFetchGoldenTicket(publicKey: string, network: NetworkAccount, dapp: Shardus, isRetry = false): Promise<GoldenTicketFetchResult> {
   try {
     if (LiberdusFlags.VerboseLogs) console.log('Fetching golden ticket from', network.current.goldenTicketServerUrl, 'for publicKey', publicKey, 'node')
     const goldenTicketRequest: any = {
@@ -151,6 +152,55 @@ export async function tryAndFetchGoldenTicket(
     return createGoldenTicketFetchResult(errorMessage)
   }
 }
+
+/**
+ * Fetches a Golden Ticket when the node has not requested one yet or its Golden Ticket has expired.
+ * Retryable failures are retried after LiberdusFlags.goldenTicketRetryInterval; terminal failures stop retrying.
+ */
+export async function fetchGoldenTicketIfNeeded(publicKey: string, network: NetworkAccount, dapp: Shardus): Promise<void> {
+  const hasExpiredGoldenTicket = adminCert && adminCert.certExp <= dapp.shardusGetTime() && adminCert.goldenTicket === true
+  if ((isRequestedAdminCert && !hasExpiredGoldenTicket) || dapp.shardusGetTime() < nextGoldenTicketRetryAt || isGoldenTicketFetchInProgress) return
+
+  isGoldenTicketFetchInProgress = true
+  try {
+    const goldenTicketResult = await tryAndFetchGoldenTicket(publicKey, network, dapp, isGoldenTicketRetry)
+    if (goldenTicketResult.ticket) {
+      setAdminCertificate(goldenTicketResult.ticket)
+      markRequestedAdminCert()
+      isGoldenTicketRetry = false
+      /* prettier-ignore */
+      if (LiberdusFlags.VerboseLogs) console.log(`fetched golden ticket: ${Utils.safeStringify(goldenTicketResult.ticket)}`)
+      nestedCountersInstance.countEvent('liberdus-staking', 'fetched golden ticket from server')
+      console.log(`Admin certificate is set to `, adminCert)
+    } else if (goldenTicketResult.terminal) {
+      // An expired ticket otherwise keeps hasExpiredGoldenTicket true and
+      // bypasses isRequestedAdminCert on every isReadyToJoin invocation.
+      if (hasExpiredGoldenTicket) setAdminCertificate(null)
+      markRequestedAdminCert()
+      isGoldenTicketRetry = false
+      /* prettier-ignore */
+      if (LiberdusFlags.VerboseLogs) console.log(`terminal golden ticket fetch error: ${goldenTicketResult.error}`)
+      nestedCountersInstance.countEvent('liberdus-staking', 'terminal golden ticket fetch error')
+    } else {
+      scheduleGoldenTicketRetry(dapp)
+      /* prettier-ignore */
+      if (LiberdusFlags.VerboseLogs) console.log(`no golden ticket available from server, retrying in ${LiberdusFlags.goldenTicketRetryInterval}ms`)
+      nestedCountersInstance.countEvent('liberdus-staking', 'no golden ticket available from server, retry scheduled')
+    }
+  } catch (e) {
+    scheduleGoldenTicketRetry(dapp)
+    /* prettier-ignore */
+    if (logFlags.error) console.log(`Error fetching golden ticket: ${e.message}; retrying in ${LiberdusFlags.goldenTicketRetryInterval}ms`) // non fatal
+  } finally {
+    isGoldenTicketFetchInProgress = false
+  }
+}
+
+function scheduleGoldenTicketRetry(dapp: Shardus): void {
+  nextGoldenTicketRetryAt = dapp.shardusGetTime() + LiberdusFlags.goldenTicketRetryInterval
+  isGoldenTicketRetry = true
+}
+
 export function setAdminCertificate(cert: AdminCert): void {
   adminCert = cert
 }

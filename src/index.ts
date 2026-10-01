@@ -14,14 +14,7 @@ import transactions from './transactions'
 import registerAPI from './api'
 import * as AccountsStorage from './storage/accountStorage'
 import { logFlags } from '@shardus/core/dist/logger'
-import {
-  adminCert,
-  setAdminCertificate,
-  AdminCert,
-  isRequestedAdminCert,
-  markRequestedAdminCert,
-  tryAndFetchGoldenTicket,
-} from './transactions/admin_certificate'
+import { adminCert, AdminCert, fetchGoldenTicketIfNeeded } from './transactions/admin_certificate'
 import * as QueryCertificate from './transactions/staking/query_certificate'
 import { RemoveNodeCert, StakeCert } from './transactions/staking/query_certificate'
 import * as SetCertTime from './transactions/staking/set_cert_time'
@@ -79,9 +72,6 @@ const daoPreCrackTxTypes = new Set([
 
 let isReadyToJoinLatestValue = false
 let mustUseAdminCert = false
-let nextGoldenTicketRetryAt = 0
-let isGoldenTicketRetry = false
-let isGoldenTicketFetchInProgress = false
 
 const shardusSetup = (): void => {
   // SDK SETUP FUNCTIONS
@@ -1578,53 +1568,9 @@ const shardusSetup = (): void => {
 
       isReadyToJoinLatestValue = false
       mustUseAdminCert = false
-      const hasExpiredGoldenTicket = adminCert && adminCert.certExp <= dapp.shardusGetTime() && adminCert?.goldenTicket === true
-
       // query admin cert from the golden ticket server
-      if (
-        (!isRequestedAdminCert || hasExpiredGoldenTicket) &&
-        networkAccount &&
-        utils.isEqualOrNewerVersion('2.4.3', networkAccount.current.activeVersion) &&
-        dapp.shardusGetTime() >= nextGoldenTicketRetryAt &&
-        !isGoldenTicketFetchInProgress
-      ) {
-        isGoldenTicketFetchInProgress = true
-        try {
-          const goldenTicketResult = await tryAndFetchGoldenTicket(publicKey, networkAccount, dapp, isGoldenTicketRetry)
-          if (goldenTicketResult.ticket) {
-            setAdminCertificate(goldenTicketResult.ticket)
-            markRequestedAdminCert()
-            isGoldenTicketRetry = false
-            /* prettier-ignore */
-            if (LiberdusFlags.VerboseLogs) console.log(`fetched golden ticket: ${Utils.safeStringify(goldenTicketResult.ticket)}`)
-            nestedCountersInstance.countEvent('liberdus-staking', 'fetched golden ticket from server')
-            console.log(`Admin certificate is set to `, adminCert)
-          } else if (goldenTicketResult.terminal) {
-            // An expired ticket otherwise keeps hasExpiredGoldenTicket true and
-            // bypasses isRequestedAdminCert on every isReadyToJoin invocation.
-            if (hasExpiredGoldenTicket) setAdminCertificate(null)
-            markRequestedAdminCert()
-            isGoldenTicketRetry = false
-            /* prettier-ignore */
-            if (LiberdusFlags.VerboseLogs) console.log(`terminal golden ticket fetch error: ${goldenTicketResult.error}`)
-            nestedCountersInstance.countEvent('liberdus-staking', `terminal golden ticket fetch error: ${goldenTicketResult.error}`)
-          } else {
-            const goldenTicketRetryInterval = LiberdusFlags.goldenTicketRetryInterval
-            nextGoldenTicketRetryAt = dapp.shardusGetTime() + goldenTicketRetryInterval
-            isGoldenTicketRetry = true
-            /* prettier-ignore */
-            if (LiberdusFlags.VerboseLogs) console.log(`no golden ticket available from server, retrying in ${goldenTicketRetryInterval}ms`)
-            nestedCountersInstance.countEvent('liberdus-staking', `no golden ticket available from server, retrying in ${goldenTicketRetryInterval}ms`)
-          }
-        } catch (e) {
-          const goldenTicketRetryInterval = LiberdusFlags.goldenTicketRetryInterval
-          nextGoldenTicketRetryAt = dapp.shardusGetTime() + goldenTicketRetryInterval
-          isGoldenTicketRetry = true
-          /* prettier-ignore */
-          if (logFlags.error) console.log(`Error fetching golden ticket: ${e.message}; retrying in ${goldenTicketRetryInterval}ms`) // non fatal
-        } finally {
-          isGoldenTicketFetchInProgress = false
-        }
+      if (networkAccount && utils.isEqualOrNewerVersion('2.4.3', networkAccount.current.activeVersion)) {
+        await fetchGoldenTicketIfNeeded(publicKey, networkAccount, dapp)
       }
       console.log('is AdminCert set to ', adminCert)
       //process golden ticket first
