@@ -125,7 +125,7 @@ describe('legacy DAO state migration', () => {
     expect(account).not.toHaveProperty('claimedSnapshot')
   })
 
-  test('legacy network parameters remain until activation and then leave the stored account', () => {
+  test('retired network parameters leave after activation while maintenance parameters remain', () => {
     const network = {
       type: 'NetworkAccount',
       current: {
@@ -141,17 +141,7 @@ describe('legacy DAO state migration', () => {
         transactionFeeUsdStr: '0.01',
       },
     } as unknown as NetworkAccount
-    const legacyKeys = [
-      'transactionFee',
-      'maintenanceInterval',
-      'maintenanceFee',
-      'faucetAmount',
-      'nodeRewardAmountUsd',
-      'nodePenaltyUsd',
-      'stakeRequiredUsd',
-      'defaultToll',
-      'minToll',
-    ]
+    const legacyKeys = ['transactionFee', 'faucetAmount', 'nodeRewardAmountUsd', 'nodePenaltyUsd', 'stakeRequiredUsd', 'defaultToll', 'minToll']
 
     LiberdusFlags.versionFlags.removeLegacyNetworkParams = false
     backfillNetworkAccount(network)
@@ -160,6 +150,8 @@ describe('legacy DAO state migration', () => {
     LiberdusFlags.versionFlags.removeLegacyNetworkParams = true
     backfillNetworkAccount(network)
     for (const key of legacyKeys) expect(network.current).not.toHaveProperty(key)
+    expect(network.current.maintenanceInterval).toBe(86_400_000)
+    expect(network.current.maintenanceFee).toBe(0n)
     expect(network.current.transactionFeeUsdStr).toBe('0.01')
   })
 

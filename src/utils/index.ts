@@ -22,24 +22,23 @@ import { Utils } from '@shardus/lib-types'
 import { ethers } from 'ethers'
 
 const WEI = 10n ** 18n
-const MAINTENANCE_AMOUNT = BigInt(0)
 
 /**
- * Maintenance is free (maintenanceFee is 0), but before 2.5.2 this also advanced
- * account.lastMaintenance once per interval, which changes the account hash.
- * Keep that legacy behavior until the 2.5.2 removal flag activates so nodes on
- * the rotating network agree; afterwards return zero without touching the account.
- * New 2.5.2 networks must start with the flag enabled (they lack the legacy params).
+ * Keep the existing maintenance calculation and checkpoint update. With the
+ * current zero maintenanceFee this returns zero, but it still advances
+ * lastMaintenance after each interval, which affects account hashes.
  */
 export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): bigint => {
-  if (LiberdusFlags.versionFlags.removeLegacyNetworkParams) return MAINTENANCE_AMOUNT
-
-  const legacy = network.current as NetworkAccount['current'] & { maintenanceInterval: number; maintenanceFee: bigint }
-  if (timestamp - account.lastMaintenance < legacy.maintenanceInterval) return 0n
-  const maintenanceFee = 1 - Math.pow(1 - Number(legacy.maintenanceFee), (timestamp - account.lastMaintenance) / legacy.maintenanceInterval)
-  const amount = account.data.balance * BigInt(maintenanceFee)
-  account.lastMaintenance = timestamp
-  return amount
+  let amount: bigint
+  if (timestamp - account.lastMaintenance < network.current.maintenanceInterval) {
+    amount = BigInt(0)
+  } else {
+    const maintenanceFee = 1 - Math.pow(1 - Number(network.current.maintenanceFee), (timestamp - account.lastMaintenance) / network.current.maintenanceInterval)
+    amount = account.data.balance * BigInt(maintenanceFee)
+    account.lastMaintenance = timestamp
+  }
+  if (typeof amount === 'bigint') return amount
+  else return BigInt(0)
 }
 
 export function generateTxId(tx: any): string {
@@ -97,8 +96,6 @@ export function stripRetiredState(account: NetworkAccount | UserAccount): void {
   if (LiberdusFlags.versionFlags.removeLegacyNetworkParams === true && storedAccount.type === 'NetworkAccount' && storedAccount.current != null) {
     const current = storedAccount.current as unknown as Record<string, unknown>
     delete current.transactionFee
-    delete current.maintenanceInterval
-    delete current.maintenanceFee
     delete current.faucetAmount
     delete current.nodeRewardAmountUsd
     delete current.nodePenaltyUsd
