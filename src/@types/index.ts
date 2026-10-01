@@ -986,7 +986,6 @@ export interface NetworkParameters {
   minTollUsdStr: string
   defaultTollUsdStr: string
   goldenTicketServerUrl: string
-  goldenTicketRetryInterval: number
   dao: {
     proposalFeeUsdStr: string
     voteThresholdUsdStr: string
