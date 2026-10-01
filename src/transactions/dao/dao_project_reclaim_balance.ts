@@ -1,19 +1,20 @@
 import * as crypto from '../../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
+import * as config from '../../config'
 import { UserAccount, WrappedStates, Tx, AppReceiptData, DaoProposalAccount } from '../../@types'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
-import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
-import { getClaimEnd } from '../../accounts/daoProposalAccount'
+import { appendProjectLog } from '../../utils/daoProjectLog'
+import { loadProjectTxContext } from '../../utils/daoProjectTxContext'
 
-export const validate_fields = (tx: Tx.DaoBurnReward, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
+export const validate_fields = (tx: Tx.DaoProjectReclaimBalance, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {
     response.reason = 'tx "from" is not a valid address'
     return response
   }
   if (utils.isValidAddress(tx.proposalId) === false) {
-    response.reason = 'tx "proposalId" must be a 64-char hex string'
+    response.reason = 'tx "proposalId" is not a valid address'
     return response
   }
   if (!tx.sign || !tx.sign.owner || !tx.sign.sig || tx.sign.owner !== tx.from) {
@@ -29,47 +30,33 @@ export const validate_fields = (tx: Tx.DaoBurnReward, response: ShardusTypes.Inc
 }
 
 export const validate = (
-  tx: Tx.DaoBurnReward,
+  tx: Tx.DaoProjectReclaimBalance,
   wrappedStates: WrappedStates,
   response: ShardusTypes.IncomingTransactionResult,
-  dapp: Shardus,
 ): ShardusTypes.IncomingTransactionResult => {
-  const from = wrappedStates[tx.from]?.data as UserAccount
-  const proposal = wrappedStates[tx.proposalId]?.data as DaoProposalAccount
+  const ctx = loadProjectTxContext(wrappedStates, tx.from, tx.proposalId)
+  if (ctx.error) {
+    response.reason = ctx.error
+    return response
+  }
+  const { from, proposal, project } = ctx
 
-  if (!from || !isUserAccount(from)) {
-    response.reason = 'from account not found or is not a UserAccount'
+  if (proposal.status !== 'completed' && proposal.status !== 'terminated') {
+    response.reason = `Project is not in completed or terminated status (current: ${proposal.status})`
     return response
   }
-  if (!proposal || !isDaoProposalAccount(proposal)) {
-    response.reason = 'Proposal account not found or is not a DaoProposalAccount'
+  if (!proposal.committeeAddresses.includes(tx.from)) {
+    response.reason = 'Only a committee member can reclaim a project balance'
     return response
   }
-  if (proposal.status === 'withheld') {
-    response.reason = 'Proposal is withheld; the reward pool was already burned'
+  if (project.balance === 0n) {
+    response.reason = 'Project balance is already zero'
     return response
   }
-  // Project proposals leave 'accepted' at dao_project_start and never return, so omitting the
-  // three project statuses would strand their voter reward pool permanently — unclaimable and
-  // unburnable. This list is hand-maintained: widening DaoProposalStatus does not flag it.
-  if (
-    proposal.status !== 'accepted' &&
-    proposal.status !== 'applied' &&
-    proposal.status !== 'rejected' &&
-    proposal.status !== 'canceled' &&
-    proposal.status !== 'executing' &&
-    proposal.status !== 'completed' &&
-    proposal.status !== 'terminated'
-  ) {
-    response.reason = `Proposal voting has not been finalised (current status: ${proposal.status})`
-    return response
-  }
-  if (tx.timestamp <= getClaimEnd(proposal)) {
-    response.reason = 'Claim period has not ended yet'
-    return response
-  }
-  if (proposal.voterRewardPool <= proposal.claimedReward) {
-    response.reason = 'Nothing left to burn'
+  // The contractor gets a long window to claim what they earned before the DAO takes it back.
+  const reclaimableAt = (project.endTime ?? 0) + config.LiberdusFlags.daoProjectReclaimDelayMs
+  if (tx.timestamp < reclaimableAt) {
+    response.reason = `Project balance cannot be reclaimed until ${reclaimableAt}`
     return response
   }
 
@@ -85,7 +72,7 @@ export const validate = (
 }
 
 export const apply = (
-  tx: Tx.DaoBurnReward,
+  tx: Tx.DaoProjectReclaimBalance,
   txTimestamp: number,
   txId: string,
   wrappedStates: WrappedStates,
@@ -94,16 +81,18 @@ export const apply = (
 ): void => {
   const from = wrappedStates[tx.from].data as UserAccount
   const proposal = wrappedStates[tx.proposalId].data as DaoProposalAccount
+  const project = proposal.project
+
   const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
-
-  // Coins not claimed during the claim period leave circulation permanently.
-  const burned = SafeBigIntMath.subtract(proposal.voterRewardPool, proposal.claimedReward)
-  // Track how much of the pool went unclaimed for accounting.
-  proposal.finalBurnedReward = burned
-  // Pool is now closed — zero it so any late dao_claim_reward attempts see an empty pool.
-  proposal.voterRewardPool = 0n
-
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
+
+  // The balance is not transferred anywhere — it was minted into the project and is simply gone
+  // again. Since a project's balance counts toward the LIB in circulation, leaving it unclaimed
+  // forever would inflate the supply for work that was never paid for.
+  const reclaimedWei = project.balance
+  project.balance = 0n
+
+  appendProjectLog(project, tx.from, txTimestamp, 'dao_project_reclaim_balance')
 
   from.timestamp = txTimestamp
   proposal.timestamp = txTimestamp
@@ -112,19 +101,20 @@ export const apply = (
     txId,
     timestamp: txTimestamp,
     success: true,
-    from: tx.from,
-    to: tx.proposalId,
+    from: from.id,
+    to: proposal.id,
     type: tx.type,
     transactionFee: txFeeWei,
-    additionalInfo: { burned },
+    additionalInfo: { proposalNumber: proposal.number, reclaimedWei },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
-  dapp.log('Applied dao_burn_reward tx', tx.from, tx.proposalId, burned.toString())
+
+  dapp.log('Applied dao_project_reclaim_balance tx', from.id, tx.proposalId, reclaimedWei)
 }
 
 export const createFailedAppReceiptData = (
-  tx: Tx.DaoBurnReward,
+  tx: Tx.DaoProjectReclaimBalance,
   txTimestamp: number,
   txId: string,
   wrappedStates: WrappedStates,
@@ -132,6 +122,8 @@ export const createFailedAppReceiptData = (
   applyResponse: ShardusTypes.ApplyResponse,
   reason: string,
 ): void => {
+  // A failed transaction still costs its sender the fee, or their whole balance if it is smaller —
+  // otherwise failing is free and can be repeated without cost.
   const from = wrappedStates[tx.from]?.data as UserAccount
   let transactionFee = BigInt(0)
   if (from) {
@@ -160,32 +152,26 @@ export const createFailedAppReceiptData = (
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 }
 
-export const keys = (tx: Tx.DaoBurnReward, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
+export const keys = (tx: Tx.DaoProjectReclaimBalance, result: ShardusTypes.TransactionKeys): ShardusTypes.TransactionKeys => {
   result.sourceKeys = [tx.from]
   result.targetKeys = [tx.proposalId]
   result.allKeys = [...result.sourceKeys, ...result.targetKeys]
   return result
 }
 
-export const memoryPattern = (tx: Tx.DaoBurnReward, result: ShardusTypes.TransactionKeys): ShardusTypes.ShardusMemoryPatternsInput => {
-  return {
-    rw: [tx.from, tx.proposalId],
-    wo: [],
-    on: [],
-    ri: [],
-    ro: [],
-  }
+export const memoryPattern = (tx: Tx.DaoProjectReclaimBalance): ShardusTypes.ShardusMemoryPatternsInput => {
+  return { rw: [tx.from, tx.proposalId], wo: [], on: [], ri: [], ro: [] }
 }
 
 export const createRelevantAccount = (
   dapp: Shardus,
   account: UserAccount | DaoProposalAccount,
   accountId: string,
-  tx: Tx.DaoBurnReward,
+  tx: Tx.DaoProjectReclaimBalance,
   accountCreated = false,
 ): ShardusTypes.WrappedResponse => {
   if (!account) {
-    throw new Error(`dao_burn_reward.createRelevantAccount: account ${accountId} does not exist`)
+    throw new Error(`dao_project_reclaim_balance.createRelevantAccount: account ${accountId} does not exist`)
   }
   return dapp.createWrappedResponse(accountId, accountCreated, account.hash, account.timestamp, account)
 }

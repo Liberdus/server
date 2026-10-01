@@ -272,6 +272,23 @@ interface LiberdusFlags {
   // dao_proposal_create will accept.
   daoMaxProposalStartDelayMs: number
   daoMaxProposalGracePeriodMs: number
+  // Early/late thresholds as a percentage of a milestone's planned duration. Snapshotted onto each
+  // project at creation, so a project is judged by the rules it was created under.
+  daoProjectDurationBonusPercentage: number
+  daoProjectDurationPenaltyPercentage: number
+  // Ceiling on the LIB a single project may mint at dao_project_start, as a decimal string so the
+  // value stays JSON-safe over /debug-liberdus-flags and exact when parsed to wei.
+  //
+  // PLACEHOLDER VALUE — set from tokenomics before this reaches a real network.
+  //
+  // This is a per-project cap, not a supply cap: the policy's guard is
+  // `current_supply + balance <= max_mint_threshold`, but current_supply is not maintained anywhere
+  // yet, so N projects can each pass this and still mint arbitrarily much in aggregate.
+  // TODO: add the current_supply term once the network maintains it, and move this onto the network
+  // account so governance can tune it (behind a version flag).
+  daoMaxMintThresholdLibStr: string
+  // How long after a project ends before the committee may reclaim an unclaimed balance.
+  daoProjectReclaimDelayMs: number
   minCommitteeMembers: number
   maxCommitteeMembers: number
   enableAJVValidation: boolean
@@ -326,6 +343,10 @@ export const LiberdusFlags: LiberdusFlags = {
   daoUnapplyCommitteeThreshold: 3,
   daoMaxProposalStartDelayMs: 3 * ONE_DAY,
   daoMaxProposalGracePeriodMs: 30 * ONE_DAY,
+  daoProjectDurationBonusPercentage: 20,
+  daoProjectDurationPenaltyPercentage: 20,
+  daoMaxMintThresholdLibStr: '1000000',
+  daoProjectReclaimDelayMs: 90 * ONE_DAY,
   minCommitteeMembers: 4,
   maxCommitteeMembers: 10,
   enableAJVValidation: false,

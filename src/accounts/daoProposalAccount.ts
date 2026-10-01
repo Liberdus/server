@@ -30,6 +30,7 @@ export function daoProposalAccount(id: string): DaoProposalAccount {
     committeeVotes: [],
     // unapplyVotes intentionally omitted — created lazily by the handler on first
     // dao_unapply_parameters submission, not carried by every proposal from creation.
+    // project intentionally omitted for the same reason — only project proposals have one.
     options: [],
     totalVote: [],
     voterRewardPool: 0n,

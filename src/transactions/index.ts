@@ -57,6 +57,14 @@ import * as dao_unapply_parameters from './dao/dao_unapply_parameters'
 import * as dao_claim_reward from './dao/dao_claim_reward'
 import * as dao_burn_reward from './dao/dao_burn_reward'
 import * as dao_cancel from './dao/dao_cancel'
+import * as dao_project_start from './dao/dao_project_start'
+import * as dao_project_milestone_start from './dao/dao_project_milestone_start'
+import * as dao_project_milestone_end from './dao/dao_project_milestone_end'
+import * as dao_project_milestone_terminate from './dao/dao_project_milestone_terminate'
+import * as dao_project_milestone_claim from './dao/dao_project_milestone_claim'
+import * as dao_project_change_address from './dao/dao_project_change_address'
+import * as dao_project_end from './dao/dao_project_end'
+import * as dao_project_reclaim_balance from './dao/dao_project_reclaim_balance'
 
 export default {
   init_network,
@@ -118,4 +126,12 @@ export default {
   dao_claim_reward,
   dao_burn_reward,
   dao_cancel,
+  dao_project_start,
+  dao_project_milestone_start,
+  dao_project_milestone_end,
+  dao_project_milestone_terminate,
+  dao_project_milestone_claim,
+  dao_project_change_address,
+  dao_project_end,
+  dao_project_reclaim_balance,
 }
