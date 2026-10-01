@@ -1609,7 +1609,7 @@ const shardusSetup = (): void => {
             if (LiberdusFlags.VerboseLogs) console.log(`terminal golden ticket fetch error: ${goldenTicketResult.error}`)
             nestedCountersInstance.countEvent('liberdus-staking', `terminal golden ticket fetch error: ${goldenTicketResult.error}`)
           } else {
-            const goldenTicketRetryInterval = networkAccount.current.goldenTicketRetryInterval || 10 * configs.ONE_MINUTE
+            const goldenTicketRetryInterval = LiberdusFlags.goldenTicketRetryInterval
             nextGoldenTicketRetryAt = dapp.shardusGetTime() + goldenTicketRetryInterval
             isGoldenTicketRetry = true
             /* prettier-ignore */
@@ -1617,7 +1617,7 @@ const shardusSetup = (): void => {
             nestedCountersInstance.countEvent('liberdus-staking', `no golden ticket available from server, retrying in ${goldenTicketRetryInterval}ms`)
           }
         } catch (e) {
-          const goldenTicketRetryInterval = networkAccount.current.goldenTicketRetryInterval || 10 * configs.ONE_MINUTE
+          const goldenTicketRetryInterval = LiberdusFlags.goldenTicketRetryInterval
           nextGoldenTicketRetryAt = dapp.shardusGetTime() + goldenTicketRetryInterval
           isGoldenTicketRetry = true
           /* prettier-ignore */
