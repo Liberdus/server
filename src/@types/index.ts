@@ -599,6 +599,8 @@ export interface NetworkParameters {
   title: string
   description: string
   nodeRewardInterval: number
+  maintenanceInterval: number
+  maintenanceFee: bigint
   restakeCooldown: number
   stabilityScaleMul: number
   stabilityScaleDiv: number

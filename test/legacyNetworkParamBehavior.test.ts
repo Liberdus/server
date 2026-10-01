@@ -12,13 +12,13 @@ import { getTransactionFeeWei, maintenanceAmount, usdStrToWei } from '../src/uti
 describe('legacy network parameter activation', () => {
   const originalCachedNetworkAccount = AccountsStorage.cachedNetworkAccount
   const originalFlags = { ...LiberdusFlags.versionFlags }
-  const networkAt = (activeVersion: string, includeLegacyParams: boolean): NetworkAccount =>
+  const networkAt = (activeVersion: string, includeLegacyTransactionFee: boolean): NetworkAccount =>
     ({
       type: 'NetworkAccount',
       current: {
         ...INITIAL_PARAMETERS,
         activeVersion,
-        ...(includeLegacyParams ? { transactionFee: 10n ** 17n, maintenanceInterval: 86_400_000, maintenanceFee: 0n } : {}),
+        ...(includeLegacyTransactionFee ? { transactionFee: 10n ** 17n } : {}),
       },
     } as NetworkAccount)
 
@@ -68,9 +68,9 @@ describe('legacy network parameter activation', () => {
     expect(chargeFailedWithdrawal(after, true)).toEqual({ balance: initialBalance - afterFee, fee: afterFee })
   })
 
-  test('maintenance stops advancing lastMaintenance when the parameter-removal flag activates', () => {
+  test('maintenance continues advancing lastMaintenance after parameter removal', () => {
     const account = { lastMaintenance: 0, data: { balance: 50n } } as UserAccount
-    const timestamp = 86_400_001
+    const timestamp = INITIAL_PARAMETERS.maintenanceInterval + 1
 
     const before = networkAt('2.5.1', true)
     LiberdusFlags.versionFlags.removeLegacyNetworkParams = false
@@ -79,8 +79,9 @@ describe('legacy network parameter activation', () => {
 
     const after = networkAt('2.5.2', false)
     LiberdusFlags.versionFlags.removeLegacyNetworkParams = true
-    expect(maintenanceAmount(timestamp + 86_400_001, account, after)).toBe(0n)
-    expect(account.lastMaintenance).toBe(timestamp)
+    const nextTimestamp = timestamp + INITIAL_PARAMETERS.maintenanceInterval + 1
+    expect(maintenanceAmount(nextTimestamp, account, after)).toBe(0n)
+    expect(account.lastMaintenance).toBe(nextTimestamp)
   })
 
   test('new users use the USD default toll without a cached network account', () => {
