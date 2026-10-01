@@ -25,8 +25,6 @@ describe('global network-account afterStateHash parity', () => {
   const originalNetworkParamsFlag = LiberdusFlags.versionFlags.removeLegacyNetworkParams
   const retiredNetworkParamKeys = [
     'transactionFee',
-    'maintenanceInterval',
-    'maintenanceFee',
     'faucetAmount',
     'nodeRewardAmountUsd',
     'nodePenaltyUsd',
@@ -139,6 +137,8 @@ describe('global network-account afterStateHash parity', () => {
     for (const key of retiredNetworkParamKeys) {
       expect(Object.prototype.hasOwnProperty.call(applied.current, key)).toBe(!LiberdusFlags.versionFlags.removeLegacyNetworkParams)
     }
+    expect(applied.current.maintenanceInterval).toBe(INITIAL_PARAMETERS.maintenanceInterval)
+    expect(applied.current.maintenanceFee).toBe(INITIAL_PARAMETERS.maintenanceFee)
 
     expect(utils.calculateAccountHash(applied as unknown as Accounts)).toEqual(afterStateHash)
     return globalMsg
