@@ -7,11 +7,15 @@ Returns current network parameters.
 
 The `*UsdStr` fields are the source of truth for transaction fees, staking,
 rewards, penalties, and tolls. After the 2.5.2 migration, a stored network
-account may still contain retired `transactionFee`, `maintenanceInterval`,
-`maintenanceFee`, `faucetAmount`, `nodeRewardAmountUsd`, `nodePenaltyUsd`,
-`stakeRequiredUsd`, `defaultToll`, and `minToll` keys. An apply-path write to
-the network account strips them; change-queue updates alone may leave them.
+account may still contain retired `transactionFee`, `faucetAmount`,
+`nodeRewardAmountUsd`, `nodePenaltyUsd`, `stakeRequiredUsd`, `defaultToll`, and
+`minToll` keys. A later apply-path write to the network account strips them;
+change-queue updates alone may leave them.
 Clients should treat these keys as optional.
+
+`maintenanceInterval` and `maintenanceFee` remain network parameters. With the
+current zero fee, maintenance still updates an account's `lastMaintenance` after
+each interval.
 
 **Response:**
 ```json

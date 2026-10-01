@@ -10,6 +10,8 @@ export const startupTest = () =>
       expect(networkParams.current).toEqual(
         expect.objectContaining({
           activeVersion: '2.5.2',
+          maintenanceInterval: 86_400_000,
+          maintenanceFee: { dataType: 'bi', value: '0' }, // bigint 0n as serialized by the API
           nodeRewardAmountUsdStr: '1.0',
           nodePenaltyUsdStr: '10.0',
           stakeRequiredUsdStr: '10.0',
@@ -19,17 +21,7 @@ export const startupTest = () =>
           defaultTollUsdStr: '0.2',
         }),
       )
-      for (const key of [
-        'transactionFee',
-        'maintenanceInterval',
-        'maintenanceFee',
-        'faucetAmount',
-        'nodeRewardAmountUsd',
-        'nodePenaltyUsd',
-        'stakeRequiredUsd',
-        'defaultToll',
-        'minToll',
-      ]) {
+      for (const key of ['transactionFee', 'faucetAmount', 'nodeRewardAmountUsd', 'nodePenaltyUsd', 'stakeRequiredUsd', 'defaultToll', 'minToll']) {
         expect(networkParams.current).not.toHaveProperty(key)
       }
       expect(networkParams.listOfChanges).toEqual([])

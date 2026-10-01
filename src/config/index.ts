@@ -6,6 +6,7 @@ import minimist from 'minimist'
 import { NetworkParameters } from '../@types'
 import { Utils } from '@shardus/lib-types'
 import { DevSecurityLevel, ShardusTypes } from '@shardus/core'
+import * as utils from '../utils'
 
 export const networkAccount = '0'.repeat(64)
 
@@ -32,6 +33,8 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   title: 'Initial parameters',
   description: 'These are the initial network parameters liberdus started with',
   nodeRewardInterval: ONE_HOUR, //ONE_HOUR,
+  maintenanceInterval: ONE_DAY,
+  maintenanceFee: utils.libToWei(0),
   restakeCooldown: 30 * ONE_MINUTE,
   tollNetworkTaxPercent: 1, // 1%
   tollTimeout: 7 * ONE_DAY,
