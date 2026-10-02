@@ -21,49 +21,15 @@ export enum AJVSchemaEnum {
   remove_node_cert = 'remove_node_cert',
   // Transaction types with snake case values matching TXTypes
   init_network = 'init_network',
-  network_windows = 'network_windows',
-  snapshot = 'snapshot',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  email = 'email',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  gossip_email_hash = 'gossip_email_hash',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  verify = 'verify',
   register = 'register',
   create = 'create',
   transfer = 'transfer',
-  distribute = 'distribute',
   message = 'message',
   read = 'read',
   reclaim_toll = 'reclaim_toll',
   update_chat_toll = 'update_chat_toll',
   update_toll_required = 'update_toll_required',
   toll = 'toll',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  friend = 'friend',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  remove_friend = 'remove_friend',
-  stake = 'stake',
-  remove_stake = 'remove_stake',
-  remove_stake_request = 'remove_stake_request',
-  node_reward = 'node_reward',
-  snapshot_claim = 'snapshot_claim',
-  issue = 'issue',
-  proposal = 'proposal',
-  vote = 'vote',
-  tally = 'tally',
-  apply_tally = 'apply_tally',
-  parameters = 'parameters',
-  apply_parameters = 'apply_parameters',
-  dev_issue = 'dev_issue',
-  dev_proposal = 'dev_proposal',
-  dev_vote = 'dev_vote',
-  dev_tally = 'dev_tally',
-  apply_dev_tally = 'apply_dev_tally',
-  dev_parameters = 'dev_parameters',
-  apply_dev_parameters = 'apply_dev_parameters',
-  developer_payment = 'developer_payment',
-  apply_developer_payment = 'apply_developer_payment',
   change_config = 'change_config',
   apply_change_config = 'apply_change_config',
   change_network_param = 'change_network_param',
@@ -90,49 +56,15 @@ export enum AJVSchemaEnum {
 
 export enum TXTypes {
   init_network = 'init_network',
-  network_windows = 'network_windows',
-  snapshot = 'snapshot',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  email = 'email',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  gossip_email_hash = 'gossip_email_hash',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  verify = 'verify',
   register = 'register',
   create = 'create',
   transfer = 'transfer',
-  distribute = 'distribute',
   message = 'message',
   read = 'read',
   reclaim_toll = 'reclaim_toll',
   update_chat_toll = 'update_chat_toll',
   update_toll_required = 'update_toll_required',
   toll = 'toll',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  friend = 'friend',
-  /** @deprecated Deprecated in version 2.5.0 - will be removed in a future version */
-  remove_friend = 'remove_friend',
-  stake = 'stake',
-  remove_stake = 'remove_stake',
-  remove_stake_request = 'remove_stake_request',
-  node_reward = 'node_reward',
-  snapshot_claim = 'snapshot_claim',
-  issue = 'issue',
-  proposal = 'proposal',
-  vote = 'vote',
-  tally = 'tally',
-  apply_tally = 'apply_tally',
-  parameters = 'parameters',
-  apply_parameters = 'apply_parameters',
-  dev_issue = 'dev_issue',
-  dev_proposal = 'dev_proposal',
-  dev_vote = 'dev_vote',
-  dev_tally = 'dev_tally',
-  apply_dev_tally = 'apply_dev_tally',
-  dev_parameters = 'dev_parameters',
-  apply_dev_parameters = 'apply_dev_parameters',
-  developer_payment = 'developer_payment',
-  apply_developer_payment = 'apply_developer_payment',
   change_config = 'change_config',
   apply_change_config = 'apply_change_config',
   change_network_param = 'change_network_param',
@@ -164,102 +96,15 @@ export interface BaseLiberdusTx {
 }
 
 export namespace Tx {
-  export interface ApplyParameters extends BaseLiberdusTx {
-    from: string
-    current: NetworkParameters
-    next: {}
-    windows: Windows
-    nextWindows: {}
-    issue: number
-    devWindows?: DevWindows
-    nextDevWindows?: DevWindows
-  }
-
-  export interface ApplyDevParameters extends BaseLiberdusTx {
-    from: string
-    timestamp: number
-    devWindows: DevWindows
-    nextDevWindows: {}
-    developerFund: DeveloperPayment[]
-    nextDeveloperFund: DeveloperPayment[]
-    devIssue: number
-  }
-
-  export interface ApplyDevPayment extends BaseLiberdusTx {
-    from: string
-    developerFund: DeveloperPayment[]
-  }
-
-  export interface ApplyTally extends BaseLiberdusTx {
-    from: string
-    next: NetworkParameters
-    nextWindows: Windows
-  }
-
-  export interface ApplyDevTally extends BaseLiberdusTx {
-    from: string
-    nextDeveloperFund: DeveloperPayment[]
-    nextDevWindows: DevWindows
-  }
-
   export interface Create extends BaseLiberdusTx {
     from: string
     to: string
     amount: bigint
   }
 
-  export interface Distribute extends BaseLiberdusTx {
-    from: string
-    recipients: string[]
-    amount: bigint
-  }
-
-  export interface Email extends BaseLiberdusTx {
-    signedTx: {
-      emailHash: string
-      from: string
-      sign: Signature
-    }
-    email: string
-  }
-
-  export interface Friend extends BaseLiberdusTx {
-    alias: string
-    from: string
-    to: string
-  }
-
-  export interface GossipEmailHash extends BaseLiberdusTx {
-    nodeId: string
-    account: string
-    from: string
-    emailHash: string
-    verified: string
-  }
-
   export interface InitNetwork extends BaseLiberdusTx {
     type: TXTypes
     timestamp: number
-  }
-
-  export interface NetworkWindows extends BaseLiberdusTx {
-    type: TXTypes
-    timestamp: number
-    from: string
-    nodeId: string
-  }
-
-  export interface Issue extends BaseLiberdusTx {
-    nodeId: string
-    from: string
-    issue: string
-    proposal: string
-  }
-
-  export interface DevIssue extends BaseLiberdusTx {
-    nodeId: string
-    from: string
-    devIssue: string
   }
 
   export interface Message extends BaseLiberdusTx {
@@ -308,18 +153,6 @@ export namespace Tx {
     timestamp: number // timestamp up to which messages are considered read
   }
 
-  export interface NodeReward extends BaseLiberdusTx {
-    nodeId: string
-    from: string
-    to: string
-  }
-
-  export interface Parameters extends BaseLiberdusTx {
-    nodeId: string
-    from: string
-    issue: string
-  }
-
   export interface ChangeConfig extends BaseLiberdusTx {
     from: string
     cycle: number
@@ -344,30 +177,6 @@ export namespace Tx {
     change: any
   }
 
-  export interface DevParameters extends BaseLiberdusTx {
-    nodeId: string
-    from: string
-    devIssue: string
-  }
-
-  export interface Proposal extends BaseLiberdusTx {
-    from: string
-    proposal: string
-    issue: string
-    parameters: NetworkParameters
-  }
-
-  export interface DevProposal extends BaseLiberdusTx {
-    from: string
-    devProposal: string
-    devIssue: string
-    totalAmount: bigint
-    payments: DeveloperPayment[]
-    title: string
-    description: string
-    payAddress: string
-  }
-
   export interface Register extends BaseLiberdusTx {
     aliasHash: string
     from: string
@@ -375,49 +184,6 @@ export namespace Tx {
     publicKey: string
     pqPublicKey?: string
     private?: boolean
-  }
-
-  export interface RemoveFriend extends BaseLiberdusTx {
-    from: string
-    to: string
-  }
-
-  export interface RemoveStakeRequest extends BaseLiberdusTx {
-    from: string
-    stake: bigint
-  }
-
-  export interface RemoveStake extends BaseLiberdusTx {
-    from: string
-    stake: bigint
-  }
-
-  export interface SnapshotClaim extends BaseLiberdusTx {
-    from: string
-  }
-
-  export interface Snapshot extends BaseLiberdusTx {
-    from: string
-    snapshot: any
-  }
-
-  export interface Stake extends BaseLiberdusTx {
-    from: string
-    stake: bigint
-  }
-
-  export interface Tally extends BaseLiberdusTx {
-    nodeId: string
-    from: string
-    issue: string
-    proposals: string[]
-  }
-
-  export interface DevTally extends BaseLiberdusTx {
-    nodeId: string
-    from: string
-    devIssue: string
-    devProposals: string[]
   }
 
   export interface Toll extends BaseLiberdusTx {
@@ -438,33 +204,6 @@ export namespace Tx {
     chatId: string
     fee?: bigint // Optional fee for the transfer
     deductTxFeeFromAmount?: boolean // Optional, defaults to false. If true, tx fee is deducted from the transfer amount.
-  }
-
-  export interface Verify extends BaseLiberdusTx {
-    from: string
-    code: string
-  }
-
-  export interface Vote extends BaseLiberdusTx {
-    from: string
-    issue: string
-    proposal: string
-    amount: bigint
-  }
-
-  export interface DevVote extends BaseLiberdusTx {
-    from: string
-    devIssue: string
-    devProposal: string
-    approve: boolean
-    amount: bigint
-  }
-
-  export interface DevPayment extends BaseLiberdusTx {
-    nodeId: string
-    from: string
-    developer: string
-    payment: DeveloperPayment
   }
 
   export interface SetCertTime extends BaseLiberdusTx {
@@ -605,16 +344,9 @@ export interface UserAccount {
     tollUnit: TollUnit
     chats: chatMessages
     chatTimestamp: number
-    friends: object
-    stake?: bigint
-    remove_stake_request: number | null
-    payments: DeveloperPayment[]
   }
   alias: string | null
-  emailHash: string | null
-  verified: string | boolean
   lastMaintenance: number
-  claimedSnapshot: boolean
   timestamp: number
   hash: string
   operatorAccountInfo?: OperatorAccountInfo
@@ -656,8 +388,6 @@ export interface OperatorStats {
 export interface NodeAccount {
   id: string
   type: string
-  balance: bigint
-  nodeRewardTime: number // TODO: remove
   hash: string
   timestamp: number
   nominator: string
@@ -717,71 +447,6 @@ export interface NetworkAccount {
     appData: any
   }>
   current: NetworkParameters
-  next: NetworkParameters | {}
-  windows: Windows
-  nextWindows: Windows | {}
-  devWindows: DevWindows
-  nextDevWindows: DevWindows | {}
-  issue: number
-  devIssue: number
-  developerFund: DeveloperPayment[]
-  nextDeveloperFund: DeveloperPayment[]
-  hash: string
-  timestamp: number
-  snapshot?: object
-}
-
-export interface IssueAccount {
-  id: string
-  type: string
-  active: boolean | null
-  proposals: string[]
-  proposalCount: number
-  tallied: boolean
-  number: number | null
-  winnerId: string | null
-  hash: string
-  timestamp: number
-}
-
-export interface DevIssueAccount {
-  id: string
-  type: string
-  devProposals: string[]
-  devProposalCount: number
-  winners: string[]
-  active: boolean | null
-  tallied: boolean
-  number: number | null
-  hash: string
-  timestamp: number
-}
-
-export interface ProposalAccount {
-  id: string
-  type: string
-  power: number
-  totalVotes: number
-  parameters: NetworkParameters
-  winner: boolean
-  number: number | null
-  hash: string
-  timestamp: number
-}
-
-export interface DevProposalAccount {
-  id: string
-  type: string
-  approve: bigint
-  reject: bigint
-  title: string | null
-  description: string | null
-  totalVotes: number
-  totalAmount: bigint | null
-  payAddress: string
-  payments: DeveloperPayment[]
-  approved: boolean | null
-  number: number | null
   hash: string
   timestamp: number
 }
@@ -907,12 +572,8 @@ export interface DaoProposalAccount {
 }
 
 export type Accounts = NetworkAccount &
-  IssueAccount &
-  DevIssueAccount &
   UserAccount &
   AliasAccount &
-  ProposalAccount &
-  DevProposalAccount &
   NodeAccount &
   ChatAccount &
   DaoProposalsMeta &
@@ -920,12 +581,8 @@ export type Accounts = NetworkAccount &
 
 export type AccountVariant =
   | NetworkAccount
-  | IssueAccount
-  | DevIssueAccount
   | UserAccount
   | AliasAccount
-  | ProposalAccount
-  | DevProposalAccount
   | NodeAccount
   | ChatAccount
   | DevAccount
@@ -940,15 +597,8 @@ export interface NetworkParameters {
   title: string
   description: string
   nodeRewardInterval: number
-  transactionFee: bigint
   maintenanceInterval: number
   maintenanceFee: bigint
-  proposalFee: bigint
-  devProposalFee: bigint
-  faucetAmount: bigint
-  nodeRewardAmountUsd: bigint
-  nodePenaltyUsd: bigint
-  stakeRequiredUsd: bigint
   restakeCooldown: number
   stabilityScaleMul: number
   stabilityScaleDiv: number
@@ -963,8 +613,6 @@ export interface NetworkParameters {
   txPause: boolean
   certCycleDuration: number
   enableNodeSlashing: boolean
-  defaultToll: bigint
-  minToll: bigint
   tollNetworkTaxPercent: number
   tollTimeout: number
   messageMaxLength: number // Maximum length of chat message
@@ -1000,28 +648,6 @@ export interface NetworkParameters {
   }
 }
 
-export interface Windows {
-  proposalWindow: number[]
-  votingWindow: number[]
-  graceWindow: number[]
-  applyWindow: number[]
-}
-
-export interface DevWindows {
-  devProposalWindow: number[]
-  devVotingWindow: number[]
-  devGraceWindow: number[]
-  devApplyWindow: number[]
-}
-
-export interface DeveloperPayment {
-  id: string
-  address: string
-  amount: bigint
-  delay: number
-  timestamp: number
-}
-
 /**
  * ---------------------- SDK DATA export interfaceS ----------------------
  */
@@ -1051,11 +677,6 @@ export interface GlobalMessage extends Omit<P2P.GlobalAccountsTypes.SetGlobalTx,
     | Tx.InitNetwork
     | Tx.ApplyChangeConfig
     | Tx.ApplyChangeNetworkParam
-    | Tx.ApplyDevParameters
-    | Tx.ApplyDevTally
-    | Tx.ApplyDevPayment
-    | Tx.ApplyParameters
-    | Tx.ApplyTally
 }
 
 export interface OurAppDefinedData {

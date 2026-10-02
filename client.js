@@ -275,15 +275,6 @@ function makeTxGenerator(accounts, total = 0, type) {
           })
           break
         }
-        case 'friend': {
-          yield txBuilder({
-            type: 'friend',
-            from: account1,
-            to: account2,
-            amount: 1,
-          })
-          break
-        }
         case 'message': {
           const message = stringify({
             body: 'spam1234',
@@ -353,17 +344,6 @@ function buildTx({ type, from = {}, to, handle, id, amount, message, toll }) {
         timestamp: Date.now(),
         to: to.address,
         amount: Number(amount),
-      }
-      break
-    }
-    case 'friend': {
-      actualTx = {
-        type,
-        from: from.address,
-        to: to.address,
-        handle: `${to.address.slice(0, 5)}`,
-        amount: Number(amount),
-        timestamp: Date.now(),
       }
       break
     }
@@ -627,33 +607,6 @@ async function queryParameters() {
   }
 }
 
-// QUERY'S THE CURRENT PHASE OF THE DYNAMIC PARAMETER SYSTEM
-async function queryWindow() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/network/windows/all`)
-  if (res.data.error) {
-    return res.data.error
-  } else {
-    const { windows, devWindows } = res.data
-    const timestamp = Date.now()
-    let windowTime, devWindowTime
-    if (inRange(timestamp, windows.proposalWindow)) windowTime = { proposals: Math.round((windows.proposalWindow[1] - timestamp) / 1000) }
-    else if (inRange(timestamp, windows.votingWindow)) windowTime = { voting: Math.round((windows.votingWindow[1] - timestamp) / 1000) }
-    else if (inRange(timestamp, windows.graceWindow)) windowTime = { grace: Math.round((windows.graceWindow[1] - timestamp) / 1000) }
-    else if (inRange(timestamp, windows.applyWindow)) windowTime = { apply: Math.round((windows.applyWindow[1] - timestamp) / 1000) }
-    else windowTime = { apply: Math.round((windows.proposalWindow[0] - timestamp) / 1000) }
-
-    if (inRange(timestamp, devWindows.devProposalWindow)) devWindowTime = { devProposals: Math.round((devWindows.devProposalWindow[1] - timestamp) / 1000) }
-    else if (inRange(timestamp, devWindows.devVotingWindow)) devWindowTime = { devVoting: Math.round((devWindows.devVotingWindow[1] - timestamp) / 1000) }
-    else if (inRange(timestamp, devWindows.devGraceWindow)) devWindowTime = { devGrace: Math.round((devWindows.devGraceWindow[1] - timestamp) / 1000) }
-    else if (inRange(timestamp, devWindows.devApplyWindow)) devWindowTime = { devApply: Math.round((devWindows.devApplyWindow[1] - timestamp) / 1000) }
-    else devWindowTime = { devApply: Math.round((devWindows.devProposalWindow[0] - timestamp) / 1000) }
-    return { window: windowTime, devWindow: devWindowTime }
-  }
-
-  function inRange(now, times) {
-    return now > times[0] && now < times[1]
-  }
-}
 
 // QUERY'S THE CURRENT NETWORK PARAMETERS ON HOST NODE (TESTING)
 async function queryNodeParameters() {
@@ -665,78 +618,6 @@ async function queryNodeParameters() {
   }
 }
 
-// QUERY'S ALL NETWORK ISSUES
-async function queryIssues() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/issues`)
-  return res.data.issues
-}
-
-// QUERY'S ALL NETWORK DEV_ISSUES
-async function queryDevIssues() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/issues/dev`)
-  return res.data.devIssues
-}
-
-// QUERY'S THE MOST RECENT NETWORK ISSUE
-async function queryLatestIssue() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/issues/latest`)
-  return res.data.issue
-}
-
-// QUERY'S THE MOST RECENT NETWORK DEV_ISSUE
-async function queryLatestDevIssue() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/issues/dev/latest`)
-  return res.data.devIssue
-}
-
-// QUERY'S THE CURRENT NETWORK ISSUE COUNT
-async function getIssueCount() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/issues/count`)
-  return res.data.count
-}
-
-// QUERY'S THE CURRENT NETWORK DEV_ISSUE COUNT
-async function getDevIssueCount() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/issues/dev/count`)
-  return res.data.count
-}
-
-// QUERY'S ALL NETWORK PROPOSALS
-async function queryProposals() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals`)
-  return res.data.proposals
-}
-
-// QUERY'S ALL NETWORK DEV_PROPOSALS
-async function queryDevProposals() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals/dev`)
-  return res.data.devProposals
-}
-
-// QUERY'S ALL PROPOSALS ON THE LATEST ISSUE
-async function queryLatestProposals() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals/latest`)
-  return res.data.proposals
-}
-
-// QUERY'S ALL PROPOSALS ON THE LATEST ISSUE
-async function queryLatestDevProposals() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals/dev/latest`)
-  return res.data.devProposals
-}
-
-// QUERY'S THE CURRENT ISSUE'S PROPOSAL COUNT
-async function getProposalCount() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals/count`)
-  return res.data.count
-}
-
-// QUERY'S THE CURRENT ISSUE'S PROPOSAL COUNT
-async function getDevProposalCount() {
-  const res = await axios.get(`${PROTOCOL}://${HOST}/proposals/dev/count`)
-  return res.data.count
-}
-
 // COMMAND TO SET THE HOST IP:PORT
 vorpal.command('use host <host>', 'uses <host> as the node for queries and transactions').action(function (args, callback) {
   HOST = args.host
@@ -744,24 +625,7 @@ vorpal.command('use host <host>', 'uses <host> as the node for queries and trans
   callback()
 })
 
-// COMMAND TO SUBMIT A SNAPSHOT OF THE ULT CONTRACT (ADMIN ONLY)
-vorpal.command('snapshot', 'submits the snapshot the ULT contract').action(function (_, callback) {
-  const snapshot = require(resolve('snapshot.json'))
-  this.log(snapshot)
-  const tx = {
-    type: 'snapshot',
-    from: USER.address,
-    to: '0'.repeat(64),
-    snapshot,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
+// COMMAND TO CHANGE SHARDUS CONFIGURATION
 vorpal.command('change config', 'Send a stringified JSON config object to be updated by shardus').action(async function (args, callback) {
   const answers = await this.prompt([
     {
@@ -846,65 +710,6 @@ vorpal.command('change network parameters', 'Send a stringified JSON config obje
     this.log('change network parameters failed', err.message)
     callback()
   }
-})
-
-vorpal.command('email', 'registers your email address to the network').action(async function (_, callback) {
-  const answer = await this.prompt({
-    type: 'input',
-    name: 'email',
-    message: 'Enter your email address: ',
-    validate: (result) => {
-      const regex = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/
-      if (!regex.test(result)) {
-        return 'You need to provide a valid email address'
-      } else {
-        return true
-      }
-    },
-  })
-  const signedTx = {
-    emailHash: crypto.hash(answer.email),
-    from: USER.address,
-  }
-  signTransaction(signedTx)
-  const tx = {
-    type: 'email',
-    signedTx,
-    email: answer.email,
-    timestamp: Date.now(),
-    networkId,
-  }
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
-vorpal.command('verify', 'verifies your email address').action(async function (_, callback) {
-  const answer = await this.prompt({
-    type: 'input',
-    name: 'code',
-    message: 'Enter the verification code sent to your email address: ',
-    validate: (result) => {
-      result = result.split` `.join``
-      if (typeof result === 'string' && result.length === 6) {
-        return true
-      } else {
-        return 'You need to provide the 6 digit code'
-      }
-    },
-  })
-  const tx = {
-    type: 'verify',
-    from: USER.address,
-    code: answer.code,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
 })
 
 // COMMAND TO REGISTER AN ALIAS FOR A USER ACCOUNT
@@ -1081,36 +886,6 @@ vorpal.command('withdraw stake', 'withdraw the stake from the node').action(asyn
     nominator: USER.address,
     nominee: answers.nodeAddress,
     force: false,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
-// COMMAND TO SEND SOME AMOUNT OF TOKENS TO MULTIPLE ACCOUNTS
-vorpal.command('distribute', 'distributes tokens to multiple accounts').action(async function (_, callback) {
-  const answers = await this.prompt([
-    {
-      type: 'input',
-      name: 'targets',
-      message: 'Enter the target accounts separated by spaces: ',
-      filter: (values) => values.split` `.map((target) => walletEntries[target].address),
-    },
-    {
-      type: 'number',
-      name: 'amount',
-      message: 'How many tokens do you want to send each target: ',
-      filter: (value) => parseInt(value),
-    },
-  ])
-  const tx = {
-    type: 'distribute',
-    from: USER.address,
-    recipients: answers.targets,
-    amount: answers.amount,
     timestamp: Date.now(),
   }
   signTransaction(tx)
@@ -1309,7 +1084,7 @@ vorpal.command('reclaim toll', 'Reclaim the toll from unread message').action(as
   }
 })
 
-// COMMAND TO SET A TOLL FOR PEOPLE NOT ON YOUR FRIENDS LIST THAT SEND YOU MESSAGES
+// COMMAND TO SET THE TOLL FOR INCOMING MESSAGES
 vorpal.command('toll', 'sets a toll people must you in order to send you messages').action(async function (_, callback) {
   const answer = await this.prompt([
     {
@@ -1339,421 +1114,7 @@ vorpal.command('toll', 'sets a toll people must you in order to send you message
   })
 })
 
-// COMMAND TO ADD A FRIEND TO YOUR USER ACCOUNT'S FRIEND LIST
-vorpal.command('add friend', 'adds a friend to your account').action(async function (args, callback) {
-  const answer = await this.prompt({
-    type: 'input',
-    name: 'friend',
-    message: 'Enter the alias or publicKey of the friend: ',
-  })
-  const to = await getAddress(answer.friend)
-  if (to === undefined || to === null) {
-    this.log("Target account doesn't exist for: ", answer.friend)
-    callback()
-  }
-  const tx = {
-    type: 'friend',
-    alias: answer.friend,
-    from: USER.address,
-    to: to,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
-// COMMAND TO REMOVE A FRIEND FROM YOUR USER ACCOUNT'S FRIEND LIST
-vorpal.command('remove friend', 'removes a friend from your account').action(async function (_, callback) {
-  const answer = await this.prompt({
-    type: 'input',
-    name: 'friend',
-    message: 'Enter the alias or publicKey of the friend to remove: ',
-  })
-  const to = await getAddress(answer.friend)
-  if (to === undefined || to === null) {
-    this.log("Target account doesn't exist for: ", answer.friend)
-    callback()
-  }
-  const tx = {
-    type: 'remove_friend',
-    from: USER.address,
-    to: to,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
-// COMMAND TO STAKE TOKENS IN ORDER TO RUN A NODE
-// TODO
-vorpal.command('stake', 'stakes tokens in order to operate a node').action(async function (args, callback) {
-  const parameters = await queryParameters()
-  const answer = await this.prompt({
-    type: 'list',
-    name: 'confirm',
-    message: `The required staking amount is ${parameters.current.stakeRequired}, continue? `,
-    choices: [
-      { name: 'yes', value: true, short: true },
-      { name: 'no', value: false, short: false },
-    ],
-  })
-  if (answer.confirm) {
-    const tx = {
-      type: 'stake',
-      from: USER.address,
-      stake: parameters.current.stakeRequired,
-      timestamp: Date.now(),
-    }
-    signTransaction(tx)
-    injectTx(tx).then((res) => {
-      this.log(res)
-      callback()
-    })
-  } else {
-    this.log('cancelled')
-    callback()
-  }
-})
-
-// COMMAND TO CLAIM THE TOKENS FROM THE ULT SNAPSHOT
-// TODO VALIDATE ETHEREUM ADDRESS SOMEHOW
-vorpal.command('claim', 'submits a claim transaction for the snapshot').action(function (_, callback) {
-  const tx = {
-    type: 'snapshot_claim',
-    from: USER.address,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
-// COMMAND TO SUBMIT A PROPOSAL
-vorpal.command('proposal', 'submits a proposal to change network parameters').action(async function (args, callback) {
-  const networkParams = await queryParameters()
-  const defaults = networkParams.current
-  this.log(defaults)
-  this.log('Choose the network parameters (Using default value keeps the current parameter value)')
-  const answers = await this.prompt([
-    {
-      type: 'input',
-      name: 'title',
-      message: 'Enter a Title for your proposal: ',
-      default: defaults.title,
-    },
-    {
-      type: 'input',
-      name: 'description',
-      message: 'Enter a description for your proposal: ',
-      default: defaults.description,
-    },
-    {
-      type: 'number',
-      name: 'nodeRewardInterval',
-      message: 'Specify node reward interval (in minutes): ',
-      default: defaults.nodeRewardInterval,
-      filter: (value) => parseInt(value),
-    },
-    {
-      type: 'number',
-      name: 'nodeRewardAmount',
-      message: 'Specify node reward amount: ',
-      default: defaults.nodeRewardAmount,
-      filter: (value) => parseInt(value),
-    },
-    {
-      type: 'number',
-      name: 'nodePenalty',
-      message: 'Specify node penalty amount: ',
-      default: defaults.nodePenalty,
-      filter: (value) => parseInt(value),
-    },
-    {
-      type: 'number',
-      name: 'transactionFee',
-      message: 'Specify transaction fee: ',
-      default: defaults.transactionFee,
-      filter: (value) => parseInt(value),
-    },
-    {
-      type: 'number',
-      name: 'stakeRequired',
-      message: 'Specify stake requirement: ',
-      default: defaults.stakeRequired,
-      filter: (value) => parseInt(value),
-    },
-    {
-      type: 'number',
-      name: 'maintenanceInterval',
-      message: 'Specify maintenance interval (in minutes): ',
-      default: defaults.maintenanceInterval,
-      filter: (value) => parseInt(value),
-    },
-    {
-      type: 'number',
-      name: 'maintenanceFee',
-      message: 'Specify maintenance fee: ',
-      default: defaults.maintenanceFee,
-      filter: (value) => parseFloat(value),
-    },
-    {
-      type: 'number',
-      name: 'proposalFee',
-      message: 'Specify proposal fee: ',
-      default: defaults.proposalFee,
-      filter: (value) => parseInt(value),
-    },
-    {
-      type: 'number',
-      name: 'devProposalFee',
-      message: 'Specify dev proposal fee: ',
-      default: defaults.devProposalFee,
-      filter: (value) => parseInt(value),
-    },
-    {
-      type: 'number',
-      name: 'faucetAmount',
-      message: 'Specify faucet amount for new accounts: ',
-      default: defaults.faucetAmount,
-      filter: (value) => parseInt(value),
-    },
-    {
-      type: 'number',
-      name: 'defaultToll',
-      message: 'Specify the default message toll: ',
-      default: defaults.defaultToll,
-      filter: (value) => parseInt(value),
-    },
-  ])
-  const issue = await getIssueCount()
-  const proposal = await getProposalCount()
-  const tx = {
-    type: 'proposal',
-    from: USER.address,
-    proposal: crypto.hash(`issue-${issue}-proposal-${proposal + 1}`),
-    issue: crypto.hash(`issue-${issue}`),
-    parameters: answers,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
-// COMMAND TO SUBMIT A DEV_PROPOSAL
-vorpal.command('dev proposal', 'submits a development proposal').action(async function (_, callback) {
-  const answers = await this.prompt([
-    {
-      type: 'input',
-      name: 'title',
-      message: 'Enter a title for the development proposal: ',
-      default: `Default title`,
-    },
-    {
-      type: 'input',
-      name: 'description',
-      message: 'Enter a description for the proposal: ',
-      default: `${USER.address.slice(0, 5)}... proposal`,
-    },
-    {
-      type: 'number',
-      name: 'totalAmount',
-      message: 'Enter the requested funds: ',
-      default: 10000,
-      filter: (value) => parseInt(value),
-    },
-    {
-      type: 'input',
-      name: 'payAddress',
-      message: 'Enter the address for payment: ',
-      default: USER.address,
-    },
-    {
-      type: 'list',
-      name: 'plan',
-      message: 'Select the payment plan',
-      choices: ['single', 'multiple'],
-    },
-  ])
-
-  let paymentCount, delay
-
-  if (answers.plan === 'multiple') {
-    await this.prompt(
-      [
-        {
-          type: 'number',
-          name: 'count',
-          message: 'Enter the number of payments: ',
-          default: 5,
-          filter: (value) => parseInt(value),
-        },
-        {
-          type: 'number',
-          name: 'delay',
-          message: 'Enter the delay between payments (in minutes): ',
-          default: 1,
-          filter: (value) => parseInt(value),
-        },
-      ],
-      (result) => {
-        paymentCount = result.count
-        delay = result.delay * ONE_MINUTE
-      },
-    )
-  } else {
-    paymentCount = 1
-    delay = 0
-  }
-
-  const payments = new Array(paymentCount).fill(1).map((_, i) => ({
-    amount: 1 / paymentCount,
-    delay: delay * i,
-  }))
-
-  const latestIssue = await getDevIssueCount()
-  const count = await getDevProposalCount()
-  const tx = {
-    type: 'dev_proposal',
-    from: USER.address,
-    devIssue: crypto.hash(`dev-issue-${latestIssue}`),
-    devProposal: crypto.hash(`dev-issue-${latestIssue}-dev-proposal-${count + 1}`),
-    totalAmount: answers.totalAmount,
-    payments: payments,
-    title: answers.title,
-    description: answers.description,
-    payAddress: answers.payAddress,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
-// COMMAND TO VOTE FOR A PROPOSAL
-vorpal.command('vote', 'vote for a proposal').action(async function (args, callback) {
-  const latest = await getIssueCount()
-  let proposals = await queryLatestProposals()
-  if (proposals.length < 1) {
-    this.log('There are currently no active proposals to vote on')
-    callback()
-  }
-  this.log('Here are the current proposals')
-  for (const prop of proposals) {
-    this.log(prop)
-  }
-
-  proposals = proposals.map((prop) => ({
-    name: prop.number,
-    value: prop.number,
-    short: prop.number,
-  }))
-
-  const answers = await this.prompt([
-    {
-      type: 'list',
-      name: 'proposal',
-      message: 'Pick the proposal number',
-      choices: [...proposals],
-      filter: (value) => parseInt(value),
-    },
-    {
-      type: 'number',
-      name: 'amount',
-      message: 'How many tokens will you vote with? ',
-      default: 50,
-      filter: (value) => parseInt(value),
-    },
-  ])
-
-  const tx = {
-    type: 'vote',
-    from: USER.address,
-    issue: crypto.hash(`issue-${latest}`),
-    proposal: crypto.hash(`issue-${latest}-proposal-${answers.proposal}`),
-    amount: answers.amount,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
-// COMMAND TO VOTE FOR A DEV_PROPOSAL
-vorpal.command('vote dev', 'vote for a development proposal').action(async function (args, callback) {
-  const latest = await getDevIssueCount()
-  let devProposals = await queryLatestDevProposals()
-  if (devProposals.length < 1) {
-    this.log('There are currently no active development proposals to vote on')
-    callback()
-  }
-  this.log('Here are the current developer proposals')
-  for (const prop of devProposals) {
-    this.log(prop)
-  }
-  devProposals = devProposals.map((prop) => ({
-    name: prop.number,
-    value: prop.number,
-    short: prop.description,
-  }))
-
-  const answers = await this.prompt([
-    {
-      type: 'list',
-      name: 'proposal',
-      message: 'Pick the dev proposal number',
-      choices: [...devProposals],
-      filter: (value) => parseInt(value),
-    },
-    {
-      type: 'list',
-      name: 'approve',
-      message: 'Choose your vote type',
-      choices: [
-        { name: 'approve', value: true, short: true },
-        { name: 'reject', value: false, short: false },
-      ],
-    },
-    {
-      type: 'number',
-      name: 'amount',
-      message: 'How many tokens will you vote with? ',
-      default: 50,
-      filter: (value) => parseInt(value),
-    },
-  ])
-
-  const tx = {
-    type: 'dev_vote',
-    from: USER.address,
-    devIssue: crypto.hash(`dev-issue-${latest}`),
-    devProposal: crypto.hash(`dev-issue-${latest}-dev-proposal-${answers.proposal}`),
-    amount: answers.amount,
-    approve: answers.approve,
-    timestamp: Date.now(),
-  }
-  signTransaction(tx)
-  injectTx(tx).then((res) => {
-    this.log(res)
-    callback()
-  })
-})
-
-// COMMAND TO POLL FOR MESSAGES BETWEEN 2 USERS AFTER A SPECIFIED TIMESTAMP
+// COMMAND TO POLL FOR MESSAGES BETWEEN TWO USERS
 vorpal.command('message poll <to>', 'gets messages between you and <to>').action(async function (args, callback) {
   const to = await getAddress(args.to)
   let messages = await queryMessages(USER.address, to)
@@ -1815,26 +1176,6 @@ vorpal.command('get <type>', 'query the network for <type> account').action(asyn
       }
       break
     }
-    case 'issueCount': {
-      this.log(await getIssueCount())
-      break
-    }
-    case 'devIssueCount': {
-      this.log(await getDevIssueCount())
-      break
-    }
-    case 'proposalCount': {
-      this.log(await getProposalCount())
-      break
-    }
-    case 'devProposalCount': {
-      this.log(await getDevProposalCount())
-      break
-    }
-    case 'windows': {
-      this.log(await queryWindow())
-      break
-    }
     case 'nodeParams': {
       this.log(await queryNodeParameters())
       break
@@ -1849,38 +1190,6 @@ vorpal.command('get <type>', 'query the network for <type> account').action(asyn
       if (address) {
         this.log(await getAccountData(address))
       }
-      break
-    }
-    case 'latestIssue': {
-      this.log(await queryLatestIssue())
-      break
-    }
-    case 'latestDevIssue': {
-      this.log(await queryLatestDevIssue())
-      break
-    }
-    case 'issues': {
-      this.log(await queryIssues())
-      break
-    }
-    case 'devIssues': {
-      this.log(await queryDevIssues())
-      break
-    }
-    case 'latestProposals': {
-      this.log(await queryLatestProposals())
-      break
-    }
-    case 'latestDevProposals': {
-      this.log(await queryLatestDevProposals())
-      break
-    }
-    case 'proposals': {
-      this.log(await queryProposals())
-      break
-    }
-    case 'devProposals': {
-      this.log(await queryDevProposals())
       break
     }
     default: {

@@ -1,10 +1,8 @@
 import {
   BaseLiberdusTx,
-  DeveloperPayment,
-  DevIssueAccount,
   InjectTxResponse,
-  IssueAccount,
   NetworkAccount,
+  NodeAccount,
   TollUnit,
   Tx,
   TXTypes,
@@ -26,6 +24,11 @@ import { ethers } from 'ethers'
 
 const WEI = 10n ** 18n
 
+/**
+ * Keep the existing maintenance calculation and checkpoint update. With the
+ * current zero maintenanceFee this returns zero, but it still advances
+ * lastMaintenance after each interval, which affects account hashes.
+ */
 export const maintenanceAmount = (timestamp: number, account: UserAccount, network: NetworkAccount): bigint => {
   let amount: bigint
   if (timestamp - account.lastMaintenance < network.current.maintenanceInterval) {
@@ -53,6 +56,61 @@ export function calculateAccountHash(account: Accounts): string {
   account.hash = '' // Not sure this is really necessary
   account.hash = crypto.hashObj(account)
   return account.hash
+}
+
+/**
+ * Removes state owned by retired features once the coordinated migration
+ * is active. Never call it from calculateAccountHash: core hashes already-persisted
+ * accounts to verify them, so stripping there would fail every account the migration
+ * has not yet touched.
+ */
+export function stripRetiredState(account: NetworkAccount | UserAccount | NodeAccount): void {
+  const storedAccount = account as Accounts & Record<string, unknown>
+  if (LiberdusFlags.versionFlags.removeLegacyDaoState === true) {
+    if (storedAccount.type === 'UserAccount' && storedAccount.data != null) {
+      delete (storedAccount.data as Record<string, unknown>).payments
+    }
+    if (storedAccount.type === 'NetworkAccount' && storedAccount.current != null) {
+      const network = storedAccount as NetworkAccount & Record<string, unknown>
+      delete network.next
+      delete network.windows
+      delete network.nextWindows
+      delete network.devWindows
+      delete network.nextDevWindows
+      delete network.issue
+      delete network.devIssue
+      delete network.developerFund
+      delete network.nextDeveloperFund
+      delete (network.current as unknown as Record<string, unknown>).proposalFee
+      delete (network.current as unknown as Record<string, unknown>).devProposalFee
+    }
+  }
+  if (LiberdusFlags.versionFlags.removeUnusedTxState === true) {
+    if (storedAccount.type === 'UserAccount' && storedAccount.data != null) {
+      const data = storedAccount.data as Record<string, unknown>
+      delete data.friends
+      delete data.stake
+      delete data.remove_stake_request
+      delete storedAccount.emailHash
+      delete storedAccount.verified
+      delete storedAccount.claimedSnapshot
+    }
+    // Written only by the removed node_reward tx.
+    if (storedAccount.type === 'NodeAccount') {
+      delete storedAccount.balance
+      delete storedAccount.nodeRewardTime
+    }
+  }
+  if (LiberdusFlags.versionFlags.removeLegacyNetworkParams === true && storedAccount.type === 'NetworkAccount' && storedAccount.current != null) {
+    const current = storedAccount.current as unknown as Record<string, unknown>
+    delete current.transactionFee
+    delete current.faucetAmount
+    delete current.nodeRewardAmountUsd
+    delete current.nodePenaltyUsd
+    delete current.stakeRequiredUsd
+    delete current.defaultToll
+    delete current.minToll
+  }
 }
 
 export function isMessageRecord(message: Tx.ChatMessageRecord): message is Tx.MessageRecord {
@@ -368,205 +426,6 @@ export async function _sleep(ms = 0): Promise<NodeJS.Timeout> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-// NODE_REWARD TRANSACTION FUNCTION
-export function nodeReward(address: string, nodeId: string, dapp: Shardus): void {
-  const tx = {
-    type: 'node_reward',
-    nodeId: nodeId,
-    from: address,
-    to: process.env.PAY_ADDRESS || address,
-    timestamp: dapp.shardusGetTime(),
-  }
-  dapp.put(tx)
-  dapp.log('GENERATED_NODE_REWARD: ', nodeId)
-}
-
-// START NETWORK DAO WINDOWS
-export async function startNetworkWindows(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-  const network = account.data as NetworkAccount
-  const tx = {
-    type: TXTypes.network_windows,
-    nodeId,
-    from: address,
-    timestamp: dapp.shardusGetTime(),
-  }
-  const resp = await dapp.put(tx, set)
-  dapp.log('start network windows tx', tx, resp)
-}
-
-// ISSUE TRANSACTION FUNCTION
-export async function generateIssue(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-  const network = account.data as NetworkAccount
-  const tx = {
-    type: TXTypes.issue,
-    nodeId,
-    from: address,
-    issue: calculateIssueId(network.issue),
-    proposal: crypto.hash(`issue-${network.issue}-proposal-1`),
-    timestamp: dapp.shardusGetTime(),
-  }
-  dapp.put(tx, set)
-  dapp.log('GENERATED_ISSUE: ', nodeId, tx)
-}
-
-// DEV_ISSUE TRANSACTION FUNCTION
-export async function generateDevIssue(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-  const network = account.data as NetworkAccount
-  const tx = {
-    type: TXTypes.dev_issue,
-    nodeId,
-    from: address,
-    devIssue: calculateDevIssueId(network.devIssue),
-    timestamp: dapp.shardusGetTime(),
-  }
-  dapp.put(tx, set)
-  dapp.log('GENERATED_DEV_ISSUE: ', nodeId, tx)
-}
-
-// TALLY TRANSACTION FUNCTION
-export async function tallyVotes(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  console.log(`GOT TO TALLY_VOTES FN ${address} ${nodeId}`)
-  try {
-    const network = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-    const networkAccount = network.data as NetworkAccount
-    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`issue-${networkAccount.issue}`))
-    if (!account) {
-      dapp.log(`No account found for issue-${networkAccount.issue}`)
-      await _sleep(500)
-      return tallyVotes(address, nodeId, dapp)
-    }
-    const issue = account.data as IssueAccount
-    const tx = {
-      type: TXTypes.tally,
-      nodeId,
-      from: address,
-      issue: issue.id,
-      proposals: issue.proposals,
-      timestamp: dapp.shardusGetTime(),
-    }
-    // todo: why is this not signed by the node?
-    dapp.put(tx, set)
-    dapp.log('GENERATED_TALLY: ', nodeId, tx)
-  } catch (err) {
-    dapp.log('ERR: ', err)
-    await _sleep(1000)
-    return tallyVotes(address, nodeId, dapp)
-  }
-}
-
-// DEV_TALLY TRANSACTION FUNCTION
-export async function tallyDevVotes(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  try {
-    const network = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-    const networkAccount = network.data as NetworkAccount
-    const account = await dapp.getLocalOrRemoteAccount(crypto.hash(`dev-issue-${networkAccount.devIssue}`))
-    if (!account) {
-      await _sleep(500)
-      return tallyDevVotes(address, nodeId, dapp)
-    }
-    const devIssue = account.data as DevIssueAccount
-    const tx = {
-      type: TXTypes.dev_tally,
-      nodeId,
-      from: address,
-      devIssue: devIssue.id,
-      devProposals: devIssue.devProposals,
-      timestamp: dapp.shardusGetTime(),
-    }
-    dapp.put(tx, set)
-    dapp.log('GENERATED_DEV_TALLY: ', nodeId, tx)
-  } catch (err) {
-    dapp.log('ERR: ', err)
-    await _sleep(1000)
-    return tallyDevVotes(address, nodeId, dapp)
-  }
-}
-
-// Inject "parameters" transaction to the network
-export async function injectParameterTx(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-  const network = account.data as NetworkAccount
-  const tx = {
-    type: TXTypes.parameters,
-    nodeId,
-    from: address,
-    issue: crypto.hash(`issue-${network.issue}`),
-    timestamp: dapp.shardusGetTime(),
-  }
-  const response = await dapp.put(tx)
-  dapp.log('GENERATED_PARAMETER: ', nodeId, tx, response)
-}
-
-// Inject "dev_parameters" transaction to the network
-export async function injectDevParameters(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-  const network = account.data as NetworkAccount
-  const tx = {
-    type: TXTypes.dev_parameters,
-    nodeId,
-    from: address,
-    devIssue: crypto.hash(`dev-issue-${network.devIssue}`),
-    timestamp: dapp.shardusGetTime(),
-  }
-  dapp.put(tx, set)
-  dapp.log('GENERATED_DEV_PARAMETER: ', nodeId, tx)
-}
-
-// APPLY_PARAMETERS TRANSACTION FUNCTION
-export async function applyParameters(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-  const network = account.data as NetworkAccount
-  const tx = {
-    type: TXTypes.apply_parameters,
-    nodeId,
-    from: address,
-    issue: crypto.hash(`issue-${network.issue}`),
-    timestamp: dapp.shardusGetTime(),
-  }
-  dapp.put(tx, set)
-  dapp.log('GENERATED_APPLY: ', nodeId, tx)
-}
-
-// APPLY_DEV_PARAMETERS TRANSACTION FUNCTION
-export async function applyDevParameters(address: string, nodeId: string, dapp: Shardus, set = false): Promise<void> {
-  const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-  const network = account.data as NetworkAccount
-  const tx = {
-    type: TXTypes.apply_dev_parameters,
-    nodeId,
-    from: address,
-    devIssue: crypto.hash(`dev-issue-${network.devIssue}`),
-    timestamp: dapp.shardusGetTime(),
-  }
-  dapp.put(tx)
-  dapp.log('GENERATED_DEV_APPLY: ', nodeId, tx)
-}
-
-// RELEASE DEVELOPER FUNDS FOR A PAYMENT
-export function releaseDeveloperFunds(payment: DeveloperPayment, address: string, nodeId: string, dapp: Shardus, set = false): void {
-  const tx = {
-    type: TXTypes.developer_payment,
-    nodeId,
-    from: address,
-    developer: payment.address,
-    payment: payment,
-    timestamp: dapp.shardusGetTime(),
-  }
-  dapp.put(tx, set)
-  dapp.log('GENERATED_DEV_PAYMENT: ', nodeId)
-}
-
-export function calculateIssueId(issueNumber: number): string {
-  return crypto.hash(`issue-${issueNumber}`)
-}
-
-export function calculateDevIssueId(issueNumber: number): string {
-  return crypto.hash(`dev-issue-${issueNumber}`)
-}
-
 export function getAccountType(data): string {
   if (data == null) {
     return 'undetermined'
@@ -580,31 +439,15 @@ export function getAccountType(data): string {
   if (data.alias !== undefined) {
     return 'UserAccount'
   }
-  if (data.nodeRewardTime !== undefined) {
-    return 'NodeAccount'
-  }
+  // nodeRewardTime is retired with removeUnusedTxState; every NodeAccount carries `type`.
+  // if (data.nodeRewardTime !== undefined) {
+  //   return 'NodeAccount'
+  // }
   if (data.messages !== undefined) {
     return 'ChatAccount'
   }
   if (data.inbox !== undefined) {
     return 'AliasAccount'
-  }
-  if (data.devProposals !== undefined) {
-    return 'DevIssueAccount'
-  }
-  if (data.proposals !== undefined) {
-    return 'IssueAccount'
-  }
-  if (data.devWindows !== undefined) {
-    return 'NetworkAccount'
-  }
-  if (data.totalVotes !== undefined) {
-    if (data.power !== undefined) {
-      return 'ProposalAccount'
-    }
-    if (data.payAddress !== undefined) {
-      return 'DevProposalAccount'
-    }
   }
   return 'undetermined'
 }
@@ -689,51 +532,34 @@ export function getRandom<T>(arr: T[], n: number): T[] {
 }
 
 export function getNodeRewardRateWei(networkAccount: NetworkAccount): bigint {
-  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
-    return usdStrToWei(networkAccount.current.nodeRewardAmountUsdStr, networkAccount)
-  } else {
-    return networkAccount.current.nodeRewardAmountUsd
-  }
+  return usdStrToWei(networkAccount.current.nodeRewardAmountUsdStr, networkAccount)
 }
 
 export function getStakeRequiredWei(networkAccount: NetworkAccount): bigint {
-  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
-    return usdStrToWei(networkAccount.current.stakeRequiredUsdStr, networkAccount)
-  } else {
-    return networkAccount.current.stakeRequiredUsd
-  }
+  return usdStrToWei(networkAccount.current.stakeRequiredUsdStr, networkAccount)
 }
 
 export function getPenaltyWei(networkAccount: NetworkAccount): bigint {
-  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
-    return usdStrToWei(networkAccount.current.nodePenaltyUsdStr, networkAccount)
-  } else {
-    return networkAccount.current.nodePenaltyUsd
-  }
+  return usdStrToWei(networkAccount.current.nodePenaltyUsdStr, networkAccount)
 }
 
 export function getTransactionFeeWei(networkAccount: NetworkAccount): bigint {
-  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
-    return usdStrToWei(networkAccount.current.transactionFeeUsdStr, networkAccount)
-  } else {
-    return networkAccount.current.transactionFee
-  }
+  return usdStrToWei(networkAccount.current.transactionFeeUsdStr, networkAccount)
+}
+
+/** Transitional read for networks that have not activated the 2.5.2 parameter removal. */
+export function getLegacyTransactionFeeWei(networkAccount: NetworkAccount): bigint {
+  const fee = (networkAccount.current as NetworkAccount['current'] & { transactionFee?: bigint }).transactionFee
+  if (fee === undefined) throw new Error('Legacy transactionFee is missing before the 2.5.2 activation')
+  return fee
 }
 
 export function getMinTollWei(networkAccount: NetworkAccount): bigint {
-  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
-    return usdStrToWei(networkAccount.current.minTollUsdStr, networkAccount)
-  } else {
-    return networkAccount.current.minToll
-  }
+  return usdStrToWei(networkAccount.current.minTollUsdStr, networkAccount)
 }
 
 export function getDefaultTollWei(networkAccount: NetworkAccount): bigint {
-  if (isEqualOrNewerVersion('2.4.2', networkAccount.current.activeVersion)) {
-    return usdStrToWei(networkAccount.current.defaultTollUsdStr, networkAccount)
-  } else {
-    return networkAccount.current.defaultToll
-  }
+  return usdStrToWei(networkAccount.current.defaultTollUsdStr, networkAccount)
 }
 
 export function usdStrToWei(usdStr: string, networkAccount: NetworkAccount): bigint {
@@ -741,10 +567,7 @@ export function usdStrToWei(usdStr: string, networkAccount: NetworkAccount): big
   const stabilityFactor = ethers.parseEther(networkAccount.current.stabilityFactorStr)
   const usdBigInt = ethers.parseEther(usdStr)
   // Multiply by 10^18 first to maintain precision, then divide
-  if (isEqualOrNewerVersion('2.4.3', networkAccount.current.activeVersion)) {
-    return (usdBigInt * WEI) / stabilityFactor
-  }
-  return (usdBigInt * BigInt(10 ** 18)) / stabilityFactor
+  return (usdBigInt * WEI) / stabilityFactor
 }
 
 export function libToWei(lib: number): bigint {

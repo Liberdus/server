@@ -1,11 +1,12 @@
 import { DevSecurityLevel, nestedCountersInstance, Shardus, shardusFactory, ShardusTypes } from '@shardus/core'
-import account, { deserializeAccounts, serializeAccounts } from './accounts'
+import account from './accounts'
+import { deserializeAppData, serializeAppData } from './accounts/appDataSerialization'
 import { P2P, Utils } from '@shardus/lib-types'
 import { getFinalArchiverList, setupArchiverDiscovery } from '@shardus/lib-archiver-discovery'
 import axios from 'axios'
 import * as crypto from './crypto'
 import * as configs from './config'
-import config, { FilePaths, LiberdusFlags, networkAccount, TOTAL_DAO_DURATION } from './config'
+import config, { FilePaths, LiberdusFlags, networkAccount } from './config'
 import * as utils from './utils'
 import * as LiberdusTypes from './@types'
 import { TXTypes, WrappedStates } from './@types'
@@ -252,15 +253,6 @@ const shardusSetup = (): void => {
           return validationResult
         }
 
-        // 3.5. Check for deprecated transaction types (version-based deprecation >= 2.5.0)
-        if (AccountsStorage?.cachedNetworkAccount && utils.isEqualOrNewerVersion('2.5.0', AccountsStorage.cachedNetworkAccount.current.activeVersion)) {
-          const deprecatedTxTypes = [TXTypes.email, TXTypes.gossip_email_hash, TXTypes.verify, TXTypes.friend, TXTypes.remove_friend]
-          if (deprecatedTxTypes.includes(tx.type)) {
-            validationResult.reason = `Transaction type "${tx.type}" is deprecated from version 2.5.0 onwards and no longer accepted`
-            return validationResult
-          }
-        }
-
         // 3.6. Reject DAO transaction types when the DAO feature is not yet active
         if (!LiberdusFlags.enableNewDAOTransactions && daoPreCrackTxTypes.has(tx.type)) {
           validationResult.reason = 'New DAO transactions are not enabled on this network yet'
@@ -365,6 +357,7 @@ const shardusSetup = (): void => {
       const txId: string = utils.generateTxId(tx)
 
       const applyResponse: ShardusTypes.ApplyResponse = dapp.createApplyResponse(txId, txTimestamp)
+      let transactionApplied = false
 
       if (preApplyStatus.success === true) {
         // Create a deep copy backup of the original wrapped states
@@ -373,6 +366,7 @@ const shardusSetup = (): void => {
           // Awaited because a handler's apply() may be async: without it the catch below would
           // miss a rejection and the changed-account loop would run before the handler finished.
           await transactions[tx.type].apply(tx, txTimestamp, txId, wrappedStates, dapp, applyResponse)
+          transactionApplied = true
         } catch (e) {
           console.error(`Error applying transaction ${txId} of type ${tx.type}:`, e.message)
           dapp.log(`Error applying transaction ${txId} of type ${tx.type}:`, e.message)
@@ -389,6 +383,13 @@ const shardusSetup = (): void => {
       for (const accountId in wrappedStates) {
         // only add the accounts that have changed
         if (wrappedStates[accountId].data?.['timestamp'] === txTimestamp) {
+          // State conversion must happen as part of the consensus-ordered apply
+          // path. Do not move this into calculateAccountHash: core also calls
+          // that hook to verify persisted account data.
+          if (transactionApplied) {
+            utils.stripRetiredState(wrappedStates[accountId].data)
+          }
+
           // Update the stateId by calculating the hash for the update accounts for the global txs
           // TODO: This is a hack, we might want to add the change of calling calculateAccountHash() on shardus core for global txs
           // For normal txs, shardus core takes care of account stateId updates, see: https://github.com/shardus/shardus-core/blob/8dd4807e952ff5424dfd2e322284e0d55f84b3a8/src/state-manager/TransactionConsensus.ts#L3574
@@ -396,14 +397,7 @@ const shardusSetup = (): void => {
           if (
             tx.type === TXTypes.init_network ||
             tx.type === TXTypes.apply_change_config ||
-            tx.type === TXTypes.apply_change_network_param ||
-            tx.type === TXTypes.apply_tally ||
-            tx.type === TXTypes.apply_dev_tally ||
-            tx.type === TXTypes.parameters ||
-            tx.type === TXTypes.apply_parameters ||
-            tx.type === TXTypes.dev_parameters ||
-            tx.type === TXTypes.apply_dev_parameters ||
-            tx.type === TXTypes.apply_developer_payment
+            tx.type === TXTypes.apply_change_network_param
           ) {
             const hashAfter = this.calculateAccountHash(wrappedStates[accountId].data)
             wrappedChangedAccount.stateId = hashAfter
@@ -737,20 +731,21 @@ const shardusSetup = (): void => {
             dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 2 ${accountData.data.balance} ${Utils.safeStringify(accountData.id)}`)
         }
       }
-      if (accType == 'NodeAccount') {
-        if (accountData.balance != null) {
-          const totalBalance = blob.totalBalance + accountData.balance
-          if (totalBalance != null) {
-            blob.totalBalance = totalBalance
-          } else {
-            if (statsDebugLogs)
-              dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 1 ${accountData.balance} ${Utils.safeStringify(accountData.id)}`)
-          }
-        } else {
-          if (statsDebugLogs)
-            dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 2 ${accountData.balance} ${Utils.safeStringify(accountData.id)}`)
-        }
-      }
+      // NodeAccount.balance is retired with removeUnusedTxState (always zero; written only by the removed node_reward tx).
+      // if (accType == 'NodeAccount') {
+      //   if (accountData.balance != null) {
+      //     const totalBalance = blob.totalBalance + accountData.balance
+      //     if (totalBalance != null) {
+      //       blob.totalBalance = totalBalance
+      //     } else {
+      //       if (statsDebugLogs)
+      //         dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 1 ${accountData.balance} ${Utils.safeStringify(accountData.id)}`)
+      //     }
+      //   } else {
+      //     if (statsDebugLogs)
+      //       dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 2 ${accountData.balance} ${Utils.safeStringify(accountData.id)}`)
+      //   }
+      // }
     },
     // dataSummaryUpdate: (blob: any, accountDataBefore: any, accountDataAfter: any) => void
     dataSummaryUpdate(blob, accountDataBefore, accountDataAfter) {
@@ -798,29 +793,30 @@ const shardusSetup = (): void => {
             )
         }
       }
-      if (accType == 'NodeAccount') {
-        const balanceChange = accountDataAfter.balance - accountDataBefore.balance
-        if (balanceChange != null) {
-          const totalBalance = blob.totalBalance + balanceChange
-          if (totalBalance != null) {
-            blob.totalBalance = totalBalance
-          } else {
-            if (statsDebugLogs)
-              dapp.log(
-                `error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
-                  accountDataBefore.balance
-                } ${Utils.safeStringify(accountDataBefore.id)}`,
-              )
-          }
-        } else {
-          if (statsDebugLogs)
-            dapp.log(
-              `error: null balance attempt. dataSummaryUpdate NodeAccount 2 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
-                accountDataBefore.balance
-              } ${Utils.safeStringify(accountDataBefore.id)}`,
-            )
-        }
-      }
+      // NodeAccount.balance is retired with removeUnusedTxState; a stripped account would make this `undefined - 0n` and throw.
+      // if (accType == 'NodeAccount') {
+      //   const balanceChange = accountDataAfter.balance - accountDataBefore.balance
+      //   if (balanceChange != null) {
+      //     const totalBalance = blob.totalBalance + balanceChange
+      //     if (totalBalance != null) {
+      //       blob.totalBalance = totalBalance
+      //     } else {
+      //       if (statsDebugLogs)
+      //         dapp.log(
+      //           `error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
+      //             accountDataBefore.balance
+      //           } ${Utils.safeStringify(accountDataBefore.id)}`,
+      //         )
+      //     }
+      //   } else {
+      //     if (statsDebugLogs)
+      //       dapp.log(
+      //         `error: null balance attempt. dataSummaryUpdate NodeAccount 2 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
+      //           accountDataBefore.balance
+      //         } ${Utils.safeStringify(accountDataBefore.id)}`,
+      //       )
+      //   }
+      // }
     },
     injectTxToConsensor(validatorDetails: any[], tx) {
       return utils.InjectTxToConsensor(validatorDetails, tx)
@@ -846,20 +842,8 @@ const shardusSetup = (): void => {
       // todo: decide what is internal and what is external
       const internalTxTypes = [
         TXTypes.init_network,
-        TXTypes.issue,
-        TXTypes.dev_issue,
-        TXTypes.tally,
-        TXTypes.apply_tally,
-        TXTypes.dev_tally,
-        TXTypes.apply_dev_tally,
-        TXTypes.parameters,
-        TXTypes.apply_parameters,
-        TXTypes.dev_parameters,
-        TXTypes.apply_dev_parameters,
         TXTypes.apply_change_config,
         TXTypes.apply_change_network_param,
-        TXTypes.apply_developer_payment,
-        TXTypes.node_reward,
         TXTypes.set_cert_time,
         TXTypes.init_reward,
         TXTypes.claim_reward,
@@ -2173,28 +2157,10 @@ const shardusSetup = (): void => {
       return utils.verifyMultiSigs(rawPayload, sigs, allowedPubkeys, minSigRequired, requiredSecurityLevel)
     },
     binarySerializeObject(identifier: string, obj): Buffer {
-      try {
-        switch (identifier) {
-          case 'AppData':
-            return serializeAccounts(obj).getBuffer()
-          default:
-            return Buffer.from(Utils.safeStringify(obj), 'utf8')
-        }
-      } catch (e) {
-        return Buffer.from(Utils.safeStringify(obj), 'utf8')
-      }
+      return serializeAppData(identifier, obj)
     },
     binaryDeserializeObject(identifier: string, buffer: Buffer) {
-      try {
-        switch (identifier) {
-          case 'AppData':
-            return deserializeAccounts(buffer)
-          default:
-            return Utils.safeJsonParse(buffer.toString('utf8'))
-        }
-      } catch (e) {
-        return Utils.safeJsonParse(buffer.toString('utf8'))
-      }
+      return deserializeAppData(identifier, buffer)
     },
     beforeStateAccountFilter(account: ShardusTypes.WrappedData) {
       return false
@@ -2436,25 +2402,6 @@ async function updateConfigFromNetworkAccount(
     res.json({ accounts })
   })
 
-  const cycleInterval = configs.cycleDuration * configs.ONE_SECOND
-
-  let issueGenerated = false
-  let tallyGenerated = false
-  let applyGenerated = false
-
-  let devIssueGenerated = false
-  let devTallyGenerated = false
-  let devApplyGenerated = false
-
-  let node: any
-  let nodeId: string
-  let nodeAddress: string
-  let lastReward: number
-  let cycleData: ShardusTypes.Cycle
-  let currentTime: number
-  let luckyNodes: string[]
-  const expected = dapp.shardusGetTime() + cycleInterval
-  let drift: number
   let lastMaintainedCycle: number
 
   await dapp.start()
@@ -2463,17 +2410,9 @@ async function updateConfigFromNetworkAccount(
   async function networkMaintenance(): Promise<NodeJS.Timeout> {
     dapp.log('New maintenance cycle has started')
     Penalty.clearOldPenaltyTxs(dapp)
-    currentTime = dapp.shardusGetTime()
-    drift = currentTime - expected
-    let network: LiberdusTypes.NetworkAccount
+    let cycleData: ShardusTypes.Cycle
     try {
-      const account = await dapp.getLocalOrRemoteAccount(configs.networkAccount)
-      network = account.data as LiberdusTypes.NetworkAccount
       ;[cycleData] = dapp.getLatestCycles()
-      luckyNodes = dapp.getClosestNodes(cycleData.previous, LiberdusFlags.numberOfLuckyNodes)
-      nodeId = dapp.getNodeId()
-      node = dapp.getNode(nodeId)
-      nodeAddress = node.address
       if (cycleData.counter <= lastMaintainedCycle) {
         dapp.log(`Cycle ${cycleData.counter} has already been maintained. Waiting for next maintenance cycle`)
         return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(cycleData))
@@ -2484,184 +2423,6 @@ async function updateConfigFromNetworkAccount(
       return setTimeout(networkMaintenance, 100)
     }
     lastMaintainedCycle = cycleData.counter
-
-    const driftFromCycleStart = currentTime - cycleData.start * 1000
-    if (LiberdusFlags.VerboseLogs) {
-      dapp.log('driftFromCycleStart: ', driftFromCycleStart, currentTime, cycleData.start * 1000)
-      dapp.log('lastMaintainedCycle: ', lastMaintainedCycle)
-      dapp.log('payAddress: ', process.env.PAY_ADDRESS)
-      dapp.log('cycleData: ', cycleData.counter)
-      dapp.log('luckyNode: ', luckyNodes)
-      dapp.log('nodeId: ', nodeId)
-      dapp.log('nodeAddress: ', nodeAddress)
-      dapp.log('windows: ', network.windows)
-      dapp.log('nextWindows: ', network.nextWindows)
-      dapp.log('devWindows: ', network.devWindows)
-      dapp.log('nextDevWindows: ', network.nextDevWindows)
-      dapp.log('current: ', network.current)
-      dapp.log('next: ', network.next)
-      dapp.log('developerFund: ', network.developerFund)
-      dapp.log('nextDeveloperFund: ', network.nextDeveloperFund)
-      dapp.log('issue: ', network.issue)
-      dapp.log('devIssue: ', network.devIssue)
-    }
-    if (LiberdusFlags.enableDAOTransactions === false) {
-      if (LiberdusFlags.VerboseLogs) dapp.log('DAO transactions are disabled')
-      return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(cycleData))
-    }
-
-    const isProcessingMode = cycleData.mode === 'processing'
-    if (network.windows == null) {
-      if (isProcessingMode && luckyNodes.includes(nodeId)) {
-        // start network DAO time windows
-        dapp.log('Starting network windows', luckyNodes, nodeId)
-        await utils.startNetworkWindows(nodeAddress, nodeId, dapp)
-        nestedCountersInstance.countEvent('liberdus', 'start_network_windows')
-      }
-      return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(cycleData))
-    }
-
-    // reset the DAO windows if it has been too long
-    if (currentTime > network.windows.proposalWindow[0] && currentTime - network.windows.proposalWindow[0] > TOTAL_DAO_DURATION * 3) {
-      if (isProcessingMode && luckyNodes.includes(nodeId)) {
-        dapp.log('Resetting network windows', luckyNodes, nodeId)
-        await utils.startNetworkWindows(nodeAddress, nodeId, dapp)
-        nestedCountersInstance.countEvent('liberdus', 'reset_network_windows')
-      }
-      return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(cycleData))
-    }
-
-    const isInProposalWindow = currentTime >= network.windows.proposalWindow[0] && currentTime <= network.windows.proposalWindow[1]
-    const isInDevProposalWindow = currentTime >= network.devWindows.devProposalWindow[0] && currentTime <= network.devWindows.devProposalWindow[1]
-
-    const isInGraceWindow = currentTime >= network.windows.graceWindow[0] && currentTime <= network.windows.graceWindow[1]
-    const isInDevGraceWindow = currentTime >= network.devWindows.devGraceWindow[0] && currentTime <= network.devWindows.devGraceWindow[1]
-
-    const isInApplyWindow = currentTime >= network.windows.applyWindow[0] && currentTime <= network.windows.applyWindow[1]
-    const isInDevApplyWindow = currentTime >= network.devWindows.devApplyWindow[0] && currentTime <= network.devWindows.devApplyWindow[1]
-    const skipConsensus = cycleData.active === 1
-
-    dapp.log(
-      `Cycle: ${cycleData.counter}, isInProposalWindow: ${isInProposalWindow}, isInDevProposalWindow: ${isInDevProposalWindow}, isInGraceWindow: ${isInGraceWindow}, isInDevGraceWindow: ${isInDevGraceWindow}, isInApplyWindow: ${isInApplyWindow}, isProcessingMode: ${isProcessingMode}`,
-    )
-
-    if (isProcessingMode === false || luckyNodes.includes(nodeId) === false) {
-      dapp.log(`We are not lucky node for cycle ${cycleData.counter}. We are waiting for next maintenance cycle`)
-      return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(cycleData))
-    }
-    dapp.log(`We are lucky node for cycle ${cycleData.counter}`)
-
-    // from this point, we are lucky node and in processing mode
-    const issueAccountId = utils.calculateIssueId(network.issue)
-    const issueAccount = await dapp.getLocalOrRemoteAccount(issueAccountId)
-
-    const devIssueAccountId = utils.calculateDevIssueId(network.devIssue)
-    const devIssueAccount = await dapp.getLocalOrRemoteAccount(devIssueAccountId)
-
-    dapp.log('latest issueAccount: ', issueAccountId, issueAccount?.data)
-    dapp.log('latest devIssueAccount: ', devIssueAccountId, devIssueAccount?.data)
-
-    // ISSUE: create a new issue so that people can submit proposals/votes
-    if (isInProposalWindow) {
-      if (issueAccount == null) {
-        dapp.log(`issueAccount is null, we need to submit a new issue for issue: ${network.issue}`)
-        await utils.generateIssue(nodeAddress, nodeId, dapp, skipConsensus)
-        issueGenerated = true
-        tallyGenerated = false
-        applyGenerated = false
-      }
-    }
-
-    // DEV_ISSUE: create new funding issue so that developers can request funds/votes
-    if (isInDevProposalWindow) {
-      if (devIssueAccount == null) {
-        dapp.log(`devIssueAccount is null, we need to submit a new dev issue for devIssue: ${network.devIssue}`)
-        await utils._sleep(3000) // this is to wait a moment for above issue tx to be processed
-        await utils.generateDevIssue(nodeAddress, nodeId, dapp, skipConsensus)
-        devIssueGenerated = true
-        devTallyGenerated = false
-        devApplyGenerated = false
-      }
-    }
-
-    // TALLY: count the votes for the proposals (network params)
-    // todo: we may not want to tally as soon as the grace window starts
-    if (isInGraceWindow) {
-      const issueAccountData = issueAccount?.data as LiberdusTypes.IssueAccount
-      const issueWinner = issueAccountData.winnerId
-      const tallied = issueAccountData.tallied
-      if (!tallied) {
-        dapp.log(`Issue is not tallied yet, we need to tally the votes for issue: ${network.issue}`)
-        await utils.tallyVotes(nodeAddress, nodeId, dapp, skipConsensus)
-        issueGenerated = false
-        tallyGenerated = true
-        applyGenerated = false
-      }
-    }
-
-    // DEV_TALLY: count the votes for the dev proposals (developer fund)
-    if (isInDevGraceWindow) {
-      const devIssueAccountData = devIssueAccount?.data as LiberdusTypes.DevIssueAccount
-      const devIssueWinners = devIssueAccountData.winners
-      const tallied = devIssueAccountData.tallied
-      if (!tallied) {
-        dapp.log(`devIssue is not tallied yet, we need to tally the votes for devIssue: ${network.devIssue}`)
-        await utils._sleep(3000) // this is to wait a moment for above tally tx to be processed
-        await utils.tallyDevVotes(nodeAddress, nodeId, dapp, skipConsensus)
-        devIssueGenerated = false
-        devTallyGenerated = true
-        devApplyGenerated = false
-      }
-    }
-
-    // PARAMETER tx should initiate apply_parameters tx (i.e. apply the winning network parameters)
-    if (isInApplyWindow) {
-      const issueAccountData = issueAccount?.data as LiberdusTypes.IssueAccount
-      const isIssueActive = issueAccountData.active
-      if (isIssueActive) {
-        // still active means it has not been applied the parameters
-        dapp.log(`issueAccount is still active in applyWindows, we need to apply the parameters for issue: ${network.issue}`)
-        await utils.injectParameterTx(nodeAddress, nodeId, dapp, skipConsensus)
-        issueGenerated = false
-        tallyGenerated = false
-        applyGenerated = true
-      }
-    }
-
-    // DEV_PARAMETER tx should initiate apply_dev_parameters tx (i.e. apply the winning fundings)
-    if (isInDevApplyWindow) {
-      const devIssueAccountData = devIssueAccount?.data as LiberdusTypes.DevIssueAccount
-      const isDevIssueActive = devIssueAccountData.active
-      if (isDevIssueActive) {
-        // still active means it has not been applied the dev parameters
-        dapp.log(`devIssueAccount is still active in devApplyWindows, we need to apply the dev parameters for devIssue: ${network.devIssue}`)
-        await utils._sleep(3000) // this is to wait a moment for above parameter tx to be processed
-        await utils.injectDevParameters(nodeAddress, nodeId, dapp, skipConsensus)
-        devIssueGenerated = false
-        devTallyGenerated = false
-        devApplyGenerated = true
-      }
-    }
-
-    if (isProcessingMode) {
-      // LOOP THROUGH IN-MEMORY DEVELOPER_FUND
-      for (const payment of network.developerFund) {
-        // PAY DEVELOPER IF THE network.current TIME IS GREATER THAN THE PAYMENT TIME
-        if (currentTime >= payment.timestamp) {
-          if (luckyNodes.includes(nodeId)) {
-            utils.releaseDeveloperFunds(payment, nodeAddress, nodeId, dapp)
-          }
-        }
-      }
-    }
-
-    dapp.log('issueGenerated: ', issueGenerated)
-    dapp.log('tallyGenerated: ', tallyGenerated)
-    dapp.log('applyGenerated: ', applyGenerated)
-
-    dapp.log('devIssueGenerated: ', devIssueGenerated)
-    dapp.log('devTallyGenerated: ', devTallyGenerated)
-    dapp.log('devApplyGenerated: ', devApplyGenerated)
 
     return setTimeout(networkMaintenance, getNextMaintenanceCycleStart(cycleData))
   }
