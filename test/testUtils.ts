@@ -1,6 +1,6 @@
 import execa from 'execa'
 import { resolve } from 'path'
-import * as crypto from '../crypto'
+import * as crypto from '../src/crypto'
 import fs from 'fs'
 import axios from 'axios'
 import chalkPipe from 'chalk-pipe'
@@ -20,8 +20,8 @@ export const HOST = 'localhost:9001'
 export const ARCHIVER_HOST = 'localhost:4000'
 export const MONITOR_HOST = 'localhost:3000'
 
-export async function _sleep(ms = 0): Promise<NodeJS.Timeout> {
-  return new Promise(resolve => setTimeout(resolve, ms))
+export async function _sleep(ms = 0): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export async function injectTx(tx, account, sign: boolean = true) {
