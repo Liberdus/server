@@ -1,8 +1,6 @@
-import * as crypto from '../src/crypto'
 import { DaoProposalIndexEntry, DaoProposalsMeta } from '../src/@types'
 import { summary } from '../src/api/dao/proposals'
 
-crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 function makeEntry(number: number, timestamp: number): DaoProposalIndexEntry {
   return { proposal: number, status: 'voting', emergencyFlag: false, timestamp }

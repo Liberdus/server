@@ -2,7 +2,6 @@ import { DaoProposalsMeta } from '../src/@types'
 import * as crypto from '../src/crypto'
 import { backfillProposalIndex, compareIndexEntries, findMissingProposalNumbers, getProposalIndex, recordProposalStatus } from '../src/utils/daoProposalIndex'
 
-crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 function makeMeta(overrides: Partial<DaoProposalsMeta> = {}): DaoProposalsMeta {
   return {
