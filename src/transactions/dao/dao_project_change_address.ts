@@ -111,9 +111,6 @@ export const apply = (
   const proposal = wrappedStates[tx.proposalId].data as DaoProposalAccount
   const project = proposal.project
 
-  const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
-  from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
-
   // The address this sender backed, whichever way they submitted it — read before anything is
   // written, and before a commit clears proposedAddress, so a blank endorsement still records what
   // it endorsed. That, not the mode, is what a dispute turns on.
@@ -123,6 +120,11 @@ export const apply = (
   // wrappedStates, so an error here means the two disagreed.
   const result = planAddressEndorsement(tx, proposal.committeeAddresses, project)
   if (result.error) throw new Error(`dao_project_change_address endorsement failed after validation: ${result.error}`)
+
+  // Deducted only once the plan is known to be good. apply() throws when it disagrees with
+  // validate(), and taking the fee first would mean touching the balance on the way out.
+  const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
   project.proposedAddress = result.nextProposedAddress
   project.endorsedAddress = result.nextEndorsements
 

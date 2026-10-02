@@ -124,14 +124,16 @@ export const apply = (
   const { milestone, index: milestoneIndex } = findNextPendingMilestone(project)
   const milestoneNumber = milestoneIndex + 1
 
-  const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
-  from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
-
   // Decide first, then apply what comes back. validate() ran the same call against the same
   // wrappedStates, so an error here means the two disagreed — throwing keeps a half-applied
   // endorsement out of consensus state.
   const result = planMilestoneTimeEndorsement(tx, proposal.committeeAddresses, project.address, milestone)
   if (result.error) throw new Error(`dao_project_milestone_start endorsement failed after validation: ${result.error}`)
+
+  // Deducted only once the plan is known to be good. apply() throws when it disagrees with
+  // validate(), and taking the fee first would mean touching the balance on the way out.
+  const txFeeWei = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, txFeeWei)
   milestone.proposedTime = result.nextProposedTime
   milestone.endorsedTime = result.nextEndorsements
 
