@@ -3,6 +3,16 @@ import { VectorBufferStream } from '@shardus/core'
 import { SerdeTypeIdent } from '.'
 import { NodeAccount } from '../@types'
 import { Utils } from '@shardus/lib-types'
+import { LiberdusFlags } from '../config'
+
+const populatedRetiredFieldsError = 'NodeAccount binary codec does not support populated retired fields'
+
+// balance and nodeRewardTime were written only by the removed node_reward tx. balance is zero on live accounts, but
+// nodeRewardTime may still hold an old timestamp. Normal NodeAccounts use JSON; direct binary calls reject such values.
+const hasPopulatedRetiredFields = (account: NodeAccount): boolean => {
+  const legacyAccount = account as NodeAccount & Record<string, unknown>
+  return ('balance' in legacyAccount && legacyAccount.balance !== 0n) || ('nodeRewardTime' in legacyAccount && legacyAccount.nodeRewardTime !== 0)
+}
 
 export const nodeAccount = (accountId: string): NodeAccount => {
   // Ensure lowercase accountId
@@ -10,8 +20,7 @@ export const nodeAccount = (accountId: string): NodeAccount => {
   const account: NodeAccount = {
     id: accountId,
     type: 'NodeAccount',
-    balance: BigInt(0),
-    nodeRewardTime: 0,
+    ...(LiberdusFlags.versionFlags.removeUnusedTxState ? {} : { balance: BigInt(0), nodeRewardTime: 0 }),
     hash: '',
     timestamp: 0,
     nominator: '',
@@ -36,13 +45,19 @@ export const nodeAccount = (accountId: string): NodeAccount => {
 }
 
 export const serializeNodeAccount = (stream: VectorBufferStream, inp: NodeAccount, root = false): void => {
+  // Normal NodeAccount objects use the JSON fallback. Keep this legacy binary
+  // layout for direct callers, but never discard populated retired fields.
+  if (hasPopulatedRetiredFields(inp)) {
+    throw new Error(populatedRetiredFieldsError)
+  }
   if (root) {
     stream.writeUInt16(SerdeTypeIdent.NodeAccount)
   }
   stream.writeString(inp.id)
   stream.writeString(inp.type)
-  stream.writeBigUInt64(inp.balance)
-  stream.writeBigUInt64(BigInt(inp.nodeRewardTime))
+  // Preserve the positional slots and the bytes emitted for the default retired state.
+  stream.writeBigUInt64(0n) // balance
+  stream.writeBigUInt64(0n) // nodeRewardTime
   stream.writeString(inp.hash)
   stream.writeBigUInt64(BigInt(inp.timestamp))
   stream.writeString(inp.nominator)
@@ -62,11 +77,21 @@ export const deserializeNodeAccount = (stream: VectorBufferStream, root = false)
     throw new Error('Unexpected bufferstream for NodeAccount type')
   }
 
+  const id = stream.readString()
+  const type = stream.readString()
+
+  // The retired slots must contain exactly the default bytes. Populated values
+  // have no lossless representation in this compatibility-only decoder.
+  const balance = stream.readBigUInt64()
+  const nodeRewardTime = stream.readBigUInt64()
+  if (balance !== 0n || nodeRewardTime !== 0n) {
+    throw new Error(populatedRetiredFieldsError)
+  }
+
   return {
-    id: stream.readString(),
-    type: stream.readString(),
-    balance: stream.readBigUInt64(),
-    nodeRewardTime: Number(stream.readBigUInt64()),
+    id,
+    type,
+    ...(LiberdusFlags.versionFlags.removeUnusedTxState ? {} : { balance: BigInt(0), nodeRewardTime: 0 }),
     hash: stream.readString(),
     timestamp: Number(stream.readBigUInt64()),
     nominator: stream.readString(),
