@@ -2,6 +2,7 @@ import {
   BaseLiberdusTx,
   InjectTxResponse,
   NetworkAccount,
+  NodeAccount,
   TollUnit,
   Tx,
   TXTypes,
@@ -63,7 +64,7 @@ export function calculateAccountHash(account: Accounts): string {
  * accounts to verify them, so stripping there would fail every account the migration
  * has not yet touched.
  */
-export function stripRetiredState(account: NetworkAccount | UserAccount): void {
+export function stripRetiredState(account: NetworkAccount | UserAccount | NodeAccount): void {
   const storedAccount = account as Accounts & Record<string, unknown>
   if (LiberdusFlags.versionFlags.removeLegacyDaoState === true) {
     if (storedAccount.type === 'UserAccount' && storedAccount.data != null) {
@@ -84,14 +85,21 @@ export function stripRetiredState(account: NetworkAccount | UserAccount): void {
       delete (network.current as unknown as Record<string, unknown>).devProposalFee
     }
   }
-  if (LiberdusFlags.versionFlags.removeUnusedTxState === true && storedAccount.type === 'UserAccount' && storedAccount.data != null) {
-    const data = storedAccount.data as Record<string, unknown>
-    delete data.friends
-    delete data.stake
-    delete data.remove_stake_request
-    delete storedAccount.emailHash
-    delete storedAccount.verified
-    delete storedAccount.claimedSnapshot
+  if (LiberdusFlags.versionFlags.removeUnusedTxState === true) {
+    if (storedAccount.type === 'UserAccount' && storedAccount.data != null) {
+      const data = storedAccount.data as Record<string, unknown>
+      delete data.friends
+      delete data.stake
+      delete data.remove_stake_request
+      delete storedAccount.emailHash
+      delete storedAccount.verified
+      delete storedAccount.claimedSnapshot
+    }
+    // Written only by the removed node_reward tx.
+    if (storedAccount.type === 'NodeAccount') {
+      delete storedAccount.balance
+      delete storedAccount.nodeRewardTime
+    }
   }
   if (LiberdusFlags.versionFlags.removeLegacyNetworkParams === true && storedAccount.type === 'NetworkAccount' && storedAccount.current != null) {
     const current = storedAccount.current as unknown as Record<string, unknown>
@@ -431,9 +439,10 @@ export function getAccountType(data): string {
   if (data.alias !== undefined) {
     return 'UserAccount'
   }
-  if (data.nodeRewardTime !== undefined) {
-    return 'NodeAccount'
-  }
+  // nodeRewardTime is retired with removeUnusedTxState; every NodeAccount carries `type`.
+  // if (data.nodeRewardTime !== undefined) {
+  //   return 'NodeAccount'
+  // }
   if (data.messages !== undefined) {
     return 'ChatAccount'
   }

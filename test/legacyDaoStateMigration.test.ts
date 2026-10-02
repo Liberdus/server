@@ -1,10 +1,11 @@
 import { LiberdusFlags } from '../src/config'
-import { Accounts, NetworkAccount, UserAccount } from '../src/@types'
+import { Accounts, NetworkAccount, NodeAccount, UserAccount } from '../src/@types'
 import * as crypto from '../src/crypto'
 import { calculateAccountHash, stripRetiredState } from '../src/utils'
 import { backfillNetworkAccount } from '../src/transactions/apply_change_network_param'
 import { onActiveVersionChange } from '../src/versioning'
 import { userAccount } from '../src/accounts/userAccount'
+import { nodeAccount } from '../src/accounts/nodeAccount'
 import { Utils } from '@shardus/lib-types'
 
 describe('legacy DAO state migration', () => {
@@ -167,5 +168,34 @@ describe('legacy DAO state migration', () => {
     expect(after.data).not.toHaveProperty('stake')
     expect(after.data).not.toHaveProperty('friends')
     expect(after).not.toHaveProperty('verified')
+  })
+
+  test('node-account balance and nodeRewardTime remain until activation, then leave on the apply-state path', () => {
+    const account = { id: 'node', type: 'NodeAccount', hash: '', balance: 0n, nodeRewardTime: 0, stakeLock: 10n } as unknown as NodeAccount
+
+    LiberdusFlags.versionFlags.removeUnusedTxState = false
+    stripRetiredState(account)
+    expect(account).toHaveProperty('balance', 0n)
+    expect(account).toHaveProperty('nodeRewardTime', 0)
+
+    LiberdusFlags.versionFlags.removeUnusedTxState = true
+    calculateAccountHash(account as unknown as Accounts)
+    expect(account).toHaveProperty('balance')
+    stripRetiredState(account)
+    expect(account).not.toHaveProperty('balance')
+    expect(account).not.toHaveProperty('nodeRewardTime')
+    expect(account.stakeLock).toBe(10n)
+  })
+
+  test('new node accounts omit balance and nodeRewardTime only after activation', () => {
+    LiberdusFlags.versionFlags.removeUnusedTxState = false
+    const before = nodeAccount('node')
+    expect(before).toHaveProperty('balance', 0n)
+    expect(before).toHaveProperty('nodeRewardTime', 0)
+
+    LiberdusFlags.versionFlags.removeUnusedTxState = true
+    const after = nodeAccount('node')
+    expect(after).not.toHaveProperty('balance')
+    expect(after).not.toHaveProperty('nodeRewardTime')
   })
 })

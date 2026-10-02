@@ -739,20 +739,21 @@ const shardusSetup = (): void => {
             dapp.log(`error: null balance attempt. dataSummaryInit UserAccount 2 ${accountData.data.balance} ${Utils.safeStringify(accountData.id)}`)
         }
       }
-      if (accType == 'NodeAccount') {
-        if (accountData.balance != null) {
-          const totalBalance = blob.totalBalance + accountData.balance
-          if (totalBalance != null) {
-            blob.totalBalance = totalBalance
-          } else {
-            if (statsDebugLogs)
-              dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 1 ${accountData.balance} ${Utils.safeStringify(accountData.id)}`)
-          }
-        } else {
-          if (statsDebugLogs)
-            dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 2 ${accountData.balance} ${Utils.safeStringify(accountData.id)}`)
-        }
-      }
+      // NodeAccount.balance is retired with removeUnusedTxState (always zero; written only by the removed node_reward tx).
+      // if (accType == 'NodeAccount') {
+      //   if (accountData.balance != null) {
+      //     const totalBalance = blob.totalBalance + accountData.balance
+      //     if (totalBalance != null) {
+      //       blob.totalBalance = totalBalance
+      //     } else {
+      //       if (statsDebugLogs)
+      //         dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 1 ${accountData.balance} ${Utils.safeStringify(accountData.id)}`)
+      //     }
+      //   } else {
+      //     if (statsDebugLogs)
+      //       dapp.log(`error: null balance attempt. dataSummaryInit NodeAccount 2 ${accountData.balance} ${Utils.safeStringify(accountData.id)}`)
+      //   }
+      // }
     },
     // dataSummaryUpdate: (blob: any, accountDataBefore: any, accountDataAfter: any) => void
     dataSummaryUpdate(blob, accountDataBefore, accountDataAfter) {
@@ -800,29 +801,30 @@ const shardusSetup = (): void => {
             )
         }
       }
-      if (accType == 'NodeAccount') {
-        const balanceChange = accountDataAfter.balance - accountDataBefore.balance
-        if (balanceChange != null) {
-          const totalBalance = blob.totalBalance + balanceChange
-          if (totalBalance != null) {
-            blob.totalBalance = totalBalance
-          } else {
-            if (statsDebugLogs)
-              dapp.log(
-                `error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
-                  accountDataBefore.balance
-                } ${Utils.safeStringify(accountDataBefore.id)}`,
-              )
-          }
-        } else {
-          if (statsDebugLogs)
-            dapp.log(
-              `error: null balance attempt. dataSummaryUpdate NodeAccount 2 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
-                accountDataBefore.balance
-              } ${Utils.safeStringify(accountDataBefore.id)}`,
-            )
-        }
-      }
+      // NodeAccount.balance is retired with removeUnusedTxState; a stripped account would make this `undefined - 0n` and throw.
+      // if (accType == 'NodeAccount') {
+      //   const balanceChange = accountDataAfter.balance - accountDataBefore.balance
+      //   if (balanceChange != null) {
+      //     const totalBalance = blob.totalBalance + balanceChange
+      //     if (totalBalance != null) {
+      //       blob.totalBalance = totalBalance
+      //     } else {
+      //       if (statsDebugLogs)
+      //         dapp.log(
+      //           `error: null balance attempt. dataSummaryUpdate NodeAccount 1 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
+      //             accountDataBefore.balance
+      //           } ${Utils.safeStringify(accountDataBefore.id)}`,
+      //         )
+      //     }
+      //   } else {
+      //     if (statsDebugLogs)
+      //       dapp.log(
+      //         `error: null balance attempt. dataSummaryUpdate NodeAccount 2 ${accountDataAfter.balance} ${Utils.safeStringify(accountDataAfter.id)} ${
+      //           accountDataBefore.balance
+      //         } ${Utils.safeStringify(accountDataBefore.id)}`,
+      //       )
+      //   }
+      // }
     },
     injectTxToConsensor(validatorDetails: any[], tx) {
       return utils.InjectTxToConsensor(validatorDetails, tx)
