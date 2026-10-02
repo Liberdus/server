@@ -388,8 +388,6 @@ export interface OperatorStats {
 export interface NodeAccount {
   id: string
   type: string
-  balance: bigint
-  nodeRewardTime: number // TODO: remove
   hash: string
   timestamp: number
   nominator: string
