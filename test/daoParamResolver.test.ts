@@ -16,12 +16,12 @@ describe('daoParamResolver', () => {
         activeVersion: '1.0.0',
         archiver: { activeVersion: '2.0.0', minVersion: '1.9.0' },
       }
-      expect(resolveParamPath(target, 'activeVersion')).toEqual({ path: ['activeVersion'], existing: '1.0.0' })
+      expect(resolveParamPath(target, 'activeVersion')).toEqual({ key: 'activeVersion', path: ['activeVersion'], existing: '1.0.0' })
     })
 
     test('nested hit when key is not present at the first level', () => {
       const target = { p2p: { minNodes: 50, maxNodes: 100 }, debug: { countEndpointStart: -1 } }
-      expect(resolveParamPath(target, 'minNodes')).toEqual({ path: ['p2p', 'minNodes'], existing: 50 })
+      expect(resolveParamPath(target, 'minNodes')).toEqual({ key: 'minNodes', path: ['p2p', 'minNodes'], existing: 50 })
     })
 
     test('deterministic first-match order across multiple nested candidates', () => {
@@ -30,12 +30,12 @@ describe('daoParamResolver', () => {
         b: { shared: 2 },
       }
       // "a" comes first in Object.keys order, so its "shared" wins.
-      expect(resolveParamPath(target, 'shared')).toEqual({ path: ['a', 'shared'], existing: 1 })
+      expect(resolveParamPath(target, 'shared')).toEqual({ key: 'shared', path: ['a', 'shared'], existing: 1 })
     })
 
     test('arrays are not traversed', () => {
       const target = { list: [{ minNodes: 1 }], other: { minNodes: 2 } }
-      expect(resolveParamPath(target, 'minNodes')).toEqual({ path: ['other', 'minNodes'], existing: 2 })
+      expect(resolveParamPath(target, 'minNodes')).toEqual({ key: 'minNodes', path: ['other', 'minNodes'], existing: 2 })
     })
 
     test('skipSubtrees excludes a named top-level subtree from nested search', () => {
@@ -49,6 +49,7 @@ describe('daoParamResolver', () => {
     test('skipSubtrees does not prevent a first-level hit on the skipped key itself', () => {
       const target = { dao: { reviewDuration: 1000 } }
       expect(resolveParamPath(target, 'dao', { skipSubtrees: ['dao'] })).toEqual({
+        key: 'dao',
         path: ['dao'],
         existing: target.dao,
       })
@@ -56,8 +57,8 @@ describe('daoParamResolver', () => {
 
     test('object-section backward compatibility: section name resolves to itself', () => {
       const target = { p2p: { minNodes: 50 }, debug: { countEndpointStart: -1 } }
-      expect(resolveParamPath(target, 'p2p')).toEqual({ path: ['p2p'], existing: target.p2p })
-      expect(resolveParamPath(target, 'debug')).toEqual({ path: ['debug'], existing: target.debug })
+      expect(resolveParamPath(target, 'p2p')).toEqual({ key: 'p2p', path: ['p2p'], existing: target.p2p })
+      expect(resolveParamPath(target, 'debug')).toEqual({ key: 'debug', path: ['debug'], existing: target.debug })
     })
 
     test('returns undefined when key does not exist anywhere', () => {
@@ -90,6 +91,7 @@ describe('daoParamResolver', () => {
 
     test('governance resolves against network.current.dao', () => {
       expect(resolveParamPathForProposalType('governance', network, dapp, 'reviewDuration')).toEqual({
+        key: 'reviewDuration',
         path: ['reviewDuration'],
         existing: 1000,
       })
@@ -97,6 +99,7 @@ describe('daoParamResolver', () => {
 
     test('economic resolves against network.current, skipping the dao subtree', () => {
       expect(resolveParamPathForProposalType('economic', network, dapp, 'nodeRewardAmountUsdStr')).toEqual({
+        key: 'nodeRewardAmountUsdStr',
         path: ['nodeRewardAmountUsdStr'],
         existing: '1.0',
       })
@@ -105,6 +108,7 @@ describe('daoParamResolver', () => {
 
     test('economic resolving "dao" itself returns the dao object at the top level (caller rejects it)', () => {
       expect(resolveParamPathForProposalType('economic', network, dapp, 'dao')).toEqual({
+        key: 'dao',
         path: ['dao'],
         existing: network.current.dao,
       })
@@ -112,6 +116,7 @@ describe('daoParamResolver', () => {
 
     test('economic leaf "activeVersion" resolves to the top-level network version, not archiver.activeVersion', () => {
       expect(resolveParamPathForProposalType('economic', network, dapp, 'activeVersion')).toEqual({
+        key: 'activeVersion',
         path: ['activeVersion'],
         existing: '1.0.0',
       })
@@ -119,17 +124,19 @@ describe('daoParamResolver', () => {
 
     test('protocol resolves against dapp.config directly (not dapp.config.server)', () => {
       expect(resolveParamPathForProposalType('protocol', network, dapp, 'minNodes')).toEqual({
+        key: 'minNodes',
         path: ['p2p', 'minNodes'],
         existing: 50,
       })
       expect(resolveParamPathForProposalType('protocol', network, dapp, 'debug')).toEqual({
+        key: 'debug',
         path: ['debug'],
         existing: dapp.config.debug,
       })
       // "p2p" is a first-level key of dapp.config — first-level-wins must return
       // dapp.config.p2p ("config-level"), not dapp.config.server.p2p ("server-level").
       const resolved = resolveParamPathForProposalType('protocol', network, dapp, 'p2p')
-      expect(resolved).toEqual({ path: ['p2p'], existing: dapp.config.p2p })
+      expect(resolved).toEqual({ key: 'p2p', path: ['p2p'], existing: dapp.config.p2p })
       expect((resolved.existing as { marker: string }).marker).toBe('config-level')
     })
 
