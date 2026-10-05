@@ -11,6 +11,7 @@
     "start": "(shardus clean || true) && npm run build-client && shardus start 10 && npm run start-client && echo \"\nmonitor:    http://localhost:3000\nweb-client: http://localhost:3333\nexplorer:   http://localhost:4444\"",
     "stop": "npm run stop-client && shardus stop",
     "test": "jest --coverage",
+    "test:integration": "jest --coverage=false --runInBand --testPathIgnorePatterns /node_modules/ --testMatch \"**/(main|shardus).test.ts\"",
     "update-template": "node scripts/update-template.js",
     "update-docker": "node scripts/update-docker.js",
     "check": "gts check",
