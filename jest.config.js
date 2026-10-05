@@ -4,6 +4,10 @@ module.exports = {
   testTimeout: 5000000, // the more node involve in testing, the higher the timeout requires
   verbose: true,
   roots: ['<rootDir>/test/'],
+  // main and shardus are integration tests: they shell out to `shardus create`, start a real
+  // network and drive load through it for minutes. They are not unit tests and must not run under
+  // `npm test`. Run them deliberately with `npm run test:integration`.
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/test/main.test.ts', '<rootDir>/test/shardus.test.ts'],
   testMatch: ['**/__tests__/**/*.+(ts|tsx|js)', '**/?(*.)+(spec|test).+(ts|tsx|js)'],
   moduleDirectories: ['node_modules', 'src'], 
   transform: {
