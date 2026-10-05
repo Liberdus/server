@@ -21,6 +21,8 @@ import { shardusPostToNode } from './request'
 import { patchDeepOwn } from './daoParamResolver'
 import { Utils } from '@shardus/lib-types'
 import { ethers } from 'ethers'
+// Re-exported so existing `utils.libToWei` callers are unaffected; see units.ts for why it lives there.
+export { libToWei } from './units'
 
 const WEI = 10n ** 18n
 
@@ -570,9 +572,6 @@ export function usdStrToWei(usdStr: string, networkAccount: NetworkAccount): big
   return (usdBigInt * WEI) / stabilityFactor
 }
 
-export function libToWei(lib: number): bigint {
-  return BigInt(lib * 10 ** 18)
-}
 
 export function weiToLib(wei: bigint): string {
   if (!LiberdusFlags.versionFlags.weiToLibStringFormat) {
