@@ -42,9 +42,9 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   activeVersion: '2.5.2',
   latestVersion: '2.5.2',
   archiver: {
-    minVersion: '3.8.1',
-    activeVersion: '3.8.1',
-    latestVersion: '3.8.1',
+    minVersion: '3.8.3',
+    activeVersion: '3.8.3',
+    latestVersion: '3.8.3',
   },
   stabilityScaleMul: 125,
   stabilityScaleDiv: 1,
@@ -305,7 +305,7 @@ export const LiberdusFlags: LiberdusFlags = {
   messageSizeLimit: 100, // 100kb
   fetchNetworkAccountFromArchiver: true,
   enableArchiverNetworkAccountValidation: false,
-  enableNewDAOTransactions: true, // turned on by migration 2.5.1
+  enableNewDAOTransactions: false, // turned on by migration 2.5.1
   enableDaoCancel: true,
   daoUnapplyCommitteeThreshold: 3,
   daoMaxProposalStartDelayMs: 3 * ONE_DAY,
