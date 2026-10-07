@@ -159,7 +159,7 @@ export const apply = (
       milestoneNumber: tx.milestoneNumber,
       milestoneStatus: milestone.status,
       deliverySpeed: payout.speed,
-      paidWei: payout.amountWei,
+      claimedAmount: payout.amountWei,
       remainingBalance: project.balance,
     },
   }

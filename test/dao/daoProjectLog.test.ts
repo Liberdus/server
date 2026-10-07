@@ -58,7 +58,7 @@ describe('appendProjectLog', () => {
     for (const value of Object.values(p.logs[0].params)) {
       expect(typeof value).not.toBe('bigint')
     }
-    expect(p.logs[0].params).not.toHaveProperty('paidWei')
+    expect(p.logs[0].params).not.toHaveProperty('claimedAmount')
   })
 })
 
