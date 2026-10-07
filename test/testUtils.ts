@@ -4,6 +4,8 @@ import * as crypto from '@shardus/lib-crypto-utils'
 import fs from 'fs'
 import axios from 'axios'
 import chalkPipe from 'chalk-pipe'
+import { Utils } from '@shardus/lib-types'
+
 crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
 
 export const link = chalkPipe('blue.underline')
@@ -31,12 +33,16 @@ export async function injectTx(tx, account, sign: boolean = true) {
   try {
     const seedNodes = await getSeedNodes();
     const target = seedNodes[Math.floor(Math.random() * seedNodes.length)].port
-    const res = await axios.post(`http://localhost:${target}/inject`, tx)
+    const res = await axios.post(`http://localhost:${target}/inject`, {
+      tx: Utils.safeStringify(tx),
+    })
     console.log(warning(`"${tx.type}" transaction submitted ...`))
     console.log(success(`response: ${JSON.stringify(res.data)}`))
     expect(res.data.result.success).toBe(true)
+  
   } catch (err) {
     console.log(info(err))
+    throw err
   }
 }
 
