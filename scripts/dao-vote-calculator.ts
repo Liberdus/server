@@ -11,7 +11,7 @@
  */
 
 import { getVotingStart, getVotingEnd } from '../src/accounts/daoProposalAccount'
-import { getTimeMultiplier, calculateOptionWeights, calculateVoteWeightDetails, DaoDecimal, WEI_PER_LIB, WEIGHT_PRECISION } from '../src/utils/daoVoteMath'
+import { getTimeMultiplier, calculateOptionWeights, calculateVoteWeightDetails, DaoDecimal, WEI_PER_LIB, WEIGHT_PRECISION } from '../src/utils/dao/daoVoteMath'
 import { libToWei } from '../src/utils'
 import { DaoProposalAccount } from '../src/@types'
 

@@ -5,8 +5,8 @@ import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
-import { appendProjectLog } from '../../utils/daoProjectLog'
-import { planAddressEndorsement } from '../../utils/daoProjectEndorsement'
+import { appendProjectLog } from '../../utils/dao/daoProjectLog'
+import { planAddressEndorsement } from '../../utils/dao/daoProjectEndorsement'
 
 export const validate_fields = (tx: Tx.DaoProjectChangeAddress, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {

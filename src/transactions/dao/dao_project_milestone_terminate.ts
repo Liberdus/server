@@ -6,10 +6,10 @@ import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
-import { resolveMilestone } from '../../utils/daoProjectMilestoneState'
-import { appendProjectLog } from '../../utils/daoProjectLog'
-import { requiredEndorsements } from '../../utils/daoProjectEndorsement'
-import { usdToWeiAtRate } from '../../utils/daoProjectPayout'
+import { resolveMilestone } from '../../utils/dao/daoProjectMilestoneState'
+import { appendProjectLog } from '../../utils/dao/daoProjectLog'
+import { requiredEndorsements } from '../../utils/dao/daoProjectEndorsement'
+import { usdToWeiAtRate } from '../../utils/dao/daoProjectPayout'
 
 export const validate_fields = (
   tx: Tx.DaoProjectMilestoneTerminate,

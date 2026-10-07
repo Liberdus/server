@@ -1,5 +1,5 @@
 import type { Shardus } from '@shardus/core'
-import type { NetworkAccount, DaoProposalType } from '../@types'
+import type { NetworkAccount, DaoProposalType } from '../../@types'
 
 export interface ResolvedParam {
   key: string

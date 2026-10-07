@@ -1,6 +1,6 @@
 import { ethers } from 'ethers'
 import { DaoMilestone, DaoProjectData } from '../src/@types'
-import { classifyDelivery, milestonePayoutWei, usdToWeiAtRate } from '../src/utils/daoProjectPayout'
+import { classifyDelivery, milestonePayoutWei, usdToWeiAtRate } from '../src/utils/dao/daoProjectPayout'
 
 const DAY = 86_400_000
 

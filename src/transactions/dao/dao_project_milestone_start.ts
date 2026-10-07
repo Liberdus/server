@@ -6,9 +6,9 @@ import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
-import { appendProjectLog } from '../../utils/daoProjectLog'
-import { planMilestoneTimeEndorsement } from '../../utils/daoProjectEndorsement'
-import { canStartMilestone, findNextPendingMilestone } from '../../utils/daoProjectMilestoneState'
+import { appendProjectLog } from '../../utils/dao/daoProjectLog'
+import { planMilestoneTimeEndorsement } from '../../utils/dao/daoProjectEndorsement'
+import { canStartMilestone, findNextPendingMilestone } from '../../utils/dao/daoProjectMilestoneState'
 
 export const validate_fields = (tx: Tx.DaoProjectMilestoneStart, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {

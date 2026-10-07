@@ -18,7 +18,7 @@ import * as configs from '../config'
 import { LiberdusFlags } from '../config'
 import { Shardus, ShardusTypes } from '@shardus/core'
 import { shardusPostToNode } from './request'
-import { patchDeepOwn } from './daoParamResolver'
+import { patchDeepOwn } from './dao/daoParamResolver'
 import { Utils } from '@shardus/lib-types'
 import { ethers } from 'ethers'
 // Re-exported so existing `utils.libToWei` callers are unaffected; see units.ts for why it lives there.

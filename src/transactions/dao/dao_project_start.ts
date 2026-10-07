@@ -7,10 +7,10 @@ import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
 import { daoProposalsMetaId } from '../../accounts/daoProposalsMetaAccount'
-import { recordProposalStatus } from '../../utils/daoProposalIndex'
+import { recordProposalStatus } from '../../utils/dao/daoProposalIndex'
 import { getApplyEligibleAt } from '../../accounts/daoProposalAccount'
-import { degenerateMilestoneAtRate, exceedsMintThreshold, maxMintThresholdWei, projectMintAmountWei } from '../../utils/daoProjectMint'
-import { appendProjectLog } from '../../utils/daoProjectLog'
+import { degenerateMilestoneAtRate, exceedsMintThreshold, maxMintThresholdWei, projectMintAmountWei } from '../../utils/dao/daoProjectMint'
+import { appendProjectLog } from '../../utils/dao/daoProjectLog'
 
 export const validate_fields = (tx: Tx.DaoProjectStart, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {

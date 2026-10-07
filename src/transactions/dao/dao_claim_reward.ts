@@ -7,7 +7,7 @@ import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
 import { getClaimEnd, getVotingStart } from '../../accounts/daoProposalAccount'
-import { computeClaimReward } from '../../utils/daoClaimRewardMath'
+import { computeClaimReward } from '../../utils/dao/daoClaimRewardMath'
 
 export const validate_fields = (tx: Tx.DaoClaimReward, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {

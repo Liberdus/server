@@ -1,4 +1,4 @@
-import { DaoProjectData, DaoProjectLogEntry, DaoProjectTxType } from '../@types'
+import { DaoProjectData, DaoProjectLogEntry, DaoProjectTxType } from '../../@types'
 
 /**
  * Appends to the project's audit trail — who called, when, and what they did. The policy keeps this

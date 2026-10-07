@@ -1,5 +1,5 @@
 import { ethers } from 'ethers'
-import { DaoMilestone, DaoProjectData } from '../@types'
+import { DaoMilestone, DaoProjectData } from '../../@types'
 
 const WEI = 10n ** 18n
 

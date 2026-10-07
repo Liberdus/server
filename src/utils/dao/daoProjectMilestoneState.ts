@@ -1,4 +1,4 @@
-import { DaoMilestone, DaoProjectData } from '../@types'
+import { DaoMilestone, DaoProjectData } from '../../@types'
 
 /**
  * Resolves a transaction's 1-based milestone number to its array index.

@@ -1,5 +1,5 @@
-import { validateDaoOptions } from '../src/utils/daoBallotOptions'
-import { MAX_MILESTONE_TEXT_LENGTH, MAX_MILESTONE_TITLE_LENGTH, MAX_PROJECT_MILESTONES, validateProjectMilestones } from '../src/utils/daoProjectMilestones'
+import { validateDaoOptions } from '../src/utils/dao/daoBallotOptions'
+import { MAX_MILESTONE_TEXT_LENGTH, MAX_MILESTONE_TITLE_LENGTH, MAX_PROJECT_MILESTONES, validateProjectMilestones } from '../src/utils/dao/daoProjectMilestones'
 
 function milestone(over: Record<string, unknown> = {}): unknown {
   return {

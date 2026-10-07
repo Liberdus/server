@@ -8,11 +8,11 @@ import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { isUserAccount, isDaoProposalsMeta, isDaoProposalAccount } from '../../@types/accountTypeGuards'
 import { DAO_PROPOSALS_META_ID_STRING } from '../../accounts/daoProposalsMetaAccount'
-import { recordProposalStatus } from '../../utils/daoProposalIndex'
-// import { backfillProposalIndex } from '../../utils/daoProposalIndex'   // disabled with its call in apply()
-import { validateDaoOptions } from '../../utils/daoBallotOptions'
-import { validateProposalChangeSets } from '../../utils/daoProposalChangeSets'
-import { validateProjectMilestones } from '../../utils/daoProjectMilestones'
+import { recordProposalStatus } from '../../utils/dao/daoProposalIndex'
+// import { backfillProposalIndex } from '../../utils/dao/daoProposalIndex'   // disabled with its call in apply()
+import { validateDaoOptions } from '../../utils/dao/daoBallotOptions'
+import { validateProposalChangeSets } from '../../utils/dao/daoProposalChangeSets'
+import { validateProjectMilestones } from '../../utils/dao/daoProjectMilestones'
 
 /**
  * Routes payload validation by proposal type. Parameter proposals carry nested `changes`; projects
@@ -276,7 +276,7 @@ export const apply = async (
   // whole transaction — this entry included — has to be resubmitted.
   recordProposalStatus(meta, proposal.number, proposal.status, proposal.emergency, txTimestamp)
 
-  // Historical backfill is disabled for now. The helper still lives in utils/daoProposalIndex;
+  // Historical backfill is disabled for now. The helper still lives in utils/dao/daoProposalIndex;
   // re-enabling is uncommenting this line and its import.
   // await backfillProposalIndex(meta, dapp)
 

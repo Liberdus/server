@@ -1,5 +1,5 @@
 import type { Shardus } from '@shardus/core'
-import type { DaoParamChange, DaoParamChanges, DaoProposalAccount, DaoProposalType, NetworkAccount } from '../@types'
+import type { DaoParamChange, DaoParamChanges, DaoProposalAccount, DaoProposalType, NetworkAccount } from '../../@types'
 import { validateChangesPayload } from './daoParamValidation'
 
 export function isNestedChangeSets(changes: DaoParamChanges): changes is DaoParamChange[][] {

@@ -1,5 +1,5 @@
 import { DaoProjectData } from '../src/@types'
-import { appendProjectLog } from '../src/utils/daoProjectLog'
+import { appendProjectLog } from '../src/utils/dao/daoProjectLog'
 
 function project(logs?: unknown): DaoProjectData {
   return { logs } as unknown as DaoProjectData
