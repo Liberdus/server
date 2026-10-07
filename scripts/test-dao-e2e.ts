@@ -5333,6 +5333,12 @@ async function main(): Promise<void> {
         // if rateUsdStr were left at its '0' default this conversion would throw or mismatch.
         const expectedMint = usdSumToLibWei(view.project.rateUsdStr, ...sc21Milestones.flatMap(m => [m.costUsdStr, m.bonusUsdStr]))
         assert(asBigInt(view.project.balance) === expectedMint, `Expected mint ${expectedMint}, got ${view.project.balance}`)
+        // The receipt must report the same mint it performed, under the field name it publishes.
+        assert(asBigInt(receipt.additionalInfo.mintedAmount) === expectedMint, `Expected receipt mintedAmount ${expectedMint}, got ${receipt.additionalInfo.mintedAmount}`)
+        // proposalNumber was deliberately dropped from the project receipts. `to` is
+        // crypto.hash(`dao proposal #N`), so that is a real reduction in what the receipt reports
+        // rather than a tidy-up — pin it so it cannot drift back in unnoticed.
+        assert(!('proposalNumber' in receipt.additionalInfo), `dao_project_start receipt should not carry proposalNumber: ${JSON.stringify(receipt.additionalInfo)}`)
         assert(view.project.rateUsdStr === stabilityFactorStr, `Expected rate ${stabilityFactorStr}, got ${view.project.rateUsdStr}`)
         assert(view.project.milestones.every(m => m.status === 'pending'), 'Every milestone should start pending')
         assert(view.logCount >= 1, 'Project start should have written a log entry')
@@ -5617,6 +5623,7 @@ async function main(): Promise<void> {
         const view = await getProject(proposalN.sc21Project)
         const stillOwed = sc21EarlyPayout(4, view.project.rateUsdStr)
         assert(asBigInt(receipt.additionalInfo.remainingBalance) === stillOwed, `Expected ${stillOwed} still owed, got ${receipt.additionalInfo.remainingBalance}`)
+        assert(!('proposalNumber' in receipt.additionalInfo), `dao_project_end receipt should not carry proposalNumber: ${JSON.stringify(receipt.additionalInfo)}`)
         assert(asBigInt(view.project.balance) === stillOwed, 'Project balance should equal what is still owed')
       },
     ],
@@ -5636,6 +5643,9 @@ async function main(): Promise<void> {
           { expectedBalanceDelta: r => asBigInt(r.additionalInfo.paidWei) - asBigInt(r.transactionFee ?? 0n) },
         )
         assert(asBigInt(receipt.additionalInfo.paidWei) === expectedPay, `Expected ${expectedPay}, got ${receipt.additionalInfo.paidWei}`)
+        // dao_project_milestone_claim is the second carrier of remainingBalance; paying the last
+        // milestone empties the escrow, so the receipt has to say so too.
+        assert(asBigInt(receipt.additionalInfo.remainingBalance) === 0n, `Expected receipt remainingBalance 0, got ${receipt.additionalInfo.remainingBalance}`)
 
         const after = await getProject(proposalN.sc21Project)
         assert(asBigInt(after.project.balance) === 0n, 'Balance should be empty once the last milestone is paid')
