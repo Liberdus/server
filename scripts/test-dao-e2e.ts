@@ -5491,10 +5491,10 @@ async function main(): Promise<void> {
         const { receipt } = await injectAndAssert(
           sc21Tx('dao_project_milestone_claim', voter16, { milestoneNumber: 1 }),
           voter16,
-          { expectedBalanceDelta: r => asBigInt(r.additionalInfo.paidWei) - asBigInt(r.transactionFee ?? 0n) },
+          { expectedBalanceDelta: r => asBigInt(r.additionalInfo.claimedAmount) - asBigInt(r.transactionFee ?? 0n) },
         )
         assert(receipt.additionalInfo?.deliverySpeed === 'early', `Expected early delivery, got ${receipt.additionalInfo?.deliverySpeed}`)
-        assert(asBigInt(receipt.additionalInfo.paidWei) === expectedPay, `Expected ${expectedPay}, got ${receipt.additionalInfo.paidWei}`)
+        assert(asBigInt(receipt.additionalInfo.claimedAmount) === expectedPay, `Expected ${expectedPay}, got ${receipt.additionalInfo.claimedAmount}`)
 
         const after = await getProject(proposalN.sc21Project)
         assert(asBigInt(after.project.balance) === asBigInt(before.project.balance) - expectedPay, 'Balance should drop by exactly the payout')
@@ -5568,13 +5568,13 @@ async function main(): Promise<void> {
         const { receipt } = await injectAndAssert(
           sc21Tx('dao_project_milestone_claim', voter16, { milestoneNumber: 3 }),
           voter16,
-          { expectedBalanceDelta: r => asBigInt(r.additionalInfo.paidWei) - asBigInt(r.transactionFee ?? 0n) },
+          { expectedBalanceDelta: r => asBigInt(r.additionalInfo.claimedAmount) - asBigInt(r.transactionFee ?? 0n) },
         )
         assert(receipt.additionalInfo?.deliverySpeed === 'late', `Expected late delivery, got ${receipt.additionalInfo?.deliverySpeed}`)
         const expectedLatePayout = sc21LatePayout(3, before.project.rateUsdStr)
         assert(
-          asBigInt(receipt.additionalInfo.paidWei) === expectedLatePayout,
-          `Expected a late payout of ${expectedLatePayout}, got ${receipt.additionalInfo.paidWei}`,
+          asBigInt(receipt.additionalInfo.claimedAmount) === expectedLatePayout,
+          `Expected a late payout of ${expectedLatePayout}, got ${receipt.additionalInfo.claimedAmount}`,
         )
 
         const after = await getProject(proposalN.sc21Project)
@@ -5640,9 +5640,9 @@ async function main(): Promise<void> {
         const { receipt } = await injectAndAssert(
           sc21Tx('dao_project_milestone_claim', voter16, { milestoneNumber: 4 }),
           voter16,
-          { expectedBalanceDelta: r => asBigInt(r.additionalInfo.paidWei) - asBigInt(r.transactionFee ?? 0n) },
+          { expectedBalanceDelta: r => asBigInt(r.additionalInfo.claimedAmount) - asBigInt(r.transactionFee ?? 0n) },
         )
-        assert(asBigInt(receipt.additionalInfo.paidWei) === expectedPay, `Expected ${expectedPay}, got ${receipt.additionalInfo.paidWei}`)
+        assert(asBigInt(receipt.additionalInfo.claimedAmount) === expectedPay, `Expected ${expectedPay}, got ${receipt.additionalInfo.claimedAmount}`)
         // dao_project_milestone_claim is the second carrier of remainingBalance; paying the last
         // milestone empties the escrow, so the receipt has to say so too.
         assert(asBigInt(receipt.additionalInfo.remainingBalance) === 0n, `Expected receipt remainingBalance 0, got ${receipt.additionalInfo.remainingBalance}`)
