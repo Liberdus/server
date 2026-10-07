@@ -164,9 +164,8 @@ export const apply = (
     type: tx.type,
     transactionFee: txFeeWei,
     additionalInfo: {
-      proposalNumber: proposal.number,
       proposalStatus: proposal.status,
-      mintedWei: mintWei,
+      mintedAmount: mintWei,
       rateUsdStr: project.rateUsdStr,
     },
   }

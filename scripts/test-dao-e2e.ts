@@ -5616,7 +5616,7 @@ async function main(): Promise<void> {
         // cost 80 + bonus 8. Everything already paid or terminated releases.
         const view = await getProject(proposalN.sc21Project)
         const stillOwed = sc21EarlyPayout(4, view.project.rateUsdStr)
-        assert(asBigInt(receipt.additionalInfo.remainingBalanceWei) === stillOwed, `Expected ${stillOwed} still owed, got ${receipt.additionalInfo.remainingBalanceWei}`)
+        assert(asBigInt(receipt.additionalInfo.remainingBalance) === stillOwed, `Expected ${stillOwed} still owed, got ${receipt.additionalInfo.remainingBalance}`)
         assert(asBigInt(view.project.balance) === stillOwed, 'Project balance should equal what is still owed')
       },
     ],
