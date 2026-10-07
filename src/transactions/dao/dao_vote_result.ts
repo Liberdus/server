@@ -6,9 +6,9 @@ import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
 import { daoProposalsMetaId } from '../../accounts/daoProposalsMetaAccount'
-import { recordProposalStatus } from '../../utils/daoProposalIndex'
+import { recordProposalStatus } from '../../utils/dao/daoProposalIndex'
 import { getVotingEnd } from '../../accounts/daoProposalAccount'
-import { isWinningOptionAccepted } from '../../utils/daoBallotOptions'
+import { isWinningOptionAccepted } from '../../utils/dao/daoBallotOptions'
 
 export const validate_fields = (tx: Tx.DaoVoteResult, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {

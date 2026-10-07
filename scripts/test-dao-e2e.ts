@@ -51,7 +51,7 @@ import path from 'path'
 import * as ShardusCrypto from '@shardus/lib-crypto-utils'
 import { Utils } from '@shardus/lib-types'
 import type { DaoParamChange, DaoProposalAccount } from '../src/@types'
-import { computeClaimReward } from '../src/utils/daoClaimRewardMath'
+import { computeClaimReward } from '../src/utils/dao/daoClaimRewardMath'
 import { getReviewEnd, getVotingStart, getVotingEnd, getClaimEnd, getApplyEligibleAt } from '../src/accounts/daoProposalAccount'
 import { generateTxId } from '../src/utils'
 

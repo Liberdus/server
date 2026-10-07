@@ -1,4 +1,4 @@
-import { computeClaimReward } from '../src/utils/daoClaimRewardMath'
+import { computeClaimReward } from '../src/utils/dao/daoClaimRewardMath'
 
 const LIB = 10n ** 18n // 1 LIB in wei
 const HOUR_MS = 3_600_000n

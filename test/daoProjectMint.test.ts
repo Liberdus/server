@@ -1,7 +1,7 @@
 import { ethers } from 'ethers'
 import { LiberdusFlags } from '../src/config'
 import { DaoMilestone } from '../src/@types'
-import { degenerateMilestoneAtRate, exceedsMintThreshold, maxMintThresholdWei, projectMintAmountWei } from '../src/utils/daoProjectMint'
+import { degenerateMilestoneAtRate, exceedsMintThreshold, maxMintThresholdWei, projectMintAmountWei } from '../src/utils/dao/daoProjectMint'
 
 const original = LiberdusFlags.daoMaxMintThresholdLibStr
 

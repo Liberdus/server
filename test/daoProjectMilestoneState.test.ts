@@ -1,5 +1,5 @@
 import { DaoProjectData } from '../src/@types'
-import { allMilestonesFinished, canStartMilestone, findExecutingMilestone, findNextPendingMilestone, resolveMilestone } from '../src/utils/daoProjectMilestoneState'
+import { allMilestonesFinished, canStartMilestone, findExecutingMilestone, findNextPendingMilestone, resolveMilestone } from '../src/utils/dao/daoProjectMilestoneState'
 
 function project(...statuses: string[]): DaoProjectData {
   return { milestones: statuses.map((status) => ({ status })) } as unknown as DaoProjectData

@@ -1,5 +1,5 @@
 import { ethers } from 'ethers'
-import { DaoMilestone } from '../@types'
+import { DaoMilestone } from '../../@types'
 
 /**
  * Creation-time bounds on a project proposal.

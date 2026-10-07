@@ -6,7 +6,7 @@ import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
 import { daoProposalsMetaId } from '../../accounts/daoProposalsMetaAccount'
-import { recordProposalStatus } from '../../utils/daoProposalIndex'
+import { recordProposalStatus } from '../../utils/dao/daoProposalIndex'
 
 export const validate_fields = (
   tx: Tx.DaoCancel,

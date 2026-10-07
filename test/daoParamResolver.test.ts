@@ -5,7 +5,7 @@ import {
   mergeNestedChange,
   patchDeepOwn,
   pathsOverlap,
-} from '../src/utils/daoParamResolver'
+} from '../src/utils/dao/daoParamResolver'
 import type { Shardus } from '@shardus/core'
 import type { NetworkAccount } from '../src/@types'
 

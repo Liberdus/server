@@ -6,10 +6,10 @@ import * as AccountsStorage from '../../storage/accountStorage'
 import * as utils from '../../utils'
 import { isUserAccount, isDaoProposalAccount } from '../../@types/accountTypeGuards'
 import { daoProposalsMetaId } from '../../accounts/daoProposalsMetaAccount'
-import { recordProposalStatus } from '../../utils/daoProposalIndex'
-import { appendProjectLog } from '../../utils/daoProjectLog'
-import { allMilestonesFinished } from '../../utils/daoProjectMilestoneState'
-import { milestonePayoutWei } from '../../utils/daoProjectPayout'
+import { recordProposalStatus } from '../../utils/dao/daoProposalIndex'
+import { appendProjectLog } from '../../utils/dao/daoProjectLog'
+import { allMilestonesFinished } from '../../utils/dao/daoProjectMilestoneState'
+import { milestonePayoutWei } from '../../utils/dao/daoProjectPayout'
 
 export const validate_fields = (tx: Tx.DaoProjectEnd, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
   if (utils.isValidAddress(tx.from) === false) {

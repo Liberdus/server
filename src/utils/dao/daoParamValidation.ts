@@ -1,7 +1,7 @@
 import type { Shardus } from '@shardus/core'
-import type { NetworkAccount, DaoProposalType } from '../@types'
-import * as utils from '../utils'
-import { LiberdusFlags } from '../config'
+import type { NetworkAccount, DaoProposalType } from '../../@types'
+import * as utils from '../../utils'
+import { LiberdusFlags } from '../../config'
 import { resolveParamPathForProposalType, pathsOverlap } from './daoParamResolver'
 
 // Resolves each change key against the appropriate parameter source, validates the value

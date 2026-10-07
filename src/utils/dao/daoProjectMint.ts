@@ -1,6 +1,6 @@
 import { ethers } from 'ethers'
-import { LiberdusFlags } from '../config'
-import { DaoMilestone } from '../@types'
+import { LiberdusFlags } from '../../config'
+import { DaoMilestone } from '../../@types'
 
 /**
  * The configured per-project mint ceiling, in wei.

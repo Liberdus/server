@@ -5,7 +5,7 @@ import {
   PROJECT_ENDORSEMENT_THRESHOLD,
   requiredEndorsements,
   writeOnceError,
-} from '../src/utils/daoProjectEndorsement'
+} from '../src/utils/dao/daoProjectEndorsement'
 
 const C1 = 'c1'
 const C2 = 'c2'

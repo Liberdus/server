@@ -1,7 +1,7 @@
 import type { Shardus } from '@shardus/core'
-import * as crypto from '../crypto'
-import { DaoProposalAccount, DaoProposalIndexEntry, DaoProposalsMeta, DaoProposalStatus } from '../@types'
-import { isDaoProposalAccount, isDaoProposalsMeta } from '../@types/accountTypeGuards'
+import * as crypto from '../../crypto'
+import { DaoProposalAccount, DaoProposalIndexEntry, DaoProposalsMeta, DaoProposalStatus } from '../../@types'
+import { isDaoProposalAccount, isDaoProposalsMeta } from '../../@types/accountTypeGuards'
 
 /** Hard ceiling on one backfill batch, so a large history cannot open thousands of sockets at once. */
 const MAX_BACKFILL_BATCH_SIZE = 50
