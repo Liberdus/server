@@ -274,7 +274,7 @@ const shardusSetup = (): void => {
         }
 
         // 4. Validate the tx fields
-        if (LiberdusFlags.enableAJVValidation) {
+        if(LiberdusFlags.versionFlags.enforceAJVTxValidation) {
           const errors = verifyPayload(tx.type, tx)
           if (errors != null) {
             nestedCountersInstance.countEvent('external', `ajv-failed-${tx.type}-tx`)

@@ -1,10 +1,11 @@
 import { Utils } from '@shardus/lib-types'
 import { ErrorObject } from 'ajv'
-import { getVerifyFunction } from './schemaHelper'
+import { getVerifyFunction, initializeSerialization } from './schemaHelper'
 import { initSchemas } from './transactionSchemas'
 
 export function initAjvSchemas(): void {
   initSchemas()
+  initializeSerialization()
 }
 
 export function verifyPayload<T>(name: string, payload: T): string[] | null {
