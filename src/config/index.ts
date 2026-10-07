@@ -277,6 +277,8 @@ interface LiberdusFlags {
     removeLegacyDaoState: boolean
     removeUnusedTxState: boolean
     removeLegacyNetworkParams: boolean
+    enforceAJVTxValidation: boolean
+    enforceAJVJoinValidation: boolean
   }
 }
 
@@ -337,6 +339,8 @@ export const LiberdusFlags: LiberdusFlags = {
     removeLegacyDaoState: true, // turn on by 2.5.2
     removeUnusedTxState: true, // turn on by 2.5.2
     removeLegacyNetworkParams: true, // turn on by 2.5.2
+    enforceAJVTxValidation: false,
+    enforceAJVJoinValidation: false,
   },
 }
 

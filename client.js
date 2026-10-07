@@ -509,16 +509,20 @@ async function spamTxs({ txs, rate, nodes = [], saveFile = null }) {
 async function _sleep(ms = 0) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
-
 async function injectTx(tx) {
   const data = Utils.safeStringify(tx)
   console.log('Tx data', data)
+
   try {
-    const res = await axios.post(`${PROTOCOL}://${HOST}/inject`, { tx: data })
+    const res = await axios.post(`${PROTOCOL}://${HOST}/inject`, {
+      tx: data,
+    })
     return res.data
   } catch (err) {
-    console.log('Error injecting tx:', err.message)
-    return err.message
+    const error = err.response?.data ?? err.message
+
+    console.log('Error injecting tx:', error)
+    return error
   }
 }
 
