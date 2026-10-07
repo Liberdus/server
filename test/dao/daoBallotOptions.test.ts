@@ -1,4 +1,4 @@
-import { isWinningOptionAccepted, validateDaoOptions } from '../src/utils/dao/daoBallotOptions'
+import { isWinningOptionAccepted, validateDaoOptions } from '../../src/utils/dao/daoBallotOptions'
 
 describe('dao ballot options', () => {
   test('negative-first binary ballots reject option 0 and accept option 1', () => {

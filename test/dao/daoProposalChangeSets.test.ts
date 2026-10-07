@@ -1,10 +1,10 @@
-jest.mock('../src/utils/dao/daoParamValidation', () => ({
+jest.mock('../../src/utils/dao/daoParamValidation', () => ({
   validateChangesPayload: jest.fn(() => undefined),
 }))
 
-import type { DaoProposalAccount } from '../src/@types'
-import { validateChangesPayload } from '../src/utils/dao/daoParamValidation'
-import { getSelectedChanges, isNestedChangeSets, validateProposalChangeSets } from '../src/utils/dao/daoProposalChangeSets'
+import type { DaoProposalAccount } from '../../src/@types'
+import { validateChangesPayload } from '../../src/utils/dao/daoParamValidation'
+import { getSelectedChanges, isNestedChangeSets, validateProposalChangeSets } from '../../src/utils/dao/daoProposalChangeSets'
 
 const changeA = { key: 'pctBurned', value: '60', current: '50' }
 const changeB = { key: 'pctBurned', value: '70', current: '50' }

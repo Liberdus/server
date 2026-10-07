@@ -1,5 +1,5 @@
-import { DaoProposalIndexEntry, DaoProposalsMeta } from '../src/@types'
-import { summary } from '../src/api/dao/proposals'
+import { DaoProposalIndexEntry, DaoProposalsMeta } from '../../src/@types'
+import { summary } from '../../src/api/dao/proposals'
 
 
 function makeEntry(number: number, timestamp: number): DaoProposalIndexEntry {
