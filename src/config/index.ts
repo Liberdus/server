@@ -305,7 +305,7 @@ export const LiberdusFlags: LiberdusFlags = {
   messageSizeLimit: 100, // 100kb
   fetchNetworkAccountFromArchiver: true,
   enableArchiverNetworkAccountValidation: false,
-  enableNewDAOTransactions: false, // turned on by migration 2.5.1
+  enableNewDAOTransactions: true, // turned on by migration 2.5.1
   enableDaoCancel: true,
   daoUnapplyCommitteeThreshold: 3,
   daoMaxProposalStartDelayMs: 3 * ONE_DAY,
@@ -334,9 +334,9 @@ export const LiberdusFlags: LiberdusFlags = {
     includeTxToKeyInReadTx: true, // turn on by 2.4.8
     updateTollRequiredTxInChatHistory: true, // turn on by 2.4.9
     supportDeductTxFeeFromAmount: true, // turn on by 2.4.9
-    removeLegacyDaoState: false, // turn on by 2.5.2
-    removeUnusedTxState: false, // turn on by 2.5.2
-    removeLegacyNetworkParams: false, // turn on by 2.5.2
+    removeLegacyDaoState: true, // turn on by 2.5.2
+    removeUnusedTxState: true, // turn on by 2.5.2
+    removeLegacyNetworkParams: true, // turn on by 2.5.2
   },
 }
 
