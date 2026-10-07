@@ -16,4 +16,5 @@ export const migrate: Migration = async () => {
   console.log('migrate 2.5.3')
   nestedCountersInstance.countEvent('migrate', 'calling migrate 2.5.3')
   LiberdusFlags.versionFlags.correctAccountSerdeLayout = true
+  LiberdusFlags.versionFlags.enforceAJVTxValidation = true
 }

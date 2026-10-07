@@ -60,6 +60,7 @@ export enum AJVSchemaEnum {
   dao_project_reclaim_balance = 'dao_project_reclaim_balance',
   dao_project_end = 'dao_project_end',
   dao_project_change_address = 'dao_project_change_address',
+  admin_cert = 'admin_cert',
 }
 
 export enum TXTypes {
@@ -882,8 +883,8 @@ export interface NodeInfoAppData {
 
 export interface AppJoinData {
   version: string
-  stakeCert: StakeCert
-  adminCert: AdminCert
+  stakeCert: StakeCert | null
+  adminCert: AdminCert | null
 }
 
 export interface NodeRewardTxData {

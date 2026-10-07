@@ -5,9 +5,10 @@ import config, { LiberdusFlags } from '../config'
 import * as crypto from '../crypto'
 import { Request } from 'express'
 import { DevSecurityLevel } from '@shardus/core'
-import { GoldenTicketRequest, NetworkAccount } from '../@types'
+import { AJVSchemaEnum, GoldenTicketRequest, NetworkAccount } from '../@types'
 import { shardusPost } from '../utils/request'
 import * as utils from '../utils'
+import { verifyPayload } from '../@types/ajvHelper';
 
 export interface AdminCert {
   nominee: string
@@ -73,6 +74,16 @@ function createGoldenTicketFetchResult(error?: string): GoldenTicketFetchResult 
 }
 
 function validatePutAdminCertRequest(req: PutAdminCertRequest, shardus: Shardus): PutAdminCertResult {
+
+  const errors = verifyPayload(AJVSchemaEnum.admin_cert, req)
+
+  if (errors !== null) {
+    return {
+      success: false,
+      reason: `Invalid admin certificate: ${errors.join('; ')}`,
+    }
+  }
+
   const publicKey = shardus.crypto.getPublicKey()
 
   if (utils.isValidAddress(req.nominee) === false) {

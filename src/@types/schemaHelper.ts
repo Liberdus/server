@@ -20,6 +20,15 @@ export function initializeSerialization(): void {
   for (const [name, schema] of schemaMap.entries()) {
     ajv.addSchema(schema, name)
   }
+
+    // verifying if schema is valid by compiling it and catching any errors
+  for (const name of schemaMap.keys()) {
+    try {
+      getVerifyFunction(name)
+    } catch (error) {
+      throw new Error(`Failed to compile AJV schema ${name}: ${error.message}`)
+    }
+  }
 }
 
 export function getVerifyFunction(name: string): ValidateFunction {

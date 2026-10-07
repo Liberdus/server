@@ -278,6 +278,8 @@ interface LiberdusFlags {
     removeUnusedTxState: boolean
     removeLegacyNetworkParams: boolean
     correctAccountSerdeLayout: boolean
+    enforceAJVTxValidation: boolean
+    enforceAJVJoinValidation: boolean
   }
 }
 
@@ -339,6 +341,8 @@ export const LiberdusFlags: LiberdusFlags = {
     removeUnusedTxState: true, // turn on by 2.5.2
     removeLegacyNetworkParams: true, // turn on by 2.5.2
     correctAccountSerdeLayout: true, // enable account binary dispatch by 2.5.3
+    enforceAJVTxValidation: false,
+    enforceAJVJoinValidation: false,
   },
 }
 
