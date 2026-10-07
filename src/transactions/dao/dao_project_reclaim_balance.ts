@@ -103,7 +103,7 @@ export const apply = (
   // The balance is not transferred anywhere — it was minted into the project and is simply gone
   // again. Since a project's balance counts toward the LIB in circulation, leaving it unclaimed
   // forever would inflate the supply for work that was never paid for.
-  const reclaimedWei = project.balance
+  const reclaimedAmount = project.balance
   project.balance = 0n
 
   appendProjectLog(project, tx.from, txTimestamp, 'dao_project_reclaim_balance')
@@ -119,12 +119,12 @@ export const apply = (
     to: proposal.id,
     type: tx.type,
     transactionFee: txFeeWei,
-    additionalInfo: { proposalNumber: proposal.number, reclaimedWei },
+    additionalInfo: { reclaimedAmount },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)
 
-  dapp.log('Applied dao_project_reclaim_balance tx', from.id, tx.proposalId, reclaimedWei)
+  dapp.log('Applied dao_project_reclaim_balance tx', from.id, tx.proposalId, reclaimedAmount)
 }
 
 export const createFailedAppReceiptData = (

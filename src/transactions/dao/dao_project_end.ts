@@ -135,7 +135,7 @@ export const apply = (
     to: proposal.id,
     type: tx.type,
     transactionFee: txFeeWei,
-    additionalInfo: { proposalNumber: proposal.number, proposalStatus: proposal.status, remainingBalanceWei: project.balance },
+    additionalInfo: { proposalStatus: proposal.status, remainingBalance: project.balance },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
   dapp.applyResponseAddReceiptData(applyResponse, appReceiptData, appReceiptDataHash)

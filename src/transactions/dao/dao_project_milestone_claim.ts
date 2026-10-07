@@ -160,7 +160,7 @@ export const apply = (
       milestoneStatus: milestone.status,
       deliverySpeed: payout.speed,
       paidWei: payout.amountWei,
-      remainingBalanceWei: project.balance,
+      remainingBalance: project.balance,
     },
   }
   const appReceiptDataHash = crypto.hashObj(appReceiptData)
