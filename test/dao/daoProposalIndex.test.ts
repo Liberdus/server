@@ -1,6 +1,6 @@
-import { DaoProposalsMeta } from '../src/@types'
-import * as crypto from '../src/crypto'
-import { backfillProposalIndex, compareIndexEntries, findMissingProposalNumbers, getProposalIndex, recordProposalStatus } from '../src/utils/dao/daoProposalIndex'
+import { DaoProposalsMeta } from '../../src/@types'
+import * as crypto from '../../src/crypto'
+import { backfillProposalIndex, compareIndexEntries, findMissingProposalNumbers, getProposalIndex, recordProposalStatus } from '../../src/utils/dao/daoProposalIndex'
 
 
 function makeMeta(overrides: Partial<DaoProposalsMeta> = {}): DaoProposalsMeta {

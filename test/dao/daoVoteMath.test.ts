@@ -3,7 +3,7 @@ import {
   getTimeMultiplier,
   calculateVoteWeightDetails,
   calculateOptionWeights,
-} from '../src/utils/dao/daoVoteMath'
+} from '../../src/utils/dao/daoVoteMath'
 
 const LIB = 10n ** 18n // 1 LIB in wei
 const HOUR_MS = 3_600_000
