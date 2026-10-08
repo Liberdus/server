@@ -155,7 +155,7 @@ export const validate_fields = (tx: Tx.PenaltyTX, response: ShardusTypes.Incomin
     return response
   }
 
-  if (LiberdusFlags.versionFlags.enforceAJVTxValidation) {
+  if (LiberdusFlags.versionFlags.enableAJVValidation) {
     const schema = penaltyViolationSchemas.get(tx.violationType)
 
     if (schema === undefined) {
