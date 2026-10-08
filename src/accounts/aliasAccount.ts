@@ -2,6 +2,7 @@ import * as crypto from '../crypto'
 import { AliasAccount } from '../@types'
 import { VectorBufferStream } from '@shardus/core'
 import { SerdeTypeIdent } from '.'
+import { readJson, readSafeNumber, writeJson, writeSafeNumber } from '../utils/binaryFields'
 
 export const aliasAccount = (accountId: string): AliasAccount => {
   // Ensure lowercase accountId
@@ -19,15 +20,11 @@ export const aliasAccount = (accountId: string): AliasAccount => {
 }
 
 export const serializeAliasAccount = (stream: VectorBufferStream, inp: AliasAccount, root = false): void => {
-  if (root) {
-    stream.writeUInt16(SerdeTypeIdent.AliasAccount)
-  }
-  stream.writeString(inp.id)
-  stream.writeString(inp.type)
-  stream.writeString(inp.hash)
-  stream.writeString(inp.inbox)
-  stream.writeString(inp.address)
-  stream.writeBigUInt64(BigInt(inp.timestamp))
+  if (root) stream.writeUInt16(SerdeTypeIdent.AliasAccount)
+  const { id, type, hash, inbox, address, timestamp, ...extra } = inp
+  for (const value of [id, type, hash, inbox, address]) stream.writeString(value)
+  writeSafeNumber(stream, timestamp)
+  writeJson(stream, extra)
 }
 
 export const deserializeAliasAccount = (stream: VectorBufferStream, root = false): AliasAccount => {
@@ -35,12 +32,11 @@ export const deserializeAliasAccount = (stream: VectorBufferStream, root = false
     throw new Error('Unexpected bufferstream for AliasAccount type')
   }
 
-  return {
-    id: stream.readString(),
-    type: stream.readString(),
-    hash: stream.readString(),
-    inbox: stream.readString(),
-    address: stream.readString(),
-    timestamp: Number(stream.readBigUInt64()),
-  }
+  const id = stream.readString()
+  const type = stream.readString()
+  const hash = stream.readString()
+  const inbox = stream.readString()
+  const address = stream.readString()
+  const timestamp = readSafeNumber(stream)
+  return { id, type, hash, inbox, address, timestamp, ...readJson<Record<string, unknown>>(stream) }
 }

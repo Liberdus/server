@@ -2,17 +2,8 @@ import * as crypto from '../crypto'
 import { VectorBufferStream } from '@shardus/core'
 import { SerdeTypeIdent } from '.'
 import { NodeAccount } from '../@types'
-import { Utils } from '@shardus/lib-types'
 import { LiberdusFlags } from '../config'
-
-const populatedRetiredFieldsError = 'NodeAccount binary codec does not support populated retired fields'
-
-// balance and nodeRewardTime were written only by the removed node_reward tx. balance is zero on live accounts, but
-// nodeRewardTime may still hold an old timestamp. Normal NodeAccounts use JSON; direct binary calls reject such values.
-const hasPopulatedRetiredFields = (account: NodeAccount): boolean => {
-  const legacyAccount = account as NodeAccount & Record<string, unknown>
-  return ('balance' in legacyAccount && legacyAccount.balance !== 0n) || ('nodeRewardTime' in legacyAccount && legacyAccount.nodeRewardTime !== 0)
-}
+import { readBigIntDecimal, readJson, readSafeNumber, writeBigIntDecimal, writeJson, writeSafeNumber } from '../utils/binaryFields'
 
 export const nodeAccount = (accountId: string): NodeAccount => {
   // Ensure lowercase accountId
@@ -45,31 +36,40 @@ export const nodeAccount = (accountId: string): NodeAccount => {
 }
 
 export const serializeNodeAccount = (stream: VectorBufferStream, inp: NodeAccount, root = false): void => {
-  // Normal NodeAccount objects use the JSON fallback. Keep this legacy binary
-  // layout for direct callers, but never discard populated retired fields.
-  if (hasPopulatedRetiredFields(inp)) {
-    throw new Error(populatedRetiredFieldsError)
-  }
-  if (root) {
-    stream.writeUInt16(SerdeTypeIdent.NodeAccount)
-  }
-  stream.writeString(inp.id)
-  stream.writeString(inp.type)
-  // Preserve the positional slots and the bytes emitted for the default retired state.
-  stream.writeBigUInt64(0n) // balance
-  stream.writeBigUInt64(0n) // nodeRewardTime
-  stream.writeString(inp.hash)
-  stream.writeBigUInt64(BigInt(inp.timestamp))
-  stream.writeString(inp.nominator)
-  stream.writeBigUInt64(inp.stakeLock)
-  stream.writeBigUInt64(BigInt(inp.stakeTimestamp))
-  stream.writeBigUInt64(inp.penalty)
-  stream.writeString(Utils.safeStringify(inp.nodeAccountStats.history))
-  stream.writeBigUInt64(BigInt(inp.rewardStartTime))
-  stream.writeBigUInt64(BigInt(inp.rewardEndTime))
-  stream.writeBigUInt64(inp.reward)
-  stream.writeBigUInt64(inp.rewardRate)
-  stream.writeUInt8(inp.rewarded ? 1 : 0) // Serialize boolean as UInt8
+  if (root) stream.writeUInt16(SerdeTypeIdent.NodeAccount)
+  const {
+    id,
+    type,
+    hash,
+    timestamp,
+    nominator,
+    stakeLock,
+    stakeTimestamp,
+    penalty,
+    nodeAccountStats,
+    rewardStartTime,
+    rewardEndTime,
+    reward,
+    rewardRate,
+    rewarded,
+    ...extra
+  } = inp
+  stream.writeString(id)
+  stream.writeString(type)
+  stream.writeString(hash)
+  writeSafeNumber(stream, timestamp)
+  stream.writeString(nominator)
+  writeBigIntDecimal(stream, stakeLock)
+  writeSafeNumber(stream, stakeTimestamp)
+  writeBigIntDecimal(stream, penalty)
+  writeJson(stream, nodeAccountStats)
+  writeSafeNumber(stream, rewardStartTime)
+  writeSafeNumber(stream, rewardEndTime)
+  writeBigIntDecimal(stream, reward)
+  writeBigIntDecimal(stream, rewardRate)
+  stream.writeUInt8(rewarded ? 1 : 0)
+  // Includes stored balance and nodeRewardTime when present on an untouched account.
+  writeJson(stream, extra)
 }
 
 export const deserializeNodeAccount = (stream: VectorBufferStream, root = false): NodeAccount => {
@@ -79,30 +79,34 @@ export const deserializeNodeAccount = (stream: VectorBufferStream, root = false)
 
   const id = stream.readString()
   const type = stream.readString()
-
-  // The retired slots must contain exactly the default bytes. Populated values
-  // have no lossless representation in this compatibility-only decoder.
-  const balance = stream.readBigUInt64()
-  const nodeRewardTime = stream.readBigUInt64()
-  if (balance !== 0n || nodeRewardTime !== 0n) {
-    throw new Error(populatedRetiredFieldsError)
-  }
-
+  const hash = stream.readString()
+  const timestamp = readSafeNumber(stream)
+  const nominator = stream.readString()
+  const stakeLock = readBigIntDecimal(stream)
+  const stakeTimestamp = readSafeNumber(stream)
+  const penalty = readBigIntDecimal(stream)
+  const nodeAccountStats = readJson<NodeAccount['nodeAccountStats']>(stream)
+  const rewardStartTime = readSafeNumber(stream)
+  const rewardEndTime = readSafeNumber(stream)
+  const reward = readBigIntDecimal(stream)
+  const rewardRate = readBigIntDecimal(stream)
+  const rewarded = stream.readUInt8() === 1
+  const extra = readJson<Record<string, unknown>>(stream)
   return {
     id,
     type,
-    ...(LiberdusFlags.versionFlags.removeUnusedTxState ? {} : { balance: BigInt(0), nodeRewardTime: 0 }),
-    hash: stream.readString(),
-    timestamp: Number(stream.readBigUInt64()),
-    nominator: stream.readString(),
-    stakeLock: stream.readBigUInt64(),
-    stakeTimestamp: Number(stream.readBigUInt64()),
-    penalty: stream.readBigUInt64(),
-    nodeAccountStats: Utils.safeJsonParse(stream.readString()),
-    rewardStartTime: Number(stream.readBigUInt64()),
-    rewardEndTime: Number(stream.readBigUInt64()),
-    reward: stream.readBigUInt64(),
-    rewardRate: stream.readBigUInt64(),
-    rewarded: stream.readUInt8() === 1,
+    hash,
+    timestamp,
+    nominator,
+    stakeLock,
+    stakeTimestamp,
+    penalty,
+    nodeAccountStats,
+    rewardStartTime,
+    rewardEndTime,
+    reward,
+    rewardRate,
+    rewarded,
+    ...extra,
   }
 }
