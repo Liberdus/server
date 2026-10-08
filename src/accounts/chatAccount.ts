@@ -1,9 +1,9 @@
 import * as crypto from '../crypto'
 import { VectorBufferStream } from '@shardus/core'
-import { Utils } from '@shardus/lib-types'
 import { SerdeTypeIdent } from '.'
 import { ChatAccount, Tx } from '../@types'
 import * as utils from '../utils'
+import { readBigIntDecimal, readJson, readSafeNumber, writeBigIntDecimal, writeJson, writeSafeNumber } from '../utils/binaryFields'
 
 export const chatAccount = (accountId: string, tx: Tx.Message | Tx.Transfer | Tx.ReclaimToll): ChatAccount => {
   // Ensure lowercase accountId
@@ -34,34 +34,21 @@ export const chatAccount = (accountId: string, tx: Tx.Message | Tx.Transfer | Tx
 }
 
 export const serializeChatAccount = (stream: VectorBufferStream, inp: ChatAccount, root = false): void => {
-  if (root) {
-    stream.writeUInt16(SerdeTypeIdent.ChatAccount)
-  }
-
-  stream.writeString(inp.id)
-  stream.writeString(inp.type)
-
-  // Write messages array
-  stream.writeString(Utils.safeStringify(inp.messages))
-
-  // Write toll data
-  stream.writeUInt8(inp.toll.required[0])
-  stream.writeUInt8(inp.toll.required[1])
-  stream.writeBigUInt64(inp.toll.payOnRead[0])
-  stream.writeBigUInt64(inp.toll.payOnRead[1])
-  stream.writeBigUInt64(inp.toll.payOnReply[0])
-  stream.writeBigUInt64(inp.toll.payOnReply[1])
-
-  // Write read/reply timestamps
-  stream.writeBigUInt64(BigInt(inp.read[0]))
-  stream.writeBigUInt64(BigInt(inp.read[1]))
-  stream.writeBigUInt64(BigInt(inp.replied[0]))
-  stream.writeBigUInt64(BigInt(inp.replied[1]))
-
-  stream.writeBigUInt64(BigInt(inp.timestamp))
-  stream.writeString(inp.hash)
-  // write chatAcocunt.hasChats
-  stream.writeUInt8(inp.hasChats ? 1 : 0)
+  const { id, type, messages, toll, read, replied, timestamp, hash, hasChats, ...extra } = inp
+  const { required, payOnRead, payOnReply, ...tollExtra } = toll
+  if (root) stream.writeUInt16(SerdeTypeIdent.ChatAccount)
+  stream.writeString(id)
+  stream.writeString(type)
+  writeJson(stream, messages)
+  stream.writeUInt8(required[0])
+  stream.writeUInt8(required[1])
+  for (const amount of [...payOnRead, ...payOnReply]) writeBigIntDecimal(stream, amount)
+  for (const time of [...read, ...replied]) writeSafeNumber(stream, time)
+  writeSafeNumber(stream, timestamp)
+  stream.writeString(hash)
+  stream.writeUInt8(hasChats ? 1 : 0)
+  writeJson(stream, tollExtra)
+  writeJson(stream, extra)
 }
 
 export const deserializeChatAccount = (stream: VectorBufferStream, root = false): ChatAccount => {
@@ -69,19 +56,18 @@ export const deserializeChatAccount = (stream: VectorBufferStream, root = false)
     throw new Error('Unexpected bufferstream for ChatAccount type')
   }
 
-  return {
-    id: stream.readString(),
-    type: stream.readString(),
-    messages: Utils.safeJsonParse(stream.readString()),
-    toll: {
-      required: [stream.readUInt8(), stream.readUInt8()],
-      payOnRead: [stream.readBigUInt64(), stream.readBigUInt64()],
-      payOnReply: [stream.readBigUInt64(), stream.readBigUInt64()],
-    },
-    read: [Number(stream.readBigUInt64()), Number(stream.readBigUInt64())],
-    replied: [Number(stream.readBigUInt64()), Number(stream.readBigUInt64())],
-    timestamp: Number(stream.readBigUInt64()),
-    hash: stream.readString(),
-    hasChats: stream.readUInt8() === 1,
-  }
+  const id = stream.readString()
+  const type = stream.readString()
+  const messages = readJson<ChatAccount['messages']>(stream)
+  const required = [stream.readUInt8(), stream.readUInt8()] as ChatAccount['toll']['required']
+  const payOnRead = [readBigIntDecimal(stream), readBigIntDecimal(stream)] as ChatAccount['toll']['payOnRead']
+  const payOnReply = [readBigIntDecimal(stream), readBigIntDecimal(stream)] as ChatAccount['toll']['payOnReply']
+  const read = [readSafeNumber(stream), readSafeNumber(stream)] as ChatAccount['read']
+  const replied = [readSafeNumber(stream), readSafeNumber(stream)] as ChatAccount['replied']
+  const timestamp = readSafeNumber(stream)
+  const hash = stream.readString()
+  const hasChats = stream.readUInt8() === 1
+  const tollExtra = readJson<Record<string, unknown>>(stream)
+  const extra = readJson<Record<string, unknown>>(stream)
+  return { id, type, messages, toll: { required, payOnRead, payOnReply, ...tollExtra }, read, replied, timestamp, hash, hasChats, ...extra }
 }
