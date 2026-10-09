@@ -82,10 +82,33 @@ export const schemaNodeRefutedViolationData = {
 const baseTxProperties = {
   type: { enum: Object.values(TXTypes) },
   timestamp: { type: 'number', exclusiveMinimum: 0 },
+  networkId: { type: 'string' },
   sign: SignatureSchema,
 }
 
-const baseTxRequired = ['type', 'timestamp', 'sign']
+const baseUnsignedTxRequired = ['type', 'timestamp', 'networkId']
+const baseTxRequired = [...baseUnsignedTxRequired, 'sign']
+
+export const schemaUpdateTollRequiredTX = {
+  type: 'object',
+  properties: {
+    ...baseTxProperties,
+    from: { type: 'string' },
+    to: { type: 'string' },
+    chatId: { type: 'string' },
+    required: { enum: [0, 1, 2] },
+    previousRequired: { type: 'number' },
+    fee: { isBigInt: true },
+  },
+  required: [
+    ...baseTxRequired,
+    'from',
+    'to',
+    'chatId',
+    'required',
+  ],
+  additionalProperties: false,
+}
 
 // Transaction schemas
 
@@ -97,6 +120,13 @@ export const schemaTransferTX = {
     to: { type: 'string', minLength: 64, maxLength: 64 },
     amount: { isBigInt: true },
     memo: { type: ['string', 'null'] },
+    xmemo: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' },
+      },
+      additionalProperties: false,
+    },
     chatId: { type: 'string' },
     fee: { isBigInt: true },
     deductTxFeeFromAmount: { type: 'boolean' },
@@ -109,7 +139,7 @@ export const schemaPenaltyTX = {
   type: 'object',
   properties: {
     ...baseTxProperties,
-    from: { type: 'string' },
+    // from: { type: 'string' },
     reportedNodeId: { type: 'string', minLength: 64, maxLength: 64 },
     reportedNodePublickKey: { type: 'string', minLength: 64, maxLength: 64 },
     nominator: { type: 'string', minLength: 64, maxLength: 64 },
@@ -122,7 +152,7 @@ export const schemaPenaltyTX = {
       ],
     },
   },
-  required: [...baseTxRequired, 'from', 'reportedNodeId', 'reportedNodePublickKey', 'nominator', 'violationType', 'violationData'],
+  required: [...baseTxRequired, 'reportedNodeId', 'reportedNodePublickKey', 'nominator', 'violationType', 'violationData'],
   additionalProperties: false,
 }
 
@@ -144,7 +174,9 @@ export const schemaInitNetworkTX = {
     type: { type: 'string' },
     network: { type: 'string' },
     timestamp: { type: 'number', exclusiveMinimum: 0 },
+    networkId: { type: 'string' },
   },
+  required: ['type', 'network', 'timestamp', 'networkId'],
   additionalProperties: false,
 }
 
@@ -156,6 +188,8 @@ export const schemaMessageTX = {
     to: { type: 'string' },
     chatId: { type: 'string' },
     message: { type: 'string' },
+    amount: { isBigInt: true },
+    fee: { isBigInt: true },
   },
   required: [...baseTxRequired, 'from', 'to', 'chatId', 'message'],
   additionalProperties: false,
@@ -168,6 +202,7 @@ export const schemaReadTX = {
     from: { type: 'string' },
     to: { type: 'string' },
     chatId: { type: 'string' },
+    fee: { isBigInt: true },
   },
   required: [...baseTxRequired, 'from', 'to', 'chatId'],
   additionalProperties: false,
@@ -210,7 +245,7 @@ export const schemaChangeConfigTX = {
       items: SignatureSchema,
     },
   },
-  required: ['type', 'timestamp', 'from', 'cycle', 'config', 'signs'],
+  required: ['type', 'timestamp', 'networkId', 'from', 'cycle', 'config', 'signs'],
   additionalProperties: false,
 }
 
@@ -219,8 +254,9 @@ export const schemaApplyChangeConfigTX = {
   properties: {
     ...baseTxProperties,
     change: { type: 'object' },
+    from: { type: 'string' },
   },
-  required: ['type', 'timestamp', 'change'],
+  required: ['type', 'timestamp','from', 'change'],
   additionalProperties: false,
 }
 
@@ -236,7 +272,7 @@ export const schemaChangeNetworkParamTX = {
       items: SignatureSchema,
     },
   },
-  required: ['type', 'timestamp', 'from', 'cycle', 'config', 'signs'],
+  required: ['type', 'timestamp', 'networkId', 'from', 'cycle', 'config', 'signs'],
   additionalProperties: false,
 }
 
@@ -245,8 +281,9 @@ export const schemaApplyChangeNetworkParamTX = {
   properties: {
     ...baseTxProperties,
     change: { type: 'object' },
+    from: { type: 'string' },
   },
-  required: ['type', 'timestamp', 'change'],
+  required: ['type', 'timestamp','change','from',],
   additionalProperties: false,
 }
 
@@ -259,6 +296,7 @@ export const schemaRegisterTX = {
     alias: { type: 'string' },
     publicKey: { type: 'string' },
     pqPublicKey: { type: 'string' },
+    private: { type: 'boolean' },
   },
   required: [...baseTxRequired, 'from', 'aliasHash', 'alias', 'publicKey'],
   additionalProperties: false,
@@ -270,6 +308,8 @@ export const schemaTollTX = {
     ...baseTxProperties,
     from: { type: 'string' },
     toll: { isBigInt: true },
+    tollUnit: { enum: ['LIB', 'USD'] },
+    fee: { isBigInt: true },
   },
   required: [...baseTxRequired, 'from', 'toll'],
   additionalProperties: false,
@@ -331,7 +371,7 @@ export const schemaInitRewardTX = {
       additionalProperties: false,
     },
   },
-  required: [...baseTxRequired, 'nominee', 'nodeActivatedTime'],
+  required: [...baseTxRequired, 'nominee', 'nodeActivatedTime', 'txData'],
   additionalProperties: false,
 }
 
@@ -350,15 +390,13 @@ export const schemaClaimRewardTX = {
       properties: {
         publicKey: { type: 'string' },
         nodeId: { type: 'string' },
-        start: { type: 'number' },
-        end: { type: 'number' },
         endTime: { type: 'number' },
       },
-      required: ['publicKey', 'nodeId', 'start', 'end', 'endTime'],
+      required: ['publicKey', 'nodeId', 'endTime'],
       additionalProperties: false,
     },
   },
-  required: [...baseTxRequired, 'nominee', 'nominator', 'deactivatedNodeId', 'nodeDeactivatedTime'],
+  required: [...baseTxRequired, 'nominee', 'nominator', 'deactivatedNodeId', 'nodeDeactivatedTime', 'txData'],
   additionalProperties: false,
 }
 
@@ -388,7 +426,7 @@ export const schemaDaoProposalCreateTX = {
     startTime: { type: 'number', minimum: 0 },
     networkId: { type: 'string' },
   },
-  required: [...baseTxRequired, 'from', 'proposalId', 'metaId', 'emergency', 'proposalType', 'gracePeriod', 'title', 'description', 'options'],
+  required: [...baseTxRequired, 'from', 'proposalId', 'metaId', 'emergency', 'proposalType', 'title', 'description', 'options'],
   additionalProperties: false,
 }
 
@@ -580,6 +618,69 @@ export const schemaDaoCancelTX = {
   additionalProperties: false,
 }
 
+export const schemaAdminCert = {
+  type: 'object',
+  properties: {
+    nominee: { type: 'string' },
+    certCreation: { type: 'number' },
+    certExp: { type: 'number' },
+    sign: SignatureSchema,
+    goldenTicket: { type: 'boolean' },
+  },
+  required: [
+    'nominee',
+    'certCreation',
+    'certExp',
+    'sign',
+    'goldenTicket',
+  ],
+  additionalProperties: false,
+}
+
+export const schemaAppJoinData = {
+  type: 'object',
+  properties: {
+    version: { type: 'string' },
+    stakeCert: {
+      anyOf: [schemaStakeCert, { type: 'null' }],
+    },
+    adminCert: {
+      anyOf: [schemaAdminCert, { type: 'null' }],
+    },
+  },
+  required: ['version', 'stakeCert', 'adminCert'],
+  additionalProperties: false,
+}
+
+export const schemaInjectTxRequest = {
+  type: 'object',
+  properties: {
+    tx: { type: 'string' },
+  },
+  required: ['tx'],
+  additionalProperties: true,
+}
+
+const schemaStakeAmount = {
+  type: 'object',
+  properties: {
+    dataType: { const: 'bi' },
+    value: { type: 'string' },
+  },
+  required: ['dataType', 'value'],
+  additionalProperties: false,
+}
+
+export const schemaStakeResponse = {
+  type: 'object',
+  properties: {
+    stakeRequired: schemaStakeAmount,
+    stakeRequiredUsd: schemaStakeAmount,
+  },
+  required: ['stakeRequired', 'stakeRequiredUsd'],
+  additionalProperties: false,
+}
+
 export function initSchemas(): void {
   try {
     addSchemas()
@@ -587,6 +688,17 @@ export function initSchemas(): void {
   } catch (e) {
     throw new Error(`Error while adding ajv schema: ${e.message}`)
   }
+}
+
+export const schemaQueryCertRequest = {
+  type: 'object',
+  properties: {
+    nominee: { type: 'string' },
+    nominator: { type: 'string' },
+    sign: SignatureSchema,
+  },
+  required: ['nominee', 'nominator', 'sign'],
+  additionalProperties: false,
 }
 
 // Function to register all schemas
@@ -598,6 +710,13 @@ function addSchemas(): void {
   addSchema(AJVSchemaEnum.left_network_early_violation_data, schemaLeftNetworkEarlyViolationData)
   addSchema(AJVSchemaEnum.syncing_timeout_violation_data, schemaSyncingTimeoutViolationData)
   addSchema(AJVSchemaEnum.node_refuted_violation_data, schemaNodeRefutedViolationData)
+ 
+  addSchema(AJVSchemaEnum.admin_cert, schemaAdminCert)
+  addSchema(AJVSchemaEnum.app_join_data, schemaAppJoinData)
+  addSchema(AJVSchemaEnum.inject_tx_req, schemaInjectTxRequest)
+  addSchema(AJVSchemaEnum.stake_resp, schemaStakeResponse)
+  addSchema(AJVSchemaEnum.query_cert_req, schemaQueryCertRequest)
+  
   // Create a mapping of TXTypes to schema objects
   const txSchemaMap = {
     [TXTypes.transfer]: schemaTransferTX,
@@ -638,6 +757,7 @@ function addSchemas(): void {
     [TXTypes.dao_project_change_address]: schemaDaoProjectChangeAddressTX,
     [TXTypes.dao_project_end]: schemaDaoProjectStartTX,
     [TXTypes.dao_project_reclaim_balance]: schemaDaoProjectStartTX,
+    [TXTypes.update_toll_required]: schemaUpdateTollRequiredTX,
   }
   // Loop through TXTypes and register corresponding schemas
   Object.entries(txSchemaMap).forEach(([txType, schema]) => {
