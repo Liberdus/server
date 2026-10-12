@@ -13,6 +13,7 @@ export const readSafeNumber = (stream: VectorBufferStream): number => {
 }
 
 export const writeBigIntDecimal = (stream: VectorBufferStream, value: bigint): void => {
+  if (typeof value !== 'bigint') throw new Error('Account amount must be a bigint')
   stream.writeString(value.toString())
 }
 

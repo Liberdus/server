@@ -19,6 +19,7 @@ import {
   DaoProposalAccount,
 } from '../@types'
 import { Utils } from '@shardus/lib-types'
+import { LiberdusFlags } from '../config'
 
 export enum SerdeTypeIdent {
   AliasAccount = 1,
@@ -35,23 +36,31 @@ export enum SerdeTypeIdent {
 
 export const serializeAccounts = (inp: AccountVariant): VectorBufferStream => {
   const stream = new VectorBufferStream(0)
+  // Factory-built types used the JSON fallback before 2.5.3. Enable these
+  // existing numeric tags only after every node has the corrected readers.
+  // The DAO codecs were already active and keep their existing dispatch.
+  if (!LiberdusFlags.versionFlags.correctAccountSerdeLayout && inp.type !== 'DaoProposalsMeta' && inp.type !== 'DaoProposalAccount') {
+    fallbackSerializer(stream, inp, true)
+    return stream
+  }
+
   switch (inp.type) {
-    case 'aliasAccount':
+    case 'AliasAccount':
       serializeAliasAccount(stream, inp as AliasAccount, true)
       break
-    case 'chatAccount':
+    case 'ChatAccount':
       serializeChatAccount(stream, inp as ChatAccount, true)
       break
-    case 'networkAccount':
+    case 'NetworkAccount':
       serializeNetworkAccount(stream, inp as NetworkAccount, true)
       break
-    case 'nodeAccount':
+    case 'NodeAccount':
       serializeNodeAccount(stream, inp as NodeAccount, true)
       break
-    case 'userAccount':
+    case 'UserAccount':
       serializeUserAccount(stream, inp as UserAccount, true)
       break
-    case 'devAccount':
+    case 'DevAccount':
       serializeDevAccount(stream, inp as DevAccount, true)
       break
     case 'DaoProposalsMeta':

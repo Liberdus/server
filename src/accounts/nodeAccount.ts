@@ -36,6 +36,7 @@ export const nodeAccount = (accountId: string): NodeAccount => {
 }
 
 export const serializeNodeAccount = (stream: VectorBufferStream, inp: NodeAccount, root = false): void => {
+  if (typeof inp.rewarded !== 'boolean') throw new Error('NodeAccount rewarded must be a boolean')
   if (root) stream.writeUInt16(SerdeTypeIdent.NodeAccount)
   const {
     id,
