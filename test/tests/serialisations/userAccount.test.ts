@@ -2,6 +2,7 @@ import { VectorBufferStream } from '@shardus/core'
 import { TollUnit, UserAccount } from '../../../src/@types'
 import { deserializeUserAccount, serializeUserAccount } from '../../../src/accounts/userAccount'
 import { SerdeTypeIdent } from '../../../src/accounts'
+import { LiberdusFlags } from '../../../src/config'
 
 const account = (): UserAccount =>
   ({
@@ -38,11 +39,16 @@ const roundTrip = (input: UserAccount): UserAccount => {
 }
 
 describe('UserAccount binary codec', () => {
+  const originalFlag = LiberdusFlags.versionFlags.correctAccountSerdeLayout
+  afterEach(() => {
+    LiberdusFlags.versionFlags.correctAccountSerdeLayout = originalFlag
+  })
+
   test('round-trips a live legacy shape with default retired values', () => {
     expect(roundTrip(account())).toEqual(account())
   })
 
-  test('preserves populated retired values', () => {
+  test('preserves populated retired values without consulting the activation flag', () => {
     const input = account()
     const legacy = input as UserAccount & { verified: string; emailHash: string; claimedSnapshot: boolean }
     legacy.verified = 'verification-hash'
@@ -51,6 +57,9 @@ describe('UserAccount binary codec', () => {
     ;(input.data as Record<string, unknown>).stake = 9n
     ;(input.data as Record<string, unknown>).friends = { recipient: 'alias' }
     input.pqPublicKey = 'pq-key'
+    LiberdusFlags.versionFlags.correctAccountSerdeLayout = false
+    expect(roundTrip(input)).toEqual(input)
+    LiberdusFlags.versionFlags.correctAccountSerdeLayout = true
     expect(roundTrip(input)).toEqual(input)
   })
 

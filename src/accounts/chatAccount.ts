@@ -36,6 +36,13 @@ export const chatAccount = (accountId: string, tx: Tx.Message | Tx.Transfer | Tx
 export const serializeChatAccount = (stream: VectorBufferStream, inp: ChatAccount, root = false): void => {
   const { id, type, messages, toll, read, replied, timestamp, hash, hasChats, ...extra } = inp
   const { required, payOnRead, payOnReply, ...tollExtra } = toll
+  if (![required, payOnRead, payOnReply, read, replied].every((pair) => Array.isArray(pair) && pair.length === 2)) {
+    throw new Error('ChatAccount toll and timestamp fields must have exactly two entries')
+  }
+  if (required.some((value) => !Number.isInteger(value) || value < 0 || value > 255)) {
+    throw new Error('ChatAccount toll.required entries must be unsigned bytes')
+  }
+  if (typeof hasChats !== 'boolean') throw new Error('ChatAccount hasChats must be a boolean')
   if (root) stream.writeUInt16(SerdeTypeIdent.ChatAccount)
   stream.writeString(id)
   stream.writeString(type)
