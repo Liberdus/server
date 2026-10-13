@@ -38,9 +38,9 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   restakeCooldown: 30 * ONE_MINUTE,
   tollNetworkTaxPercent: 1, // 1%
   tollTimeout: 7 * ONE_DAY,
-  minVersion: '2.5.2',
-  activeVersion: '2.5.2',
-  latestVersion: '2.5.2',
+  minVersion: '2.5.3',
+  activeVersion: '2.5.3',
+  latestVersion: '2.5.3',
   archiver: {
     minVersion: '3.8.3',
     activeVersion: '3.8.3',
