@@ -82,7 +82,9 @@ export const validate = (
     response.reason = `The network transaction fee (${transactionFee}) is greater than the transaction fee provided (${tx.fee}).`
     return response
   }
-  if (from.data.balance < transactionFee) {
+  // The escrow coming back counts: a requester who spent everything else can
+  // still take their own money back.
+  if (SafeBigIntMath.add(from.data.balance, tree.pendingJoinRequests[tx.from].escrow) < transactionFee) {
     response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the transaction fee (${transactionFee}).`
     return response
   }
@@ -106,13 +108,14 @@ export const apply = (
   const tree: GroupTreeAccount = wrappedStates[treeId].data
 
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
-  from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
-
   const request = tree.pendingJoinRequests[tx.from]
   const refund = request ? request.escrow : BigInt(0)
+  // Refund first, so the fee can come out of the returned escrow.
   from.data.balance = SafeBigIntMath.add(from.data.balance, refund)
+  from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
   delete tree.pendingJoinRequests[tx.from]
-  utils.syncPendingJoinCount(group, tree)
+  utils.pruneExpiredJoinRequests(tree, txTimestamp)
+  utils.syncPendingJoinCount(group, tree, txTimestamp)
   if (group) group.timestamp = txTimestamp
 
   tree.timestamp = txTimestamp

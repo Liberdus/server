@@ -919,7 +919,37 @@ export const rollbackWrappedStates = (wrappedStates: WrappedStates, originalWrap
  * step the way a hand-maintained counter eventually does. Call it after any
  * change to pendingJoinRequests.
  */
-export function syncPendingJoinCount(group: GroupAccount, tree: GroupTreeAccount): void {
+export function syncPendingJoinCount(group: GroupAccount, tree: GroupTreeAccount, now?: number): void {
   if (!group || !tree) return
-  group.pendingJoinCount = Object.keys(tree.pendingJoinRequests || {}).length
+  group.pendingJoinCount =
+    typeof now === 'number' ? liveJoinRequestCount(tree, now) : Object.keys(tree.pendingJoinRequests || {}).length
+}
+
+/*
+ * Join requests expire after groupJoinRequestTimeoutMs (threat model T8).
+ *
+ * A group holds a bounded number of pending requests, and while the join fee is
+ * zero a request costs one transaction fee. Without expiry an account could hold
+ * a slot forever for that one fee, and a hundred of them would shut a group to
+ * everyone else. An expired request stops counting toward the cap and can no
+ * longer be approved; its escrow stays reclaimable by the requester.
+ */
+export function isJoinRequestLive(request: { timestamp: number }, now: number): boolean {
+  return now - request.timestamp < LiberdusFlags.groupJoinRequestTimeoutMs
+}
+
+export function liveJoinRequestCount(tree: GroupTreeAccount, now: number): number {
+  return Object.values(tree.pendingJoinRequests || {}).filter((r) => isJoinRequestLive(r, now)).length
+}
+
+/**
+ * Drops expired requests that hold no escrow. There is nothing to give back, so
+ * nothing is lost, and the account stops growing with abandoned requests. One
+ * that holds escrow stays until its requester reclaims it, or an admin declines
+ * it, because only a transaction naming the requester can refund them.
+ */
+export function pruneExpiredJoinRequests(tree: GroupTreeAccount, now: number): void {
+  for (const [address, request] of Object.entries(tree.pendingJoinRequests || {})) {
+    if (!isJoinRequestLive(request, now) && request.escrow === BigInt(0)) delete tree.pendingJoinRequests[address]
+  }
 }

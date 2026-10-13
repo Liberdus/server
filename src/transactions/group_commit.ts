@@ -507,7 +507,9 @@ export const validate = (
      * A pending join request IS the consent, and it is per-group and explicit,
      * so it overrides whatever the addee's blanket add policy says.
      */
-    const requested = !!(treeForValidate && treeForValidate.pendingJoinRequests[address])
+    // Only a live request: an expired one no longer counts as asking (T8).
+    const pending = treeForValidate ? treeForValidate.pendingJoinRequests[address] : undefined
+    const requested = !!pending && utils.isJoinRequestLive(pending, tx.timestamp)
 
     /*
      * CONSENT TO BE ADDED, route 2.
@@ -841,7 +843,15 @@ export const apply = async (
      * "take the fee, remove the member" can be refunded rather than clawed back.
      */
     const request = tree.pendingJoinRequests[address]
-    if (request) {
+    // An expired request was not this add's consent (validate required a live
+    // one, or an add policy that allows it); its escrow goes back, not to vesting.
+    if (request && !utils.isJoinRequestLive(request, txTimestamp)) {
+      const addee: UserAccount = wrappedStates[address] && wrappedStates[address].data
+      if (addee && isUserAccount(addee)) {
+        addee.data.balance = SafeBigIntMath.add(addee.data.balance, request.escrow)
+        delete tree.pendingJoinRequests[address]
+      }
+    } else if (request) {
       /*
        * The fee does NOT land in the admin's balance yet.
        *
@@ -859,14 +869,20 @@ export const apply = async (
           member: address,
           amount: request.escrow,
           vestingUntil: txTimestamp + config.LiberdusFlags.groupJoinFeeVestingMs,
+          // Which membership this fee paid for; see the refund in the removal loop.
+          grantedAt: txTimestamp,
         })
       }
       delete tree.pendingJoinRequests[address]
     }
   }
   // Approving members clears their requests, so the mirrored count moves too.
-  utils.syncPendingJoinCount(group, tree)
+  utils.pruneExpiredJoinRequests(tree, txTimestamp)
+  utils.syncPendingJoinCount(group, tree, txTimestamp)
   for (const address of tx.removedMembers) {
+    // When this membership began, read before it is cleared: only fees paid for
+    // it can be refunded below.
+    const joinedAt = group.memberSince[address]?.timestamp
     delete group.memberSince[address]
     delete group.lastMessageAt[address]
     delete tree.pendingWelcomes[address]
@@ -880,20 +896,30 @@ export const apply = async (
      * A member who LEAVES is not refunded (group_leave does not run this), or
      * every paid group would be a free trial.
      */
-    // Someone who left is not refunded (see above), and removing their leaf
-    // afterwards must not refund them either.
-    const stillVesting = departed.has(address)
-      ? []
-      : tree.vestedFees.filter((v) => v.member === address && v.vestingUntil > txTimestamp)
-    if (stillVesting.length > 0) {
-      const refundee: UserAccount = wrappedStates[address] && wrappedStates[address].data
-      if (refundee && isUserAccount(refundee)) {
-        for (const v of stillVesting) {
-          refundee.data.balance = SafeBigIntMath.add(refundee.data.balance, v.amount)
-        }
-        refundee.timestamp = txTimestamp
+    /*
+     * Only fees paid for the membership that is ending now. Someone who left is
+     * not refunded (see above), and removing their leaf afterwards must not
+     * refund them either. Nor may an earlier, forfeited fee come back: leave,
+     * be let back in and then be removed before the first fee vests, and the
+     * first fee is still vesting under the same address. Its grantedAt is from
+     * before this membership began, so it stays forfeit. (An entry written
+     * before grantedAt existed counts as this membership's.)
+     */
+    const refundable = (v: GroupTreeAccount['vestedFees'][number]): boolean =>
+      v.member === address &&
+      v.vestingUntil > txTimestamp &&
+      (typeof v.grantedAt !== 'number' || typeof joinedAt !== 'number' || v.grantedAt >= joinedAt)
+    const stillVesting = departed.has(address) ? [] : tree.vestedFees.filter(refundable)
+    const refundee: UserAccount = wrappedStates[address] && wrappedStates[address].data
+    // Without the account there is nobody to pay; the entry then stays put and
+    // vests to the admin, rather than the money vanishing.
+    if (stillVesting.length > 0 && refundee && isUserAccount(refundee)) {
+      for (const v of stillVesting) {
+        refundee.data.balance = SafeBigIntMath.add(refundee.data.balance, v.amount)
       }
-      tree.vestedFees = tree.vestedFees.filter((v) => !(v.member === address && v.vestingUntil > txTimestamp))
+      refundee.timestamp = txTimestamp
+      const refunded = new Set(stillVesting)
+      tree.vestedFees = tree.vestedFees.filter((v) => !refunded.has(v))
     }
   }
 

@@ -163,6 +163,7 @@ export enum TXTypes {
   update_group_add_policy = 'update_group_add_policy',
   group_join_request = 'group_join_request',
   group_join_reclaim = 'group_join_reclaim',
+  group_join_decline = 'group_join_decline',
   group_fee_claim = 'group_fee_claim',
   group_maintenance_fund = 'group_maintenance_fund',
 }
@@ -465,6 +466,14 @@ export namespace Tx {
   export interface GroupJoinReclaim extends BaseLiberdusTx {
     from: string
     groupId: string
+    fee: bigint
+  }
+
+  /** An admin turns down pending join requests; their escrow goes back. */
+  export interface GroupJoinDecline extends BaseLiberdusTx {
+    from: string
+    groupId: string
+    requesters: string[]
     fee: bigint
   }
 
@@ -1128,6 +1137,8 @@ export interface GroupTreeAccount {
     member: string
     amount: bigint
     vestingUntil: number
+    /** When the fee was granted, i.e. which membership it paid for. */
+    grantedAt?: number
   }[]
 
   // --- recovery -------------------------------------------------------------

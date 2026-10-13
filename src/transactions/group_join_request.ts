@@ -102,11 +102,13 @@ export const validate = (
     response.reason = 'the group is full.'
     return response
   }
-  if (tree && tree.pendingJoinRequests[tx.from]) {
+  // An expired request of our own is replaced, and its escrow refunded, below.
+  const previous = tree ? tree.pendingJoinRequests[tx.from] : undefined
+  if (previous && utils.isJoinRequestLive(previous, tx.timestamp)) {
     response.reason = 'a join request from this account is already pending.'
     return response
   }
-  if (tree && Object.keys(tree.pendingJoinRequests).length >= config.LiberdusFlags.groupMaxPendingJoinRequests) {
+  if (tree && utils.liveJoinRequestCount(tree, tx.timestamp) >= config.LiberdusFlags.groupMaxPendingJoinRequests) {
     response.reason = 'this group has too many pending join requests; try again later.'
     return response
   }
@@ -126,7 +128,8 @@ export const validate = (
     response.reason = `The network transaction fee (${transactionFee}) is greater than the transaction fee provided (${tx.fee}).`
     return response
   }
-  if (from.data.balance < transactionFee + tx.escrow) {
+  const returned = previous ? previous.escrow : BigInt(0)
+  if (from.data.balance + returned < transactionFee + tx.escrow) {
     response.reason = `from account does not have sufficient funds ${from.data.balance} to cover the join fee (${tx.escrow}) + transaction fee (${transactionFee}).`
     return response
   }
@@ -154,9 +157,13 @@ export const apply = (
   }
 
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
+  // Our own expired request, if any, is replaced: its escrow comes back first.
+  const previous = tree.pendingJoinRequests[tx.from]
+  if (previous) from.data.balance = SafeBigIntMath.add(from.data.balance, previous.escrow)
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, transactionFee)
   // Held, not spent: reclaimable by the requester until an admin approves.
   from.data.balance = SafeBigIntMath.subtract(from.data.balance, tx.escrow)
+  utils.pruneExpiredJoinRequests(tree, txTimestamp)
 
   tree.pendingJoinRequests[tx.from] = {
     escrow: tx.escrow,
@@ -168,7 +175,7 @@ export const apply = (
    * client already polls, so this is what lets an open Group info page notice
    * the request without anyone loading the ratchet tree.
    */
-  utils.syncPendingJoinCount(group, tree)
+  utils.syncPendingJoinCount(group, tree, txTimestamp)
   if (group) group.timestamp = txTimestamp
 
   tree.timestamp = txTimestamp

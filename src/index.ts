@@ -85,6 +85,12 @@ const groupChatTxTypes = new Set([
   TXTypes.group_commit,
   TXTypes.group_leave,
   TXTypes.group_maintenance_fund,
+  // The rest of the family: they were missing, so they ran with the flag off.
+  TXTypes.group_join_request,
+  TXTypes.group_join_reclaim,
+  TXTypes.group_join_decline,
+  TXTypes.group_fee_claim,
+  TXTypes.update_group_add_policy,
 ])
 
 /**

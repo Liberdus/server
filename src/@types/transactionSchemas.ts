@@ -457,6 +457,31 @@ export const schemaGroupJoinReclaimTX = {
   additionalProperties: false,
 }
 
+export const schemaGroupJoinDeclineTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+    requesters: { type: 'array', items: { type: 'string', minLength: 64, maxLength: 64 }, minItems: 1, maxItems: 10 },
+  },
+  required: [...groupBaseRequired, 'from', 'groupId', 'requesters'],
+  additionalProperties: false,
+}
+
+// It had no schema, so with AJV validation enabled every top-up was rejected.
+export const schemaGroupMaintenanceFundTX = {
+  type: 'object',
+  properties: {
+    ...groupBaseProperties,
+    from: { type: 'string' },
+    groupId: { type: 'string', minLength: 64, maxLength: 64 },
+    amount: { isBigInt: true },
+  },
+  required: [...groupBaseRequired, 'from', 'groupId', 'amount'],
+  additionalProperties: false,
+}
+
 export const schemaUpdateGroupAddPolicyTX = {
   type: 'object',
   properties: {
@@ -1161,6 +1186,8 @@ function addSchemas(): void {
     [TXTypes.update_group_add_policy]: schemaUpdateGroupAddPolicyTX,
     [TXTypes.group_join_request]: schemaGroupJoinRequestTX,
     [TXTypes.group_join_reclaim]: schemaGroupJoinReclaimTX,
+    [TXTypes.group_join_decline]: schemaGroupJoinDeclineTX,
+    [TXTypes.group_maintenance_fund]: schemaGroupMaintenanceFundTX,
     [TXTypes.group_fee_claim]: schemaGroupFeeClaimTX,
     [TXTypes.read]: schemaReadTX,
     [TXTypes.reclaim_toll]: schemeReclaimTollTX,

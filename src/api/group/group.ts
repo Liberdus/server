@@ -2,6 +2,7 @@ import { Shardus } from '@shardus/core'
 import { GroupAccount, GroupTreeAccount, UserAccount } from '../../@types'
 import { isGroupAccount, isGroupTreeAccount, isUserAccount } from '../../@types/accountTypeGuards'
 import * as utils from '../../utils'
+import * as config from '../../config'
 
 /**
  * Read endpoints for MLS group chat.
@@ -246,12 +247,16 @@ export const joinRequests =
         return
       }
       const tree = await loadTree(dapp, groupId)
+      // `live` is relative to this node's clock, for display only: expired
+      // requests can no longer be approved, and a client hides them.
       const requests = tree
         ? Object.entries(tree.pendingJoinRequests).map(([address, r]) => ({
             address,
             message: r.message,
             escrow: r.escrow.toString(),
             timestamp: r.timestamp,
+            expiresAt: r.timestamp + config.LiberdusFlags.groupJoinRequestTimeoutMs,
+            live: utils.isJoinRequestLive(r, Date.now()),
           }))
         : []
       /*
