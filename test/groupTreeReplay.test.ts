@@ -397,6 +397,65 @@ describe('group_commit apply stores the computed tree', () => {
   })
 })
 
+describe('removing the leaf of a member who left (T3)', () => {
+  // C has left by group_leave: off the roster, leaf still in the tree.
+  const run = async (tx: any): Promise<any> => {
+    const g = groupAccount(
+      GROUP,
+      { from: A, groupId: GROUP, groupNonce: 'ab'.repeat(16), mlsGroupId: GROUP, cipherSuite: SUITE_ID, meta: '', maxMembers: 20, joinFee: BigInt(0), fee: FEE } as any,
+      1_700_000_000_000,
+    )
+    Object.assign(g, { members: [A, B], admins: [A], epoch: 1, maintenanceBalance: FEE * 5n })
+    const tree = groupTreeAccount(utils.calculateGroupTreeId(GROUP), GROUP)
+    tree.ratchetTree = baseline
+    tree.transcript = transcript1
+    // C's join fee is still vesting when C leaves.
+    tree.vestedFees = [{ admin: A, member: C, amount: FEE * 3n, vestingUntil: 1_800_000_000_000 }]
+    const user = (id: string, balance: bigint): any => ({ id, type: 'UserAccount', hash: '', timestamp: 0, data: { balance, chats: {} } })
+    const wrapped: any = {
+      [A]: { data: user(A, FEE * 100n) },
+      [B]: { data: user(B, BigInt(0)) }, // an empty wallet: the group pays
+      [C]: { data: user(C, BigInt(0)) },
+      [GROUP]: { data: g },
+      [utils.calculateGroupTreeId(GROUP)]: { data: tree },
+    }
+    const dapp: any = { log: () => undefined, applyResponseAddReceiptData: () => undefined }
+    await apply(tx, 1_700_000_200_000, 'tx-id', wrapped, dapp, {} as any)
+    return { group: g, tree, b: wrapped[B].data, c: wrapped[C].data }
+  }
+
+  test('any member may remove it, the group pays, and the leaver is not refunded', async () => {
+    const rm = await commit(bState, [{ proposalType: 'remove', remove: { removed: leafOf(bState, C) } }])
+    const after = treeToWire(rm.newState.ratchetTree)
+    const { group: g, tree, b, c } = await run({
+      type: 'group_commit',
+      from: B,
+      groupId: GROUP,
+      epoch: 1,
+      commit: rm.wire,
+      proposals: [],
+      pskId: '',
+      pskNonce: '',
+      groupInfo: rm.groupInfo,
+      ratchetTree: '',
+      treeDelta: delta(baseline, after),
+      addedMembers: [],
+      removedMembers: [C],
+      welcomes: [],
+      consumedKeyPackages: [],
+      fee: FEE,
+      timestamp: 1_700_000_100_000,
+      sign: { owner: B, sig: '00' },
+    })
+    expect(tree.ratchetTree).toBe(after) // C's leaf is gone
+    expect(g.maintenanceBalance).toBe(FEE * 4n) // the group paid the fee
+    expect(b.data.balance).toBe(BigInt(0)) // B paid nothing
+    expect(c.data.balance).toBe(BigInt(0)) // no refund for leaving
+    expect(tree.vestedFees).toHaveLength(1) // still the admin's once it vests
+    expect(g.members).toEqual([A, B])
+  })
+})
+
 describe('GroupTreeAccount serialization', () => {
   test('the transcript survives a round trip', () => {
     const tree = groupTreeAccount(utils.calculateGroupTreeId(GROUP), GROUP)

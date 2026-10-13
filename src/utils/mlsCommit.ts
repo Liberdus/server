@@ -56,6 +56,12 @@ export interface CommitEffect {
   senderLeaf: number
   added: string[]
   removed: string[]
+  /**
+   * The removed addresses that had already left the roster (group_leave) but
+   * still had a leaf. Removing those only brings the tree in line with the
+   * roster, so any member may do it; see the admin rule below.
+   */
+  departed: string[]
   /** A member rejoining by external commit (RFC 9420 s12.4.3.2). */
   external: boolean
 }
@@ -255,9 +261,17 @@ export function inspectCommit(tx: CommitDeclaration, group: GroupFacts, storedTr
   if (!sameMembers(removed, tx.removedMembers)) {
     return refuse(`commit removes [${removed.join(', ')}] but declares [${tx.removedMembers.join(', ')}].`)
   }
-  if ((added.length > 0 || removed.length > 0) && !group.admins.includes(tx.from)) {
+  /*
+   * The admin rule, on the real change. Removing a member is an admin's call;
+   * removing the leaf of someone who has already left is not a call at all --
+   * group_leave took them off the roster, and until their leaf is removed they
+   * can still read the group (threat model T3). So any member may do that.
+   */
+  const departed = removed.filter((address) => !group.members.includes(address))
+  const rosterRemovals = removed.length - departed.length
+  if ((added.length > 0 || rosterRemovals > 0) && !group.admins.includes(tx.from)) {
     return refuse('only an admin may add or remove members.')
   }
 
-  return { ok: true, effect: { senderLeaf: external ? -1 : content.sender.leafIndex, added, removed, external } }
+  return { ok: true, effect: { senderLeaf: external ? -1 : content.sender.leafIndex, added, removed, departed, external } }
 }

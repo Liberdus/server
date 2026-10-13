@@ -290,6 +290,19 @@ const fillsABlankNode = (storedTree: string, delta: { i: number; n: string | nul
  * that are present but not arrays, so the only way to get here with one missing
  * is a caller that skipped it, and "nobody was added" is the right reading.
  */
+/**
+ * A commit that only removes leaves of members who already left the roster.
+ *
+ * That removal is the group's own upkeep -- every departure owes one, which is
+ * what the maintenance balance is sized for -- so the balance pays it, like a
+ * tree repair. It cannot be repeated for profit: each departed leaf can be
+ * removed once, and inspectCommit has checked the leaf really is there.
+ */
+const removesOnlyDeparted = (tx: Tx.GroupCommit, group: GroupAccount): boolean =>
+  (tx.addedMembers?.length ?? 0) === 0 &&
+  (tx.removedMembers?.length ?? 0) > 0 &&
+  tx.removedMembers.every((a) => !group.members.includes(a))
+
 const isMembershipNeutral = (tx: Tx.GroupCommit): boolean =>
   (tx.addedMembers?.length ?? 0) === 0 &&
   (tx.removedMembers?.length ?? 0) === 0 &&
@@ -372,7 +385,9 @@ export const validatePreCrack = (
     return response
   }
 
-  const changesMembership = tx.addedMembers.length > 0 || tx.removedMembers.length > 0
+  // Removing someone who already left the roster is not a membership change;
+  // inspectCommit confirms they really have a leaf to remove.
+  const changesMembership = tx.addedMembers.length > 0 || tx.removedMembers.some((a) => group.members.includes(a))
   if (changesMembership && !group.admins.includes(tx.from)) {
     response.reason = 'only an admin may add or remove members.'
     return response
@@ -453,7 +468,9 @@ export const validate = (
     return response
   }
 
-  const changesMembership = tx.addedMembers.length > 0 || tx.removedMembers.length > 0
+  // Removing someone who already left the roster is not a membership change;
+  // inspectCommit confirms they really have a leaf to remove.
+  const changesMembership = tx.addedMembers.length > 0 || tx.removedMembers.some((a) => group.members.includes(a))
   if (changesMembership && !group.admins.includes(tx.from)) {
     response.reason = 'only an admin may add or remove members.'
     return response
@@ -562,8 +579,10 @@ export const validate = (
       return response
     }
   }
+  // A removed address is either on the roster or already departed with a leaf
+  // still in the tree; inspectCommit established which, from the commit itself.
   for (const address of tx.removedMembers) {
-    if (!group.members.includes(address)) {
+    if (!group.members.includes(address) && !inspection.effect.departed.includes(address)) {
       response.reason = `address ${address} is not a member.`
       return response
     }
@@ -573,7 +592,8 @@ export const validate = (
     return response
   }
 
-  const nextSize = group.members.length + tx.addedMembers.length - tx.removedMembers.length
+  const rosterRemovals = tx.removedMembers.filter((a) => group.members.includes(a)).length
+  const nextSize = group.members.length + tx.addedMembers.length - rosterRemovals
   if (nextSize > group.maxMembers || nextSize > config.LiberdusFlags.groupMaxMembers) {
     response.reason = `group would exceed its member limit (${group.maxMembers}).`
     return response
@@ -622,9 +642,8 @@ export const validate = (
    */
   const groupWillPayTheFee =
     !inspection.effect.external &&
-    isMembershipNeutral(tx) &&
-    !!treeForValidate &&
-    fillsABlankNode(treeForValidate.ratchetTree, tx.treeDelta) &&
+    ((isMembershipNeutral(tx) && !!treeForValidate && fillsABlankNode(treeForValidate.ratchetTree, tx.treeDelta)) ||
+      removesOnlyDeparted(tx, group)) &&
     (group.maintenanceBalance ?? BigInt(0)) >= transactionFee
 
   const senderOwes = groupWillPayTheFee ? depositOwed : SafeBigIntMath.add(transactionFee, depositOwed)
@@ -741,8 +760,7 @@ export const apply = async (
   // Never for a rejoin: a member could otherwise rejoin repeatedly on the group's money.
   const groupPaysTheFee =
     !replayed.external &&
-    isMembershipNeutral(tx) &&
-    fillsABlankNode(tree.ratchetTree, tx.treeDelta) &&
+    ((isMembershipNeutral(tx) && fillsABlankNode(tree.ratchetTree, tx.treeDelta)) || removesOnlyDeparted(tx, group)) &&
     (group.maintenanceBalance ?? BigInt(0)) >= transactionFee
 
   if (groupPaysTheFee) {
@@ -806,6 +824,8 @@ export const apply = async (
   group.epoch = previousEpoch + 1
 
   const removed = new Set(tx.removedMembers)
+  // Already off the roster before this commit: they left by group_leave.
+  const departed = new Set(tx.removedMembers.filter((a) => !group.members.includes(a)))
   group.members = [...group.members.filter((m) => !removed.has(m)), ...tx.addedMembers]
   group.admins = group.admins.filter((a) => !removed.has(a))
 
@@ -860,7 +880,11 @@ export const apply = async (
      * A member who LEAVES is not refunded (group_leave does not run this), or
      * every paid group would be a free trial.
      */
-    const stillVesting = tree.vestedFees.filter((v) => v.member === address && v.vestingUntil > txTimestamp)
+    // Someone who left is not refunded (see above), and removing their leaf
+    // afterwards must not refund them either.
+    const stillVesting = departed.has(address)
+      ? []
+      : tree.vestedFees.filter((v) => v.member === address && v.vestingUntil > txTimestamp)
     if (stillVesting.length > 0) {
       const refundee: UserAccount = wrappedStates[address] && wrappedStates[address].data
       if (refundee && isUserAccount(refundee)) {

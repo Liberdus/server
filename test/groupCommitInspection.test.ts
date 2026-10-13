@@ -120,7 +120,7 @@ beforeAll(async () => {
 describe('inspectCommit', () => {
   test("the founder's first commit is accepted before any tree is stored", () => {
     const res = inspectCommit(epoch0Tx, { ...groupAtEpoch1, epoch: 0 }, '')
-    expect(res).toEqual({ ok: true, effect: { senderLeaf: 0, added: [B, C], removed: [], external: false } })
+    expect(res).toEqual({ ok: true, effect: { senderLeaf: 0, added: [B, C], removed: [], departed: [], external: false } })
   })
 
   test('declaring fewer adds than the commit makes is refused', () => {
@@ -154,16 +154,29 @@ describe('inspectCommit', () => {
     expect(res).toEqual({ ok: false, reason: `commit removes [${C}] but declares [].` })
   })
 
+  test('T3: any member may remove the leaf of someone who already left', async () => {
+    // C left by group_leave: off the roster, leaf still in the tree.
+    const built = await commit(bState, [remove(C)])
+    const res = inspectCommit(declare(B, built, 1, { removedMembers: [C] }), { ...groupAtEpoch1, members: [A, B] }, storedTree)
+    expect(res).toEqual({ ok: true, effect: { senderLeaf: leafOf(aState, B), added: [], removed: [C], departed: [C], external: false } })
+  })
+
+  test('removing a member still on the roster is still an admin call', async () => {
+    const built = await commit(bState, [remove(C)])
+    const res = inspectCommit(declare(B, built, 1, { removedMembers: [C] }), groupAtEpoch1, storedTree)
+    expect(res).toEqual({ ok: false, reason: 'only an admin may add or remove members.' })
+  })
+
   test('an admin removing a member, declared, is accepted', async () => {
     const built = await commit(aState, [remove(C)])
     const res = inspectCommit(declare(A, built, 1, { removedMembers: [C] }), groupAtEpoch1, storedTree)
-    expect(res).toEqual({ ok: true, effect: { senderLeaf: 0, added: [], removed: [C], external: false } })
+    expect(res).toEqual({ ok: true, effect: { senderLeaf: 0, added: [], removed: [C], departed: [], external: false } })
   })
 
   test('a path-only update is open to any member', async () => {
     const built = await commit(bState, [], { withPsk: false })
     const res = inspectCommit(declare(B, built, 1), groupAtEpoch1, storedTree)
-    expect(res).toEqual({ ok: true, effect: { senderLeaf: leafOf(aState, B), added: [], removed: [], external: false } })
+    expect(res).toEqual({ ok: true, effect: { senderLeaf: leafOf(aState, B), added: [], removed: [], departed: [], external: false } })
   })
 
   test("submitting another member's commit as your own is refused", async () => {
@@ -244,7 +257,7 @@ describe('inspectCommit', () => {
 })
 
 describe('group_commit validate runs the inspection', () => {
-  const states = (): any => {
+  const states = (groupOver: Record<string, unknown> = {}, senderBalance: bigint = FEE * 100n): any => {
     const group = groupAccount(
       GROUP,
       {
@@ -260,17 +273,24 @@ describe('group_commit validate runs the inspection', () => {
       } as any,
       1_700_000_000_000,
     )
-    Object.assign(group, { members: [A, B, C], admins: [A], epoch: 1 })
+    Object.assign(group, { members: [A, B, C], admins: [A], epoch: 1, ...groupOver })
     const treeId = utils.calculateGroupTreeId(GROUP)
     const tree = groupTreeAccount(treeId, GROUP)
     tree.ratchetTree = storedTree
-    const user = (id: string): any => ({ id, type: 'UserAccount', data: { balance: FEE * 100n } })
+    const user = (id: string, balance = FEE * 100n): any => ({ id, type: 'UserAccount', data: { balance } })
     const out: Record<string, any> = {}
-    for (const [id, data] of Object.entries({ [A]: user(A), [B]: user(B), [GROUP]: group, [treeId]: tree })) {
+    for (const [id, data] of Object.entries({ [A]: user(A), [B]: user(B, senderBalance), [GROUP]: group, [treeId]: tree })) {
       out[id] = { accountId: id, stateId: '', data, timestamp: 0, accountCreated: false, isPartial: false }
     }
     return out
   }
+  const runWith = (decl: CommitDeclaration, groupOver: Record<string, unknown>, senderBalance: bigint): ShardusTypes.IncomingTransactionResult =>
+    validate(
+      { type: 'group_commit', groupId: GROUP, proposals: [], welcomes: [], treeDelta: [], fee: FEE, ...decl } as any,
+      states(groupOver, senderBalance),
+      { success: false, reason: 'Tx Validation Fails', status: 400 } as any,
+      undefined as never,
+    )
   const run = (decl: CommitDeclaration): ShardusTypes.IncomingTransactionResult =>
     validate(
       { type: 'group_commit', groupId: GROUP, proposals: [], welcomes: [], treeDelta: [], fee: FEE, ...decl } as any,
@@ -284,6 +304,12 @@ describe('group_commit validate runs the inspection', () => {
     const res = run(declare(B, hidden, 1))
     expect(res.success).toBe(false)
     expect(res.reason).toBe(`commit removes [${C}] but declares [].`)
+  })
+
+  test('T3: a member with an empty wallet removes the leaf of someone who left; the group pays', async () => {
+    const built = await commit(bState, [remove(C)])
+    const res = runWith(declare(B, built, 1, { removedMembers: [C] }), { members: [A, B], maintenanceBalance: FEE * 5n }, BigInt(0))
+    expect(res.reason).toBe('This transaction is valid!')
   })
 
   test('a path-only update from a member passes', async () => {
