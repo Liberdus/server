@@ -296,7 +296,21 @@ export const checkpoint =
         res.json({ error: 'No checkpoint yet for this group' })
         return
       }
-      res.json({ checkpoint: tree.checkpoint, epoch: group.epoch, cipherSuite: group.cipherSuite })
+      /*
+       * Everything a member needs to rejoin by external commit, in one read: the
+       * GroupInfo the last commit published (checked against the epoch it
+       * created), the tree at that epoch, and how far the PSK ratchet has moved.
+       * The tree is the live one, which is exactly the checkpoint's epoch while
+       * checkpoint.epoch === treeEpoch; otherwise the checkpoint is stale.
+       */
+      const current = tree.checkpoint.epoch === tree.treeEpoch
+      res.json({
+        checkpoint: tree.checkpoint,
+        ratchetTree: current ? tree.ratchetTree : null,
+        pskCount: current && tree.transcript ? tree.transcript.pskCount : null,
+        epoch: group.epoch,
+        cipherSuite: group.cipherSuite,
+      })
     } catch (error) {
       dapp.log(error)
       res.json({ error })

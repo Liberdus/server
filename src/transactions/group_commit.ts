@@ -7,6 +7,8 @@ import { SafeBigIntMath } from '../utils/safeBigIntMath'
 import * as AccountsStorage from '../storage/accountStorage'
 import { isUserAccount, isGroupAccount, isGroupTreeAccount } from '../@types/accountTypeGuards'
 import create from '../accounts'
+import { inspectCommit } from '../utils/mlsCommit'
+import { replayCommit, sameTree } from '../utils/mlsTree'
 
 /**
  * An MLS membership change: proposals + commit, plus the Welcomes for anyone
@@ -63,6 +65,10 @@ export const validate_fields = (tx: Tx.GroupCommit, response: ShardusTypes.Incom
    * `ratchetTree` is now a BASELINE, sent only on a group's first commit or on
    * migration; every other commit leaves it empty and sends a delta instead.
    */
+  if (tx.foundingConfirmationTag !== undefined && typeof tx.foundingConfirmationTag !== 'string') {
+    response.reason = 'tx "foundingConfirmationTag" must be a string when present.'
+    return response
+  }
   if (!Array.isArray(tx.treeDelta)) {
     response.reason = 'tx "treeDelta" must be an array.'
     return response
@@ -453,6 +459,20 @@ export const validate = (
     return response
   }
 
+  /*
+   * What the commit really does must be what the sender declared.
+   *
+   * Everything below checks the DECLARED adds and removes. The commit is read
+   * here so that a member cannot declare one change and commit another: hide an
+   * Add to let an outsider read the group, or a Remove to cut a member out while
+   * the roster still lists them. The admin rule is re-applied to the real change.
+   */
+  const inspection = inspectCommit(tx, group, treeForValidate?.ratchetTree ?? '')
+  if (inspection.ok === false) {
+    response.reason = inspection.reason
+    return response
+  }
+
   for (const address of tx.addedMembers) {
     if (group.members.includes(address)) {
       response.reason = `address ${address} is already a member.`
@@ -601,6 +621,7 @@ export const validate = (
    * commit excused here is the same commit the balance goes on to pay for.
    */
   const groupWillPayTheFee =
+    !inspection.effect.external &&
     isMembershipNeutral(tx) &&
     !!treeForValidate &&
     fillsABlankNode(treeForValidate.ratchetTree, tx.treeDelta) &&
@@ -661,14 +682,14 @@ const applyTreeDelta = (stored: string, delta: { i: number; n: string | null }[]
   return JSON.stringify(nodes)
 }
 
-export const apply = (
+export const apply = async (
   tx: Tx.GroupCommit,
   txTimestamp: number,
   txId: string,
   wrappedStates: WrappedStates,
   dapp: Shardus,
   applyResponse: ShardusTypes.ApplyResponse,
-): void => {
+): Promise<void> => {
   const from: UserAccount = wrappedStates[tx.from].data
   const group: GroupAccount = wrappedStates[tx.groupId].data
   const treeId = utils.calculateGroupTreeId(tx.groupId)
@@ -676,6 +697,23 @@ export const apply = (
 
   if (!tree) {
     throw Error('getRelevantAccount must create the GroupTreeAccount before apply')
+  }
+
+  /*
+   * The tree after this commit, computed from the commit itself.
+   *
+   * First, against the tree and epoch as they stood, and before any money moves.
+   * The client still sends its own baseline or delta; it must describe the same
+   * tree, or the commit fails and is rolled back. What is stored is always the
+   * computed tree, so a member can no longer write leaves the group does not
+   * have (threat model T15). Here and not in validate() because ts-mls verifies
+   * signatures asynchronously.
+   */
+  const replayed = await replayCommit(tree.ratchetTree, tree.transcript ?? null, tx, group)
+  const computedTree = replayed.tree
+  const claimedTree = tx.ratchetTree.length > 0 ? tx.ratchetTree : applyTreeDelta(tree.ratchetTree, tx.treeDelta)
+  if (!sameTree(claimedTree, computedTree)) {
+    throw new Error('the ratchet tree this commit claims does not match the commit.')
   }
 
   const transactionFee = utils.getTransactionFeeWei(AccountsStorage.cachedNetworkAccount)
@@ -700,7 +738,9 @@ export const apply = (
    * failures at will -- precrack only screens the node a client injects to --
    * so paying for them would be an open drain.
    */
+  // Never for a rejoin: a member could otherwise rejoin repeatedly on the group's money.
   const groupPaysTheFee =
+    !replayed.external &&
     isMembershipNeutral(tx) &&
     fillsABlankNode(tree.ratchetTree, tx.treeDelta) &&
     (group.maintenanceBalance ?? BigInt(0)) >= transactionFee
@@ -833,22 +873,10 @@ export const apply = (
     }
   }
 
-  /*
-   * Advance the stored ratchet tree.
-   *
-   * A baseline replaces it wholesale; otherwise the delta is applied by node
-   * index. This is pure data movement — the network does no MLS cryptography and
-   * cannot check that the delta is honest. It does not need to: RFC 9420
-   * requires a joiner to verify the tree against the `tree_hash` in the
-   * GroupContext carried in its Welcome, so a committer who publishes a corrupt
-   * tree is caught by the joiner and cannot forge one that hashes correctly.
-   */
-  if (tx.ratchetTree.length > 0) {
-    tree.ratchetTree = tx.ratchetTree
-  } else {
-    tree.ratchetTree = applyTreeDelta(tree.ratchetTree, tx.treeDelta)
-  }
+  // Advance the stored ratchet tree and transcript to those computed at the top.
+  tree.ratchetTree = computedTree
   tree.treeEpoch = group.epoch
+  tree.transcript = replayed.transcript
 
   /*
    * Drop the sender's own pending welcome.
@@ -894,6 +922,8 @@ export const apply = (
       addedBy: tx.from,
       epoch: group.epoch,
       timestamp: txTimestamp,
+      // Where the joiner's PSK ratchet stands, so a later rejoin can catch it up.
+      pskCount: replayed.transcript.pskCount,
     }
   }
   if (tx.welcomes.length > 0) {

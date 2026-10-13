@@ -4,6 +4,19 @@ import * as crypto from '../src/crypto'
 import { groupAccount } from '../src/accounts/groupAccount'
 import { groupTreeAccount } from '../src/accounts/groupTreeAccount'
 import { apply } from '../src/transactions/group_commit'
+
+// These tests are about who pays for a commit. apply() now replays the commit to
+// compute the tree (src/utils/mlsTree.ts, covered by groupTreeReplay.test.ts),
+// which these placeholder commits cannot survive, so the replay is stood in for
+// by the tree the client claims.
+jest.mock('../src/utils/mlsTree', () => ({
+  replayCommit: jest.fn(async () => ({
+    tree: '[]',
+    transcript: { epoch: 1, treeHash: '', confirmedTranscriptHash: '', confirmationTag: '', pskCount: 0 },
+    external: false,
+  })),
+  sameTree: jest.fn(() => true),
+}))
 import * as AccountsStorage from '../src/storage/accountStorage'
 import * as utils from '../src/utils'
 import { GroupAccount, GroupTreeAccount, UserAccount } from '../src/@types'
@@ -87,10 +100,10 @@ const commitTx = (over: Record<string, unknown> = {}): any => ({
 })
 
 /** Runs apply() and reports where the fee came from. */
-const applyCommit = (
+const applyCommit = async (
   tx: any,
   opts: { treeNodes: (string | null)[]; balance: bigint; senderBalance?: bigint },
-): { group: GroupAccount; sender: UserAccount } => {
+): Promise<{ group: GroupAccount; sender: UserAccount }> => {
   const group = makeGroup({ maintenanceBalance: opts.balance })
   const tree = makeTree(opts.treeNodes)
   const sender = user(tx.from, opts.senderBalance ?? FEE * 100n)
@@ -101,14 +114,14 @@ const applyCommit = (
   }
   // apply() writes a chat entry onto each added member, so they have to be here.
   for (const address of tx.addedMembers) wrappedStates[address] = { data: user(address, BigInt(0)) }
-  apply(tx, 1_700_000_200_000, 'tx-id', wrappedStates, dapp, {} as any)
+  await apply(tx, 1_700_000_200_000, 'tx-id', wrappedStates, dapp, {} as any)
   return { group, sender }
 }
 
 describe('a repair commit is paid for by the group', () => {
-  test('filling a blank node draws on the maintenance balance, not the sender', () => {
+  test('filling a blank node draws on the maintenance balance, not the sender', async () => {
     const startingSender = FEE * 100n
-    const { group, sender } = applyCommit(commitTx({ treeDelta: [{ i: 1, n: 'bm9kZQ==' }] }), {
+    const { group, sender } = await applyCommit(commitTx({ treeDelta: [{ i: 1, n: 'bm9kZQ==' }] }), {
       treeNodes: ['a', null, 'c'], // node 1 is blank
       balance: FEE * 5n,
       senderBalance: startingSender,
@@ -117,9 +130,9 @@ describe('a repair commit is paid for by the group', () => {
     expect(sender.data.balance).toBe(startingSender)
   })
 
-  test('a member with an empty wallet can still perform a funded repair', () => {
+  test('a member with an empty wallet can still perform a funded repair', async () => {
     // The person this whole mechanism exists to stop charging.
-    const { group, sender } = applyCommit(commitTx({ treeDelta: [{ i: 1, n: 'bm9kZQ==' }] }), {
+    const { group, sender } = await applyCommit(commitTx({ treeDelta: [{ i: 1, n: 'bm9kZQ==' }] }), {
       treeNodes: ['a', null, 'c'],
       balance: FEE * 3n,
       senderBalance: BigInt(0),
@@ -128,10 +141,10 @@ describe('a repair commit is paid for by the group', () => {
     expect(sender.data.balance).toBe(BigInt(0))
   })
 
-  test('a node past the end of the trimmed array counts as blank', () => {
+  test('a node past the end of the trimmed array counts as blank', async () => {
     // Trailing blanks are trimmed on write, so a removal on the right of the
     // tree leaves its ancestors simply absent rather than present-and-null.
-    const { group } = applyCommit(commitTx({ treeDelta: [{ i: 6, n: 'bm9kZQ==' }] }), {
+    const { group } = await applyCommit(commitTx({ treeDelta: [{ i: 6, n: 'bm9kZQ==' }] }), {
       treeNodes: ['a', 'b', 'c'],
       balance: FEE * 5n,
     })
@@ -140,9 +153,9 @@ describe('a repair commit is paid for by the group', () => {
 })
 
 describe('everything else is charged to the sender', () => {
-  test('a commit that overwrites occupied nodes is not a repair', () => {
+  test('a commit that overwrites occupied nodes is not a repair', async () => {
     const startingSender = FEE * 100n
-    const { group, sender } = applyCommit(commitTx({ treeDelta: [{ i: 0, n: 'bm9kZQ==' }] }), {
+    const { group, sender } = await applyCommit(commitTx({ treeDelta: [{ i: 0, n: 'bm9kZQ==' }] }), {
       treeNodes: ['a', 'b', 'c'], // nothing blank
       balance: FEE * 5n,
       senderBalance: startingSender,
@@ -151,9 +164,9 @@ describe('everything else is charged to the sender', () => {
     expect(sender.data.balance).toBe(startingSender - FEE)
   })
 
-  test('blanking a node is damage, not repair', () => {
+  test('blanking a node is damage, not repair', async () => {
     const startingSender = FEE * 100n
-    const { group, sender } = applyCommit(commitTx({ treeDelta: [{ i: 1, n: null }] }), {
+    const { group, sender } = await applyCommit(commitTx({ treeDelta: [{ i: 1, n: null }] }), {
       treeNodes: ['a', 'b', 'c'],
       balance: FEE * 5n,
       senderBalance: startingSender,
@@ -162,9 +175,9 @@ describe('everything else is charged to the sender', () => {
     expect(sender.data.balance).toBe(startingSender - FEE)
   })
 
-  test('an underfunded group cannot pay, so the sender does', () => {
+  test('an underfunded group cannot pay, so the sender does', async () => {
     const startingSender = FEE * 100n
-    const { group, sender } = applyCommit(commitTx({ treeDelta: [{ i: 1, n: 'bm9kZQ==' }] }), {
+    const { group, sender } = await applyCommit(commitTx({ treeDelta: [{ i: 1, n: 'bm9kZQ==' }] }), {
       treeNodes: ['a', null, 'c'],
       balance: FEE - 1n, // one wei short
       senderBalance: startingSender,
@@ -173,7 +186,7 @@ describe('everything else is charged to the sender', () => {
     expect(sender.data.balance).toBe(startingSender - FEE)
   })
 
-  test('a commit that adds a member is never a repair, and collects a deposit', () => {
+  test('a commit that adds a member is never a repair, and collects a deposit', async () => {
     const startingSender = FEE * 100n
     const tx = commitTx({
       from: ADMIN,
@@ -181,7 +194,7 @@ describe('everything else is charged to the sender', () => {
       welcomes: [],
       treeDelta: [{ i: 1, n: 'bm9kZQ==' }], // fills a blank, but membership changed
     })
-    const { group, sender } = applyCommit(tx, {
+    const { group, sender } = await applyCommit(tx, {
       treeNodes: ['a', null, 'c'],
       balance: FEE * 5n,
       senderBalance: startingSender,

@@ -8,6 +8,8 @@ module.exports = {
   moduleDirectories: ['node_modules', 'src'], 
   transform: {
     '^.+\\.(ts|tsx)$': 'ts-jest',
+    // The vendored MLS bundle is an ES module; jest 26 loads CommonJS only.
+    '^.+/src/vendor/.+\\.js$': 'ts-jest',
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],  // Include setup file
   moduleNameMapper: {

@@ -316,6 +316,7 @@ export namespace Tx {
     pskNonce: string // b64
     epoch: number
     timestamp: number
+    pskCount?: number // set by the network: PSK commits up to and including this one
   }
 
   export interface GroupCreate extends BaseLiberdusTx {
@@ -381,15 +382,21 @@ export namespace Tx {
      * Ratchet-tree nodes this commit changed, by node index (even = leaf,
      * odd = parent); `n: null` blanks the node.
      *
-     * Must be an explicit field rather than something the server derives: our
-     * commits are mls_private_message, so the UpdatePath inside them is
-     * encrypted and the network cannot read it.
+     * The network now computes the tree from the commit itself (commits are
+     * mls_public_message) and refuses a commit whose delta describes a
+     * different one; see utils/mlsTree.ts.
      */
     treeDelta: { i: number; n: string | null }[]
     addedMembers: string[]
     removedMembers: string[]
     consumedKeyPackages: { address: string; keyPackage: string }[]
     meta?: string
+    /**
+     * b64 confirmation tag of epoch 0, sent with a group's first commit only.
+     * The network's transcript hash chain starts from it, and it is derived
+     * from the founder's secrets, so nothing public carries it.
+     */
+    foundingConfirmationTag?: string
     fee: bigint
   }
 
@@ -1135,6 +1142,28 @@ export interface GroupTreeAccount {
     groupInfo: string // b64 GroupInfo with external_pub
     timestamp: number
   } | null
+
+  /**
+   * The public half of the group's MLS GroupContext at `epoch`, which the
+   * network tracks from the public commits so it can check each commit's
+   * signature the way members do. Null until a group's first commit, and for
+   * groups whose commits predate it. All values b64.
+   */
+  transcript: GroupTranscript | null
+}
+
+export interface GroupTranscript {
+  epoch: number
+  treeHash: string
+  confirmedTranscriptHash: string
+  /** This epoch's confirmation tag; the next commit's transcript hash chains from it. */
+  confirmationTag: string
+  /**
+   * How many commits so far carried the group's post-quantum PSK. Members step
+   * the PSK ratchet once per such commit, so a member rejoining by external
+   * commit steps their stored PSK forward by the difference to catch up.
+   */
+  pskCount: number
 }
 
 export interface AliasAccount {

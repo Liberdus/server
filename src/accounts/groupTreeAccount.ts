@@ -35,6 +35,7 @@ export const groupTreeAccount = (accountId: string, groupId: string): GroupTreeA
     pendingJoinRequests: {},
     vestedFees: [],
     checkpoint: null,
+    transcript: null,
   }
 
   account.hash = crypto.hashObj(account)
@@ -66,6 +67,7 @@ export const serializeGroupTreeAccount = (stream: VectorBufferStream, inp: Group
   stream.writeString(Utils.safeStringify(inp.pendingJoinRequests))
   stream.writeString(Utils.safeStringify(inp.vestedFees))
   stream.writeString(Utils.safeStringify(inp.checkpoint))
+  stream.writeString(Utils.safeStringify(inp.transcript ?? null))
 }
 
 export const deserializeGroupTreeAccount = (stream: VectorBufferStream, root = false): GroupTreeAccount => {
@@ -88,6 +90,12 @@ export const deserializeGroupTreeAccount = (stream: VectorBufferStream, root = f
   const pendingJoinRequests = Utils.safeJsonParse(stream.readString())
   const vestedFees = Utils.safeJsonParse(stream.readString())
   const checkpoint = Utils.safeJsonParse(stream.readString())
+  /*
+   * transcript was added after group trees were already being serialized, so a
+   * buffer written before it ends here. Such a group has no transcript, and its
+   * next commit is refused (see utils/mlsTree.ts).
+   */
+  const transcript = stream.isAtOrPastEnd() ? null : Utils.safeJsonParse(stream.readString())
 
   return {
     id,
@@ -103,5 +111,6 @@ export const deserializeGroupTreeAccount = (stream: VectorBufferStream, root = f
     pendingJoinRequests,
     vestedFees,
     checkpoint,
+    transcript,
   }
 }
