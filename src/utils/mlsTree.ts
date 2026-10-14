@@ -82,6 +82,32 @@ export const treeToWire = (tree: any[]): string => {
 
 const leafAddress = (leafNode: any): string => textDecoder.decode(leafNode.credential.identity)
 
+/**
+ * The most one encoded ratchet-tree node may be, in bytes.
+ *
+ * Every node is member-supplied -- a leaf from a key package or an UpdatePath,
+ * a parent's key from an UpdatePath -- and ts-mls accepts a leaf carrying any
+ * extension. The tree is stored once live and again for each epoch with a
+ * pending welcome, so one padded leaf costs many times its size (threat model
+ * T7). Measured honest sizes: a leaf ~1,470 bytes, a parent ~1,290 plus 4 per
+ * unmerged leaf, so 3 kB is about twice the largest.
+ *
+ * A constant rather than a config flag so this module stays free of server
+ * imports, as mlsCommit.ts is.
+ */
+export const MAX_TREE_NODE_BYTES = 3 * 1024
+
+/** Refuses a tree holding a node larger than MAX_TREE_NODE_BYTES. Checked on the computed tree, so it covers every source. */
+const checkNodeSizes = (tree: any[]): void => {
+  tree.forEach((node, index) => {
+    if (node === undefined) return
+    const size = mls.encodeNode(node).length
+    if (size > MAX_TREE_NODE_BYTES) {
+      throw new Error(`ratchet tree node ${index} is ${size} bytes; a node may be at most ${MAX_TREE_NODE_BYTES}.`)
+    }
+  })
+}
+
 const b64 = (bytes: Uint8Array): string => Buffer.from(bytes).toString('base64')
 const fromB64 = (value: string): Uint8Array => new Uint8Array(Buffer.from(value, 'base64'))
 
@@ -229,6 +255,8 @@ export async function replayCommit(
   const { newTree, committerLeaf, carriesPsk } = external
     ? await replayExternal(tree, content.commit, tx, groupContext, cs)
     : await replayMember(tree, content.commit, content.sender.leafIndex, tx, groupContext, cs)
+
+  checkNodeSizes(newTree)
 
   // The next epoch's context, exactly as members derive it in processCommit.
   const newTreeHash = await mls.treeHashRoot(newTree, cs.hash)

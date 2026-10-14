@@ -2,7 +2,7 @@ import { randomBytes, webcrypto } from 'crypto'
 import { Utils } from '@shardus/lib-types'
 import * as crypto from '../src/crypto'
 import * as mlsLib from '../src/vendor/ts-mls.js'
-import { replayCommit, treeToWire } from '../src/utils/mlsTree'
+import { replayCommit, treeToWire, MAX_TREE_NODE_BYTES } from '../src/utils/mlsTree'
 import { inspectCommit } from '../src/utils/mlsCommit'
 import { groupAccount } from '../src/accounts/groupAccount'
 import { groupTreeAccount, serializeGroupTreeAccount, deserializeGroupTreeAccount } from '../src/accounts/groupTreeAccount'
@@ -267,6 +267,50 @@ describe('replayCommit', () => {
     await expect(replayCommit(baseline, transcript1, input(A, { wire: stripped, groupInfo: '' }), group(1))).rejects.toThrow(
       "the commit's signature does not verify.",
     )
+  })
+})
+
+describe('tree node size (T7)', () => {
+  // A private-use extension type; ts-mls accepts any listed in the leaf's capabilities.
+  const PAD_TYPE = 0xf0a1
+  const padded = { extensionType: PAD_TYPE, extensionData: new Uint8Array(40_000) }
+  const D = 'd'.repeat(64)
+
+  test('an add whose key package carries a padded leaf is refused', async () => {
+    const big = await mls.generateKeyPackage(
+      { credentialType: 'basic', identity: te.encode(D) },
+      { ...caps, extensions: [PAD_TYPE] },
+      mls.defaultLifetime,
+      [],
+      cs,
+      [padded],
+    )
+    const add = await commit(aState, [{ proposalType: 'add', add: { keyPackage: big.publicPackage } }])
+    await expect(replayCommit(baseline, transcript1, input(A, add), group(1))).rejects.toThrow(/ratchet tree node 6 is \d+ bytes/)
+  })
+
+  test("a path update whose new leaf is padded is refused", async () => {
+    // As with the forged credential above: ts-mls carries B's leaf into the new
+    // one, extensions and all, and signs it with B's key.
+    const bLeaf = leafOf(bState, B) * 2
+    const paddedTree = bState.ratchetTree.slice()
+    const leaf = paddedTree[bLeaf].leaf
+    paddedTree[bLeaf] = {
+      ...paddedTree[bLeaf],
+      leaf: { ...leaf, capabilities: { ...leaf.capabilities, extensions: [PAD_TYPE] }, extensions: [padded] },
+    }
+    const upd = await commit({ ...bState, ratchetTree: paddedTree }, [], false)
+    await expect(replayCommit(baseline, transcript1, input(B, upd), group(1))).rejects.toThrow(
+      new RegExp(`ratchet tree node ${bLeaf} is \\d+ bytes`),
+    )
+  })
+
+  test('an honest add is well inside the limit', async () => {
+    const honest = await mls.generateKeyPackage({ credentialType: 'basic', identity: te.encode(D) }, caps, mls.defaultLifetime, [], cs)
+    const add = await commit(aState, [{ proposalType: 'add', add: { keyPackage: honest.publicPackage } }])
+    const { tree } = await replayCommit(baseline, transcript1, input(A, add), group(1))
+    const largest = Math.max(...JSON.parse(tree).map((n: string | null) => (n ? Buffer.from(n, 'base64').length : 0)))
+    expect(largest).toBeLessThan(MAX_TREE_NODE_BYTES / 2 + 100)
   })
 })
 

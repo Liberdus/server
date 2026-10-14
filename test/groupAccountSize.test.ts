@@ -5,6 +5,7 @@ import { groupAccount, serializeGroupAccount } from '../src/accounts/groupAccoun
 import { groupTreeAccount } from '../src/accounts/groupTreeAccount'
 import * as message from '../src/transactions/group_message'
 import * as commit from '../src/transactions/group_commit'
+import * as publish from '../src/transactions/group_keypackage_publish'
 import * as AccountsStorage from '../src/storage/accountStorage'
 import * as utils from '../src/utils'
 import { GroupAccount, GroupTreeAccount, UserAccount } from '../src/@types'
@@ -204,6 +205,31 @@ describe('group_commit stores nothing it does not count', () => {
     expect(stored.junk).toBeUndefined()
     expect(Object.keys(stored).sort()).toEqual(
       ['addedBy', 'epoch', 'pskCount', 'pskId', 'pskNonce', 'ratchetTree', 'sealedPsk', 'timestamp', 'welcome'].sort(),
+    )
+  })
+})
+
+describe('key package size', () => {
+  const publishTx = (over: Record<string, unknown>): any => ({
+    type: 'group_keypackage_publish',
+    from: ADMIN,
+    keyPackages: [],
+    cipherSuite: 84,
+    fee: FEE,
+    timestamp: T0,
+    ...over,
+  })
+  const reason = (over: Record<string, unknown>): string => publish.validate_fields(publishTx(over), fresh()).reason
+
+  test('an honest-sized key package passes', () => {
+    // 3,612 bytes of base64, measured for the client's X-Wing key package.
+    expect(reason({ keyPackages: ['A'.repeat(3612)] })).not.toContain('at most')
+  })
+
+  test('a key package padded past 6 kB is refused, last resort included', () => {
+    expect(reason({ keyPackages: ['A'.repeat(7 * 1024)] })).toBe('each key package must be at most 6144 bytes.')
+    expect(reason({ keyPackages: ['A'.repeat(3612)], lastResortKeyPackage: 'A'.repeat(7 * 1024) })).toBe(
+      'each key package must be at most 6144 bytes.',
     )
   })
 })

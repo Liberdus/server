@@ -51,6 +51,15 @@ export const validate_fields = (
     response.reason = 'tx "lastResortKeyPackage" must be a string when present.'
     return response
   }
+  // Refused here so an oversized leaf never reaches an add; the tree replay
+  // refuses it again either way (threat model T7).
+  const maxKeyPackage = config.LiberdusFlags.groupMaxKeyPackageBytes
+  for (const kp of [...tx.keyPackages, tx.lastResortKeyPackage ?? '']) {
+    if (Buffer.byteLength(kp, 'utf8') > maxKeyPackage) {
+      response.reason = `each key package must be at most ${maxKeyPackage} bytes.`
+      return response
+    }
+  }
   if (typeof tx.cipherSuite !== 'number' || !Number.isInteger(tx.cipherSuite) || tx.cipherSuite <= 0) {
     response.reason = 'tx "cipherSuite" must be a positive integer.'
     return response

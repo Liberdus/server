@@ -317,6 +317,8 @@ interface LiberdusFlags {
   groupMessageMinIntervalMs: number
   /** Max unconsumed KeyPackages an account may hold at once. */
   groupMaxKeyPackagesPerAccount: number
+  /** Max size of one published key package, as base64 bytes. */
+  groupMaxKeyPackageBytes: number
   groupMaxHandshakes: number
   groupDefaultAddPolicy: 'anyone' | 'contacts' | 'nobody'
   groupMaxPendingJoinRequests: number
@@ -399,6 +401,13 @@ export const LiberdusFlags: LiberdusFlags = {
   groupMessageRetentionDays: 7,
   groupMessageMinIntervalMs: 1000,
   groupMaxKeyPackagesPerAccount: 10, // X-Wing KeyPackages are ~2.6 kB each
+  /*
+   * A key package is a leaf plus an X-Wing init key: 3,612 bytes of base64
+   * measured. 6 kB matches MAX_TREE_NODE_BYTES (src/utils/mlsTree.ts), which
+   * bounds the leaf; ts-mls accepts a leaf carrying any extension, so without
+   * these a member could add a ~55 kB leaf (threat model T7).
+   */
+  groupMaxKeyPackageBytes: 6 * 1024,
   /*
    * How many commits the group transcript keeps.
    *
