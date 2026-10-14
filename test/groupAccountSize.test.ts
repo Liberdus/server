@@ -2,10 +2,11 @@ import { VectorBufferStream } from '@shardus/core'
 import { Utils } from '@shardus/lib-types'
 import * as crypto from '../src/crypto'
 import { groupAccount, serializeGroupAccount } from '../src/accounts/groupAccount'
-import { groupTreeAccount } from '../src/accounts/groupTreeAccount'
+import { groupTreeAccount, serializeGroupTreeAccount } from '../src/accounts/groupTreeAccount'
 import * as message from '../src/transactions/group_message'
 import * as commit from '../src/transactions/group_commit'
 import * as publish from '../src/transactions/group_keypackage_publish'
+import * as config from '../src/config'
 import * as AccountsStorage from '../src/storage/accountStorage'
 import * as utils from '../src/utils'
 import { GroupAccount, GroupTreeAccount, UserAccount } from '../src/@types'
@@ -22,9 +23,11 @@ import { GroupAccount, GroupTreeAccount, UserAccount } from '../src/@types'
  * group_commit's tree replay is stood in for, as in the money tests; these are
  * about what gets stored, not MLS.
  */
+// The tree the stood-in replay computes; the budget tests make it large.
+let mockTree = '[]'
 jest.mock('../src/utils/mlsTree', () => ({
   replayCommit: jest.fn(async () => ({
-    tree: '[]',
+    tree: mockTree,
     transcript: { epoch: 1, treeHash: '', confirmedTranscriptHash: '', confirmationTag: '', pskCount: 0 },
     external: false,
   })),
@@ -231,5 +234,62 @@ describe('key package size', () => {
     expect(reason({ keyPackages: ['A'.repeat(3612)], lastResortKeyPackage: 'A'.repeat(7 * 1024) })).toBe(
       'each key package must be at most 6144 bytes.',
     )
+  })
+})
+
+describe('the tree account history budget', () => {
+  const KB100 = 'A'.repeat(100_000)
+  const handshake = (epoch: number): any => ({ type: 'group_commit', txId: String(epoch), from: ADMIN, groupId: GROUP, epoch, commit: KB100 })
+  const welcome = (epoch: number): any => ({ welcome: 'd2VsY29tZQ==', ratchetTree: '', epoch, timestamp: T0 })
+  const invitee = (n: number): string => n.toString(16).padStart(64, 'e')
+
+  test('drops the oldest first, by the commit that wrote it, and a snapshot takes its welcomes', () => {
+    const tree = groupTreeAccount(TREE(), GROUP)
+    tree.handshakes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(handshake)
+    // Snapshot 3 was written by the commit recorded at handshake 2.
+    tree.welcomeTrees = { '3': 'B'.repeat(200_000), '8': 'B'.repeat(200_000) }
+    tree.pendingWelcomes = { [invitee(3)]: welcome(3), [invitee(8)]: welcome(8) } as any
+    commit.trimTreeHistory(tree, 10, 1024 * 1024)
+    // Handshakes 0-2 went first (2 and snapshot 3 share a commit; the handshake
+    // goes before the snapshot), then snapshot 3 and its welcome.
+    expect(tree.handshakes.map((h) => h.epoch)).toEqual([3, 4, 5, 6, 7, 8, 9])
+    expect(Object.keys(tree.welcomeTrees)).toEqual(['8'])
+    expect(Object.keys(tree.pendingWelcomes)).toEqual([invitee(8)])
+  })
+
+  test('never drops the commit just recorded or the snapshot it just took', () => {
+    const tree = groupTreeAccount(TREE(), GROUP)
+    tree.handshakes = [7, 8, 9].map(handshake)
+    tree.welcomeTrees = { '10': 'B'.repeat(200_000) }
+    tree.pendingWelcomes = { [invitee(10)]: welcome(10) } as any
+    commit.trimTreeHistory(tree, 10, 0)
+    expect(tree.handshakes.map((h) => h.epoch)).toEqual([9])
+    expect(Object.keys(tree.welcomeTrees)).toEqual(['10'])
+    expect(Object.keys(tree.pendingWelcomes)).toEqual([invitee(10)])
+  })
+
+  test('an admin inviting people who never join cannot grow the account past the budget', async () => {
+    // A 300 kB tree: a 50-member tree is 105 kB, and a node may be twice honest size.
+    mockTree = JSON.stringify(['C'.repeat(300_000)])
+    try {
+      const w = world()
+      for (let n = 1; n <= 30; n++) {
+        const who = invitee(n)
+        w.wrapped[who] = { data: user(who) }
+        const tx = addTx({ tx: { epoch: w.group.epoch, addedMembers: [who], consumedKeyPackages: [{ address: who, keyPackage: 'a3A=' }], timestamp: T0 + n * 1000 } })
+        tx.welcomes[0].address = who
+        await commit.apply(tx, tx.timestamp, n.toString(16).padStart(64, 'c'), w.wrapped, dapp, {} as any)
+      }
+      const out = new VectorBufferStream(0)
+      serializeGroupTreeAccount(out, w.tree, true)
+      // Budget, plus the live tree and small change. Thirty snapshots were ~9 MB.
+      expect(out.getBuffer().length).toBeLessThan(config.LiberdusFlags.groupTreeHistoryBudgetBytes + 400_000)
+      // The newest invitation still works; the oldest went with its snapshot.
+      expect(w.tree.pendingWelcomes[invitee(30)]).toBeDefined()
+      expect(w.tree.welcomeTrees[String(w.tree.pendingWelcomes[invitee(30)].epoch)]).toBeDefined()
+      expect(w.tree.pendingWelcomes[invitee(1)]).toBeUndefined()
+    } finally {
+      mockTree = '[]'
+    }
   })
 })

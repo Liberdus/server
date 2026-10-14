@@ -1,5 +1,6 @@
 import * as crypto from '../crypto'
 import { Shardus, ShardusTypes } from '@shardus/core'
+import { Utils } from '@shardus/lib-types'
 import * as utils from '../utils'
 import * as config from '../config'
 import { UserAccount, GroupAccount, GroupTreeAccount, ChatAccount, WrappedStates, Tx, AppReceiptData, TXTypes } from '../@types'
@@ -702,6 +703,49 @@ export const validate = (
  */
 const WELCOME_RETENTION_EPOCHS = 50
 
+/** Bytes an item takes in the stored account, which writes these parts as JSON. */
+const storedBytes = (value: unknown): number => Buffer.byteLength(Utils.safeStringify(value), 'utf8')
+
+/**
+ * Keeps the handshakes and the welcome snapshots (each with its welcomes)
+ * within groupTreeHistoryBudgetBytes, dropping the oldest first.
+ *
+ * Oldest by the commit that wrote it: a handshake is recorded at the epoch its
+ * commit was built on, a snapshot at the epoch that commit created, one later.
+ * When both came from one commit the handshake goes first -- a member who
+ * needed it rejoins from the checkpoint on their own, while an invitee whose
+ * snapshot is gone has to be added again.
+ *
+ * Never drops the commit just recorded or the snapshot it just took, so a
+ * member one commit behind and an invitee just added are never stranded by it.
+ * Exported for tests.
+ */
+export const trimTreeHistory = (tree: GroupTreeAccount, currentEpoch: number, budget: number): void => {
+  const welcomesAt = (epoch: number): string[] =>
+    Object.keys(tree.pendingWelcomes).filter((address) => (tree.pendingWelcomes[address].epoch || 0) === epoch)
+  const snapshotBytes = (epoch: number): number =>
+    storedBytes(tree.welcomeTrees[String(epoch)]) +
+    welcomesAt(epoch).reduce((sum, address) => sum + address.length + storedBytes(tree.pendingWelcomes[address]), 0)
+
+  let total =
+    tree.handshakes.reduce((sum, h) => sum + storedBytes(h), 0) +
+    Object.keys(tree.welcomeTrees).reduce((sum, epoch) => sum + snapshotBytes(Number(epoch)), 0)
+
+  while (total > budget) {
+    const oldestHandshake = tree.handshakes.length > 1 ? tree.handshakes[0].epoch : Infinity
+    const snapshotEpochs = Object.keys(tree.welcomeTrees).map(Number).filter((e) => e !== currentEpoch)
+    const oldestSnapshot = snapshotEpochs.length > 0 ? Math.min(...snapshotEpochs) : Infinity
+    if (oldestHandshake === Infinity && oldestSnapshot === Infinity) break
+    if (oldestHandshake <= oldestSnapshot - 1) {
+      total -= storedBytes(tree.handshakes.shift())
+    } else {
+      total -= snapshotBytes(oldestSnapshot)
+      for (const address of welcomesAt(oldestSnapshot)) delete tree.pendingWelcomes[address]
+      delete tree.welcomeTrees[String(oldestSnapshot)]
+    }
+  }
+}
+
 /**
  * Applies a ratchet-tree delta to the stored tree.
  *
@@ -1027,6 +1071,9 @@ export const apply = async (
   for (const epoch of Object.keys(tree.welcomeTrees)) {
     if (!neededEpochs.has(epoch)) delete tree.welcomeTrees[epoch]
   }
+
+  // Then hold the history to its byte budget (threat model T7).
+  trimTreeHistory(tree, group.epoch, config.LiberdusFlags.groupTreeHistoryBudgetBytes)
 
   /*
    * Checkpoint every commit. A member who was offline while older commits were

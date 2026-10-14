@@ -1078,10 +1078,10 @@ export interface GroupTreeAccount {
 
   // --- transcript -----------------------------------------------------------
   /**
-   * Commits. MUST NOT be pruned on the ordinary retention timer — dropping a
-   * commit a member has not applied locks that member out of the group forever.
-   * Only prune below `checkpoint.epoch`, from which stragglers can re-join
-   * externally.
+   * Commits. Not pruned on the ordinary retention timer: a member who has not
+   * applied a dropped commit must rejoin from `checkpoint` instead. Pruned only
+   * past groupMaxHandshakes, or oldest-first with the welcome snapshots when
+   * together they pass groupTreeHistoryBudgetBytes (trimTreeHistory).
    */
   handshakes: Tx.GroupCommitRecord[]
 

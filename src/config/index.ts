@@ -320,6 +320,8 @@ interface LiberdusFlags {
   /** Max size of one published key package, as base64 bytes. */
   groupMaxKeyPackageBytes: number
   groupMaxHandshakes: number
+  /** Bytes the transcript and the welcome snapshots may take together; oldest dropped first. */
+  groupTreeHistoryBudgetBytes: number
   groupDefaultAddPolicy: 'anyone' | 'contacts' | 'nobody'
   groupMaxPendingJoinRequests: number
   groupJoinRequestTimeoutMs: number
@@ -419,6 +421,18 @@ export const LiberdusFlags: LiberdusFlags = {
    * handshakes endpoint and surface a reset when they fall behind it.
    */
   groupMaxHandshakes: 50,
+  /*
+   * The count caps alone let the GroupTreeAccount reach ~8 MB: 50 handshakes of
+   * up to 64 kB, and a tree snapshot (105 kB at 50 members, measured) for each
+   * of up to 50 epochs with an uncollected welcome. group_commit carries this
+   * account between nodes with the GroupAccount, inside Liberdus's 10 MB limit
+   * per internal message (threat model T7). So past this budget the oldest
+   * handshake or snapshot goes first, whichever is older; a snapshot takes its
+   * welcomes with it. A member who needed a dropped commit rejoins from the
+   * checkpoint ("Fix this"); an invitee whose snapshot went must be added again.
+   * An ordinary group stays well under it: 50 path updates are ~0.5 MB.
+   */
+  groupTreeHistoryBudgetBytes: 3 * 1024 * 1024,
   /*
    * Network default for accounts that have not set `groupAddPolicy`.
    *
