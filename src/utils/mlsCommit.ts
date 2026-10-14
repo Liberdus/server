@@ -146,6 +146,10 @@ export function inspectCommit(tx: CommitDeclaration, group: GroupFacts, storedTr
 
   const content = message.publicMessage.content
   if (content.contentType !== 'commit') return refuse(`commit message carries ${content.contentType}, not a commit.`)
+  // Clients never set it, and it is stored in the transcript: free padding (threat model T7).
+  if (content.authenticatedData && content.authenticatedData.length > 0) {
+    return refuse('commit carries authenticated data, which is not allowed.')
+  }
   if (textDecoder.decode(content.groupId) !== group.mlsGroupId) return refuse('commit is for a different MLS group.')
   if (Number(content.epoch) !== tx.epoch || tx.epoch !== group.epoch) {
     return refuse(`commit is built on epoch ${content.epoch}; the group is at ${group.epoch}.`)
@@ -243,6 +247,7 @@ export function inspectCommit(tx: CommitDeclaration, group: GroupFacts, storedTr
   const declaredPskId = tx.pskId ?? ''
   if (declaredPskId.length === 0) {
     if (psks.length > 0) return refuse('commit carries a PSK proposal but declares no pskId.')
+    if ((tx.pskNonce ?? '').length > 0) return refuse('commit declares a pskNonce but no pskId.')
   } else {
     const psk = psks[0]
     if (

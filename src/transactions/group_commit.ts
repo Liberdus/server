@@ -48,6 +48,15 @@ export const validate_fields = (tx: Tx.GroupCommit, response: ShardusTypes.Incom
     response.reason = 'tx "proposals" must be an array.'
     return response
   }
+  /*
+   * Must be empty. Proposals travel inside the commit, and a proposal by
+   * reference is refused (inspectCommit), so nothing reads this field -- but it
+   * is stored in the transcript, which made it free padding (threat model T7).
+   */
+  if (tx.proposals.length > 0) {
+    response.reason = 'tx "proposals" must be empty; proposals belong inside the commit.'
+    return response
+  }
   if (typeof tx.pskId !== 'string' || typeof tx.pskNonce !== 'string') {
     response.reason = 'tx "pskId" and "pskNonce" must be strings.'
     return response
@@ -65,6 +74,10 @@ export const validate_fields = (tx: Tx.GroupCommit, response: ShardusTypes.Incom
    * `ratchetTree` is now a BASELINE, sent only on a group's first commit or on
    * migration; every other commit leaves it empty and sends a delta instead.
    */
+  if (tx.meta !== undefined && typeof tx.meta !== 'string') {
+    response.reason = 'tx "meta" must be a string when present.'
+    return response
+  }
   if (tx.foundingConfirmationTag !== undefined && typeof tx.foundingConfirmationTag !== 'string') {
     response.reason = 'tx "foundingConfirmationTag" must be a string when present.'
     return response
@@ -168,8 +181,21 @@ export const validate_fields = (tx: Tx.GroupCommit, response: ShardusTypes.Incom
       return response
     }
     const env = welcome.envelope
-    if (!env || typeof env.welcome !== 'string' || typeof env.ratchetTree !== 'string' || !env.sealedPsk) {
+    if (
+      !env ||
+      typeof env.welcome !== 'string' ||
+      typeof env.ratchetTree !== 'string' ||
+      typeof env.pskId !== 'string' ||
+      typeof env.pskNonce !== 'string' ||
+      !env.sealedPsk
+    ) {
       response.reason = 'tx contains a malformed welcome envelope.'
+      return response
+    }
+    // The joiner is served the network's own snapshot for its epoch instead
+    // (GET /group/:id/welcome), so a tree sent here would only be stored.
+    if (env.ratchetTree !== '') {
+      response.reason = 'a welcome envelope must not carry a ratchet tree; the network supplies it.'
       return response
     }
     if (
@@ -183,6 +209,11 @@ export const validate_fields = (tx: Tx.GroupCommit, response: ShardusTypes.Incom
   }
 
   /*
+   * Everything the network stores from this transaction is counted: a field
+   * left out could be padded for free, and it stays on the GroupTreeAccount
+   * (transcript, pending welcomes) or the GroupAccount (meta), which every
+   * later commit carries between nodes (threat model T7).
+   *
    * The welcomes are counted here, not just the commit.
    *
    * Each welcome envelope carries a full ratchet tree (~1.8 kB per group member)
@@ -199,10 +230,12 @@ export const validate_fields = (tx: Tx.GroupCommit, response: ShardusTypes.Incom
     // than stringifying it — String(obj) would score every PSK as 15 bytes.
     return (
       sum +
-      Buffer.byteLength(String(env.welcome), 'utf8') +
-      Buffer.byteLength(String(env.ratchetTree || ''), 'utf8') +
-      Buffer.byteLength(String(env.sealedPsk.cipherText || ''), 'utf8') +
-      Buffer.byteLength(String(env.sealedPsk.nonce || ''), 'utf8')
+      Buffer.byteLength(env.welcome, 'utf8') +
+      Buffer.byteLength(env.pskId, 'utf8') +
+      Buffer.byteLength(env.pskNonce, 'utf8') +
+      Buffer.byteLength(env.sealedPsk.cipherText, 'utf8') +
+      Buffer.byteLength(env.sealedPsk.nonce, 'utf8') +
+      Buffer.byteLength(env.sealedPsk.ct, 'utf8')
     )
   }, 0)
 
@@ -210,7 +243,10 @@ export const validate_fields = (tx: Tx.GroupCommit, response: ShardusTypes.Incom
     Buffer.byteLength(tx.commit, 'utf8') +
     Buffer.byteLength(tx.groupInfo, 'utf8') +
     Buffer.byteLength(tx.ratchetTree, 'utf8') +
-    tx.proposals.reduce((sum, p) => sum + Buffer.byteLength(String(p), 'utf8'), 0) +
+    Buffer.byteLength(tx.pskId, 'utf8') +
+    Buffer.byteLength(tx.pskNonce, 'utf8') +
+    Buffer.byteLength(tx.meta ?? '', 'utf8') +
+    Buffer.byteLength(tx.foundingConfirmationTag ?? '', 'utf8') +
     tx.treeDelta.reduce((sum, d) => sum + Buffer.byteLength(String(d.n || ''), 'utf8') + 16, 0) +
     welcomeBytes
   if (totalBytes / 1024 > config.LiberdusFlags.groupMessageSizeLimit) {
@@ -964,8 +1000,14 @@ export const apply = async (
    * copy made a 10-member add write 3.5 MB.
    */
   for (const welcome of tx.welcomes) {
+    const env = welcome.envelope
     tree.pendingWelcomes[welcome.address] = {
-      ...welcome.envelope,
+      // Named fields only: a spread would store any extra keys the sender added.
+      welcome: env.welcome,
+      ratchetTree: '',
+      sealedPsk: { cipherText: env.sealedPsk.cipherText, nonce: env.sealedPsk.nonce, ct: env.sealedPsk.ct },
+      pskId: env.pskId,
+      pskNonce: env.pskNonce,
       // Who did the adding. The invitee's client needs this to say "X added you"
       // when asking whether to accept, and nothing else records it — the commit
       // transcript is pruned, and the roster does not say who admitted whom.

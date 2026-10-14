@@ -4,6 +4,7 @@ import * as crypto from '../src/crypto'
 import { groupAccount, serializeGroupAccount } from '../src/accounts/groupAccount'
 import { groupTreeAccount } from '../src/accounts/groupTreeAccount'
 import * as message from '../src/transactions/group_message'
+import * as commit from '../src/transactions/group_commit'
 import * as AccountsStorage from '../src/storage/accountStorage'
 import * as utils from '../src/utils'
 import { GroupAccount, GroupTreeAccount, UserAccount } from '../src/@types'
@@ -127,5 +128,82 @@ describe('group_message size', () => {
     expect(w.group.messages).toHaveLength(501)
     // ~2.3 MB. At 64 kB per message this was ~33 MB, past the 10 MB a node can send.
     expect(serializedBytes(w.group)).toBeLessThan(2.5 * 1024 * 1024)
+  })
+})
+
+/** A commit adding MEMBER, field-valid up to its signature. */
+const addTx = (over: { tx?: Record<string, unknown>; env?: Record<string, unknown>; sealed?: Record<string, unknown> } = {}): any => ({
+  type: 'group_commit',
+  from: ADMIN,
+  groupId: GROUP,
+  epoch: 0,
+  commit: 'Y29tbWl0',
+  proposals: [],
+  pskId: 'cHNr',
+  pskNonce: 'bm9uY2U=',
+  groupInfo: 'aW5mbw==',
+  ratchetTree: '',
+  treeDelta: [{ i: 2, n: 'AA' }],
+  addedMembers: [MEMBER],
+  removedMembers: [],
+  consumedKeyPackages: [{ address: MEMBER, keyPackage: 'a3A=' }],
+  welcomes: [
+    {
+      address: MEMBER,
+      envelope: {
+        welcome: 'd2VsY29tZQ==',
+        ratchetTree: '',
+        sealedPsk: { cipherText: 'Y3Q=', nonce: '', ct: 'cHNr', ...(over.sealed || {}) },
+        pskId: 'cHNr',
+        pskNonce: 'bm9uY2U=',
+        epoch: 1,
+        timestamp: T0,
+        ...(over.env || {}),
+      },
+    },
+  ],
+  fee: FEE,
+  timestamp: T0 + 1000,
+  sign: { owner: ADMIN, sig: '00' },
+  ...(over.tx || {}),
+})
+
+// Unsigned: a commit that clears every other rule stops at the signer check.
+const fieldsReason = (tx: any): string => commit.validate_fields({ ...tx, sign: undefined }, fresh()).reason
+const PAD = 'A'.repeat(70 * 1024)
+
+describe('group_commit stores nothing it does not count', () => {
+  test('an honest add gets past every size and shape rule', () => {
+    expect(fieldsReason(addTx())).toBe('not signed by from account')
+  })
+
+  test.each([
+    ['meta', { tx: { meta: PAD } }],
+    ['pskNonce', { tx: { pskId: '', pskNonce: PAD } }],
+    ['the sealed PSK', { sealed: { ct: PAD } }],
+    ["the welcome's pskId", { env: { pskId: PAD } }],
+    ["the welcome's pskNonce", { env: { pskNonce: PAD } }],
+  ])('padding %s past 64 kB is refused', (_name, over) => {
+    expect(fieldsReason(addTx(over as any))).toContain('commit payload exceeds 64 kB')
+  })
+
+  test('proposals outside the commit are refused', () => {
+    expect(fieldsReason(addTx({ tx: { proposals: ['cHJvcG9zYWw='] } }))).toContain('"proposals" must be empty')
+  })
+
+  test('a welcome envelope carrying its own tree is refused', () => {
+    expect(fieldsReason(addTx({ env: { ratchetTree: 'dHJlZQ==' } }))).toContain('must not carry a ratchet tree')
+  })
+
+  test('a pending welcome keeps only the envelope fields, not extras the sender added', async () => {
+    const w = world()
+    const tx = addTx({ env: { junk: 'A'.repeat(1000) } })
+    await commit.apply(tx, tx.timestamp, 'c'.repeat(64), w.wrapped, dapp, {} as any)
+    const stored = w.tree.pendingWelcomes[MEMBER] as any
+    expect(stored.welcome).toBe('d2VsY29tZQ==')
+    expect(stored.junk).toBeUndefined()
+    expect(Object.keys(stored).sort()).toEqual(
+      ['addedBy', 'epoch', 'pskCount', 'pskId', 'pskNonce', 'ratchetTree', 'sealedPsk', 'timestamp', 'welcome'].sort(),
+    )
   })
 })

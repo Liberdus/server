@@ -61,7 +61,11 @@ const add = (who: string): any => ({ proposalType: 'add', add: { keyPackage: key
 const remove = (who: string): any => ({ proposalType: 'remove', remove: { removed: leafOf(aState, who) } })
 
 /** A commit as the client builds one: PublicMessage, plus a PSK proposal when it changes membership. */
-const commit = async (state: any, proposals: any[], { publicMessage = true, withPsk = true } = {}): Promise<any> => {
+const commit = async (
+  state: any,
+  proposals: any[],
+  { publicMessage = true, withPsk = true, authenticatedData = new Uint8Array() } = {},
+): Promise<any> => {
   let pskIndex = mls.makePskIndex(undefined, {})
   const extra = [...proposals]
   let pskId = ''
@@ -74,7 +78,10 @@ const commit = async (state: any, proposals: any[], { publicMessage = true, with
     pskId = b64(id)
     pskNonce = b64(nonce)
   }
-  const out = await mls.createCommit({ state, cipherSuite: cs, pskIndex }, { wireAsPublicMessage: publicMessage, extraProposals: extra })
+  const out = await mls.createCommit(
+    { state, cipherSuite: cs, pskIndex },
+    { wireAsPublicMessage: publicMessage, extraProposals: extra, authenticatedData },
+  )
   return { ...out, pskIndex, pskId, pskNonce }
 }
 
@@ -222,6 +229,20 @@ describe('inspectCommit', () => {
     const built = await commit(aState, [remove(C)])
     const res = inspectCommit(declare(A, built, 1, { removedMembers: [C], pskId: '', pskNonce: '' }), groupAtEpoch1, storedTree)
     expect(res).toEqual({ ok: false, reason: 'commit carries a PSK proposal but declares no pskId.' })
+  })
+
+  test('T7: a pskNonce declared without a pskId is refused', async () => {
+    // Nothing reads it, and the transcript stores it: free padding.
+    const built = await commit(bState, [], { withPsk: false })
+    const res = inspectCommit(declare(B, built, 1, { pskNonce: b64(new Uint8Array(1024)) }), groupAtEpoch1, storedTree)
+    expect(res).toEqual({ ok: false, reason: 'commit declares a pskNonce but no pskId.' })
+  })
+
+  test('T7: a commit carrying authenticated data is refused', async () => {
+    // Clients never set it; it is signed, so it survives into the stored transcript.
+    const built = await commit(bState, [], { withPsk: false, authenticatedData: new Uint8Array(40_000) })
+    const res = inspectCommit(declare(B, built, 1), groupAtEpoch1, storedTree)
+    expect(res).toEqual({ ok: false, reason: 'commit carries authenticated data, which is not allowed.' })
   })
 
   test('a proposal carried by reference is refused', async () => {
