@@ -305,8 +305,10 @@ interface LiberdusFlags {
   groupRepairDepositMultiplier: number
   /** Members addable/removable in one commit (bounds the transaction key set). */
   groupMaxMembersPerCommit: number
-  /** Max size of one MLS application message, in kB. */
+  /** Max size, in kB, of a commit's payload, a key-package publish and a group's `meta`. */
   groupMessageSizeLimit: number
+  /** Max size of one MLS application message (group_message), in kB. */
+  groupAppMessageSizeLimit: number
   /** Application messages retained per group before the oldest are dropped. */
   groupMessageMaxLength: number
   /** Days of application-message history retained. Commits are NOT pruned by this. */
@@ -383,6 +385,16 @@ export const LiberdusFlags: LiberdusFlags = {
   // ratchet tree carried in each welcome — ~1.8 kB per existing member — so in
   // practice this limit caps how large a group can be when adding a member.
   groupMessageSizeLimit: 64,
+  /*
+   * 4 kB, about twice the largest message the client sends: 1,000 bytes of
+   * text plus a reply comes to ~2 kB once encrypted and base64-encoded
+   * (measured). It, not the count, is what bounds the GroupAccount -- every
+   * group_message and group_commit carries that account between nodes, and
+   * Liberdus caps one internal message at 10 MB. At 64 kB, 155 messages
+   * ($1.55) made a group too big to move, and so impossible to prune or use
+   * again (threat model T7). At 4 kB, a full group is 2.25 MB (measured).
+   */
+  groupAppMessageSizeLimit: 4,
   groupMessageMaxLength: 500,
   groupMessageRetentionDays: 7,
   groupMessageMinIntervalMs: 1000,

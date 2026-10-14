@@ -32,8 +32,8 @@ export const validate_fields = (tx: Tx.GroupMessage, response: ShardusTypes.Inco
     return response
   }
   const messageSizeInKb = Buffer.byteLength(tx.message, 'utf8') / 1024
-  if (messageSizeInKb > config.LiberdusFlags.groupMessageSizeLimit) {
-    response.reason = `tx "message" size must be less than ${config.LiberdusFlags.groupMessageSizeLimit} kB.`
+  if (messageSizeInKb > config.LiberdusFlags.groupAppMessageSizeLimit) {
+    response.reason = `tx "message" size must be at most ${config.LiberdusFlags.groupAppMessageSizeLimit} kB.`
     return response
   }
   if (typeof tx.epoch !== 'number' || !Number.isInteger(tx.epoch) || tx.epoch < 0) {
