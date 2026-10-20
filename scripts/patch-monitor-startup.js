@@ -1,4 +1,4 @@
-// Local workaround for monitor-server 2.8.9's one-shot archiver discovery.
+// Local workaround for monitor-server 2.8.12's one-shot archiver discovery.
 // Reapply after installation until the dependency provides startup retries.
 const fs = require('fs')
 const path = require('path')
