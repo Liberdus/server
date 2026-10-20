@@ -7,12 +7,13 @@ const path = require('node:path')
 // Run the real handler without launching the node or its native networking stack.
 const source = fs.readFileSync(path.resolve(__dirname, '../../shardus-core/src/p2p/Self.ts'), 'utf8')
 const ast = ts.createSourceFile('Self.ts', source, ts.ScriptTarget.Latest, true)
-const handler = ast.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === 'contactArchiver')
-const code = ts.transpileModule(handler.getText(ast).replace('export ', ''), {}).outputText
-async function check({ legacy = false, restart = false, invalid = false } = {}) {
+const handlers = ast.statements.filter(n => ts.isFunctionDeclaration(n) &&
+  ['contactArchiver', 'processArchiverResponse'].includes(n.name?.text))
+const code = ts.transpileModule(handlers.map(n => n.getText(ast).replace('export ', '')).join('\n'), {}).outputText
+async function check({ legacy = false, restart = false, invalid = false, empty = false } = {}) {
   const archiver = { ip: '127.0.0.1', port: 4000, publicKey: 'archiver' }
   const joinRequest = { nodeInfo: archiver }
-  const response = { nodeList: [{ port: 9001 }], sign: {}, dataRequestCycle: legacy ? { start: 0 } : 0,
+  const response = { nodeList: empty ? [] : [{ port: 9001 }], sign: {}, dataRequestCycle: legacy ? { start: 0 } : 0,
     dataRequestStateMetaData: { start: 0 },
     ...(restart ? { restartCycleRecord: { archiversAtShutdown: [archiver] } } : { joinRequest }) }
   let requests = 0, joins = 0, recipients = 0, prepended = 0
@@ -36,7 +37,7 @@ async function check({ legacy = false, restart = false, invalid = false } = {}) 
   }
   vm.createContext(context)
   vm.runInContext(code, context)
-  if (invalid) {
+  if (invalid || empty) {
     await assert.rejects(context.contactArchiver('test', { archiver, response }))
     assert.equal(recipients, 0)
     assert.equal(joins, 0)
@@ -56,5 +57,6 @@ async function check({ legacy = false, restart = false, invalid = false } = {}) 
   await check({ legacy: true })
   await check({ restart: true })
   await check({ invalid: true })
+  await check({ empty: true })
   console.log('Archiver handshake checks passed')
 })().catch(error => { console.error(error); process.exitCode = 1 })
