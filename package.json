@@ -29,13 +29,14 @@
     "build-docker-dev": "sudo docker build -f dev.Dockerfile -t ghcr.io/liberdus/server:dev .",
     "push-docker-dev": "sudo docker push ghcr.io/liberdus/server:dev",
     "build-docker-production": "sudo docker build -f dev.Dockerfile -t ghcr.io/liberdus/server:latest .",
-    "push-docker-production": "sudo docker push ghcr.io/liberdus/server:latest"
+    "push-docker-production": "sudo docker push ghcr.io/liberdus/server:latest",
+    "postinstall": "node scripts/patch-monitor-startup.js"
   },
   "author": "Kyle Shifflett",
   "license": "ISC",
   "dependencies": {
     "@shardus/lib-archiver-discovery": "1.4.0",
-    "@shardus/core": "2.17.0",
+    "@shardus/core": "file:../shardus-core",
     "@shardus/lib-crypto-utils": "4.4.0",
     "@shardus/lib-net": "1.7.0",
     "@shardus/lib-types": "1.5.0",
