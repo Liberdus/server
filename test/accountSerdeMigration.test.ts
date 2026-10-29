@@ -12,11 +12,15 @@ import type { LiberdusFlags as LiberdusFlagsType } from '../src/config'
  * jest.resetModules alone is not enough: the re-imported versioning module would close over a fresh
  * src/config, so the migration would flip a different LiberdusFlags object than the test inspects.
  * Both have to come from the same fresh registry.
+ *
+ * The flag defaults to on for networks launched at 2.5.3, so it is cleared here to model a node on an
+ * upgrading network before the 2.5.3 migration runs.
  */
 const loadFresh = (): { activate: (v: string) => Promise<void>; flags: typeof LiberdusFlagsType } => {
   jest.resetModules()
   const { onActiveVersionChange } = require('../src/versioning')
   const { LiberdusFlags } = require('../src/config')
+  LiberdusFlags.versionFlags.correctAccountSerdeLayout = false
   return { activate: onActiveVersionChange, flags: LiberdusFlags }
 }
 
