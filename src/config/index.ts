@@ -338,7 +338,7 @@ export const LiberdusFlags: LiberdusFlags = {
     removeLegacyDaoState: true, // turn on by 2.5.2
     removeUnusedTxState: true, // turn on by 2.5.2
     removeLegacyNetworkParams: true, // turn on by 2.5.2
-    correctAccountSerdeLayout: false, // enable account binary dispatch by 2.5.3
+    correctAccountSerdeLayout: true, // enable account binary dispatch by 2.5.3
   },
 }
 
