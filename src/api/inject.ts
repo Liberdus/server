@@ -30,11 +30,7 @@ export const inject =
 
       // Valid JSON can still represent null, an array, or a primitive.
       const isPlainObject =
-        tx !== null &&
-        typeof tx === 'object' &&
-        !Array.isArray(tx) &&
-        (Object.getPrototypeOf(tx) === Object.prototype ||
-          Object.getPrototypeOf(tx) === null)
+        tx !== null && typeof tx === 'object' && !Array.isArray(tx) && (Object.getPrototypeOf(tx) === Object.prototype || Object.getPrototypeOf(tx) === null)
 
       if (!isPlainObject) {
         res.status(400).json({

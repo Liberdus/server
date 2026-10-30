@@ -1,5 +1,5 @@
-import { AJVSchemaEnum } from '../../@types';
-import { verifyPayload } from '../../@types/ajvHelper';
+import { AJVSchemaEnum } from '../../@types'
+import { verifyPayload } from '../../@types/ajvHelper'
 import { LiberdusFlags } from '../../config'
 import * as AccountsStorage from '../../storage/accountStorage'
 import { getStakeRequiredWei } from '../../utils'

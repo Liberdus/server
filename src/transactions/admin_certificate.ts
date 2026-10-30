@@ -8,7 +8,7 @@ import { DevSecurityLevel } from '@shardus/core'
 import { AJVSchemaEnum, GoldenTicketRequest, NetworkAccount } from '../@types'
 import { shardusPost } from '../utils/request'
 import * as utils from '../utils'
-import { verifyPayload } from '../@types/ajvHelper';
+import { verifyPayload } from '../@types/ajvHelper'
 
 export interface AdminCert {
   nominee: string
@@ -74,7 +74,6 @@ function createGoldenTicketFetchResult(error?: string): GoldenTicketFetchResult 
 }
 
 function validatePutAdminCertRequest(req: PutAdminCertRequest, shardus: Shardus): PutAdminCertResult {
-
   const errors = verifyPayload(AJVSchemaEnum.admin_cert, req)
 
   if (errors !== null) {
