@@ -6,7 +6,7 @@ import { AccountAxiosResponse, AccountQueryResponse, AJVSchemaEnum, UserAccount,
 import { getRandom, isValidAddress } from '../../utils'
 import { shardusGetFromNode, shardusPutToNode } from '../../utils/request'
 import { isUserAccount, isNodeAccount } from '../../@types/accountTypeGuards'
-import { verifyPayload } from '../../@types/ajvHelper';
+import { verifyPayload } from '../../@types/ajvHelper'
 
 export let stakeCert: StakeCert = null
 
@@ -59,15 +59,12 @@ export const validate_fields = (tx: QueryCertRequest): ShardusTypes.IncomingTran
     success: false,
     reason: '',
   }
-    const errors = verifyPayload(AJVSchemaEnum.query_cert_req, tx)
+  const errors = verifyPayload(AJVSchemaEnum.query_cert_req, tx)
 
   if (errors !== null) {
     response.reason = `Invalid query certificate request: ${errors.join('; ')}`
 
-    nestedCountersInstance.countEvent(
-      'liberdus-staking',
-      'validate_fields fail query certificate schema invalid',
-    )
+    nestedCountersInstance.countEvent('liberdus-staking', 'validate_fields fail query certificate schema invalid')
 
     if (LiberdusFlags.VerboseLogs) {
       console.log('Invalid query certificate request', tx, errors)
@@ -75,7 +72,7 @@ export const validate_fields = (tx: QueryCertRequest): ShardusTypes.IncomingTran
 
     return response
   }
-  
+
   if (isValidAddress(tx.nominator) === false) {
     response.reason = 'Invalid nominator address'
     nestedCountersInstance.countEvent('liberdus-staking', `validate_fields fail tx.nominator address invalid`)

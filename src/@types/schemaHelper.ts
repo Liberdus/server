@@ -21,7 +21,7 @@ export function initializeSerialization(): void {
     ajv.addSchema(schema, name)
   }
 
-    // verifying if schema is valid by compiling it and catching any errors
+  // verifying if schema is valid by compiling it and catching any errors
   for (const name of schemaMap.keys()) {
     try {
       getVerifyFunction(name)

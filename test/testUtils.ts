@@ -39,7 +39,6 @@ export async function injectTx(tx, account, sign: boolean = true) {
     console.log(warning(`"${tx.type}" transaction submitted ...`))
     console.log(success(`response: ${JSON.stringify(res.data)}`))
     expect(res.data.result.success).toBe(true)
-  
   } catch (err) {
     console.log(info(err))
     throw err

@@ -20,7 +20,7 @@ import * as crypto from '../../crypto'
 import { SafeBigIntMath } from '../../utils/safeBigIntMath'
 import { RemoveNodeCert } from './query_certificate'
 import { isNodeAccount, isUserAccount } from '../../@types/accountTypeGuards'
-import { verifyPayload } from '../../@types/ajvHelper';
+import { verifyPayload } from '../../@types/ajvHelper'
 
 const penaltyTxsMap: Map<string, Tx.PenaltyTX> = new Map()
 
@@ -103,18 +103,9 @@ export async function injectPenaltyTX(
 }
 
 const penaltyViolationSchemas = new Map<ViolationType, AJVSchemaEnum>([
-  [
-    ViolationType.LeftNetworkEarly,
-    AJVSchemaEnum.left_network_early_violation_data,
-  ],
-  [
-    ViolationType.SyncingTooLong,
-    AJVSchemaEnum.syncing_timeout_violation_data,
-  ],
-  [
-    ViolationType.NodeRefuted,
-    AJVSchemaEnum.node_refuted_violation_data,
-  ],
+  [ViolationType.LeftNetworkEarly, AJVSchemaEnum.left_network_early_violation_data],
+  [ViolationType.SyncingTooLong, AJVSchemaEnum.syncing_timeout_violation_data],
+  [ViolationType.NodeRefuted, AJVSchemaEnum.node_refuted_violation_data],
 ])
 
 export const validate_fields = (tx: Tx.PenaltyTX, response: ShardusTypes.IncomingTransactionResult): ShardusTypes.IncomingTransactionResult => {
@@ -143,10 +134,7 @@ export const validate_fields = (tx: Tx.PenaltyTX, response: ShardusTypes.Incomin
     return response
   }
   if (!tx.violationData) {
-    nestedCountersInstance.countEvent(
-      'liberdus-penalty',
-      'validatePenaltyTX fail tx.violationData invalid',
-    )
+    nestedCountersInstance.countEvent('liberdus-penalty', 'validatePenaltyTX fail tx.violationData invalid')
     if (LiberdusFlags.VerboseLogs) {
       console.log('validatePenaltyTX fail tx.violationData invalid', tx)
     }
@@ -155,14 +143,11 @@ export const validate_fields = (tx: Tx.PenaltyTX, response: ShardusTypes.Incomin
     return response
   }
 
-  if (LiberdusFlags.versionFlags.enableAJVValidation) {
+  if (LiberdusFlags.enableAJVValidation) {
     const schema = penaltyViolationSchemas.get(tx.violationType)
 
     if (schema === undefined) {
-      nestedCountersInstance.countEvent(
-        'liberdus-penalty',
-        'validatePenaltyTX fail tx.violationType unsupported',
-      )
+      nestedCountersInstance.countEvent('liberdus-penalty', 'validatePenaltyTX fail tx.violationType unsupported')
       response.success = false
       response.reason = 'Unsupported violation type'
       return response
@@ -171,10 +156,7 @@ export const validate_fields = (tx: Tx.PenaltyTX, response: ShardusTypes.Incomin
     const errors = verifyPayload(schema, tx.violationData)
 
     if (errors !== null) {
-      nestedCountersInstance.countEvent(
-        'liberdus-penalty',
-        'validatePenaltyTX fail tx.violationData schema invalid',
-      )
+      nestedCountersInstance.countEvent('liberdus-penalty', 'validatePenaltyTX fail tx.violationData schema invalid')
       if (LiberdusFlags.VerboseLogs) {
         console.log('Invalid penalty violation data', tx, errors)
       }
@@ -183,7 +165,7 @@ export const validate_fields = (tx: Tx.PenaltyTX, response: ShardusTypes.Incomin
       return response
     }
   }
-  
+
   if (tx.timestamp <= 0) {
     nestedCountersInstance.countEvent('liberdus-penalty', `validatePenaltyTX fail tx.timestamp invalid`)
     if (LiberdusFlags.VerboseLogs) console.log(`validatePenaltyTX fail tx.timestamp invalid`, tx)

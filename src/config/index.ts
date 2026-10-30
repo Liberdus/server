@@ -256,6 +256,7 @@ interface LiberdusFlags {
   daoProjectReclaimDelayMs: number
   minCommitteeMembers: number
   maxCommitteeMembers: number
+  enableAJVValidation: boolean
   goldenTicketRetryInterval: number // ms to wait before retrying a failed Golden Ticket fetch; node-local, not consensus-relevant
   versionFlags: {
     replierNoToll: boolean
@@ -277,7 +278,6 @@ interface LiberdusFlags {
     removeUnusedTxState: boolean
     removeLegacyNetworkParams: boolean
     correctAccountSerdeLayout: boolean
-    enableAJVValidation: boolean
   }
 }
 
@@ -317,6 +317,7 @@ export const LiberdusFlags: LiberdusFlags = {
   daoProjectReclaimDelayMs: 90 * ONE_DAY,
   minCommitteeMembers: 4,
   maxCommitteeMembers: 10,
+  enableAJVValidation: false,
   goldenTicketRetryInterval: 10 * ONE_MINUTE,
   versionFlags: {
     replierNoToll: true, // turn on by 2.3.5
@@ -338,7 +339,6 @@ export const LiberdusFlags: LiberdusFlags = {
     removeUnusedTxState: true, // turn on by 2.5.2
     removeLegacyNetworkParams: true, // turn on by 2.5.2
     correctAccountSerdeLayout: true, // enable account binary dispatch by 2.5.3
-    enableAJVValidation: true,
   },
 }
 

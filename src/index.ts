@@ -24,6 +24,7 @@ import * as ClaimReward from './transactions/staking/claim_reward'
 import * as Penalty from './transactions/staking/apply_penalty'
 import { configShardusNetworkTransactions } from './transactions/networkTransaction/networkTransaction'
 import { initAjvSchemas, verifyPayload } from './@types/ajvHelper'
+import * as appValidation from './utils/appValidation'
 import { operatorCLIVersion, operatorGUIVersion, readOperatorVersions } from './utils/versions'
 import { onActiveVersionChange } from './versioning/index'
 import genesis from './config/genesis.json'
@@ -274,14 +275,10 @@ const shardusSetup = (): void => {
         }
 
         // 4. Validate the tx fields
-        if(LiberdusFlags.versionFlags.enableAJVValidation) {
-          const errors = verifyPayload(tx.type, tx)
-          if (errors != null) {
-            nestedCountersInstance.countEvent('external', `ajv-failed-${tx.type}-tx`)
-            validationResult.reason = `AJV failed for ${tx.type} tx, errors: ${Utils.safeStringify(errors)}`
-            if (LiberdusFlags.VerboseLogs) console.log(validationResult.reason)
-            return validationResult
-          }
+        const schemaError = appValidation.getTxSchemaError(tx)
+        if (schemaError != null) {
+          validationResult.reason = schemaError
+          return validationResult
         }
 
         // 5. Validate the tx data
@@ -2120,41 +2117,7 @@ const shardusSetup = (): void => {
       account.timestamp = networkAccount.timestamp
       return [account]
     },
-    canStayOnStandby(joinInfo: P2P.JoinTypes.JoinRequest): { canStay: boolean; reason: string } {
-      if (joinInfo) {
-        const appJoinData = joinInfo?.appJoinData as LiberdusTypes.AppJoinData
-
-        if (AccountsStorage.cachedNetworkAccount == null) {
-          //We need to enhance the early config getting to also get other values of the global account
-          //so we know what versions the network is.  this is a stopgap!
-          return { canStay: true, reason: 'dont have network account yet. cant boot anything!' }
-        }
-
-        const minVersion = AccountsStorage.cachedNetworkAccount.current.minVersion
-        if (!utils.isEqualOrNewerVersion(minVersion, appJoinData.version)) {
-          /* prettier-ignore */
-          if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: old version`)
-          return {
-            canStay: false,
-            reason: `canStayOnStandby: standby node version: ${appJoinData.version} < minVersion ${minVersion}`,
-          }
-        }
-
-        const latestVersion = AccountsStorage.cachedNetworkAccount.current.latestVersion
-
-        if (latestVersion && appJoinData.version && !utils.isEqualOrOlderVersion(latestVersion, appJoinData.version)) {
-          /* prettier-ignore */
-          if (LiberdusFlags.VerboseLogs) console.log(`validateJoinRequest fail: version number is newer than latest`)
-          return {
-            canStay: false,
-            reason: `version number is newer than latest. The latest allowed app version is ${latestVersion}. Join request node app version is ${appJoinData.version}`,
-            //fatal: true,
-          }
-        }
-      }
-
-      return { canStay: true, reason: '' }
-    },
+    canStayOnStandby: appValidation.canStayOnStandby,
     verifyMultiSigs: function (
       rawPayload: object,
       sigs: ShardusTypes.Sign[],
@@ -2179,10 +2142,7 @@ const shardusSetup = (): void => {
       const NGT_TYPES = [INIT_REWARD_TX, CLAIM_REWARD_TX]
       return NGT_TYPES.includes(tx?.['type'])
     },
-    verifyAppJoinData: (data: unknown): string[] | null => {
-      // [TODO] Implement this function
-      return null
-    },
+    verifyAppJoinData: appValidation.verifyAppJoinData,
     isMultiSigFoundationTx(tx: ShardusTypes.OpaqueTransaction): boolean {
       return false
     },
