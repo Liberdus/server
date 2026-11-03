@@ -1670,7 +1670,8 @@ vorpal.command('admin certificate', 'put admin certificate').action(async functi
     goldenTicket: answers.goldenTicket,
   }
   console.log(adminCert)
-  signTransaction(adminCert, devKey, true)
+  // Sign directly: signTransaction adds a networkId, which admin certs do not carry
+  crypto.signObj(adminCert, devKey.secretKey, devKey.publicKey)
   const res = await putAdminCert(adminCert)
   this.log(res)
   callback()

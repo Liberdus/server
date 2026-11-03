@@ -1,3 +1,4 @@
+import * as shardusCrypto from '@shardus/lib-crypto-utils'
 import { Utils } from '@shardus/lib-types'
 import { initAjvSchemas, verifyPayload } from '../src/@types/ajvHelper'
 import { getVerifyFunction } from '../src/@types/schemaHelper'
@@ -5,6 +6,7 @@ import { AJVSchemaEnum, TXTypes, ViolationType } from '../src/@types'
 import { LiberdusFlags } from '../src/config'
 import { inject } from '../src/api/inject'
 import * as AccountsStorage from '../src/storage/accountStorage'
+import * as AdminCertificate from '../src/transactions/admin_certificate'
 import { putAdminCertificateHandler } from '../src/transactions/admin_certificate'
 import { canStayOnStandby, getTxSchemaError, verifyAppJoinData } from '../src/utils/appValidation'
 import { validate_fields as validatePenaltyFields } from '../src/transactions/staking/apply_penalty'
@@ -455,6 +457,37 @@ describe('node and join data schemas', () => {
     // A well-formed certificate gets past the schema to the nominee check
     const wellFormed = await putAdminCertificateHandler({ body: adminCert } as any, shardus)
     expect(wellFormed.reason).toBe('nominee address and the current node public key do not match')
+  })
+
+  describe('signed admin certificates through putAdminCertificateHandler', () => {
+    const devKeys = shardusCrypto.generateKeypair()
+    const shardus: any = {
+      crypto: { getPublicKey: () => otherKey, verify: () => true },
+      getDevPublicKey: () => devKeys.publicKey,
+      ensureKeySecurity: () => true,
+    }
+    const signedCert = (fields: any): any =>
+      shardusCrypto.signObj({ nominee: otherKey, certCreation: 1, certExp: 2, ...fields }, devKeys.secretKey, devKeys.publicKey)
+    const originalAdminCert = AdminCertificate.adminCert
+
+    // A successful PUT stores the certificate in module state
+    afterEach(() => {
+      AdminCertificate.setAdminCertificate(originalAdminCert)
+    })
+
+    it('accepts a certificate in the shape the Golden Ticket server signs', async () => {
+      const cert = signedCert({ goldenTicket: true })
+      expect(verifyPayload(AJVSchemaEnum.app_join_data, { version: '2.5.3', stakeCert: null, adminCert: cert })).toBeNull()
+      expect(await putAdminCertificateHandler({ body: cert } as any, shardus)).toEqual({ success: true })
+      expect(AdminCertificate.adminCert).toEqual(cert)
+    })
+
+    it('still accepts a certificate an older client.js signed with networkId', async () => {
+      // networkId is covered by the signature, so it cannot be stripped before verification
+      const cert = signedCert({ goldenTicket: false, networkId })
+      expect(verifyPayload(AJVSchemaEnum.app_join_data, { version: '2.5.3', stakeCert: null, adminCert: cert })).toBeNull()
+      expect(await putAdminCertificateHandler({ body: cert } as any, shardus)).toEqual({ success: true })
+    })
   })
 
   it('rejects a malformed query certificate request before the field checks', () => {

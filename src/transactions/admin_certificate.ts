@@ -16,6 +16,7 @@ export interface AdminCert {
   certExp: number
   sign: ShardusTypes.Sign
   goldenTicket: boolean
+  networkId?: string // only on certs signed by older client.js builds
 }
 
 export interface AdminCertResponse {
