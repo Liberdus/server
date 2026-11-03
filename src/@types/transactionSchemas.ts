@@ -604,6 +604,9 @@ export const schemaAdminCert = {
     certExp: { type: 'number' },
     sign: SignatureSchema,
     goldenTicket: { type: 'boolean' },
+    // Not issued by the Golden Ticket server or current client.js. Older client.js builds signed admin
+    // certs with networkId included, and it cannot be stripped without breaking the signature.
+    networkId: { type: 'string' },
   },
   required: ['nominee', 'certCreation', 'certExp', 'sign', 'goldenTicket'],
   additionalProperties: false,
