@@ -101,6 +101,8 @@ export const schemaUpdateTollRequiredTX = {
     required: { enum: [0, 1, 2] },
     previousRequired: { type: 'number' },
     fee: { isBigInt: true },
+    // Sent by the web client; not read by the server
+    username: { type: 'string' },
   },
   required: [...baseTxRequired, 'from', 'to', 'chatId', 'required'],
   additionalProperties: false,
@@ -114,12 +116,12 @@ export const schemaTransferTX = {
     to: { type: 'string', minLength: 64, maxLength: 64 },
     amount: { isBigInt: true },
     memo: { type: ['string', 'null'] },
+    // The web client sends an encrypted payload (senderInfo, encryption fields, ...); only message is read
     xmemo: {
       type: 'object',
       properties: {
         message: { type: 'string' },
       },
-      additionalProperties: false,
     },
     chatId: { type: 'string' },
     fee: { isBigInt: true },
@@ -183,6 +185,10 @@ export const schemaMessageTX = {
     message: { type: 'string' },
     amount: { isBigInt: true },
     fee: { isBigInt: true },
+    // The web client sends message: 'x' and puts the client-defined content here
+    xmessage: { type: 'object' },
+    // Set by the web client on calls and meeting invites so the recipient's phone rings
+    callType: { type: 'boolean' },
   },
   required: [...baseTxRequired, 'from', 'to', 'chatId', 'message'],
   additionalProperties: false,
@@ -196,6 +202,8 @@ export const schemaReadTX = {
     to: { type: 'string' },
     chatId: { type: 'string' },
     fee: { isBigInt: true },
+    // The web client keeps it to roll back the contact timestamp if the tx fails
+    oldContactTimestamp: { type: 'number' },
   },
   required: [...baseTxRequired, 'from', 'to', 'chatId'],
   additionalProperties: false,

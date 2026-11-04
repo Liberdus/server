@@ -131,6 +131,8 @@ export namespace Tx {
     message: string
     amount: bigint
     fee: bigint
+    xmessage?: Record<string, unknown> // client-defined payload; the web client puts the message content here
+    callType?: boolean // set by the web client on calls and meeting invites so the recipient's phone rings
   }
 
   export type MessageRecord = Message
@@ -141,6 +143,7 @@ export namespace Tx {
     chatId: string
     timestamp: number // timestamp up to which messages are considered read
     fee?: bigint // Optional fee for the read transaction
+    oldContactTimestamp?: number // web client keeps it to roll back the contact timestamp if the tx fails
   }
 
   export interface UpdateChatToll extends BaseLiberdusTx {
@@ -159,6 +162,7 @@ export namespace Tx {
     previousRequired?: number
     timestamp: number // timestamp up to which messages are considered read
     fee?: bigint // Optional fee for the update toll transaction
+    username?: string // sent by the web client; not read by the server
   }
 
   export type ChatMessageRecord = MessageRecord | Transfer | Read | UpdateTollRequired
@@ -217,6 +221,7 @@ export namespace Tx {
     memo?: string
     xmemo?: {
       message?: string
+      [key: string]: unknown // the web client sends an encrypted payload; only message is read
     }
     chatId: string
     fee?: bigint // Optional fee for the transfer
