@@ -28,6 +28,39 @@ const nodeRefutedData = { nodeRefutedCycle: 1, nodeRefutedTime: 2 }
 const stakeCert = { nominator: key, nominee: otherKey, stake: BigInt(10), certExp: 100, signs: [sign] }
 const adminCert = { nominee: otherKey, certCreation: 1, certExp: 2, sign, goldenTicket: true }
 
+// The encrypted memo payload web-client-v2 sends as transfer.xmemo (app.js:35031)
+function webClientMemo(message: string): any {
+  return {
+    message,
+    senderInfo: 'encrypted sender info',
+    encrypted: true,
+    encryptionMethod: 'xchacha20poly1305',
+    pqEncSharedKey: 'pq key',
+    selfKey: 'self key',
+    sharedKeyMethod: 'pq',
+    sent_timestamp: 1,
+  }
+}
+
+// The encrypted wrapper web-client-v2 sends as message.xmessage for chats (app.js:24053), calls (app.js:28650)
+// and meeting invites (app.js:29934). The chat text or call object is encrypted into `message`.
+function webClientEncryptedPayload(encryptedMessage: string): any {
+  return {
+    message: encryptedMessage,
+    encrypted: true,
+    encryptionMethod: 'xchacha20poly1305',
+    pqEncSharedKey: 'pq key',
+    selfKey: 'self key',
+    sent_timestamp: 1,
+    senderInfo: 'encrypted sender info',
+  }
+}
+
+// A web-client-v2 chat message: message is 'x' and the content lives in xmessage (app.js:23960)
+function webClientMessage(xmessage: any): any {
+  return { from: key, to: otherKey, chatId: 'chat', amount: BigInt(0), message: 'x', xmessage, fee: BigInt(1) }
+}
+
 // Each tx built the way its injector or client builds it. `optional` lists the fields the tx may omit.
 const signedTxFixtures: { label: string; tx: any; optional?: string[] }[] = [
   {
@@ -57,6 +90,49 @@ const signedTxFixtures: { label: string; tx: any; optional?: string[] }[] = [
     optional: ['previousRequired', 'fee'],
   },
   { label: 'toll', tx: { ...base(TXTypes.toll), from: key, toll: BigInt(1), tollUnit: 'USD', fee: BigInt(1) }, optional: ['tollUnit', 'fee'] },
+  // web-client-v2 shapes (app.js at 5ab3994d). These carry fields client.js does not send.
+  {
+    label: 'transfer (web client wallet)',
+    tx: {
+      ...base(TXTypes.transfer),
+      from: key,
+      to: otherKey,
+      amount: BigInt(5),
+      chatId: 'chat',
+      xmemo: webClientMemo('encrypted memo'),
+      fee: BigInt(1),
+    },
+  },
+  {
+    // The wallet always sends the memo payload, even when the user typed no memo
+    label: 'transfer (web client wallet, empty memo)',
+    tx: { ...base(TXTypes.transfer), from: key, to: otherKey, amount: BigInt(5), chatId: 'chat', xmemo: webClientMemo(''), fee: BigInt(1) },
+  },
+  {
+    label: 'message (web client chat)',
+    tx: { ...base(TXTypes.message), ...webClientMessage(webClientEncryptedPayload('encrypted chat text')) },
+    optional: ['amount', 'fee'],
+  },
+  {
+    label: 'message (web client call)',
+    tx: { ...base(TXTypes.message), ...webClientMessage(webClientEncryptedPayload('encrypted call object')), callType: true },
+    optional: ['callType'],
+  },
+  {
+    label: 'message (web client meeting invite)',
+    tx: { ...base(TXTypes.message), ...webClientMessage(webClientEncryptedPayload('encrypted invite object')), callType: true },
+    optional: ['callType'],
+  },
+  {
+    label: 'read (web client)',
+    tx: { ...base(TXTypes.read), from: key, to: otherKey, chatId: 'chat', oldContactTimestamp: 1 },
+    optional: ['oldContactTimestamp'],
+  },
+  {
+    label: 'update_toll_required (web client)',
+    tx: { ...base(TXTypes.update_toll_required), from: key, to: otherKey, chatId: 'chat', required: 0, previousRequired: 1, username: 'alice' },
+    optional: ['previousRequired', 'username'],
+  },
   {
     label: 'register',
     tx: { ...base(TXTypes.register), from: key, aliasHash: 'hash', alias: 'alice', publicKey: key, pqPublicKey: 'pq', private: true },
@@ -288,6 +364,19 @@ describe('AJV tx schemas', () => {
     const tx = signedTxFixtures.find((f) => f.label === 'update_toll_required').tx
     expect(verifyPayload(TXTypes.update_toll_required, { ...tx, required: 1.5 })).not.toBeNull()
     expect(verifyPayload(TXTypes.update_toll_required, { ...tx, required: 3 })).not.toBeNull()
+  })
+
+  const fixture = (label: string): any => signedTxFixtures.find((f) => f.label === label).tx
+  it.each([
+    ['message', 'xmessage', 'not an object', 'message (web client chat)'],
+    ['message', 'xmessage', ['array'], 'message (web client chat)'],
+    ['message', 'xmessage', null, 'message (web client chat)'],
+    ['message', 'callType', 'true', 'message (web client call)'],
+    ['read', 'oldContactTimestamp', '1', 'read (web client)'],
+    ['update_toll_required', 'username', 5, 'update_toll_required (web client)'],
+  ])('rejects %s with a wrong-type %s (%j)', (_type, field, value, label) => {
+    const tx = fixture(label)
+    expect(verifyPayload(tx.type, { ...tx, [field]: value })).not.toBeNull()
   })
 
   it('rejects an unknown toll unit', () => {
@@ -540,6 +629,21 @@ describe('POST /inject envelope', () => {
 
     expect(res.status).toHaveBeenCalledWith(500)
     expect(res.json).toHaveBeenCalledWith({ error: 'Unable to process transaction' })
+  })
+
+  it('passes a web client call message through the inject envelope and its schema', async () => {
+    const tx = signedTxFixtures.find((f) => f.label === 'message (web client call)').tx
+    const dapp = makeDapp()
+    const res = makeRes()
+
+    // Same envelope web-client-v2 injectTx sends: { tx: "<stringify JSON>" }
+    await inject(dapp)({ body: { tx: Utils.safeStringify(tx) } }, res)
+
+    expect(res.status).not.toHaveBeenCalled()
+    const putTx = dapp.put.mock.calls[0][0]
+    expect(putTx.callType).toBe(true)
+    expect(putTx.xmessage).toEqual(webClientEncryptedPayload('encrypted call object'))
+    expect(verifyPayload(TXTypes.message, putTx)).toBeNull()
   })
 
   it('passes a client-built tx to dapp.put with its bigints intact', async () => {
