@@ -275,7 +275,8 @@ describe('AJV tx schemas', () => {
     const claimReward = signedTxFixtures.find((f) => f.label === 'claim_reward').tx
     const penalty = signedTxFixtures.find((f) => f.label === 'apply_penalty').tx
 
-    expect(verifyPayload(TXTypes.transfer, { ...transfer, xmemo: { message: 'x', extra: 1 } })).not.toBeNull()
+    expect(verifyPayload(TXTypes.transfer, { ...transfer, xmemo: { message: 5 } })).not.toBeNull()
+    expect(verifyPayload(TXTypes.transfer, { ...transfer, xmemo: 'memo' })).not.toBeNull()
     expect(verifyPayload(TXTypes.transfer, { ...transfer, sign: { owner: key } })).not.toBeNull()
     expect(verifyPayload(TXTypes.transfer, { ...transfer, amount: '5' })).not.toBeNull()
     expect(verifyPayload(TXTypes.claim_reward, { ...claimReward, txData: { ...claimReward.txData, start: 1 } })).not.toBeNull()
