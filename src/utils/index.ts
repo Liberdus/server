@@ -369,54 +369,78 @@ export async function InjectTxToConsensor(
     }
     const res = await raceForSuccess(promises, 5000)
     console.log('res', res)
-    if (res.data.error) {
-      return { success: false, reason: res.data.error }
-    }
     return res.data.result as InjectTxResponse
   } catch (error) {
-    return { success: false, reason: (error as Error).message }
+    // A failed injection answers HTTP 400/500 with { result: { success: false, reason } }
+    const reason = (error as { response?: { data?: { result?: { reason?: string } } } })?.response?.data?.result?.reason
+    return { success: false, reason: reason ?? (error as Error).message }
   }
 }
 
+// Resolves with the first response whose result succeeded, so one node's rejection cannot hide another node's
+// success. If none succeeds, it settles once every node has answered or the timeout fires, preferring a failure
+// result (it carries result.reason) over a request error, and a request error over the timeout. A response without
+// a result is treated as an invalid answer, never as the failure to report.
 async function raceForSuccess<
   T extends {
-    data: {
+    data?: {
       result?: {
         success: boolean
         reason?: string
       }
-      error?: string
     }
   },
 >(promises: Promise<T>[], timeoutMs: number): Promise<T> {
   return new Promise((resolve, reject) => {
-    let unresolvedCount = promises.length
+    let pending = promises.length
+    let settled = false
+    let failedResponse: T | undefined
+    let lastError: unknown
+
+    const settleWithFailure = (): void => {
+      settled = true
+      clearTimeout(timer)
+      if (failedResponse !== undefined) resolve(failedResponse)
+      else reject(lastError ?? new Error('No node answered the injection.'))
+    }
+
     const timer = setTimeout(() => {
-      reject(new Error('Timeout: Operation did not complete within the allowed time.'))
+      if (settled) return
+      if (failedResponse === undefined && lastError === undefined) {
+        lastError = new Error('Timeout: Operation did not complete within the allowed time.')
+      }
+      settleWithFailure()
     }, timeoutMs)
+
+    const markAnswered = (): void => {
+      pending--
+      if (pending === 0 && !settled) settleWithFailure()
+    }
+
+    if (pending === 0) settleWithFailure()
 
     for (const promise of promises) {
       promise
         .then((response) => {
-          if (response.data) {
+          if (settled) return
+          const result = response?.data?.result
+          if (result?.success === true) {
+            settled = true
             clearTimeout(timer)
             resolve(response)
-          } else {
-            unresolvedCount--
-            if (unresolvedCount === 0) {
-              clearTimeout(timer)
-              //reject(new Error('All promises failed or returned unsuccessful responses.'))
-              resolve(response)
-            }
+            return
           }
+          if (result?.success === false) {
+            if (failedResponse === undefined) failedResponse = response
+          } else if (lastError === undefined) {
+            lastError = new Error('Invalid injection response')
+          }
+          markAnswered()
         })
         .catch((error) => {
-          unresolvedCount--
-          if (unresolvedCount === 0) {
-            clearTimeout(timer)
-            //reject(new Error('All promises failed or returned unsuccessful responses: ' + error))
-            reject(error)
-          }
+          if (settled) return
+          lastError = error
+          markAnswered()
         })
     }
   })

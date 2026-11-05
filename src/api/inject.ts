@@ -2,6 +2,12 @@ import { Utils } from '@shardus/lib-types'
 import { AJVSchemaEnum } from '../@types'
 import { verifyPayload } from '../@types/ajvHelper'
 
+// Failures use the same { result: { success, reason, status } } shape as a dapp.put result,
+// so clients read the reason from result.reason whatever the outcome.
+const sendFailure = (res, status: number, reason: string): void => {
+  res.status(status).json({ result: { success: false, reason, status } })
+}
+
 export const inject =
   (dapp) =>
   async (req, res): Promise<void> => {
@@ -10,9 +16,7 @@ export const inject =
       const errors = verifyPayload(AJVSchemaEnum.inject_tx_req, req.body)
 
       if (errors !== null) {
-        res.status(400).json({
-          error: `Invalid inject request: ${errors.join('; ')}`,
-        })
+        sendFailure(res, 400, `Invalid inject request: ${errors.join('; ')}`)
         return
       }
 
@@ -22,9 +26,7 @@ export const inject =
       try {
         tx = Utils.safeJsonParse(req.body.tx)
       } catch {
-        res.status(400).json({
-          error: 'The tx field must contain valid JSON',
-        })
+        sendFailure(res, 400, 'The tx field must contain valid JSON')
         return
       }
 
@@ -33,9 +35,7 @@ export const inject =
         tx !== null && typeof tx === 'object' && !Array.isArray(tx) && (Object.getPrototypeOf(tx) === Object.prototype || Object.getPrototypeOf(tx) === null)
 
       if (!isPlainObject) {
-        res.status(400).json({
-          error: 'The tx field must contain a JSON object',
-        })
+        sendFailure(res, 400, 'The tx field must contain a JSON object')
         return
       }
 
@@ -43,8 +43,6 @@ export const inject =
       res.json({ result })
     } catch (error) {
       dapp.log(error)
-      res.status(500).json({
-        error: 'Unable to process transaction',
-      })
+      sendFailure(res, 500, 'Unable to process transaction')
     }
   }
