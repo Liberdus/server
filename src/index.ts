@@ -83,8 +83,16 @@ let isReadyToJoinLatestValue = false
 let mustUseAdminCert = false
 
 const shardusSetup = (): void => {
+  let netConfigMigrationAttempts = 0
   // SDK SETUP FUNCTIONS
   dapp.setup({
+    async prepareNetworkConfigMigrations(genesis: boolean): Promise<void> {
+      const account = genesis ? null : netConfigMigrationAttempts++ === 0
+        ? AccountsStorage.cachedNetworkAccount ?? await fetchNetworkAccountFromArchiver()
+        : await fetchNetworkAccountFromArchiver()
+      if (!genesis && !account?.current?.activeVersion) throw new Error('Network account is unavailable for netConfig migrations')
+      await onActiveVersionChange(genesis ? configs.INITIAL_PARAMETERS.activeVersion : account.current.activeVersion, dapp)
+    },
     async sync(): Promise<void> {
       dapp.useAccountWrites()
       // In the restore network, the current getLocalOrRemoteAccount would return null and the network account exist check will not work
@@ -2034,7 +2042,7 @@ const shardusSetup = (): void => {
               // "activeVersion" fields (e.g. network.current.archiver.activeVersion) are a
               // different version namespace and must not fire the app-version hook.
               if (key === 'activeVersion' && parentPath === '') {
-                await onActiveVersionChange(value as string)
+                await onActiveVersionChange(value as string, dapp)
               }
               existingObject[key] = value
             }
