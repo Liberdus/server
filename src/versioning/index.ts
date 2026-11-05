@@ -1,6 +1,7 @@
 import { nestedCountersInstance } from '@shardus/core'
 import { isEqualOrNewerVersion } from '../utils'
 import { Migration as Migrate } from './types'
+import type { Shardus } from '@shardus/core'
 
 const appliedMigrations = new Set<string>()
 
@@ -15,7 +16,7 @@ const appliedMigrations = new Set<string>()
  * @param newActiveVersion
  */
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export const onActiveVersionChange = async (newActiveVersion: string) => {
+export const onActiveVersionChange = async (newActiveVersion: string, dapp: Shardus) => {
   // For future migrations, add a file under ./migrations and add the version here
   const migrations = ['2.3.5', '2.3.6', '2.3.7', '2.3.8', '2.4.1', '2.4.5', '2.4.8', '2.4.9', '2.5.1', '2.5.2', '2.5.3']
 
@@ -28,11 +29,11 @@ export const onActiveVersionChange = async (newActiveVersion: string) => {
 
     if (needsMigration) {
       try {
-        await migrate()
+        await migrate(dapp)
+        appliedMigrations.add(migrationVersion)
       } catch (error) {
         nestedCountersInstance.countEvent('migration-failed', `failed to apply migration ${migrationVersion}`)
-      } finally {
-        appliedMigrations.add(migrationVersion)
+        throw error
       }
     }
   }
