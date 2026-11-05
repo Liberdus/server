@@ -7,6 +7,7 @@ import { onActiveVersionChange } from '../src/versioning'
 import { userAccount } from '../src/accounts/userAccount'
 import { nodeAccount } from '../src/accounts/nodeAccount'
 import { Utils } from '@shardus/lib-types'
+import type { Shardus } from '@shardus/core'
 
 describe('legacy DAO state migration', () => {
   const originalFlag = LiberdusFlags.versionFlags.removeLegacyDaoState
@@ -33,7 +34,7 @@ describe('legacy DAO state migration', () => {
     LiberdusFlags.versionFlags.removeLegacyNetworkParams = false
 
     try {
-      await onActiveVersionChange('2.5.2')
+      await onActiveVersionChange('2.5.2', {} as Shardus)
       expect(LiberdusFlags.versionFlags.removeLegacyDaoState).toBe(true)
       expect(LiberdusFlags.versionFlags.removeUnusedTxState).toBe(true)
       expect(LiberdusFlags.versionFlags.removeLegacyNetworkParams).toBe(true)
