@@ -137,13 +137,21 @@ Injects a transaction into the system.
 ```
 
 **Error Response:**
+
+A malformed request returns HTTP 400. An unexpected server error returns HTTP 500. Both use the same `result` shape as a processed transaction:
 ```json
 {
-  "error": string  // Error message if injection fails
+  "result": {
+    "success": false,
+    "reason": string,  // Why the request failed
+    "status": number   // 400 or 500
+  }
 }
 ```
 
-The inject endpoint allows you to submit transactions to the system. The transaction must be provided as a JSON stringified string in the request body's `tx` field. The system will parse the transaction, process it, and return the result or any error that occurred during processing.
+HTTP 400 is returned when `tx` is missing or not a string, is not valid JSON, or does not parse into a JSON object.
+
+The inject endpoint allows you to submit transactions to the system. The transaction must be provided as a JSON stringified string in the request body's `tx` field. The system will parse the transaction, process it, and return the result. Read the outcome from `result.success` and `result.reason`, whatever the HTTP status.
 
 ## Available Transaction Types
 

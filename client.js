@@ -470,7 +470,8 @@ async function sendTx(tx, node = null, verbose = true) {
       target = node
     }
     console.log(target, node)
-    const { data } = await axios.post(`${PROTOCOL}://${target}/inject`, tx)
+    // /inject expects the tx as a stringified JSON envelope
+    const { data } = await axios.post(`${PROTOCOL}://${target}/inject`, { tx: Utils.safeStringify(tx) })
     console.log('Got response:', data)
     return data
   } catch (err) {

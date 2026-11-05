@@ -5,6 +5,8 @@ import { getVerifyFunction } from '../src/@types/schemaHelper'
 import { AJVSchemaEnum, TXTypes, ViolationType } from '../src/@types'
 import { LiberdusFlags } from '../src/config'
 import { inject } from '../src/api/inject'
+import { InjectTxToConsensor } from '../src/utils'
+import * as Request from '../src/utils/request'
 import * as AccountsStorage from '../src/storage/accountStorage'
 import * as AdminCertificate from '../src/transactions/admin_certificate'
 import { putAdminCertificateHandler } from '../src/transactions/admin_certificate'
@@ -603,19 +605,21 @@ describe('POST /inject envelope', () => {
   const makeDapp = (): any => ({ put: jest.fn(async () => ({ success: true, reason: '', status: 200 })), log: jest.fn() })
 
   it.each([
-    ['a missing tx', {}],
-    ['a non-string tx', { tx: { type: 'transfer' } }],
-    ['malformed JSON', { tx: '{bad' }],
-    ['null', { tx: 'null' }],
-    ['an array', { tx: '[]' }],
-    ['a primitive', { tx: '5' }],
-  ])('rejects %s with HTTP 400 before dapp.put', async (_label, body) => {
+    ['a missing tx', {}, /^Invalid inject request: /],
+    ['a non-string tx', { tx: { type: 'transfer' } }, /^Invalid inject request: /],
+    ['malformed JSON', { tx: '{bad' }, /^The tx field must contain valid JSON$/],
+    ['null', { tx: 'null' }, /^The tx field must contain a JSON object$/],
+    ['an array', { tx: '[]' }, /^The tx field must contain a JSON object$/],
+    ['a primitive', { tx: '5' }, /^The tx field must contain a JSON object$/],
+  ])('rejects %s with HTTP 400 and a result.reason before dapp.put', async (_label, body, reason) => {
     const dapp = makeDapp()
     const res = makeRes()
 
     await inject(dapp)({ body }, res)
 
     expect(res.status).toHaveBeenCalledWith(400)
+    // Same shape as a dapp.put result, so clients read the reason from result.reason
+    expect(res.json).toHaveBeenCalledWith({ result: { success: false, reason: expect.stringMatching(reason), status: 400 } })
     expect(dapp.put).not.toHaveBeenCalled()
   })
 
@@ -628,7 +632,7 @@ describe('POST /inject envelope', () => {
     await inject(dapp)({ body: { tx: Utils.safeStringify(tx) } }, res)
 
     expect(res.status).toHaveBeenCalledWith(500)
-    expect(res.json).toHaveBeenCalledWith({ error: 'Unable to process transaction' })
+    expect(res.json).toHaveBeenCalledWith({ result: { success: false, reason: 'Unable to process transaction', status: 500 } })
   })
 
   it('passes a web client call message through the inject envelope and its schema', async () => {
@@ -659,5 +663,157 @@ describe('POST /inject envelope', () => {
     const putTx = dapp.put.mock.calls[0][0]
     expect(typeof putTx.amount).toBe('bigint')
     expect(verifyPayload(TXTypes.transfer, putTx)).toBeNull()
+  })
+
+  // Node-to-node injection (used for set_cert_time) reads the same failure shape
+  describe('InjectTxToConsensor', () => {
+    const node = { ip: '127.0.0.1', port: 9001, publicKey: key } as any
+    const tx = { type: TXTypes.set_cert_time, timestamp: 1 } as any
+    let post: jest.SpyInstance
+
+    beforeEach(() => {
+      post = jest.spyOn(Request, 'shardusPostToNode')
+    })
+
+    afterEach(() => {
+      post.mockRestore()
+    })
+
+    it('returns the node result when injection succeeds', async () => {
+      post.mockResolvedValue({ data: { result: { success: true, reason: '', status: 200 } } })
+      expect(await InjectTxToConsensor([node], tx)).toEqual({ success: true, reason: '', status: 200 })
+    })
+
+    it('surfaces result.reason from an HTTP 400/500 failure', async () => {
+      post.mockRejectedValue({
+        message: 'Request failed with status code 400',
+        response: { status: 400, data: { result: { success: false, reason: 'The tx field must contain a JSON object', status: 400 } } },
+      })
+      expect(await InjectTxToConsensor([node], tx)).toEqual({ success: false, reason: 'The tx field must contain a JSON object' })
+    })
+
+    it('falls back to the error message when there is no response body', async () => {
+      post.mockRejectedValue(new Error('connect ECONNREFUSED'))
+      expect(await InjectTxToConsensor([node], tx)).toEqual({ success: false, reason: 'connect ECONNREFUSED' })
+    })
+
+    describe('with several nodes', () => {
+      const nodeA = { ...node, ip: '10.0.0.1' }
+      const nodeB = { ...node, ip: '10.0.0.2' }
+      const nodeC = { ...node, ip: '10.0.0.3' }
+      const ok = { data: { result: { success: true, reason: '', status: 200 } } }
+      const rejected = (reason: string): any => ({ data: { result: { success: false, reason, status: 200 } } })
+      const httpError = (reason: string): any => ({
+        message: 'Request failed with status code 400',
+        response: { status: 400, data: { result: { success: false, reason, status: 400 } } },
+      })
+      const later = <V>(ms: number, value: V, fail = false): Promise<V> =>
+        new Promise((resolve, reject) => setTimeout(() => (fail ? reject(value) : resolve(value)), ms))
+      // Each node answers on its own schedule
+      const answer = (byIp: Record<string, () => Promise<unknown>>): void => {
+        post.mockImplementation((target) => byIp[target.ip]())
+      }
+
+      it('returns a later success instead of an earlier failure', async () => {
+        answer({ '10.0.0.1': () => later(1, rejected('node A busy')), '10.0.0.2': () => later(20, ok) })
+        expect(await InjectTxToConsensor([nodeA, nodeB], tx)).toEqual(ok.data.result)
+      })
+
+      it('returns a success even when another node errors first', async () => {
+        answer({ '10.0.0.1': () => later(1, httpError('node A rejected'), true), '10.0.0.2': () => later(20, ok) })
+        expect(await InjectTxToConsensor([nodeA, nodeB], tx)).toEqual(ok.data.result)
+      })
+
+      it('returns the first failure response once every node has failed', async () => {
+        answer({
+          '10.0.0.1': () => later(1, rejected('first failure')),
+          '10.0.0.2': () => later(10, rejected('second failure')),
+          '10.0.0.3': () => later(20, httpError('request error'), true),
+        })
+        expect(await InjectTxToConsensor([nodeA, nodeB, nodeC], tx)).toEqual({ success: false, reason: 'first failure', status: 200 })
+      })
+
+      it('surfaces a request error reason when no node returned a failure body', async () => {
+        answer({ '10.0.0.1': () => later(1, httpError('node A rejected'), true), '10.0.0.2': () => later(10, new Error('connect ECONNREFUSED'), true) })
+        expect(await InjectTxToConsensor([nodeA, nodeB], tx)).toEqual({ success: false, reason: 'connect ECONNREFUSED' })
+      })
+
+      it('ignores a malformed answer and reports the real failure', async () => {
+        answer({ '10.0.0.1': () => later(1, { data: {} }), '10.0.0.2': () => later(10, rejected('node B rejected')) })
+        expect(await InjectTxToConsensor([nodeA, nodeB], tx)).toEqual({ success: false, reason: 'node B rejected', status: 200 })
+      })
+
+      it('ignores a malformed answer and reports a request error reason', async () => {
+        answer({ '10.0.0.1': () => later(1, { data: {} }), '10.0.0.2': () => later(10, httpError('node B rejected'), true) })
+        expect(await InjectTxToConsensor([nodeA, nodeB], tx)).toEqual({ success: false, reason: 'node B rejected' })
+      })
+
+      it('returns a structured failure when every answer is malformed', async () => {
+        answer({ '10.0.0.1': () => later(1, { data: {} }), '10.0.0.2': () => later(10, {}) })
+        expect(await InjectTxToConsensor([nodeA, nodeB], tx)).toEqual({ success: false, reason: 'Invalid injection response' })
+      })
+
+      it('still returns a success after an answer with no data', async () => {
+        answer({ '10.0.0.1': () => later(1, {}), '10.0.0.2': () => later(10, ok) })
+        expect(await InjectTxToConsensor([nodeA, nodeB], tx)).toEqual(ok.data.result)
+      })
+
+      it('fails immediately for an empty node list', async () => {
+        expect(await InjectTxToConsensor([], tx)).toEqual({ success: false, reason: 'No node answered the injection.' })
+        expect(post).not.toHaveBeenCalled()
+      })
+
+      describe('timeout', () => {
+        const hang = (): Promise<unknown> => new Promise(() => undefined)
+        // Lets resolved node answers reach the race before time is advanced
+        const flush = async (): Promise<void> => {
+          for (let i = 0; i < 5; i++) await Promise.resolve()
+        }
+
+        beforeEach(() => {
+          jest.useFakeTimers()
+        })
+
+        afterEach(() => {
+          jest.useRealTimers()
+        })
+
+        it('waits the full 5s for a slower node before returning a failure, then ignores a late success', async () => {
+          let answerNodeB: (value: unknown) => void
+          answer({
+            '10.0.0.1': () => Promise.resolve(rejected('node A rejected')),
+            '10.0.0.2': () => new Promise((resolve) => (answerNodeB = resolve)),
+          })
+          let settled = false
+          const result = InjectTxToConsensor([nodeA, nodeB], tx).then((value) => {
+            settled = true
+            return value
+          })
+
+          await flush()
+          jest.advanceTimersByTime(4999)
+          await flush()
+          expect(settled).toBe(false)
+
+          jest.advanceTimersByTime(1)
+          await flush()
+          expect(settled).toBe(true)
+          expect(await result).toEqual({ success: false, reason: 'node A rejected', status: 200 })
+
+          // Node B accepts after the race has settled; the reported failure stands
+          answerNodeB(ok)
+          await flush()
+          expect(await result).toEqual({ success: false, reason: 'node A rejected', status: 200 })
+        })
+
+        it('reports the timeout when every node hangs', async () => {
+          answer({ '10.0.0.1': hang, '10.0.0.2': hang })
+          const result = InjectTxToConsensor([nodeA, nodeB], tx)
+          await flush()
+          jest.advanceTimersByTime(5000)
+          expect(await result).toEqual({ success: false, reason: 'Timeout: Operation did not complete within the allowed time.' })
+        })
+      })
+    })
   })
 })
