@@ -12,8 +12,10 @@ import { Migration } from '../types'
  *
  * A network that starts at 2.5.3 never runs this migration; enable correctAccountSerdeLayout in its defaults before launch.
  */
-export const migrate: Migration = async () => {
+export const migrate: Migration = async (dapp) => {
   console.log('migrate 2.5.3')
   nestedCountersInstance.countEvent('migrate', 'calling migrate 2.5.3')
   LiberdusFlags.versionFlags.correctAccountSerdeLayout = true
+  dapp.config.p2p.netConfigV2 = true
+  dapp.config.p2p.networkConfigHashEnforcement = true
 }
