@@ -462,8 +462,6 @@ config = merge(config, {
   server: {
     p2p: {
       cycleDuration: cycleDuration,
-      netConfigV2: false,
-      networkConfigHashEnforcement: false,
       minNodesToAllowTxs: 1, // to allow single node networks
       baselineNodes: process.env.baselineNodes ? parseInt(process.env.baselineNodes) : 10, // config used for baseline for entering recovery, restore, and safety. Should be equivalient to minNodes on network startup
       minNodes: process.env.minNodes ? parseInt(process.env.minNodes) : 10,
@@ -559,6 +557,9 @@ config = merge(config, {
       checkNetworkStopped: true,
       archiverNetworkCheckInterval: 1000 * 60 * 1,
       shouldApopOnNetworkStop: false,
+
+      netConfigV2: false, // turn on by 2.5.3
+      networkConfigHashEnforcement: false, // turn on by 2.5.3
     },
     features: {
       //This feature will restrict transactions to only coin transfers

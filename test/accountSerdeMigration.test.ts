@@ -21,7 +21,7 @@ const loadFresh = (): { activate: (v: string) => Promise<void>; flags: typeof Li
   const { onActiveVersionChange } = require('../src/versioning')
   const { LiberdusFlags } = require('../src/config')
   LiberdusFlags.versionFlags.correctAccountSerdeLayout = false
-  return { activate: onActiveVersionChange, flags: LiberdusFlags }
+  return { activate: (v: string) => onActiveVersionChange(v, { config: { p2p: {} } }), flags: LiberdusFlags }
 }
 
 describe('account serde layout migration', () => {
