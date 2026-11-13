@@ -42,9 +42,9 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   activeVersion: '2.5.3',
   latestVersion: '2.5.3',
   archiver: {
-    minVersion: '3.8.3',
-    activeVersion: '3.8.3',
-    latestVersion: '3.8.3',
+    minVersion: '3.9.1',
+    activeVersion: '3.9.1',
+    latestVersion: '3.9.1',
   },
   stabilityScaleMul: 125,
   stabilityScaleDiv: 1,
