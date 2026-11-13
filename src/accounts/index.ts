@@ -36,10 +36,17 @@ export enum SerdeTypeIdent {
 
 export const serializeAccounts = (inp: AccountVariant): VectorBufferStream => {
   const stream = new VectorBufferStream(0)
-  // Factory-built types used the JSON fallback before 2.5.3. Enable these
-  // existing numeric tags only after every node has the corrected readers.
-  // The DAO codecs were already active and keep their existing dispatch.
-  if (!LiberdusFlags.versionFlags.correctAccountSerdeLayout && inp.type !== 'DaoProposalsMeta' && inp.type !== 'DaoProposalAccount') {
+  /**
+   * Before 2.5.3, ordinary accounts use fallback and DAO accounts use tagged frames.
+   * The flag moves DAO accounts to fallback too; tagged serializers remain for future use.
+   */
+  const useFallbackForAccount =
+    LiberdusFlags.versionFlags.useFallbackAccountSerialization || (inp.type !== 'DaoProposalsMeta' && inp.type !== 'DaoProposalAccount')
+  /**
+   * Shardus safeStringify/safeJsonParse preserve account data types, so one fallback format
+   * avoids maintaining separate binary layouts as account fields change.
+   */
+  if (useFallbackForAccount) {
     fallbackSerializer(stream, inp, true)
     return stream
   }
@@ -78,6 +85,7 @@ export const serializeAccounts = (inp: AccountVariant): VectorBufferStream => {
 }
 
 export const deserializeAccounts = (buffer: Buffer): AccountVariant => {
+  // Keep tagged decoding for DAO frames sent before the 2.5.3 switch, alongside fallback frames.
   const stream = VectorBufferStream.fromBuffer(buffer)
   const type = stream.readUInt16()
   switch (type) {

@@ -39,9 +39,9 @@ const roundTrip = (input: UserAccount): UserAccount => {
 }
 
 describe('UserAccount binary codec', () => {
-  const originalFlag = LiberdusFlags.versionFlags.correctAccountSerdeLayout
+  const originalFlag = LiberdusFlags.versionFlags.useFallbackAccountSerialization
   afterEach(() => {
-    LiberdusFlags.versionFlags.correctAccountSerdeLayout = originalFlag
+    LiberdusFlags.versionFlags.useFallbackAccountSerialization = originalFlag
   })
 
   test('round-trips a live legacy shape with default retired values', () => {
@@ -57,9 +57,9 @@ describe('UserAccount binary codec', () => {
     ;(input.data as Record<string, unknown>).stake = 9n
     ;(input.data as Record<string, unknown>).friends = { recipient: 'alias' }
     input.pqPublicKey = 'pq-key'
-    LiberdusFlags.versionFlags.correctAccountSerdeLayout = false
+    LiberdusFlags.versionFlags.useFallbackAccountSerialization = false
     expect(roundTrip(input)).toEqual(input)
-    LiberdusFlags.versionFlags.correctAccountSerdeLayout = true
+    LiberdusFlags.versionFlags.useFallbackAccountSerialization = true
     expect(roundTrip(input)).toEqual(input)
   })
 

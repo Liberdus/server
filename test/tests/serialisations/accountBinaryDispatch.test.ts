@@ -1,22 +1,49 @@
 import { Shardus, VectorBufferStream } from '@shardus/core'
 import { Utils } from '@shardus/lib-types'
-import { AccountVariant, Tx, UserAccount } from '../../../src/@types'
-import { aliasAccount } from '../../../src/accounts/aliasAccount'
+import { AccountVariant, AliasAccount, ChatAccount, NetworkAccount, NodeAccount, Tx, UserAccount } from '../../../src/@types'
+import { aliasAccount, serializeAliasAccount } from '../../../src/accounts/aliasAccount'
 import { serializeAppData, deserializeAppData } from '../../../src/accounts/appDataSerialization'
-import { chatAccount } from '../../../src/accounts/chatAccount'
+import { chatAccount, serializeChatAccount } from '../../../src/accounts/chatAccount'
 import { daoProposalAccount } from '../../../src/accounts/daoProposalAccount'
 import { daoProposalsMetaAccount } from '../../../src/accounts/daoProposalsMetaAccount'
-import { devAccount } from '../../../src/accounts/devAccount'
+import { devAccount, serializeDevAccount } from '../../../src/accounts/devAccount'
 import { deserializeAccounts, SerdeTypeIdent, serializeAccounts } from '../../../src/accounts'
-import { networkAccount } from '../../../src/accounts/networkAccount'
-import { nodeAccount } from '../../../src/accounts/nodeAccount'
-import { userAccount } from '../../../src/accounts/userAccount'
+import { networkAccount, serializeNetworkAccount } from '../../../src/accounts/networkAccount'
+import { nodeAccount, serializeNodeAccount } from '../../../src/accounts/nodeAccount'
+import { userAccount, serializeUserAccount } from '../../../src/accounts/userAccount'
 import { LiberdusFlags } from '../../../src/config'
 import * as crypto from '../../../src/crypto'
 
 const now = 1_791_304_868_693
 const dappStub = { getLatestCycles: () => [{ networkId: 'network-id' }] } as unknown as Shardus
 const txStub = { from: 'aaaa', to: 'bbbb' } as unknown as Tx.Message
+
+const serializeTaggedAccount = (account: AccountVariant): Buffer => {
+  const stream = new VectorBufferStream(0)
+  switch (account.type) {
+    case 'AliasAccount':
+      serializeAliasAccount(stream, account as AliasAccount, true)
+      break
+    case 'ChatAccount':
+      serializeChatAccount(stream, account as ChatAccount, true)
+      break
+    case 'NetworkAccount':
+      serializeNetworkAccount(stream, account as NetworkAccount, true)
+      break
+    case 'NodeAccount':
+      serializeNodeAccount(stream, account as NodeAccount, true)
+      break
+    case 'UserAccount':
+      serializeUserAccount(stream, account as UserAccount, true)
+      break
+    case 'DevAccount':
+      serializeDevAccount(stream, account, true)
+      break
+    default:
+      throw new Error(`No tagged fixture for ${account.type}`)
+  }
+  return stream.getBuffer()
+}
 
 const factoryAccounts = (): Array<[AccountVariant, SerdeTypeIdent]> => {
   const alias = aliasAccount('alias')
@@ -55,8 +82,8 @@ const factoryAccounts = (): Array<[AccountVariant, SerdeTypeIdent]> => {
   ]
 }
 
-describe('factory account binary dispatch', () => {
-  const originalFlag = LiberdusFlags.versionFlags.correctAccountSerdeLayout
+describe('account serialization dispatch and tagged codecs', () => {
+  const originalFlag = LiberdusFlags.versionFlags.useFallbackAccountSerialization
 
   beforeAll(() => {
     crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
@@ -64,62 +91,54 @@ describe('factory account binary dispatch', () => {
   })
 
   afterEach(() => {
-    LiberdusFlags.versionFlags.correctAccountSerdeLayout = originalFlag
+    LiberdusFlags.versionFlags.useFallbackAccountSerialization = originalFlag
   })
 
-  test('factory accounts switch from JSON to their binary codec at 2.5.3', () => {
-    const log = jest.spyOn(console, 'log').mockImplementation(() => undefined)
-    try {
-      for (const [account, tag] of factoryAccounts()) {
-        LiberdusFlags.versionFlags.correctAccountSerdeLayout = false
-        const jsonFrame = serializeAccounts(account).getBuffer()
+  test('factory accounts use JSON transport while their tagged codecs remain lossless', () => {
+    for (const [account, tag] of factoryAccounts()) {
+      for (const active of [false, true]) {
+        LiberdusFlags.versionFlags.useFallbackAccountSerialization = active
+        const jsonFrame = serializeAppData('AppData', account)
         expect(VectorBufferStream.fromBuffer(jsonFrame).readUInt16()).toBe(SerdeTypeIdent.Fallback)
-
-        LiberdusFlags.versionFlags.correctAccountSerdeLayout = true
-        const binaryFrame = serializeAppData('AppData', account)
-        expect(VectorBufferStream.fromBuffer(binaryFrame).readUInt16()).toBe(tag)
-        const decoded = deserializeAppData('AppData', binaryFrame)
-        expect(decoded).toEqual(account)
-        expect(crypto.hashObj(decoded)).toBe(crypto.hashObj(account))
-        expect(deserializeAccounts(jsonFrame)).toEqual(account)
-
-        LiberdusFlags.versionFlags.correctAccountSerdeLayout = false
-        expect(deserializeAccounts(binaryFrame)).toEqual(account)
+        expect(deserializeAppData('AppData', jsonFrame)).toEqual(account)
       }
-    } finally {
-      log.mockRestore()
+
+      const binaryFrame = serializeTaggedAccount(account)
+      expect(VectorBufferStream.fromBuffer(binaryFrame).readUInt16()).toBe(tag)
+      const decoded = deserializeAppData('AppData', binaryFrame)
+      expect(decoded).toEqual(account)
+      expect(crypto.hashObj(decoded)).toBe(crypto.hashObj(account))
     }
   })
 
-  test('DAO accounts keep their existing tagged codec before and after activation', () => {
+  test('DAO accounts switch from their tagged codec to JSON fallback at activation', () => {
     const accounts = [
       [daoProposalAccount('proposal'), SerdeTypeIdent.DaoProposalAccount],
       [daoProposalsMetaAccount('meta'), SerdeTypeIdent.DaoProposalsMeta],
     ] as Array<[AccountVariant, SerdeTypeIdent]>
 
     for (const active of [false, true]) {
-      LiberdusFlags.versionFlags.correctAccountSerdeLayout = active
+      LiberdusFlags.versionFlags.useFallbackAccountSerialization = active
       for (const [account, tag] of accounts) {
         const encoded = serializeAccounts(account).getBuffer()
-        expect(VectorBufferStream.fromBuffer(encoded).readUInt16()).toBe(tag)
+        expect(VectorBufferStream.fromBuffer(encoded).readUInt16()).toBe(active ? SerdeTypeIdent.Fallback : tag)
         expect(deserializeAccounts(encoded)).toEqual(account)
       }
     }
   })
 
-  test('stored retired fields with default values still use binary encoding', () => {
+  test('stored retired fields with default values remain valid in tagged encoding', () => {
     const user = userAccount('user', now)
     Object.assign(user.data, { friends: {}, stake: 0n, remove_stake_request: null, payments: [] })
     Object.assign(user, { emailHash: null, verified: false, claimedSnapshot: false })
     const node = nodeAccount('node')
     Object.assign(node, { balance: 0n, nodeRewardTime: 0 })
 
-    LiberdusFlags.versionFlags.correctAccountSerdeLayout = true
     for (const [account, tag] of [
       [user, SerdeTypeIdent.UserAccount],
       [node, SerdeTypeIdent.NodeAccount],
     ] as Array<[AccountVariant, SerdeTypeIdent]>) {
-      const encoded = serializeAccounts(account).getBuffer()
+      const encoded = serializeTaggedAccount(account)
       expect(VectorBufferStream.fromBuffer(encoded).readUInt16()).toBe(tag)
       expect(deserializeAccounts(encoded)).toEqual(account)
     }
@@ -151,12 +170,11 @@ describe('factory account binary dispatch', () => {
     }
     ;(node as unknown as Record<string, unknown>).balance = 0n
     ;(node as unknown as Record<string, unknown>).nodeRewardTime = now
-    LiberdusFlags.versionFlags.correctAccountSerdeLayout = true
     for (const [account, tag] of [
       [user, SerdeTypeIdent.UserAccount],
       [node, SerdeTypeIdent.NodeAccount],
     ] as Array<[AccountVariant, SerdeTypeIdent]>) {
-      const encoded = serializeAppData('AppData', account)
+      const encoded = serializeTaggedAccount(account)
       expect(VectorBufferStream.fromBuffer(encoded).readUInt16()).toBe(tag)
       const decoded = deserializeAppData('AppData', encoded)
       expect(decoded).toEqual(account)
@@ -210,8 +228,7 @@ describe('factory account binary dispatch', () => {
   ])('populated UserAccount %s round-trips through the binary codec', (_field, populate) => {
     const user = userAccount('user', now)
     populate(user)
-    LiberdusFlags.versionFlags.correctAccountSerdeLayout = true
-    const encoded = serializeAccounts(user).getBuffer()
+    const encoded = serializeTaggedAccount(user)
     expect(VectorBufferStream.fromBuffer(encoded).readUInt16()).toBe(SerdeTypeIdent.UserAccount)
     expect(deserializeAccounts(encoded)).toEqual(user)
   })
@@ -221,8 +238,7 @@ describe('factory account binary dispatch', () => {
     ['nodeRewardTime', { nodeRewardTime: now }],
   ])('populated NodeAccount %s round-trips through the binary codec', (_field, change) => {
     const node = Object.assign(nodeAccount('node'), change)
-    LiberdusFlags.versionFlags.correctAccountSerdeLayout = true
-    const encoded = serializeAccounts(node).getBuffer()
+    const encoded = serializeTaggedAccount(node)
     expect(VectorBufferStream.fromBuffer(encoded).readUInt16()).toBe(SerdeTypeIdent.NodeAccount)
     expect(deserializeAccounts(encoded)).toEqual(node)
   })
@@ -230,8 +246,7 @@ describe('factory account binary dispatch', () => {
   test('additional toll data is preserved', () => {
     const chat = chatAccount('chat', txStub)
     ;(chat.toll as typeof chat.toll & { futureTax?: bigint }).futureTax = 3n
-    LiberdusFlags.versionFlags.correctAccountSerdeLayout = true
-    expect(deserializeAccounts(serializeAccounts(chat).getBuffer())).toEqual(chat)
+    expect(deserializeAccounts(serializeTaggedAccount(chat))).toEqual(chat)
   })
 
   test.each([
@@ -299,33 +314,22 @@ describe('factory account binary dispatch', () => {
         return account
       },
     ],
-  ] as Array<[string, () => AccountVariant]>)('%s uses the AppData JSON fallback', (_name, makeAccount) => {
+  ] as Array<[string, () => AccountVariant]>)('%s rejects tagged encoding and uses the JSON fallback', (_name, makeAccount) => {
     const account = makeAccount()
-    LiberdusFlags.versionFlags.correctAccountSerdeLayout = true
-    expect(() => serializeAccounts(account)).toThrow()
-    const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
-    try {
-      const encoded = serializeAppData('AppData', account)
-      expect(encoded.toString('utf8')).toBe(Utils.safeStringify(account))
-      expect(Utils.safeStringify(deserializeAppData('AppData', encoded))).toBe(Utils.safeStringify(account))
-      expect(warning).toHaveBeenCalled()
-    } finally {
-      warning.mockRestore()
-    }
+    expect(() => serializeTaggedAccount(account)).toThrow()
+    LiberdusFlags.versionFlags.useFallbackAccountSerialization = true
+    const encoded = serializeAppData('AppData', account)
+    expect(VectorBufferStream.fromBuffer(encoded).readUInt16()).toBe(SerdeTypeIdent.Fallback)
+    expect(Utils.safeStringify(deserializeAppData('AppData', encoded))).toBe(Utils.safeStringify(account))
   })
 
-  test('an unsafe timestamp uses the AppData JSON fallback', () => {
+  test('an unsafe timestamp rejects tagged encoding and uses the JSON fallback', () => {
     const account = devAccount('dev')
     account.timestamp = Number.MAX_SAFE_INTEGER + 1
-    LiberdusFlags.versionFlags.correctAccountSerdeLayout = true
-    const warning = jest.spyOn(console, 'warn').mockImplementation(() => undefined)
-    try {
-      const encoded = serializeAppData('AppData', account)
-      expect(encoded.toString('utf8')).toBe(Utils.safeStringify(account))
-      expect(deserializeAppData('AppData', encoded)).toEqual(account)
-      expect(warning).toHaveBeenCalled()
-    } finally {
-      warning.mockRestore()
-    }
+    expect(() => serializeTaggedAccount(account)).toThrow()
+    LiberdusFlags.versionFlags.useFallbackAccountSerialization = true
+    const encoded = serializeAppData('AppData', account)
+    expect(VectorBufferStream.fromBuffer(encoded).readUInt16()).toBe(SerdeTypeIdent.Fallback)
+    expect(deserializeAppData('AppData', encoded)).toEqual(account)
   })
 })

@@ -15,7 +15,7 @@ const roundTrip = (input: NodeAccount): NodeAccount => {
 }
 
 describe('NodeAccount binary codec', () => {
-  const originalFlag = LiberdusFlags.versionFlags.correctAccountSerdeLayout
+  const originalFlag = LiberdusFlags.versionFlags.useFallbackAccountSerialization
   const originalUnusedFlag = LiberdusFlags.versionFlags.removeUnusedTxState
 
   beforeAll(() => {
@@ -24,7 +24,7 @@ describe('NodeAccount binary codec', () => {
   })
 
   afterEach(() => {
-    LiberdusFlags.versionFlags.correctAccountSerdeLayout = originalFlag
+    LiberdusFlags.versionFlags.useFallbackAccountSerialization = originalFlag
     LiberdusFlags.versionFlags.removeUnusedTxState = originalUnusedFlag
   })
 
@@ -46,7 +46,9 @@ describe('NodeAccount binary codec', () => {
     LiberdusFlags.versionFlags.removeUnusedTxState = false
     const input = nodeAccount('test')
     ;(input as unknown as Record<string, unknown>).nodeRewardTime = 1_791_304_868_693
-    LiberdusFlags.versionFlags.correctAccountSerdeLayout = true
+    LiberdusFlags.versionFlags.useFallbackAccountSerialization = false
+    expect(roundTrip(input)).toEqual(input)
+    LiberdusFlags.versionFlags.useFallbackAccountSerialization = true
     LiberdusFlags.versionFlags.removeUnusedTxState = true
     expect(roundTrip(input)).toEqual(input)
   })

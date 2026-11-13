@@ -277,7 +277,7 @@ interface LiberdusFlags {
     removeLegacyDaoState: boolean
     removeUnusedTxState: boolean
     removeLegacyNetworkParams: boolean
-    correctAccountSerdeLayout: boolean
+    useFallbackAccountSerialization: boolean
   }
 }
 
@@ -338,7 +338,7 @@ export const LiberdusFlags: LiberdusFlags = {
     removeLegacyDaoState: true, // turn on by 2.5.2
     removeUnusedTxState: true, // turn on by 2.5.2
     removeLegacyNetworkParams: true, // turn on by 2.5.2
-    correctAccountSerdeLayout: true, // enable account binary dispatch by 2.5.3
+    useFallbackAccountSerialization: false, // use JSON for every account after the 2.5.3 migration
   },
 }
 

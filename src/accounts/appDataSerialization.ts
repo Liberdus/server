@@ -2,7 +2,7 @@ import { Utils } from '@shardus/lib-types'
 import { AccountVariant } from '../@types'
 import { deserializeAccounts, serializeAccounts } from '.'
 
-/** Shardus AppData serialization with JSON fallback for unsupported binary accounts and other identifiers. */
+/** Shardus AppData serialization; account frames use the shared fallback after the 2.5.3 migration. */
 export function serializeAppData(identifier: string, obj: unknown): Buffer {
   try {
     if (identifier === 'AppData') return serializeAccounts(obj as AccountVariant).getBuffer()

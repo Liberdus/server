@@ -13,39 +13,38 @@ import type { LiberdusFlags as LiberdusFlagsType } from '../src/config'
  * src/config, so the migration would flip a different LiberdusFlags object than the test inspects.
  * Both have to come from the same fresh registry.
  *
- * The serde flag defaults to on for networks launched at 2.5.3, so it is cleared here to model a node on an
- * upgrading network before the 2.5.3 migration runs. enableAJVValidation defaults to off; it is set here too so
- * the AJV cases do not depend on the default.
+ * The fallback flag defaults to off for a rotating network before 2.5.3 activation.
+ * A fresh 2.5.3 network must enable it in its launch defaults.
+ * enableAJVValidation is set explicitly below so these cases do not depend on its default.
  */
 const loadFresh = (): { activate: (v: string) => Promise<void>; flags: typeof LiberdusFlagsType } => {
   jest.resetModules()
   const { onActiveVersionChange } = require('../src/versioning')
   const { LiberdusFlags } = require('../src/config')
-  LiberdusFlags.versionFlags.correctAccountSerdeLayout = false
   LiberdusFlags.enableAJVValidation = false
   return { activate: (v: string) => onActiveVersionChange(v, { config: { p2p: {} } }), flags: LiberdusFlags }
 }
 
-describe('account serde layout migration', () => {
-  test('2.5.2 runs its own migrations without enabling the serde flag', async () => {
+describe('account fallback serialization migration', () => {
+  test('2.5.2 runs its own migrations without enabling the fallback flag', async () => {
     const { activate, flags } = loadFresh()
-    expect(flags.versionFlags.correctAccountSerdeLayout).toBe(false)
+    expect(flags.versionFlags.useFallbackAccountSerialization).toBe(false)
 
     await activate('2.5.2')
 
     // Asserted together on purpose: the first line proves the 2.5.2 migrations actually executed,
     // so the second cannot pass merely because nothing ran.
     expect(flags.versionFlags.removeUnusedTxState).toBe(true)
-    expect(flags.versionFlags.correctAccountSerdeLayout).toBe(false)
+    expect(flags.versionFlags.useFallbackAccountSerialization).toBe(false)
   })
 
-  test('2.5.3 enables the serde flag', async () => {
+  test('2.5.3 enables the fallback flag', async () => {
     const { activate, flags } = loadFresh()
-    expect(flags.versionFlags.correctAccountSerdeLayout).toBe(false)
+    expect(flags.versionFlags.useFallbackAccountSerialization).toBe(false)
 
     await activate('2.5.3')
 
-    expect(flags.versionFlags.correctAccountSerdeLayout).toBe(true)
+    expect(flags.versionFlags.useFallbackAccountSerialization).toBe(true)
   })
 
   test('the order these run in does not change the outcome', async () => {
@@ -53,11 +52,11 @@ describe('account serde layout migration', () => {
     // migration marked applied and the other would assert nothing.
     const second = loadFresh()
     await second.activate('2.5.2')
-    expect(second.flags.versionFlags.correctAccountSerdeLayout).toBe(false)
+    expect(second.flags.versionFlags.useFallbackAccountSerialization).toBe(false)
 
     const third = loadFresh()
     await third.activate('2.5.3')
-    expect(third.flags.versionFlags.correctAccountSerdeLayout).toBe(true)
+    expect(third.flags.versionFlags.useFallbackAccountSerialization).toBe(true)
   })
 })
 
