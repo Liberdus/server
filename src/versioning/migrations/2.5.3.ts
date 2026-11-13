@@ -10,12 +10,16 @@ import { Migration } from '../types'
  * 2. Wait until every active node runs a 2.5.3 build; minVersion does not remove nodes that are already active.
  * 3. Raise activeVersion to 2.5.3, which runs this migration.
  *
- * A network that starts at 2.5.3 never runs this migration; enable correctAccountSerdeLayout in its defaults before launch.
+ * It also turns on AJV schema validation for txs, app join data, standby checks and penalty data.
+ *
+ * A network that starts at 2.5.3 never runs this migration; enable correctAccountSerdeLayout and enableAJVValidation
+ * in its defaults before launch.
  */
 export const migrate: Migration = async (dapp) => {
   console.log('migrate 2.5.3')
   nestedCountersInstance.countEvent('migrate', 'calling migrate 2.5.3')
   LiberdusFlags.versionFlags.correctAccountSerdeLayout = true
+  LiberdusFlags.enableAJVValidation = true
   dapp.config.p2p.netConfigV2 = true
   dapp.config.p2p.networkConfigHashEnforcement = true
 }

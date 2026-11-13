@@ -317,7 +317,7 @@ export const LiberdusFlags: LiberdusFlags = {
   daoProjectReclaimDelayMs: 90 * ONE_DAY,
   minCommitteeMembers: 4,
   maxCommitteeMembers: 10,
-  enableAJVValidation: false,
+  enableAJVValidation: false, // turn on by 2.5.3
   goldenTicketRetryInterval: 10 * ONE_MINUTE,
   versionFlags: {
     replierNoToll: true, // turn on by 2.3.5
