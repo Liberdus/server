@@ -2249,6 +2249,12 @@ async function fetchNetworkAccountFromArchiver(): Promise<LiberdusTypes.NetworkA
     nestedCountersInstance.countEvent('network-config-operation', 'failure: no majority found for archivers get-network-account result. Use default configs.')
     throw new Error(`no majority found for archivers get-network-account result `)
   }
+  if (!majorityValue.hash) {
+    // Expected on a new network until the genesis node creates the network account, so it is not logged here as an
+    // archiver error. Callers retry.
+    nestedCountersInstance.countEvent('network-config-operation', 'network account not created yet')
+    throw new Error('Network account has not been created yet')
+  }
   const url = `http://${majorityValue.archiver.ip}:${majorityValue.archiver.port}/get-network-account?hash=false`
   try {
     const res = await axios.get<{ networkAccount: any; sign: any }>(url)
@@ -2258,6 +2264,9 @@ async function fetchNetworkAccountFromArchiver(): Promise<LiberdusTypes.NetworkA
       /* prettier-ignore */
       nestedCountersInstance.countEvent('network-config-operation', 'failure: did not get network account from archiver private key, returned null. Use default configs.')
       throw new Error(`get-network-account from archiver pk:${majorityValue.archiver.publicKey} returned null`)
+    }
+    if (!res.data.networkAccount?.data) {
+      throw new Error(`get-network-account from archiver pk:${majorityValue.archiver.publicKey} returned no network account`)
     }
 
     if (LiberdusFlags.enableArchiverNetworkAccountValidation) {
