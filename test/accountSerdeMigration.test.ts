@@ -15,13 +15,18 @@ import type { LiberdusFlags as LiberdusFlagsType } from '../src/config'
  *
  * The fallback flag defaults to off for a rotating network before 2.5.3 activation.
  * A fresh 2.5.3 network must enable it in its launch defaults.
- * enableAJVValidation is set explicitly below so these cases do not depend on its default.
+ * Both flags the 2.5.3 migration turns on are set to their pre-2.5.3 value below, so these cases
+ * do not depend on the defaults in src/config (e.g. a local config set up for a fresh 2.5.3 network).
+ * removeUnusedTxState is cleared too: it defaults to on, and the cases use 2.5.2 turning it back on
+ * as proof that the migrations ran.
  */
 const loadFresh = (): { activate: (v: string) => Promise<void>; flags: typeof LiberdusFlagsType } => {
   jest.resetModules()
   const { onActiveVersionChange } = require('../src/versioning')
   const { LiberdusFlags } = require('../src/config')
   LiberdusFlags.enableAJVValidation = false
+  LiberdusFlags.versionFlags.useFallbackAccountSerialization = false
+  LiberdusFlags.versionFlags.removeUnusedTxState = false
   return { activate: (v: string) => onActiveVersionChange(v, { config: { p2p: {} } }), flags: LiberdusFlags }
 }
 
