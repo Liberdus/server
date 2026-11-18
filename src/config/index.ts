@@ -42,9 +42,9 @@ export const INITIAL_PARAMETERS: NetworkParameters = {
   activeVersion: '2.5.3',
   latestVersion: '2.5.3',
   archiver: {
-    minVersion: '3.9.1',
-    activeVersion: '3.9.1',
-    latestVersion: '3.9.1',
+    minVersion: '3.9.2',
+    activeVersion: '3.9.2',
+    latestVersion: '3.9.2',
   },
   stabilityScaleMul: 125,
   stabilityScaleDiv: 1,
@@ -317,7 +317,7 @@ export const LiberdusFlags: LiberdusFlags = {
   daoProjectReclaimDelayMs: 90 * ONE_DAY,
   minCommitteeMembers: 4,
   maxCommitteeMembers: 10,
-  enableAJVValidation: false, // turn on by 2.5.3
+  enableAJVValidation: true, // turn on by 2.5.3
   goldenTicketRetryInterval: 10 * ONE_MINUTE,
   versionFlags: {
     replierNoToll: true, // turn on by 2.3.5
@@ -338,7 +338,7 @@ export const LiberdusFlags: LiberdusFlags = {
     removeLegacyDaoState: true, // turn on by 2.5.2
     removeUnusedTxState: true, // turn on by 2.5.2
     removeLegacyNetworkParams: true, // turn on by 2.5.2
-    useFallbackAccountSerialization: false, // use JSON for every account after the 2.5.3 migration
+    useFallbackAccountSerialization: true, // use JSON for every account after the 2.5.3 migration
   },
 }
 
@@ -558,8 +558,8 @@ config = merge(config, {
       archiverNetworkCheckInterval: 1000 * 60 * 1,
       shouldApopOnNetworkStop: false,
 
-      netConfigV2: false, // turn on by 2.5.3
-      networkConfigHashEnforcement: false, // turn on by 2.5.3
+      netConfigV2: true, // turn on by 2.5.3
+      networkConfigHashEnforcement: true, // turn on by 2.5.3
     },
     features: {
       //This feature will restrict transactions to only coin transfers
