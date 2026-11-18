@@ -6,7 +6,7 @@
 # However, the resulting image size is very large (~1.25GB).
 #
 # Useful for development, but don't ship it. Use 'Dockerfile' instead.
-FROM node:20.19.3
+FROM node:24
 
 # Link this Dockerfile to the image in the GHCR
 LABEL "org.opencontainers.image.source"="https://github.com/liberdus/server"
